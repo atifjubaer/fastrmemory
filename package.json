@@ -14,6 +14,12 @@
   "publishConfig": {
     "access": "public"
   },
+  "files": [
+    "dist",
+    "skills",
+    ".claude-plugin",
+    ".cursor"
+  ],
   "bin": {
     "fastrmemory": "./dist/bin/fastr.js",
     "fastr": "./dist/bin/fastr.js"
@@ -28,6 +34,7 @@
     "node": ">=22.16.0"
   },
   "scripts": {
+    "prepublishOnly": "npm run build && npm test",
     "build": "tsc",
     "watch": "tsc --watch",
     "test": "vitest run",
