@@ -1,8 +1,10 @@
 node_modules/
 dist/
 references/
-.fastr/*.db*
+**/*.db*
+**/.fastr/fastr.db*
 .fastr/spool/
+tests/temp_*
 *.log
 .DS_Store
 Thumbs.db
