@@ -67,7 +67,7 @@ Fuses sub-millisecond FTS5 BM25 + local 384-dim embeddings + file-graph links. E
 
 Comprehensive comparison across the current agent memory landscape:
 
-| Capability | FastrMemory (`@fastrsoft`) | agentmemory | Memoria (MatrixOrigin) | mem0 (63K ⭐) | Letta / MemGPT | Hippo Memory | Built-in (`CLAUDE.md`) |
+| Capability | FastrMemory (`@atifjubaer`) | agentmemory | Memoria (MatrixOrigin) | mem0 (63K ⭐) | Letta / MemGPT | Hippo Memory | Built-in (`CLAUDE.md`) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Daemon Overhead** | **Zero daemon** (Native `node:sqlite`) | Heavy Rust daemon (4 ports) | MatrixOne DB or Cloud API | Cloud / Vector DB | Full runtime daemon | Zero daemon | Static file |
 | **Windows Support** | **100% Native Windows, Mac, Linux** | Fails without WSL2/Docker | Requires Docker/Cloud | Python setup | Complex setup | Native Node.js | Native OS |
@@ -131,7 +131,18 @@ Comprehensive comparison across the current agent memory landscape:
 
 ## 🚀 30-Second Quick Start
 
-### 1. Install & Link Globally
+### ⚡ Canonical Interactive Auto-Setup (Recommended)
+
+Run once to auto-wire FastrMemory into Claude Code (`~/.claude.json`) and Cursor (`.cursor/mcp.json`):
+
+```bash
+npx -y @atifjubaer/fastrmemory@latest
+```
+*(Or run `fastrmemory setup` if already installed globally)*
+
+---
+
+### Local Source Setup & Linking
 
 ```bash
 # In your fastrmemory repository:

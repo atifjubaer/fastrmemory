@@ -1,8 +1,19 @@
 {
-  "name": "@fastrsoft/fastrmemory",
+  "name": "@atifjubaer/fastrmemory",
   "version": "0.1.0",
   "description": "High-Performance Cognitive Agent Memory Engine with Bi-Temporal SQLite and Official MCP v2",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/atifjubaer/fastrmemory.git"
+  },
+  "homepage": "https://github.com/atifjubaer/fastrmemory#readme",
+  "bugs": {
+    "url": "https://github.com/atifjubaer/fastrmemory/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "fastrmemory": "./dist/bin/fastr.js",
     "fastr": "./dist/bin/fastr.js"

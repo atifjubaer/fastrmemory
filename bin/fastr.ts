@@ -5,6 +5,7 @@ import { createFastrServerContext } from '../src/mcp/server.js';
 import { searchMemories } from '../src/search/hybrid-rrf.js';
 import { syncAllModulePages } from '../src/mirror/markdown-pages.js';
 import { scrubSecrets } from '../src/privacy/scrubber.js';
+import { runInteractiveSetup } from '../src/installer/setup.js';
 
 const program = new Command();
 
@@ -12,7 +13,18 @@ program
   .name('fastrmemory')
   .alias('fastr')
   .description('FastrMemory: High-Performance Cognitive Agent Memory Engine')
-  .version('0.1.0');
+  .version('0.1.0')
+  .action(() => {
+    // Default action when invoked with no arguments (e.g. npx fastrmemory)
+    runInteractiveSetup();
+  });
+
+program
+  .command('setup')
+  .description('Run interactive auto-setup wizard for Claude Code and Cursor')
+  .action(() => {
+    runInteractiveSetup();
+  });
 
 // 1. MCP stdio command (Primary integration for Claude Code, Cursor, Antigravity)
 program
