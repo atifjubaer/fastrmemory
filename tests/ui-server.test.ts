@@ -60,5 +60,18 @@ describe('FastrMemory Web UI Server', () => {
     expect(memRes.status).toBe(200);
     const memJson = await memRes.json();
     expect(Array.isArray(memJson)).toBe(true);
+
+    // 4. Test /api/graph
+    const graphRes = await fetch(`${url}/api/graph`);
+    expect(graphRes.status).toBe(200);
+    const graphJson = await graphRes.json();
+    expect(graphJson.nodes).toBeDefined();
+    expect(graphJson.edges).toBeDefined();
+
+    // 5. Test /api/timeline
+    const timelineRes = await fetch(`${url}/api/timeline`);
+    expect(timelineRes.status).toBe(200);
+    const timelineJson = await timelineRes.json();
+    expect(Array.isArray(timelineJson)).toBe(true);
   });
 });

@@ -335,6 +335,133 @@ export class FastrRepository {
     return rows;
   }
 
+  getTimeline(projectId: string, options: { module?: string; limit?: number } = {}): Array<{
+    id: string;
+    kind: string;
+    title: string;
+    module: string;
+    status: string;
+    rewardScore: number;
+    createdAt: string;
+    validTo: string | null;
+    supersededById: string | null;
+    supersededReason: string | null;
+    linkedFiles: string[];
+  }> {
+    const limit = options.limit || 50;
+    let query = `
+      SELECT id, kind, title, module, status, reward_score, created_at, valid_to, superseded_by_id, superseded_reason
+      FROM memories
+      WHERE project_id = ?
+    `;
+    const params: any[] = [projectId];
+
+    if (options.module) {
+      query += ` AND module = ?`;
+      params.push(options.module.trim().toLowerCase());
+    }
+
+    query += ` ORDER BY created_at DESC LIMIT ?`;
+    params.push(limit);
+
+    const rows = this.db.prepare(query).all(...params) as any[];
+
+    return rows.map((r) => ({
+      id: r.id,
+      kind: r.kind,
+      title: r.title,
+      module: r.module,
+      status: r.status,
+      rewardScore: r.reward_score,
+      createdAt: r.created_at,
+      validTo: r.valid_to,
+      supersededById: r.superseded_by_id,
+      supersededReason: r.superseded_reason,
+      linkedFiles: this.getFilesForMemory(r.id),
+    }));
+  }
+
+  queryGraph(projectId: string, options: { startFilePath?: string; depth?: number } = {}): {
+    nodes: Array<{ id: string; label: string; type: 'file' | 'memory'; kind?: string; module?: string; score?: number }>;
+    edges: Array<{ source: string; target: string; relation: string }>;
+  } {
+    const { startFilePath, depth = 2 } = options;
+
+    if (startFilePath) {
+      // 1-hop: memories directly linked to this file
+      const initialMemories = this.getMemoriesForFile(projectId, startFilePath);
+      const memoryIds = new Set(initialMemories.map((m) => m.id));
+      const filePaths = new Set<string>([startFilePath]);
+
+      // 2-hop: other files linked to these memories
+      if (depth >= 2) {
+        for (const mId of memoryIds) {
+          const files = this.getFilesForMemory(mId);
+          for (const f of files) {
+            filePaths.add(f);
+          }
+        }
+        // and memories linked to those discovered files
+        for (const f of filePaths) {
+          const mems = this.getMemoriesForFile(projectId, f);
+          for (const m of mems) {
+            memoryIds.add(m.id);
+          }
+        }
+      }
+
+      const nodes: Array<{ id: string; label: string; type: 'file' | 'memory'; kind?: string; module?: string; score?: number }> = [];
+      const edges: Array<{ source: string; target: string; relation: string }> = [];
+
+      for (const f of filePaths) {
+        nodes.push({ id: f, label: f, type: 'file' });
+      }
+
+      for (const mId of memoryIds) {
+        const mem = this.getMemory(mId);
+        if (mem) {
+          nodes.push({ id: mem.id, label: mem.title, type: 'memory', kind: mem.kind, module: mem.module, score: mem.reward_score });
+          const linkedFiles = this.getFilesForMemory(mem.id);
+          for (const lf of linkedFiles) {
+            if (filePaths.has(lf)) {
+              edges.push({ source: mem.id, target: lf, relation: 'links' });
+            }
+          }
+        }
+      }
+
+      return { nodes, edges };
+    }
+
+    // Complete graph
+    const memories = this.listActiveMemories(projectId);
+    const fileLinks = this.db.prepare(`
+      SELECT fl.memory_id, fl.file_path, m.title, m.kind, m.module, m.reward_score
+      FROM file_links fl
+      JOIN memories m ON m.id = fl.memory_id
+      WHERE m.project_id = ? AND m.valid_to IS NULL
+    `).all(projectId) as any[];
+
+    const nodesMap = new Map<string, { id: string; label: string; type: 'file' | 'memory'; kind?: string; module?: string; score?: number }>();
+    const edges: Array<{ source: string; target: string; relation: string }> = [];
+
+    for (const m of memories) {
+      nodesMap.set(m.id, { id: m.id, label: m.title, type: 'memory', kind: m.kind, module: m.module, score: m.reward_score });
+    }
+
+    for (const fl of fileLinks) {
+      if (!nodesMap.has(fl.file_path)) {
+        nodesMap.set(fl.file_path, { id: fl.file_path, label: fl.file_path, type: 'file' });
+      }
+      edges.push({ source: fl.memory_id, target: fl.file_path, relation: 'links' });
+    }
+
+    return {
+      nodes: Array.from(nodesMap.values()),
+      edges,
+    };
+  }
+
   // --- HANDOFFS ---
 
   saveHandoff(handoff: Handoff): Handoff {

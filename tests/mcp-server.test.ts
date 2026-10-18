@@ -154,6 +154,20 @@ describe('MCP v2 Server (Tools & Resources)', () => {
     const statusRes = await callTool('fastr_status', {});
     expect(statusRes.content[0].text).toContain('**Active Memories**: 1');
     expect(statusRes.content[0].text).toContain('**Superseded History**: 1');
+
+    // 7. fastr_graph_query
+    const graphRes = await callTool('fastr_graph_query', {
+      filePath: 'src/auth/jwt.ts',
+      depth: 2
+    });
+    expect(graphRes.content[0].text).toContain('Connected Files');
+
+    // 8. fastr_timeline
+    const timelineRes = await callTool('fastr_timeline', {
+      limit: 10
+    });
+    expect(timelineRes.content[0].text).toContain('Chronological Timeline');
+    expect(timelineRes.content[0].text).toContain('Token Algorithm');
   });
 
   it('saves and retrieves cross-agent session handoffs via MCP', async () => {

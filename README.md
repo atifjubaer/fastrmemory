@@ -226,7 +226,7 @@ Add this JSON block to your agent's MCP settings to enable autonomous memory:
 
 Built using the official **v2 `@modelcontextprotocol/server`** SDK:
 
-### 8 Core MCP Tools
+### 10 Core MCP Tools
 
 1. `fastr_recall`: Triple-stream hybrid search (BM25 + Vector + Graph) with progressive token budgeting.
 2. `fastr_drill`: Resolves `source_event_ids` to retrieve untruncated verbatim stack traces, diffs, and tool outputs from `raw_events`.
@@ -236,6 +236,8 @@ Built using the official **v2 `@modelcontextprotocol/server`** SDK:
 6. `fastr_feedback`: Updates `reward_score` on a specific memory ID (+0.2 good, -0.5 bad). Never penalizes innocent memories.
 7. `fastr_handoff`: Saves or retrieves cross-agent session milestones and promotes staging memories to verified.
 8. `fastr_status`: Returns active/staging counts, spool health, and embedding coverage %.
+9. `fastr_graph_query`: Explores 1-hop and 2-hop structural file-link dependencies and connected error traps.
+10. `fastr_timeline`: Chronological audit trail of memory events, newly verified rules, error traps, and historical supersessions.
 
 ### 3 MCP Resources
 

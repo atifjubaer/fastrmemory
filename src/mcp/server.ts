@@ -375,6 +375,91 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   );
 
   // ==========================================
+  // TOOL 9: fastr_graph_query
+  // ==========================================
+  server.registerTool(
+    'fastr_graph_query',
+    {
+      description: 'Query the code file-dependency graph to discover linked memories, error traps, and neighboring files (up to 2-hop structural links).',
+      inputSchema: {
+        filePath: z.string().optional().describe('Center graph on specific file path to discover 1-hop & 2-hop connected rules and files'),
+        depth: z.number().default(2).describe('Graph traversal depth (1 or 2 hops)')
+      }
+    },
+    async ({ filePath, depth }) => {
+      const graph = repo.queryGraph(config.projectId, { startFilePath: filePath, depth });
+      const memoryNodes = graph.nodes.filter((n) => n.type === 'memory');
+      const fileNodes = graph.nodes.filter((n) => n.type === 'file');
+
+      let text = `### FastrMemory Graph Query Results\n`;
+      text += `- **Connected Files**: ${fileNodes.length}\n`;
+      text += `- **Connected Memories & Traps**: ${memoryNodes.length}\n`;
+      text += `- **Relationship Edges**: ${graph.edges.length}\n\n`;
+
+      if (memoryNodes.length > 0) {
+        text += `#### Connected Memories:\n`;
+        for (const m of memoryNodes) {
+          const kindBadge = m.kind === 'error_trap' ? '[TRAP]' : m.kind ? `[${m.kind.toUpperCase()}]` : '[RULE]';
+          text += `- **[${m.id}]** ${kindBadge} ${m.label} (Score: ${m.score ?? 1.0})\n`;
+        }
+      }
+
+      if (fileNodes.length > 0) {
+        text += `\n#### Associated Code Files:\n`;
+        for (const f of fileNodes) {
+          text += `- \`${f.id}\`\n`;
+        }
+      }
+
+      return {
+        content: [{ type: 'text', text }]
+      };
+    }
+  );
+
+  // ==========================================
+  // TOOL 10: fastr_timeline
+  // ==========================================
+  server.registerTool(
+    'fastr_timeline',
+    {
+      description: 'Returns chronological audit trail of memories, verified rules, error traps, and historical supersessions.',
+      inputSchema: {
+        module: z.string().optional().describe('Filter timeline by module (e.g. auth, db)'),
+        limit: z.number().default(25).describe('Max chronological entries to return')
+      }
+    },
+    async ({ module: targetModule, limit }) => {
+      const timeline = repo.getTimeline(config.projectId, { module: targetModule, limit });
+
+      let text = `### FastrMemory Chronological Timeline (${timeline.length} events)\n\n`;
+      if (timeline.length === 0) {
+        text += `_No memory history found._\n`;
+      } else {
+        for (const item of timeline) {
+          const kindBadge = item.kind === 'error_trap' ? '⚠️ [TRAP]' : `[${item.kind.toUpperCase()}]`;
+          const statusBadge = item.status === 'superseded' ? '🔴 SUPERSEDED' : item.status === 'verified' ? '🟢 VERIFIED' : '🟡 STAGING';
+          text += `#### ${item.createdAt} — ${kindBadge} ${item.title} (${statusBadge})\n`;
+          text += `- **ID**: \`${item.id}\` | **Module**: \`${item.module}\` | **Score**: ${item.rewardScore}\n`;
+          if (item.linkedFiles.length > 0) {
+            text += `- **Files**: ${item.linkedFiles.map((f) => `\`${f}\``).join(', ')}\n`;
+          }
+          if (item.validTo) {
+            text += `- **Expired / Superseded At**: ${item.validTo}\n`;
+            if (item.supersededById) text += `- **Superseded By**: \`${item.supersededById}\`\n`;
+            if (item.supersededReason) text += `- **Reason**: ${item.supersededReason}\n`;
+          }
+          text += `\n---\n\n`;
+        }
+      }
+
+      return {
+        content: [{ type: 'text', text }]
+      };
+    }
+  );
+
+  // ==========================================
   // RESOURCE 1: fastr://project/overview
   // ==========================================
   server.registerResource(
