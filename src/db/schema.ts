@@ -146,6 +146,18 @@ CREATE TABLE IF NOT EXISTS handoffs (
   active_files TEXT NOT NULL DEFAULT '[]',
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
+
+-- 6. Memory Snapshots & Git-Style Point-in-Time Versioning
+CREATE TABLE IF NOT EXISTS memory_snapshots (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  tag TEXT NOT NULL,
+  description TEXT,
+  memory_count INTEGER NOT NULL,
+  state_json TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_snapshots_project ON memory_snapshots(project_id, created_at DESC);
 `;
 
 export function applySchema(db: DatabaseSync): void {

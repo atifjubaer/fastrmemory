@@ -535,4 +535,115 @@ export class FastrRepository {
       embeddingCoveragePercent: coverage
     };
   }
+
+  // --- SNAPSHOTS & TIME TRAVEL (Memoria parity) ---
+
+  createSnapshot(projectId: string, tag: string, description?: string): { id: string; tag: string; memoryCount: number; createdAt: string } {
+    const id = `snap_${crypto.randomBytes(4).toString('hex')}`;
+    const memories = this.listActiveMemories(projectId);
+    const fileLinks = this.db.prepare(`
+      SELECT fl.* FROM file_links fl
+      JOIN memories m ON m.id = fl.memory_id
+      WHERE m.project_id = ? AND m.valid_to IS NULL
+    `).all(projectId);
+
+    const state = {
+      memories,
+      fileLinks,
+      timestamp: new Date().toISOString()
+    };
+
+    const stateJson = JSON.stringify(state);
+    const createdAt = new Date().toISOString();
+
+    this.db.prepare(`
+      INSERT INTO memory_snapshots (id, project_id, tag, description, memory_count, state_json, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(id, projectId, tag, description || null, memories.length, stateJson, createdAt);
+
+    return { id, tag, memoryCount: memories.length, createdAt };
+  }
+
+  listSnapshots(projectId: string): Array<{ id: string; tag: string; description: string | null; memoryCount: number; createdAt: string }> {
+    const rows = this.db.prepare(`
+      SELECT id, tag, description, memory_count as memoryCount, created_at as createdAt
+      FROM memory_snapshots
+      WHERE project_id = ?
+      ORDER BY created_at DESC
+    `).all(projectId) as any[];
+
+    return rows;
+  }
+
+  getSnapshot(snapshotId: string): any | null {
+    const row = this.db.prepare(`
+      SELECT * FROM memory_snapshots WHERE id = ?
+    `).get(snapshotId) as any | undefined;
+
+    return row || null;
+  }
+
+  rollbackToSnapshot(projectId: string, snapshotId: string): { restoredCount: number; snapshotTag: string } {
+    const snap = this.getSnapshot(snapshotId);
+    if (!snap) {
+      throw new Error(`Snapshot not found: ${snapshotId}`);
+    }
+
+    const state = JSON.parse(snap.state_json);
+    const targetMemories: Memory[] = state.memories || [];
+    const targetLinks: any[] = state.fileLinks || [];
+
+    this.db.exec('BEGIN TRANSACTION');
+    try {
+      // 1. Mark all current active memories valid_to = now (superseded by rollback)
+      const nowIso = new Date().toISOString();
+      this.db.prepare(`
+        UPDATE memories
+        SET valid_to = ?, status = 'superseded', superseded_reason = ?
+        WHERE project_id = ? AND valid_to IS NULL
+      `).run(nowIso, `Rollback to snapshot ${snap.tag} (${snap.id})`, projectId);
+
+      // 2. Re-insert or restore the snapshot memories
+      for (const m of targetMemories) {
+        this.db.prepare(`
+          INSERT INTO memories (
+            id, project_id, agent_id, module, kind, title, content, status, pinned, reward_score,
+            source_event_ids, valid_from, valid_to, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            valid_to = NULL,
+            status = excluded.status,
+            reward_score = excluded.reward_score
+        `).run(
+          m.id,
+          m.project_id,
+          m.agent_id,
+          m.module,
+          m.kind,
+          m.title,
+          m.content,
+          m.status,
+          m.pinned,
+          m.reward_score,
+          m.source_event_ids,
+          nowIso,
+          m.created_at
+        );
+      }
+
+      // 3. Restore file links
+      for (const fl of targetLinks) {
+        this.db.prepare(`
+          INSERT OR IGNORE INTO file_links (memory_id, file_path, symbol_name)
+          VALUES (?, ?, ?)
+        `).run(fl.memory_id, fl.file_path, fl.symbol_name || '');
+      }
+
+      this.db.exec('COMMIT');
+      return { restoredCount: targetMemories.length, snapshotTag: snap.tag };
+    } catch (err) {
+      this.db.exec('ROLLBACK');
+      throw err;
+    }
+  }
 }

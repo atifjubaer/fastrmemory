@@ -9,7 +9,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.16.0-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Protocol](https://img.shields.io/badge/Protocol-MCP%20v2-7C3AED?style=flat-square)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/Tests-23%20Passed-brightgreen?style=flat-square)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-25%20Passed-brightgreen?style=flat-square)](tests/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-key-architectural-pillars)
 
@@ -190,6 +190,21 @@ Output:
 JWT exp claims expect integer seconds. Always use Math.floor(Date.now() / 1000).
 ```
 
+### 4. Git Snapshots, Rollback & Autonomous Hooks
+
+```bash
+# Point-in-time memory snapshot (Git for Agent Memory):
+fastrmemory snapshot create "pre-refactor-checkpoint"
+fastrmemory snapshot list
+fastrmemory snapshot rollback "pre-refactor-checkpoint"
+
+# Auto-wire autonomous hooks into Claude Code, Cursor, and AGENTS.md:
+fastrmemory hook install
+
+# Mine past Git bug fixes directly into staging error traps:
+fastrmemory learn -n 30 --days 90
+```
+
 ---
 
 ## 🔌 One-Click Agent MCP Configuration
@@ -226,9 +241,9 @@ Add this JSON block to your agent's MCP settings to enable autonomous memory:
 
 Built using the official **v2 `@modelcontextprotocol/server`** SDK:
 
-### 10 Core MCP Tools
+### 14 Core MCP Tools
 
-1. `fastr_recall`: Triple-stream hybrid search (BM25 + Vector + Graph) with progressive token budgeting.
+1. `fastr_recall`: Triple-stream hybrid search (BM25 + Vector + Graph) with progressive L0–L3 token budgeting.
 2. `fastr_drill`: Resolves `source_event_ids` to retrieve untruncated verbatim stack traces, diffs, and tool outputs from `raw_events`.
 3. `fastr_file_history`: Returns active rules, `[TRAP]` warnings, and past supersessions for a specific file path.
 4. `fastr_remember`: Records new rules, decisions, or traps. Automatically scrubs secrets and re-renders Two-Zone Markdown mirrors.
@@ -238,6 +253,10 @@ Built using the official **v2 `@modelcontextprotocol/server`** SDK:
 8. `fastr_status`: Returns active/staging counts, spool health, and embedding coverage %.
 9. `fastr_graph_query`: Explores 1-hop and 2-hop structural file-link dependencies and connected error traps.
 10. `fastr_timeline`: Chronological audit trail of memory events, newly verified rules, error traps, and historical supersessions.
+11. `fastr_snapshot`: Creates named point-in-time memory snapshots for branch tracking and experiment safety.
+12. `fastr_rollback`: Instant Git-like rollback to any previous memory snapshot.
+13. `fastr_trap_log`: One-line rapid logging of error traps and bug solutions during active coding.
+14. `fastr_trap_recall`: Targeted lookup of high-priority error traps matching a prompt or target file.
 
 ### 3 MCP Resources
 
@@ -323,7 +342,7 @@ flowchart TD
 
     subgraph Protocol["4. Official MCP Protocol"]
         Budget --> MCPServer["Official MCP v2 Server\n(@modelcontextprotocol/server)"]
-        MCPServer --> Tools["8 Tools & 3 Resources"]
+        MCPServer --> Tools["14 Tools & 3 Resources"]
         Tools --> Agent
     end
 ```
@@ -338,7 +357,7 @@ Run the comprehensive unit test suite:
 npm test
 ```
 
-All 23 tests pass in $<550\text{ms}$ across 8 test suites covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, and web dashboard server.
+All 25 tests pass in $<550\text{ms}$ across 10 test suites covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, git-learner, and web dashboard server.
 
 ---
 
@@ -362,17 +381,18 @@ fastrmemory bench
 
 ---
 
-## 🖥️ Local Web Dashboard
+## 🖥️ Local Web Dashboard & Knowledge Graph Studio
 
-Visualize active rules, error traps, and file graphs directly in your browser with zero external dependencies:
+Visualize active rules, error traps, timeline audits, and interactive force-directed file graphs directly in your browser with zero external dependencies:
 
 ```bash
 fastrmemory ui
 ```
 
 - **Live URL**: `http://localhost:4242`
+- **Interactive Knowledge Graph**: HTML5 Canvas force-directed physics graph with drag/drop, zoom/pan, glowing amber trap halos, and slide-in detail inspector.
+- **5 Studio Tabs**: Overview, All Memories, Error Traps (2.0x Boost), Interactive Knowledge Graph, and Chronological Timeline.
 - **Instant Search**: Real-time debounce filter by keyword, file path, or `[mem_xxxx]` identifier.
-- **Visual File Graph**: Inspect bi-directional connections between code files and learned memory rules.
 - **Zero Daemons**: Powered entirely by native Node.js HTTP server and embedded SQLite WAL mode.
 
 ---

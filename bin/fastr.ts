@@ -8,6 +8,8 @@ import { scrubSecrets } from '../src/privacy/scrubber.js';
 import { runInteractiveSetup } from '../src/installer/setup.js';
 import { runBenchmarks, formatBenchmarkMarkdown } from '../src/bench/benchmark.js';
 import { startUiServer } from '../src/ui/server.js';
+import { installAgentHooks } from '../src/installer/hooks.js';
+import { learnFromGitHistory } from '../src/learn/git-learner.js';
 
 const program = new Command();
 
@@ -165,6 +167,80 @@ program
     const { url } = await startUiServer(ctx.config, { port, openBrowser: options.open });
     console.log(`⚡ FastrMemory Hub live at: ${url}`);
     console.log(`Press Ctrl+C to stop.`);
+  });
+
+// 9. Snapshot command (Git-for-Memory)
+const snapshotCmd = program.command('snapshot').description('Git-like point-in-time memory state snapshots and rollback');
+
+snapshotCmd
+  .command('create <tag>')
+  .description('Create a new named point-in-time memory snapshot')
+  .option('-d, --desc <description>', 'Optional description or commit reference')
+  .action((tag, opts) => {
+    const ctx = createFastrServerContext();
+    const snap = ctx.repo.createSnapshot(ctx.config.projectId, tag, opts.desc);
+    console.log(`Created memory snapshot [${snap.id}] tagged "${snap.tag}" (${snap.memoryCount} active memories archived).`);
+  });
+
+snapshotCmd
+  .command('list')
+  .description('List all point-in-time memory snapshots')
+  .action(() => {
+    const ctx = createFastrServerContext();
+    const snapshots = ctx.repo.listSnapshots(ctx.config.projectId);
+    if (snapshots.length === 0) {
+      console.log('No memory snapshots found for this project.');
+      return;
+    }
+    console.log(`\n=== FastrMemory Snapshots (${ctx.config.projectName}) ===`);
+    for (const s of snapshots) {
+      console.log(`- [${s.id}] "${s.tag}" (${s.memoryCount} memories) • ${s.createdAt}${s.description ? ` - ${s.description}` : ''}`);
+    }
+    console.log('');
+  });
+
+snapshotCmd
+  .command('rollback <snapshotId>')
+  .description('Revert memory state back to a previous snapshot point in time')
+  .action((snapshotId) => {
+    const ctx = createFastrServerContext();
+    const res = ctx.repo.rollbackToSnapshot(ctx.config.projectId, snapshotId);
+    syncAllModulePages(ctx.db, ctx.config.projectRoot, ctx.config.projectId);
+    console.log(`Rolled back to snapshot "${res.snapshotTag}". Restored ${res.restoredCount} memories.`);
+  });
+
+// 10. Hook command (Autonomous Agent Lifecycle)
+const hookCmd = program.command('hook').description('Autonomous agent lifecycle hook management');
+
+hookCmd
+  .command('install')
+  .description('Auto-detect and install FastrMemory hooks into Claude Code, Cursor, and AGENTS.md')
+  .action(() => {
+    const ctx = createFastrServerContext();
+    const res = installAgentHooks(ctx.config.projectRoot);
+    console.log(`\n=== FastrMemory Autonomous Hook Installation ===`);
+    for (const d of res.details) {
+      console.log(`- ${d}`);
+    }
+    console.log(`\nAgent autonomous discipline active.\n`);
+  });
+
+// 11. Learn command (Git-History Auto-Learner)
+program
+  .command('learn')
+  .description('Extract error traps and lessons from git commit history')
+  .option('-n, --limit <number>', 'Number of recent commits to inspect', '30')
+  .option('--days <number>', 'Inspect commits from the last N days')
+  .action((opts) => {
+    const ctx = createFastrServerContext();
+    const limit = parseInt(opts.limit, 10) || 30;
+    const days = opts.days ? parseInt(opts.days, 10) : undefined;
+    console.log(`Scanning git history for bug fix patterns...`);
+    const res = learnFromGitHistory(ctx.repo, ctx.config.projectId, { limit, days, cwd: ctx.config.projectRoot });
+    console.log(`Inspected ${res.commitsInspected} commits. Extracted ${res.trapsExtracted} error traps into staging quarantine.`);
+    for (const l of res.lessons) {
+      console.log(`- [${l.commitHash}] (${l.module}): ${l.title}`);
+    }
   });
 
 program.parse(process.argv);

@@ -6,7 +6,7 @@ import { SpoolManager } from '../db/spool.js';
 import { initDatabase } from '../db/schema.js';
 import { searchMemories } from '../search/hybrid-rrf.js';
 import { scrubSecrets } from '../privacy/scrubber.js';
-import { syncModulePage } from '../mirror/markdown-pages.js';
+import { syncModulePage, syncAllModulePages } from '../mirror/markdown-pages.js';
 import { FastrConfig, loadConfig } from '../config.js';
 
 export interface ServerContext {
@@ -451,6 +451,142 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
           }
           text += `\n---\n\n`;
         }
+      }
+
+      return {
+        content: [{ type: 'text', text }]
+      };
+    }
+  );
+
+  // ==========================================
+  // TOOL 11: fastr_snapshot (Git-for-Memory)
+  // ==========================================
+  server.registerTool(
+    'fastr_snapshot',
+    {
+      description: 'Create an immutable point-in-time snapshot of all active memories and file links.',
+      inputSchema: {
+        tag: z.string().describe('Descriptive version tag (e.g. v1.0, pre-auth-refactor)'),
+        description: z.string().optional().describe('Context or rationale for this snapshot')
+      }
+    },
+    async ({ tag, description }) => {
+      const snap = repo.createSnapshot(config.projectId, tag, description);
+      return {
+        content: [{
+          type: 'text',
+          text: (
+            `### Created Memory Snapshot\n` +
+            `- **Snapshot ID**: \`${snap.id}\`\n` +
+            `- **Tag**: \`${snap.tag}\`\n` +
+            `- **Archived Active Memories**: ${snap.memoryCount}\n` +
+            `- **Timestamp**: ${snap.createdAt}`
+          )
+        }]
+      };
+    }
+  );
+
+  // ==========================================
+  // TOOL 12: fastr_rollback (Time Travel)
+  // ==========================================
+  server.registerTool(
+    'fastr_rollback',
+    {
+      description: 'Revert project memory state to a previous snapshot, superseding newer erroneous rules.',
+      inputSchema: {
+        snapshotId: z.string().describe('The snapshot ID to restore (e.g. snap_xxxx)')
+      }
+    },
+    async ({ snapshotId }) => {
+      const res = repo.rollbackToSnapshot(config.projectId, snapshotId);
+      syncAllModulePages(db, config.projectRoot, config.projectId);
+      return {
+        content: [{
+          type: 'text',
+          text: (
+            `### Rolled Back Memory State\n` +
+            `- **Restored Snapshot Tag**: \`${res.snapshotTag}\`\n` +
+            `- **Active Memories Restored**: ${res.restoredCount}\n` +
+            `- Newer conflicting memories have been marked \`superseded\`.\n` +
+            `- Two-Zone Markdown mirrors synchronized.`
+          )
+        }]
+      };
+    }
+  );
+
+  // ==========================================
+  // TOOL 13: fastr_trap_log (Rapid Error Trap Logger)
+  // ==========================================
+  server.registerTool(
+    'fastr_trap_log',
+    {
+      description: 'Immediately logs an error trap diagnosed during a build failure or test error. Receives a 2.0x recall boost.',
+      inputSchema: {
+        title: z.string().describe('Clear, imperative rule title (e.g. Never Use Date.now() for JWT Exp)'),
+        content: z.string().describe('Exact explanation of the error trap and the concrete workaround/fix'),
+        files: z.array(z.string()).describe('Code files affected by this error trap'),
+        module: z.string().default('general').describe('Module name (e.g. auth, db, api)')
+      }
+    },
+    async ({ title, content, files, module: trapModule }) => {
+      const scrubbedTitle = scrubSecrets(title);
+      const scrubbedContent = scrubSecrets(content);
+
+      const mem = repo.insertMemory({
+        projectId: config.projectId,
+        module: trapModule,
+        kind: 'error_trap',
+        title: scrubbedTitle,
+        content: scrubbedContent,
+        files,
+        verified: true
+      });
+
+      syncAllModulePages(db, config.projectRoot, config.projectId);
+      return {
+        content: [{
+          type: 'text',
+          text: `⚠️ **Logged Error Trap [${mem.id}]**: "${mem.title}" linked to ${files.length} file(s) with 2.0x recall boost.`
+        }]
+      };
+    }
+  );
+
+  // ==========================================
+  // TOOL 14: fastr_trap_recall
+  // ==========================================
+  server.registerTool(
+    'fastr_trap_recall',
+    {
+      description: 'Fetch all active [TRAP] warnings protecting specific files before beginning an edit.',
+      inputSchema: {
+        files: z.array(z.string()).describe('Target files about to be edited or inspected')
+      }
+    },
+    async ({ files }) => {
+      const traps: any[] = [];
+      for (const f of files) {
+        const mems = repo.getMemoriesForFile(config.projectId, f);
+        for (const m of mems) {
+          if (m.kind === 'error_trap' && !traps.some((t) => t.id === m.id)) {
+            traps.push(m);
+          }
+        }
+      }
+
+      if (traps.length === 0) {
+        return {
+          content: [{ type: 'text', text: `_No active error traps protecting specified file(s). Safe to proceed._` }]
+        };
+      }
+
+      let text = `### ⚠️ Active Error Traps for Specified Files (${traps.length} found):\n\n`;
+      for (const t of traps) {
+        text += `#### [${t.id}] ${t.title} (${t.module})\n`;
+        text += `${t.content}\n\n---\n\n`;
       }
 
       return {
