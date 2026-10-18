@@ -1,0 +1,47 @@
+{
+  "name": "@fastrsoft/fastrmemory",
+  "version": "0.1.0",
+  "description": "High-Performance Cognitive Agent Memory Engine with Bi-Temporal SQLite and Official MCP v2",
+  "type": "module",
+  "bin": {
+    "fastr": "./dist/bin/fastr.js"
+  },
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": {
+    ".": "./dist/src/index.js",
+    "./mcp": "./dist/src/mcp/server.js"
+  },
+  "engines": {
+    "node": ">=22.16.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "test": "vitest run",
+    "start": "node dist/bin/fastr.js"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "memory",
+    "mcp",
+    "sqlite",
+    "bitemporal",
+    "claude-code",
+    "cursor"
+  ],
+  "author": "Fastrsoft",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@huggingface/transformers": "^3.8.1",
+    "@modelcontextprotocol/server": "^2.3.1",
+    "commander": "^13.1.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.0.0"
+  }
+}
