@@ -1,0 +1,16 @@
+{
+  "name": "fastrmemory",
+  "version": "0.1.0",
+  "description": "FastrMemory: High-Performance Cognitive Agent Memory Engine with Bi-Temporal SQLite & Git Sync",
+  "author": "Fastrsoft",
+  "license": "Apache-2.0",
+  "skills": [
+    "skills/fastr-before-coding",
+    "skills/fastr-trap-logger",
+    "skills/fastr-session-commit",
+    "skills/fastr-recall",
+    "skills/fastr-remember",
+    "skills/fastr-discipline",
+    "skills/fastr-handoff"
+  ]
+}

@@ -9,7 +9,8 @@ import { scrubSecrets } from '../src/privacy/scrubber.js';
 const program = new Command();
 
 program
-  .name('fastr')
+  .name('fastrmemory')
+  .alias('fastr')
   .description('FastrMemory: High-Performance Cognitive Agent Memory Engine')
   .version('0.1.0');
 

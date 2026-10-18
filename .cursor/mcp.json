@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "fastrmemory": {
+      "command": "fastrmemory",
+      "args": ["mcp"]
+    }
+  }
+}

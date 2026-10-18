@@ -80,21 +80,52 @@ Comprehensive comparison across the current agent memory landscape:
 
 ---
 
-## 🤖 Works With 25+ Agents
+## 🤖 Works With Every Agent
 
-FastrMemory connects to any coding assistant that speaks the **Model Context Protocol (MCP)** or CLI. All agents in your workspace share the exact same memory store:
+<div align="center">
+  <b>25 agents &bull; one memory server</b>
+  <p>FastrMemory works with any agent that supports hooks, MCP, or REST API. All agents share the exact same memory store.</p>
+</div>
 
-| Agent | Integration Path | Status |
-| :--- | :--- | :--- |
-| **Claude Code** | Native MCP stdio + 3 bundled skills | Verified |
-| **Cursor** | `.cursor/mcp.json` stdio | Verified |
-| **Antigravity** | Built-in MCP stdio runner | Verified |
-| **Codex CLI** | MCP stdio integration | Verified |
-| **GitHub Copilot CLI** | MCP server configuration | Verified |
-| **Gemini CLI** | MCP stdio block | Verified |
-| **Cline / Roo Code / Kilo** | MCP stdio settings | Verified |
-| **Devin / Hermes / OpenClaw** | MCP server transport | Verified |
-| **Continue / Zed / Warp** | Standard MCP connection | Verified |
+<table>
+<tr>
+<td align="center" width="20%"><b>Claude Code</b><br/><sub><code>native plugin + 12 hooks + MCP</code></sub></td>
+<td align="center" width="20%"><b>Codex CLI</b><br/><sub><code>native plugin + 6 hooks + MCP</code></sub></td>
+<td align="center" width="20%"><b>GitHub Copilot CLI</b><br/><sub><code>MCP + plugin hooks/skills</code></sub></td>
+<td align="center" width="20%"><b>Cursor</b><br/><sub><code>native plugin + 7 hooks + MCP</code></sub></td>
+<td align="center" width="20%"><b>OpenCode</b><br/><sub><code>capture plugin + MCP</code></sub></td>
+</tr>
+<tr>
+<td align="center"><b>Devin</b><br/><sub><code>6 hooks + skills + MCP</code></sub></td>
+<td align="center"><b>OpenClaw</b><br/><sub><code>native plugin + MCP</code></sub></td>
+<td align="center"><b>Hermes</b><br/><sub><code>native plugin + MCP</code></sub></td>
+<td align="center"><b>pi</b><br/><sub><code>native plugin + MCP</code></sub></td>
+<td align="center"><b>OpenHuman</b><br/><sub><code>native Memory trait backend</code></sub></td>
+</tr>
+<tr>
+<td align="center"><b>Gemini CLI</b><br/><sub><code>MCP server</code></sub></td>
+<td align="center"><b>Antigravity</b><br/><sub><code>MCP + hooks</code></sub></td>
+<td align="center"><b>Claude Desktop</b><br/><sub><code>MCP server</code></sub></td>
+<td align="center"><b>Warp</b><br/><sub><code>connect + MCP + skills</code></sub></td>
+<td align="center"><b>Zed</b><br/><sub><code>MCP server</code></sub></td>
+</tr>
+<tr>
+<td align="center"><b>Cline</b><br/><sub><code>MCP server</code></sub></td>
+<td align="center"><b>Continue</b><br/><sub><code>MCP server</code></sub></td>
+<td align="center"><b>Droid</b><br/><sub><code>MCP server</code></sub></td>
+<td align="center"><b>Kiro</b><br/><sub><code>MCP server</code></sub></td>
+<td align="center"><b>Qwen Code</b><br/><sub><code>MCP server</code></sub></td>
+</tr>
+<tr>
+<td align="center"><b>DeepSeek Harness</b><br/><sub><code>MCP server</code></sub></td>
+<td align="center"><b>Roo Code</b><br/><sub><code>MCP server</code></sub></td>
+<td align="center"><b>Kilo Code</b><br/><sub><code>MCP server</code></sub></td>
+<td align="center"><b>Goose</b><br/><sub><code>MCP server</code></sub></td>
+<td align="center"><b>Aider</b><br/><sub><code>REST API</code></sub></td>
+</tr>
+</table>
+
+<p align="center"><i>Works with any agent that speaks MCP or HTTP. One server, memories shared across all of them.</i></p>
 
 ---
 
@@ -108,11 +139,12 @@ npm install
 npm run build
 npm link
 ```
+> Both `fastrmemory` and `fastr` (short alias) are now executable globally in your terminal.
 
 ### 2. Verify Database Health
 
 ```bash
-fastr status
+fastrmemory status
 ```
 
 Output:
@@ -131,12 +163,12 @@ Output:
 
 ```bash
 # Record an error trap linked to an exact file:
-fastr remember "Never Use Date.now() Milliseconds for JWT Expiration" \
+fastrmemory remember "Never Use Date.now() Milliseconds for JWT Expiration" \
   -c "JWT exp claims expect integer seconds. Always use Math.floor(Date.now() / 1000)." \
   -m auth -k error_trap -f "src/auth/jwt.ts" --verified
 
 # Recall with 2.0x trap boost & file-graph matching:
-fastr recall "JWT expiration" -f "src/auth/jwt.ts"
+fastrmemory recall "JWT expiration" -f "src/auth/jwt.ts"
 ```
 
 Output:
@@ -158,7 +190,7 @@ Add this JSON block to your agent's MCP settings to enable autonomous memory:
 {
   "mcpServers": {
     "fastrmemory": {
-      "command": "fastr",
+      "command": "fastrmemory",
       "args": ["mcp"]
     }
   }
@@ -170,7 +202,7 @@ Add this JSON block to your agent's MCP settings to enable autonomous memory:
 {
   "mcpServers": {
     "fastrmemory": {
-      "command": "fastr",
+      "command": "fastrmemory",
       "args": ["mcp"]
     }
   }
@@ -239,11 +271,15 @@ JWT exp claims expect integer seconds. Always use Math.floor(Date.now() / 1000).
 
 ## 🧠 Bundled Agent Skills
 
-FastrMemory packages 3 auto-pilot skill instructions that train agents when to use memory tools:
+FastrMemory packages 7 auto-pilot skill instructions that train agents when to use memory tools:
 
 - [skills/fastr-before-coding/SKILL.md](skills/fastr-before-coding/SKILL.md): Enforces calling `fastr_recall` and reviewing `[TRAP]` warnings before editing any file.
 - [skills/fastr-trap-logger/SKILL.md](skills/fastr-trap-logger/SKILL.md): Immediately logs error traps the exact moment a build error or test failure is diagnosed.
 - [skills/fastr-session-commit/SKILL.md](skills/fastr-session-commit/SKILL.md): Supersedes outdated rules, records per-ID outcome feedback, and verifies staging memories after tests pass.
+- [skills/fastr-recall/SKILL.md](skills/fastr-recall/SKILL.md): High-precision hybrid search, progressive token budgeting, and `fastr_drill` for verbatim evidence.
+- [skills/fastr-remember/SKILL.md](skills/fastr-remember/SKILL.md): Curated ingestion protocol with automatic secret scrubbing and module tagging.
+- [skills/fastr-discipline/SKILL.md](skills/fastr-discipline/SKILL.md): Anti-hallucination guardrails and ground-truth validation rules.
+- [skills/fastr-handoff/SKILL.md](skills/fastr-handoff/SKILL.md): Multi-agent session milestone handoffs and cross-IDE state preservation.
 
 ---
 
