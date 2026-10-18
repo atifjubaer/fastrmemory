@@ -10,6 +10,7 @@
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.16.0-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Protocol](https://img.shields.io/badge/Protocol-MCP%20v2-7C3AED?style=flat-square)](https://modelcontextprotocol.io)
 [![Tests](https://img.shields.io/badge/Tests-21%20Passed-brightgreen?style=flat-square)](tests/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-key-architectural-pillars)
 
 <p align="center">
@@ -20,7 +21,8 @@
   <a href="#-mcp-server-tools--resources">MCP Tools</a> &bull;
   <a href="#-two-zone-git-diffable-mirror">Git Sync</a> &bull;
   <a href="#-bundled-agent-skills">Agent Skills</a> &bull;
-  <a href="#-architecture">Architecture</a>
+  <a href="#-architecture">Architecture</a> &bull;
+  <a href="#-contributing">Contributing</a>
 </p>
 
 </div>
@@ -288,6 +290,19 @@ npm test
 ```
 
 All 21 tests pass in $<500\text{ms}$ across 6 test suites covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, and MCP tool execution.
+
+---
+
+## 🤝 Contributing
+
+Contributions from the open-source community are warmly welcome!
+
+- Please review our [CONTRIBUTING.md](CONTRIBUTING.md) for full local setup, coding standards, and architectural rules.
+- **Ground Rules**: Strict TypeScript, zero external daemons, and `git commit -s` (DCO sign-off).
+- **High-Priority Areas**:
+  - New agent adapters & hook auto-installers (Windsurf, Roo Code, Continue, OpenCode).
+  - Additional on-device embedding backends (Ollama, WebGPU).
+  - Comprehensive LongMemEval & LoCoMo benchmark runner adapters.
 
 ---
 
