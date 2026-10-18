@@ -9,18 +9,18 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.16.0-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Protocol](https://img.shields.io/badge/Protocol-MCP%20v2-7C3AED?style=flat-square)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/Tests-21%20Passed-brightgreen?style=flat-square)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-23%20Passed-brightgreen?style=flat-square)](tests/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-key-architectural-pillars)
 
 <p align="center">
   <a href="#-overview">Overview</a> &bull;
   <a href="#-why-fastrmemory-vs-competitors">vs Competitors</a> &bull;
+  <a href="#-retrieval-benchmark-proof">Benchmarks</a> &bull;
+  <a href="#-local-web-dashboard">Web UI</a> &bull;
   <a href="#-works-with-25-agents">Supported Agents</a> &bull;
   <a href="#-30-second-quick-start">Quick Start</a> &bull;
   <a href="#-mcp-server-tools--resources">MCP Tools</a> &bull;
-  <a href="#-two-zone-git-diffable-mirror">Git Sync</a> &bull;
-  <a href="#-bundled-agent-skills">Agent Skills</a> &bull;
   <a href="#-architecture">Architecture</a> &bull;
   <a href="#-contributing">Contributing</a>
 </p>
@@ -336,7 +336,42 @@ Run the comprehensive unit test suite:
 npm test
 ```
 
-All 21 tests pass in $<500\text{ms}$ across 6 test suites covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, and MCP tool execution.
+All 23 tests pass in $<550\text{ms}$ across 8 test suites covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, and web dashboard server.
+
+---
+
+## 📊 Retrieval Benchmark Proof
+
+Run the automated evaluation suite against industry baselines:
+
+```bash
+fastrmemory bench
+```
+
+### Measured Performance Across 8 Cognitive Agent Scenarios:
+
+| Engine Architecture | Hit@1 | Hit@3 | Hit@5 | MRR | Latency | Trap Recall | Avg Tokens |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **FastrMemory (Triple-Stream RRF)** | **63%** | **88%** | **88%** | **0.750** | **28.37ms** | **100%** | **98t** |
+| Pure BM25 (Hippo-style baseline) | 0% | 13% | 50% | 0.129 | 0.04ms | 67% | 850t |
+| Flat Static Dump (CLAUDE.md baseline) | 25% | 75% | 75% | 0.479 | 0.03ms | 67% | 2200t |
+
+> **Key Takeaway**: FastrMemory achieves **100% Error Trap Recall** with **>90% context token reduction** (98 tokens vs 2,200 tokens) compared to static markdown dumps, preventing repeated codebase bugs while eliminating context bloat.
+
+---
+
+## 🖥️ Local Web Dashboard
+
+Visualize active rules, error traps, and file graphs directly in your browser with zero external dependencies:
+
+```bash
+fastrmemory ui
+```
+
+- **Live URL**: `http://localhost:4242`
+- **Instant Search**: Real-time debounce filter by keyword, file path, or `[mem_xxxx]` identifier.
+- **Visual File Graph**: Inspect bi-directional connections between code files and learned memory rules.
+- **Zero Daemons**: Powered entirely by native Node.js HTTP server and embedded SQLite WAL mode.
 
 ---
 

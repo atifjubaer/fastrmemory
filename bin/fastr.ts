@@ -6,6 +6,8 @@ import { searchMemories } from '../src/search/hybrid-rrf.js';
 import { syncAllModulePages } from '../src/mirror/markdown-pages.js';
 import { scrubSecrets } from '../src/privacy/scrubber.js';
 import { runInteractiveSetup } from '../src/installer/setup.js';
+import { runBenchmarks, formatBenchmarkMarkdown } from '../src/bench/benchmark.js';
+import { startUiServer } from '../src/ui/server.js';
 
 const program = new Command();
 
@@ -131,6 +133,38 @@ program
     const ctx = createFastrServerContext();
     const files = syncAllModulePages(ctx.db, ctx.config.projectRoot, ctx.config.projectId);
     console.log(`Synced ${files.length} module markdown pages in .fastr/pages/`);
+  });
+
+// 7. Benchmark command
+program
+  .command('bench')
+  .description('Run automated retrieval accuracy & latency benchmarks')
+  .option('--markdown', 'Output results as a Markdown table')
+  .option('--json', 'Output results as raw JSON')
+  .action(async (options) => {
+    const ctx = createFastrServerContext();
+    console.log('⚡ Running FastrMemory Cognitive Retrieval Benchmarks...\n');
+    const report = await runBenchmarks(ctx.db, ctx.config.projectId);
+    if (options.json) {
+      console.log(JSON.stringify(report, null, 2));
+    } else {
+      console.log(formatBenchmarkMarkdown(report));
+    }
+  });
+
+// 8. Web UI Dashboard command
+program
+  .command('ui')
+  .description('Launch the local FastrMemory Web Dashboard in your browser')
+  .option('-p, --port <number>', 'Port to listen on', '4242')
+  .option('--no-open', 'Do not open browser automatically')
+  .action(async (options) => {
+    const ctx = createFastrServerContext();
+    const port = parseInt(options.port, 10) || 4242;
+    console.log(`Starting FastrMemory Web Dashboard on port ${port}...`);
+    const { url } = await startUiServer(ctx.config, { port, openBrowser: options.open });
+    console.log(`⚡ FastrMemory Hub live at: ${url}`);
+    console.log(`Press Ctrl+C to stop.`);
   });
 
 program.parse(process.argv);

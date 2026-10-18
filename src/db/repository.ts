@@ -161,6 +161,19 @@ export class FastrRepository {
     return this.db.prepare(query).all(...params) as unknown as Memory[];
   }
 
+  listTraps(projectId: string): Memory[] {
+    const query = `
+      SELECT * FROM memories
+      WHERE project_id = ?
+        AND kind = 'error_trap'
+        AND valid_to IS NULL
+        AND status != 'superseded'
+        AND status != 'dormant'
+      ORDER BY reward_score DESC, created_at DESC
+    `;
+    return this.db.prepare(query).all(projectId) as unknown as Memory[];
+  }
+
   supersedeMemory(
     oldMemoryId: string,
     newTitle: string,

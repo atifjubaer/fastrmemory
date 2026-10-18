@@ -148,6 +148,10 @@ CREATE TABLE IF NOT EXISTS handoffs (
 );
 `;
 
+export function applySchema(db: DatabaseSync): void {
+  db.exec(SCHEMA_SQL);
+}
+
 export function initDatabase(dbPath: string): DatabaseSync {
   const dir = path.dirname(dbPath);
   if (!fs.existsSync(dir)) {
@@ -155,6 +159,6 @@ export function initDatabase(dbPath: string): DatabaseSync {
   }
 
   const db = new DatabaseSync(dbPath);
-  db.exec(SCHEMA_SQL);
+  applySchema(db);
   return db;
 }
