@@ -21,8 +21,8 @@
     ".cursor"
   ],
   "bin": {
-    "fastrmemory": "./dist/bin/fastr.js",
-    "fastr": "./dist/bin/fastr.js"
+    "fastrmemory": "dist/bin/fastr.js",
+    "fastr": "dist/bin/fastr.js"
   },
   "main": "./dist/src/index.js",
   "types": "./dist/src/index.d.ts",
