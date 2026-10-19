@@ -331,6 +331,52 @@ describe('MCP v2 Server (Tools & Resources)', () => {
     const listGlobal = await callTool('fastr_federate', { action: 'list_global' });
     expect(listGlobal.content[0].text).toContain('Global Security Invariant');
   });
+
+  it('assembles dynamic token-budgeted prompt context via fastr_assemble', async () => {
+    // 1. Seed a trap linked to a file
+    await callTool('fastr_remember', {
+      title: 'Always Check JWT Exp Seconds',
+      content: 'JWT exp expects integer seconds, not ms.',
+      module: 'auth',
+      kind: 'error_trap',
+      files: ['src/auth/jwt.ts']
+    });
+
+    // 2. Assemble context for task
+    const assembleRes = await callTool('fastr_assemble', {
+      taskDescription: 'Refactor auth expiration handling',
+      targetFiles: ['src/auth/jwt.ts'],
+      budgetTokens: 2000,
+      agentId: 'claude-test'
+    });
+
+    const text = assembleRes.content[0].text;
+    expect(text).toContain('Assembled Agent Context');
+    expect(text).toContain('<fastr_context');
+    expect(text).toContain('Always Check JWT Exp Seconds');
+    expect(text).toContain('</fastr_context>');
+  });
+
+  it('predicts file failure risk base-rate via fastr_risk_predict', async () => {
+    // 1. Seed a trap linked to file
+    await callTool('fastr_remember', {
+      title: 'Active Trap for JWT',
+      content: 'Never use weak secret for JWT signature.',
+      module: 'auth',
+      kind: 'error_trap',
+      files: ['src/auth/jwt.ts']
+    });
+
+    // 2. Predict risk on file with active trap
+    const predictRes = await callTool('fastr_risk_predict', {
+      targetFiles: ['src/auth/jwt.ts']
+    });
+
+    const text = predictRes.content[0].text;
+    expect(text).toContain('Predictive Failure Base-Rate Analysis');
+    expect(text).toContain('Risk Level');
+    expect(text).toContain('**Active Error Traps**: 1');
+  });
 });
 
 

@@ -9,6 +9,8 @@ import { scrubSecrets } from '../privacy/scrubber.js';
 import { syncModulePage, syncAllModulePages } from '../mirror/markdown-pages.js';
 import { FastrConfig, loadConfig } from '../config.js';
 import { exportToObsidianVault } from '../export/obsidian.js';
+import { assemblePromptContext } from './assemble.js';
+import { predictFileBaseRate } from './predict.js';
 
 export interface ServerContext {
   db: DatabaseSync;
@@ -1103,6 +1105,77 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
             `Global rules and security error traps automatically protect every local repository on this machine without running daemons.`
           )
         }]
+      };
+    }
+  );
+
+  // ==========================================
+  // TOOL 28: fastr_assemble
+  // ==========================================
+  server.registerTool(
+    'fastr_assemble',
+    {
+      description: 'Dynamically assembles an optimized, token-budgeted prompt context block (<fastr_context>) combining relevant rules, active 2.0x error traps for target files, frontier tasks, and session handoffs.',
+      inputSchema: {
+        taskDescription: z.string().describe('The task or objective the agent is about to execute'),
+        targetFiles: z.array(z.string()).default([]).describe('Target file paths being inspected, created, or modified'),
+        module: z.string().optional().describe('Filter domain or module (e.g. auth, db, api, ui)'),
+        budgetTokens: z.number().default(2000).describe('Max token allocation for the assembled context block'),
+        agentId: z.string().default('default').describe('Identifier of calling agent (e.g. claude-code, cursor-agent)')
+      }
+    },
+    async ({ taskDescription, targetFiles, module, budgetTokens, agentId }) => {
+      const res = await assemblePromptContext(db, repo, config.projectId, {
+        taskDescription,
+        targetFiles,
+        module,
+        budgetTokens,
+        agentId,
+      });
+
+      return {
+        content: [{
+          type: 'text',
+          text: (
+            `### ⚡ Assembled Agent Context (${res.totalTokens} tokens)\n` +
+            `- Traps: ${res.trapCount} | Rules: ${res.ruleCount} | Ready Tasks: ${res.frontierCount}\n\n` +
+            res.contextXml
+          )
+        }]
+      };
+    }
+  );
+
+  // ==========================================
+  // TOOL 29: fastr_risk_predict
+  // ==========================================
+  server.registerTool(
+    'fastr_risk_predict',
+    {
+      description: 'Estimates pre-edit failure risk probability (0.0 to 1.0) and planning track record based on active error traps and historical bug churn for target files.',
+      inputSchema: {
+        targetFiles: z.array(z.string()).describe('Target files being modified or planned'),
+        module: z.string().optional().describe('Target module name')
+      }
+    },
+    async ({ targetFiles, module }) => {
+      const res = predictFileBaseRate(db, repo, config.projectId, {
+        targetFiles,
+        module,
+      });
+
+      let text = `### 🎯 Predictive Failure Base-Rate Analysis\n\n`;
+      text += `**Risk Level**: \`${res.riskLevel.toUpperCase()}\` (Score: **${(res.riskScore * 100).toFixed(0)}%**)\n`;
+      text += `- **Active Error Traps**: ${res.trapCount}\n`;
+      text += `- **Historical Bug Churn (Superseded)**: ${res.historicalBugCount}\n`;
+      text += `- **Linked Verified Rules**: ${res.linkedRuleCount}\n\n`;
+      text += `**Recommendations**:\n`;
+      for (const rec of res.recommendations) {
+        text += `- ${rec}\n`;
+      }
+
+      return {
+        content: [{ type: 'text', text }]
       };
     }
   );
