@@ -514,16 +514,68 @@ cursor --install-extension fastrmemory-vscode-0.1.0.vsix
 
 ---
 
-## 🤝 Contributing
+## 🤝 Contributing & Pull Request Roadmap
 
-Contributions from the open-source community are warmly welcome!
+We warmly welcome contributions from the open-source community! Whether you are adding a new AI coding agent hook, integrating local embedding backends, or crafting 3D visualizations, your pull requests are valued and reviewed promptly.
 
-- Please review our [CONTRIBUTING.md](CONTRIBUTING.md) for full local setup, coding standards, and architectural rules.
-- **Ground Rules**: Strict TypeScript, zero external daemons, and `git commit -s` (DCO sign-off).
-- **High-Priority Areas**:
-  - New agent adapters & hook auto-installers (Windsurf, Roo Code, Continue, OpenCode).
-  - Additional on-device embedding backends (Ollama, WebGPU).
-  - Comprehensive LongMemEval & LoCoMo benchmark runner adapters.
+### 🗺️ Open Contribution Roadmap
+
+| Domain / Focus Area | What Needs Building | Difficulty | Reference Location | Target PR Scope |
+| :--- | :--- | :--- | :--- | :--- |
+| **Agent Hook Installers** | Auto-wire hooks & skills for Windsurf, Roo Code, Continue, OpenCode, and Warp | `good first issue` | [src/installer/setup.ts](src/installer/setup.ts) | `feat(installer)` |
+| **Local Embedding Providers** | Optional on-device backends (Ollama, llama.cpp, WebGPU) with air-gapped fallback | Intermediate | [src/search/embeddings.ts](src/search/embeddings.ts) | `feat(embeddings)` |
+| **IDE Extensions** | JetBrains (IntelliJ / WebStorm) and Neovim Lua plugin with status bar pill & trap underlines | Advanced | [extensions/vscode/](extensions/vscode/) | `feat(ide)` |
+| **Benchmark Runners** | LongMemEval-S, LoCoMo, and SWE-bench dataset scenario runners | `good first issue` | [src/bench/benchmark.ts](src/bench/benchmark.ts) | `feat(bench)` |
+| **UI Visualizations** | Custom Three.js shaders, Treemap color palettes, and SVG/PNG graph exports | Intermediate | [ui/src/components/](ui/src/components/) | `feat(ui)` |
+
+---
+
+### 🚀 5-Minute Pull Request Workflow
+
+1. **Fork & Clone Repository**:
+   ```bash
+   git clone https://github.com/<your-username>/fastrmemory.git
+   cd fastrmemory
+   ```
+
+2. **Install Dependencies & Verify Test Suite (94 Tests Passing)**:
+   ```bash
+   npm install
+   npm test
+   ```
+
+3. **Create a Feature Branch**:
+   ```bash
+   git checkout -b feat/add-windsurf-hooks
+   # or for bug fixes:
+   git checkout -b fix/sqlite-busy-retry
+   ```
+
+4. **Implement Changes & Verify All Packages Compile**:
+   ```bash
+   # Compiles backend, React UI, and VS Code extension
+   npm run build:all
+   npm test
+   ```
+
+5. **Commit with DCO Sign-off (`-s`) & Open Pull Request**:
+   ```bash
+   git commit -s -m "feat(installer): add windsurf auto-hook integration"
+   git push origin feat/add-windsurf-hooks
+   ```
+
+---
+
+### 📋 Pull Request Quality Checklist
+
+Before submitting your PR, verify:
+- [ ] **Strict TypeScript**: `npm run build:all` passes without type errors.
+- [ ] **Zero External Daemons**: Engine runs in-process via Node.js WAL SQLite.
+- [ ] **100% Test Green**: `npm test` passes all 94+ unit tests across 25 suites.
+- [ ] **DCO Sign-off**: All commits signed off using `git commit -s` ([Developer Certificate of Origin](https://developercertificate.org/)).
+- [ ] **Pre-Merge Trap Guardian**: Run `fastrmemory guard --strict` to verify no active error traps are violated.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for full architectural guidelines, secret scrubbing rules, and local development environment setup.
 
 ---
 

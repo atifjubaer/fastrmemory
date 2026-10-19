@@ -68,14 +68,15 @@ Before submitting a PR, verify that your changes adhere to FastrMemory's **7 Cor
 
 ---
 
-## 🌟 Areas Where Contributions Are Needed
+## 🌟 Open Contribution Roadmap
 
-We actively welcome contributions in these areas:
-
-- **New Agent Adapters**: Automated hook installers for Windsurf, Roo Code, Continue, OpenCode, and Warp.
-- **Embedding Backends**: Add optional on-device Ollama or WebGPU backends to complement `@huggingface/transformers`.
-- **Benchmark Adapters**: Reproducible test harnesses comparing FastrMemory against LongMemEval-S and LoCoMo datasets.
-- **Documentation & Recipes**: Step-by-step guides for multi-agent workflows (e.g. Claude Code + Cursor sharing memory).
+| Domain / Focus Area | What Needs Building | Difficulty | Reference Location | Target PR Scope |
+| :--- | :--- | :--- | :--- | :--- |
+| **Agent Hook Installers** | Auto-wire hooks & skills for Windsurf, Roo Code, Continue, OpenCode, and Warp | `good first issue` | [src/installer/setup.ts](src/installer/setup.ts) | `feat(installer)` |
+| **Local Embedding Providers** | Optional on-device backends (Ollama, llama.cpp, WebGPU) with air-gapped fallback | Intermediate | [src/search/embeddings.ts](src/search/embeddings.ts) | `feat(embeddings)` |
+| **IDE Extensions** | JetBrains (IntelliJ / WebStorm) and Neovim Lua plugin with status bar pill & trap underlines | Advanced | [extensions/vscode/](extensions/vscode/) | `feat(ide)` |
+| **Benchmark Runners** | LongMemEval-S, LoCoMo, and SWE-bench dataset scenario runners | `good first issue` | [src/bench/benchmark.ts](src/bench/benchmark.ts) | `feat(bench)` |
+| **UI Visualizations** | Custom Three.js shaders, Treemap color palettes, and SVG/PNG graph exports | Intermediate | [ui/src/components/](ui/src/components/) | `feat(ui)` |
 
 ---
 
@@ -83,17 +84,21 @@ We actively welcome contributions in these areas:
 
 1. Create a feature branch:
    ```bash
-   git checkout -b feat/my-new-feature
+   git checkout -b feat/add-windsurf-hooks
    # or for bug fixes:
-   git checkout -b fix/issue-description
+   git checkout -b fix/sqlite-busy-retry
    ```
 2. Write unit tests in `tests/` covering new behavior.
-3. Verify the build and tests pass:
+3. Verify that all 94+ tests pass and all packages compile:
    ```bash
-   npm run build && npm test
+   npm run build:all && npm test
    ```
-4. Commit with a sign-off:
+4. Verify no active error traps are regressed:
    ```bash
-   git commit -s -m "feat(module): add my new feature"
+   node dist/bin/fastr.js guard --strict
    ```
-5. Push to your fork and submit a Pull Request to `main`.
+5. Commit with a DCO sign-off:
+   ```bash
+   git commit -s -m "feat(installer): add windsurf auto-hook integration"
+   ```
+6. Push to your fork and submit a Pull Request to `main`.
