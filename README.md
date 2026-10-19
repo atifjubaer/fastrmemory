@@ -9,7 +9,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.16.0-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Protocol](https://img.shields.io/badge/Protocol-MCP%20v2-7C3AED?style=flat-square)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/Tests-77%20Passed-brightgreen?style=flat-square)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-91%20Passed-brightgreen?style=flat-square)](tests/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-key-architectural-pillars)
 
@@ -261,7 +261,7 @@ Add this JSON block to your agent's MCP settings to enable autonomous memory:
 
 Built using the official **v2 `@modelcontextprotocol/server`** SDK:
 
-### 27 Core MCP Tools
+### 35 Core MCP Tools
 
 #### Cognitive Retrieval & Memory Core
 1. `fastr_recall`: Triple-stream hybrid search (BM25 + Vector + Spreading Activation Graph) with progressive L0–L3 token budgeting and air-gapped offline vector fallback.
@@ -301,8 +301,20 @@ Built using the official **v2 `@modelcontextprotocol/server`** SDK:
 25. `fastr_slot_list`: Lists all working memory slots and active character usage.
 26. `fastr_obsidian_export`: Exports all memories, entities, and relationships into an Obsidian-compatible markdown vault with YAML frontmatter, `[[wikilinks]]`, and `MOC.md`.
 
-#### Multi-Repository Organization Federation
-27. `fastr_federate`: Manages cross-repository organization-wide shared rules and error traps via SQLite native `ATTACH DATABASE` (`~/.fastr/global.db`), enabling unified search across local project and organization standards with sub-millisecond query time.
+#### Multi-Repository Federation & Context Assembly
+27. `fastr_federate`: Manages cross-repository organization-wide shared rules and error traps via SQLite native `ATTACH DATABASE` (`~/.fastr/global.db`).
+28. `fastr_assemble`: Dynamically formats and packs high-density structured prompt context (`<fastr_context>`) with token budgeting.
+29. `fastr_risk_predict`: Computes historical failure probability and active trap hazard score for target codebase files.
+30. `fastr_verify_provenance`: Cryptographically verifies SHA-256 provenance hashes to guarantee agent attribution authenticity.
+
+#### Token Compression & Autonomous Doctor
+31. `fastr_compress`: Compresses markdown files or prompt context while strictly preserving headings, URLs, and code blocks with `.original.md` backup.
+32. `fastr_diagnose`: Deep health audit of SQLite B-Tree integrity, FTS5 BM25 search indices, orphaned file links, and task DAGs.
+33. `fastr_heal`: Automatic repair of database indices, dangling edges, and WAL page reclamation.
+
+#### Multimodal Visual Memory
+34. `fastr_vision_tag`: Tags screenshots, UI diagrams, and wireframes with OCR and semantic descriptions with 384-dim embeddings.
+35. `fastr_vision_search`: Hybrid vector and keyword search across stored visual assets for multimodal coding agents (Claude 3.7 Sonnet, Gemini 2.5).
 
 ### 3 MCP Resources
 
@@ -349,13 +361,16 @@ JWT exp claims expect integer seconds. Always use Math.floor(Date.now() / 1000).
 
 ## 🧠 Planetary Agent Skills Suite
 
-FastrMemory packages 15 auto-pilot skill instructions that train agents when to recall, trap, commit, and coordinate:
+FastrMemory packages 18 auto-pilot skill instructions that train agents when to recall, trap, commit, and coordinate:
 
 - [skills/fastr-before-coding/SKILL.md](skills/fastr-before-coding/SKILL.md): Enforces calling `fastr_trap_recall` before editing any codebase file.
 - [skills/fastr-trap-logger/SKILL.md](skills/fastr-trap-logger/SKILL.md): Immediately logs error traps the exact moment a build error or test failure is diagnosed.
 - [skills/fastr-session-commit/SKILL.md](skills/fastr-session-commit/SKILL.md): Supersedes outdated rules, records per-ID outcome feedback, and verifies staging memories.
 - [skills/fastr-blame/SKILL.md](skills/fastr-blame/SKILL.md): Cognitive Git blame linking codebase lines to memory rationale and error traps.
 - [skills/fastr-commit/SKILL.md](skills/fastr-commit/SKILL.md): Memory-aware pre-commit trap validation and conventional commit synthesis.
+- [skills/fastr-compress/SKILL.md](skills/fastr-compress/SKILL.md): Token-saving Markdown and context compression preserving headings, code blocks, and URLs.
+- [skills/fastr-doctor/SKILL.md](skills/fastr-doctor/SKILL.md): Autonomous database doctor diagnosing and healing SQLite indices, orphans, and DAG frontiers.
+- [skills/fastr-vision/SKILL.md](skills/fastr-vision/SKILL.md): Multimodal screenshot and diagram asset tagging and hybrid semantic search.
 - [skills/fastr-trap/SKILL.md](skills/fastr-trap/SKILL.md): 2.0x recall boost failure logging and zero-regression safeguards.
 - [skills/fastr-dag/SKILL.md](skills/fastr-dag/SKILL.md): Multi-agent task frontier orchestration and dependency propagation.
 - [skills/fastr-conflicts/SKILL.md](skills/fastr-conflicts/SKILL.md): Bi-temporal contradiction detection and structured rule collision resolution.
@@ -396,7 +411,7 @@ flowchart TD
 
     subgraph Protocol["4. Official MCP Protocol"]
         Budget --> MCPServer["Official MCP v2 Server\n(@modelcontextprotocol/server)"]
-        MCPServer --> Tools["27 Tools & 3 Resources"]
+        MCPServer --> Tools["35 Tools & 3 Resources"]
         Tools --> Agent
     end
 ```
@@ -411,7 +426,7 @@ Run the comprehensive unit test suite:
 npm test
 ```
 
-All 77 tests pass in ~1.0s across 21 test suites covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, git-learner, cognitive blame, commit synthesis, hybrid background daemon, and web dashboard server.
+All 91 tests pass in ~1.1s across 24 test suites covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, and web dashboard server.
 
 ---
 

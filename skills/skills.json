@@ -81,6 +81,24 @@
       "path": "skills/fastr-architecture/SKILL.md",
       "description": "FastrMemory systems architecture, zero-loss durability, and in-process SQLite WAL design.",
       "triggers": ["fastr-architecture", "wal-sqlite", "system-design"]
+    },
+    {
+      "name": "fastr-compress",
+      "path": "skills/fastr-compress/SKILL.md",
+      "description": "Compresses markdown documentation or prompt context to fit token budgets while strictly preserving headings, URLs, and code blocks.",
+      "triggers": ["fastr-compress", "compress-tokens", "compact-context", "compress-file"]
+    },
+    {
+      "name": "fastr-doctor",
+      "path": "skills/fastr-doctor/SKILL.md",
+      "description": "Autonomous SQLite self-healing doctor for verifying B-Tree integrity, rebuilding FTS5 fulltext indices, and pruning orphaned references.",
+      "triggers": ["fastr-doctor", "fastr-diagnose", "fastr-heal", "repair-memory"]
+    },
+    {
+      "name": "fastr-vision",
+      "path": "skills/fastr-vision/SKILL.md",
+      "description": "Multimodal visual memory skill for tagging and retrieving screenshots, UI diagrams, and error screens with hybrid vector and keyword search.",
+      "triggers": ["fastr-vision", "visual-memory", "screenshot-search", "image-tag"]
     }
   ]
 }

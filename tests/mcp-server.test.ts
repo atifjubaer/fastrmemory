@@ -377,6 +377,45 @@ describe('MCP v2 Server (Tools & Resources)', () => {
     expect(text).toContain('Risk Level');
     expect(text).toContain('**Active Error Traps**: 1');
   });
+
+  it('compresses markdown content via fastr_compress', async () => {
+    const md = '# Title\n\nBasically this is a test.\n\nhttps://example.com\n\n```ts\nconst x = 1;\n```';
+    const res = await callTool('fastr_compress', { content: md });
+    const text = res.content[0].text;
+    expect(text).toContain('Fastr Compression Summary');
+    expect(text).toContain('Token Savings');
+    expect(text).toContain('# Title');
+  });
+
+  it('runs database health diagnostics and self-healing via fastr_diagnose and fastr_heal', async () => {
+    const diagRes = await callTool('fastr_diagnose', {});
+    const diagText = diagRes.content[0].text;
+    expect(diagText).toContain('FastrMemory Database Health Diagnostic');
+    expect(diagText).toContain('Overall Status');
+
+    const healRes = await callTool('fastr_heal', { dryRun: true });
+    const healText = healRes.content[0].text;
+    expect(healText).toContain('FastrMemory Self-Healing Doctor');
+    expect(healText).toContain('DRY RUN');
+  });
+
+  it('tags and searches visual screenshots via fastr_vision_tag and fastr_vision_search', async () => {
+    const tagRes = await callTool('fastr_vision_tag', {
+      filePath: 'screenshots/login-error.png',
+      description: 'Modal dialog showing HTTP 401 Unauthorized alert on login',
+      ocrText: 'HTTP 401 Unauthorized'
+    });
+    const tagText = tagRes.content[0].text;
+    expect(tagText).toContain('Multimodal Vision Asset Tagged');
+    expect(tagText).toContain('Vector Indexing');
+
+    const searchRes = await callTool('fastr_vision_search', {
+      query: 'modal error login 401'
+    });
+    const searchText = searchRes.content[0].text;
+    expect(searchText).toContain('Visual Search Results');
+    expect(searchText).toContain('login-error.png');
+  });
 });
 
 

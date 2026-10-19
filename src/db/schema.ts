@@ -127,6 +127,18 @@ export interface MemorySlot {
   updated_at?: string;
 }
 
+export interface VisionAsset {
+  id: string;
+  project_id: string;
+  file_path: string;
+  description: string;
+  ocr_text?: string | null;
+  memory_id?: string | null;
+  task_id?: string | null;
+  embedding?: Buffer | null;
+  created_at?: string;
+}
+
 export const SCHEMA_SQL = `
 PRAGMA journal_mode = WAL;
 PRAGMA synchronous = NORMAL;
@@ -320,6 +332,23 @@ CREATE TABLE IF NOT EXISTS memory_slots (
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
   PRIMARY KEY (project_id, slot_key)
 );
+
+-- 13. Multimodal Vision Assets & Screenshots
+CREATE TABLE IF NOT EXISTS vision_assets (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  file_path TEXT NOT NULL,
+  description TEXT NOT NULL,
+  ocr_text TEXT DEFAULT NULL,
+  memory_id TEXT DEFAULT NULL,
+  task_id TEXT DEFAULT NULL,
+  embedding BLOB DEFAULT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  FOREIGN KEY (memory_id) REFERENCES memories(id) ON DELETE SET NULL,
+  FOREIGN KEY (task_id) REFERENCES actions(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_vision_project ON vision_assets(project_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_vision_memory ON vision_assets(memory_id);
 `;
 
 export function configurePragmas(db: DatabaseSync): void {

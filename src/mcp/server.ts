@@ -11,6 +11,9 @@ import { FastrConfig, loadConfig } from '../config.js';
 import { exportToObsidianVault } from '../export/obsidian.js';
 import { assemblePromptContext } from './assemble.js';
 import { predictFileBaseRate } from './predict.js';
+import { compressFile, compressContent } from '../compress/markdown.js';
+import { diagnoseDatabase, healDatabase } from '../db/doctor.js';
+import { tagVisionAsset, searchVisionAssets } from '../vision/assets.js';
 
 export interface ServerContext {
   db: DatabaseSync;
@@ -1206,6 +1209,222 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
 
       return {
         content: [{ type: 'text', text }]
+      };
+    }
+  );
+
+  // ==========================================
+  // TOOL 31: fastr_compress
+  // ==========================================
+  server.registerTool(
+    'fastr_compress',
+    {
+      description: 'Compresses markdown files or text to reduce token usage while strictly preserving headings, URLs, and code blocks. Creates .original.md backup if filePath is provided.',
+      inputSchema: {
+        filePath: z.string().optional().describe('Path to markdown or text file to compress on disk'),
+        content: z.string().optional().describe('Direct text or markdown content to compress in-memory'),
+        dryRun: z.boolean().default(false).describe('Preview compression savings without modifying file on disk')
+      }
+    },
+    async ({ filePath, content, dryRun }) => {
+      if (!filePath && !content) {
+        return {
+          content: [{ type: 'text', text: '❌ Error: Either `filePath` or `content` must be provided.' }]
+        };
+      }
+
+      let res;
+      if (filePath) {
+        res = compressFile(filePath, { dryRun });
+      } else {
+        res = compressContent(content || '', { dryRun });
+      }
+
+      if (!res.success) {
+        return {
+          content: [{ type: 'text', text: `❌ Compression failed: ${res.error || 'Unknown error'}` }]
+        };
+      }
+
+      let out = `### 🗜️ Fastr Compression Summary\n\n`;
+      out += `- **Original Size**: ${res.originalChars} characters\n`;
+      out += `- **Compressed Size**: ${res.compressedChars} characters\n`;
+      out += `- **Token Savings**: ${(res.savingsRatio * 100).toFixed(1)}%\n`;
+      if (res.backupPath) {
+        out += `- **Safety Backup**: \`${res.backupPath}\`\n`;
+      }
+      if (dryRun) {
+        out += `- **Dry Run Mode**: No files modified on disk.\n`;
+      }
+      if (res.warnings && res.warnings.length > 0) {
+        out += `\n⚠️ **Warnings**:\n` + res.warnings.map(w => `- ${w}`).join('\n') + '\n';
+      }
+      if (!filePath && res.content) {
+        out += `\n**Compressed Output**:\n\`\`\`markdown\n${res.content}\n\`\`\``;
+      }
+
+      return {
+        content: [{ type: 'text', text: out }]
+      };
+    }
+  );
+
+  // ==========================================
+  // TOOL 32: fastr_diagnose
+  // ==========================================
+  server.registerTool(
+    'fastr_diagnose',
+    {
+      description: 'Performs comprehensive health checks across SQLite B-Trees, FTS5 BM25 search index consistency, orphaned file links, and multi-agent DAG frontiers.',
+      inputSchema: {
+        category: z.string().optional().describe('Optional diagnostic category filter')
+      }
+    },
+    async ({ category }) => {
+      const report = diagnoseDatabase(db, config.projectId);
+      let out = `### 🩺 FastrMemory Database Health Diagnostic\n\n`;
+      out += `- **Overall Status**: ${report.healthy ? '✅ **HEALTHY**' : '⚠️ **ISSUES DETECTED**'}\n`;
+      out += `- **Total Issues**: ${report.totalIssues} (${report.fixableIssues} fixable)\n`;
+      out += `- **Active Memories**: ${report.metrics.memoryCount}\n`;
+      out += `- **FTS5 Index Rows**: ${report.metrics.ftsRowCount}\n`;
+      out += `- **File Links**: ${report.metrics.fileLinkCount}\n`;
+      out += `- **Action Items**: ${report.metrics.actionCount}\n`;
+      out += `- **SQLite Journal Mode**: \`${report.metrics.walMode}\`\n\n`;
+
+      if (report.issues.length > 0) {
+        out += `#### Issues Found:\n`;
+        for (const iss of report.issues) {
+          const icon = iss.severity === 'error' ? '❌' : '⚠️';
+          out += `- ${icon} **[${iss.category.toUpperCase()}]** ${iss.description} (Fixable: ${iss.fixable ? 'Yes' : 'No'})\n`;
+        }
+        out += `\n_Run \`fastr_heal\` to automatically repair all fixable issues._`;
+      } else {
+        out += `_All database tables, FTS5 fulltext indices, and file graph relationships are 100% consistent._`;
+      }
+
+      return {
+        content: [{ type: 'text', text: out }]
+      };
+    }
+  );
+
+  // ==========================================
+  // TOOL 33: fastr_heal
+  // ==========================================
+  server.registerTool(
+    'fastr_heal',
+    {
+      description: 'Auto-repairs all fixable database issues found by fastr_diagnose: rebuilds FTS5 BM25 indices, prunes orphaned file links, unblocks action DAGs, and runs WAL page truncation.',
+      inputSchema: {
+        dryRun: z.boolean().default(false).describe('Preview actions to be taken without executing any writes')
+      }
+    },
+    async ({ dryRun }) => {
+      const result = healDatabase(db, config.projectId, { dryRun });
+      let out = `### 💉 FastrMemory Self-Healing Doctor\n\n`;
+      out += `- **Mode**: ${result.dryRun ? '🔍 **DRY RUN (Preview Only)**' : '⚡ **EXECUTED LIVE**'}\n`;
+      out += `- **Issues Fixed**: ${result.fixedCount}\n`;
+      out += `- **Remaining Issues**: ${result.remainingIssues}\n\n`;
+
+      if (result.actionsTaken.length > 0) {
+        out += `#### Actions Performed:\n`;
+        for (const act of result.actionsTaken) {
+          out += `- ✅ ${act}\n`;
+        }
+      } else {
+        out += `_Database was already 100% healthy. Zero repairs required._`;
+      }
+
+      return {
+        content: [{ type: 'text', text: out }]
+      };
+    }
+  );
+
+  // ==========================================
+  // TOOL 34: fastr_vision_tag
+  // ==========================================
+  server.registerTool(
+    'fastr_vision_tag',
+    {
+      description: 'Attaches a screenshot image, architecture diagram, or wireframe to long-term memory with OCR and semantic description for multimodal coding agents.',
+      inputSchema: {
+        filePath: z.string().describe('Absolute or relative path to image file (PNG, JPG, WebP)'),
+        description: z.string().describe('Detailed description of visual elements, UI components, layout, or diagram flow'),
+        ocrText: z.string().optional().describe('Any visible text, error messages, or code labels inside the image'),
+        memoryId: z.string().optional().describe('Optional ID of governing rule or error trap ([mem_xxxx])'),
+        taskId: z.string().optional().describe('Optional ID of associated action task ([act_xxxx])')
+      }
+    },
+    async ({ filePath, description, ocrText, memoryId, taskId }) => {
+      const asset = await tagVisionAsset(db, {
+        projectId: config.projectId,
+        filePath,
+        description,
+        ocrText,
+        memoryId,
+        taskId
+      });
+
+      let out = `### 🖼️ Multimodal Vision Asset Tagged: \`${asset.id}\`\n\n`;
+      out += `- **File**: \`${asset.file_path}\`\n`;
+      out += `- **Description**: ${asset.description}\n`;
+      if (asset.ocr_text) {
+        out += `- **OCR Text**: \`${asset.ocr_text}\`\n`;
+      }
+      if (asset.memory_id) {
+        out += `- **Linked Memory**: \`${asset.memory_id}\`\n`;
+      }
+      if (asset.task_id) {
+        out += `- **Linked Action**: \`${asset.task_id}\`\n`;
+      }
+      out += `- **Vector Indexing**: ✅ 384-dim embedding generated and indexed.\n`;
+
+      return {
+        content: [{ type: 'text', text: out }]
+      };
+    }
+  );
+
+  // ==========================================
+  // TOOL 35: fastr_vision_search
+  // ==========================================
+  server.registerTool(
+    'fastr_vision_search',
+    {
+      description: 'Searches stored visual assets (screenshots, diagrams, error screens) via hybrid vector + keyword matching across descriptions and OCR text.',
+      inputSchema: {
+        query: z.string().describe('Search query (e.g. "login modal error banner", "architecture flow", "settings sidebar")'),
+        limit: z.number().default(10).describe('Max results to return (default 10)'),
+        memoryId: z.string().optional().describe('Filter results to a specific memory ID')
+      }
+    },
+    async ({ query, limit, memoryId }) => {
+      const results = await searchVisionAssets(db, config.projectId, query, { limit, memoryId });
+      if (results.length === 0) {
+        return {
+          content: [{ type: 'text', text: `_No visual assets matched query "${query}"._` }]
+        };
+      }
+
+      let out = `### 🖼️ Visual Search Results (${results.length} found for "${query}")\n\n`;
+      for (const r of results) {
+        out += `#### [${r.id}] ${r.description} (Match Score: ${r.score})\n`;
+        out += `- **Path**: \`${r.filePath}\`\n`;
+        if (r.ocrText) {
+          out += `- **OCR Text**: \`${r.ocrText}\`\n`;
+        }
+        if (r.memoryId) {
+          out += `- **Linked Memory**: \`${r.memoryId}\`\n`;
+        }
+        if (r.taskId) {
+          out += `- **Linked Action**: \`${r.taskId}\`\n`;
+        }
+        out += '\n';
+      }
+
+      return {
+        content: [{ type: 'text', text: out }]
       };
     }
   );

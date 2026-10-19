@@ -17,6 +17,9 @@ import * as path from 'node:path';
 import { startDaemon, stopDaemon, getDaemonStatus, getDaemonPidFile } from '../src/daemon/service.js';
 import { cognitiveBlame } from '../src/git/blame.js';
 import { executeMemoryCommit } from '../src/git/commit.js';
+import { compressFile } from '../src/compress/markdown.js';
+import { diagnoseDatabase, healDatabase } from '../src/db/doctor.js';
+import { tagVisionAsset, searchVisionAssets } from '../src/vision/assets.js';
 
 const BANNER = `
 \x1b[38;2;56;189;248m   ______           __        __  ___                                \x1b[0m
@@ -517,6 +520,156 @@ program
       console.log(`Provenance ledger updated with cryptographic signature.\n`);
     } catch (err: any) {
       console.error(`Commit error: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+// 17. Compress command
+program
+  .command('compress <filePath>')
+  .description('Compress markdown or text file while preserving headings, URLs, and code blocks')
+  .option('-d, --dry-run', 'Preview compression without modifying disk files', false)
+  .action((filePath: string, opts: any) => {
+    try {
+      const res = compressFile(filePath, { dryRun: opts.dryRun });
+      if (!res.success) {
+        console.error(`❌ Compression failed: ${res.error}`);
+        process.exit(1);
+      }
+      console.log(`\n=== FastrMemory Token Compression ===`);
+      console.log(`File:       ${filePath}`);
+      console.log(`Original:   ${res.originalChars} characters`);
+      console.log(`Compressed: ${res.compressedChars} characters`);
+      console.log(`Savings:    ${(res.savingsRatio * 100).toFixed(1)}%`);
+      if (res.backupPath) {
+        console.log(`Backup:     ${res.backupPath}`);
+      }
+      if (opts.dryRun) {
+        console.log(`Mode:       Dry run (file unchanged)\n`);
+      } else {
+        console.log(`Status:     File compressed successfully.\n`);
+      }
+    } catch (err: any) {
+      console.error(`Compress error: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+// 18. Diagnose command
+program
+  .command('diagnose')
+  .description('Run deep health check across SQLite, FTS5 indices, file links, and task DAGs')
+  .action(() => {
+    try {
+      const ctx = createFastrServerContext();
+      const report = diagnoseDatabase(ctx.db, ctx.config.projectId);
+      console.log(`\n=== FastrMemory Health Diagnostic ===`);
+      console.log(`Status:    ${report.healthy ? '✅ HEALTHY' : '⚠️ ISSUES DETECTED'}`);
+      console.log(`Issues:    ${report.totalIssues} (${report.fixableIssues} fixable)`);
+      console.log(`Memories:  ${report.metrics.memoryCount}`);
+      console.log(`FTS5 Rows: ${report.metrics.ftsRowCount}`);
+      console.log(`Links:     ${report.metrics.fileLinkCount}`);
+      console.log(`Actions:   ${report.metrics.actionCount}`);
+      console.log(`Mode:      ${report.metrics.walMode}`);
+      if (report.issues.length > 0) {
+        console.log(`\nIssues List:`);
+        for (const i of report.issues) {
+          console.log(`  - [${i.category.toUpperCase()}] ${i.description}`);
+        }
+        console.log(`\nRun 'fastrmemory heal' to auto-repair fixable issues.\n`);
+      } else {
+        console.log(`\nAll database tables and indices are 100% consistent.\n`);
+      }
+    } catch (err: any) {
+      console.error(`Diagnose error: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+// 19. Heal command
+program
+  .command('heal')
+  .description('Auto-repair database indices, orphaned file links, and WAL fragmentation')
+  .option('-d, --dry-run', 'Preview repairs without modifying database', false)
+  .action((opts: any) => {
+    try {
+      const ctx = createFastrServerContext();
+      const res = healDatabase(ctx.db, ctx.config.projectId, { dryRun: opts.dryRun });
+      console.log(`\n=== FastrMemory Self-Healing Doctor ===`);
+      console.log(`Mode:      ${res.dryRun ? '🔍 DRY RUN' : '⚡ LIVE REPAIR'}`);
+      console.log(`Fixed:     ${res.fixedCount} issue(s)`);
+      console.log(`Remaining: ${res.remainingIssues} issue(s)`);
+      if (res.actionsTaken.length > 0) {
+        console.log(`\nActions:`);
+        for (const a of res.actionsTaken) {
+          console.log(`  - ${a}`);
+        }
+      }
+      console.log('');
+    } catch (err: any) {
+      console.error(`Heal error: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+// 20. Vision commands
+const visionCmd = program
+  .command('vision')
+  .description('Multimodal visual memory engine for screenshots and diagrams');
+
+visionCmd
+  .command('tag <filePath>')
+  .description('Tag and index a screenshot image or diagram')
+  .requiredOption('-d, --desc <description>', 'Visual description of image')
+  .option('--ocr <text>', 'OCR or visible error text in image')
+  .option('-m, --memory <id>', 'Linked memory rule or trap ID')
+  .option('-t, --task <id>', 'Linked action task ID')
+  .action(async (filePath: string, opts: any) => {
+    try {
+      const ctx = createFastrServerContext();
+      const asset = await tagVisionAsset(ctx.db, {
+        projectId: ctx.config.projectId,
+        filePath,
+        description: opts.desc,
+        ocrText: opts.ocr,
+        memoryId: opts.memory,
+        taskId: opts.task
+      });
+      console.log(`\n=== FastrMemory Vision Asset Tagged ===`);
+      console.log(`ID:          ${asset.id}`);
+      console.log(`File:        ${asset.file_path}`);
+      console.log(`Description: ${asset.description}`);
+      if (asset.ocr_text) console.log(`OCR Text:    ${asset.ocr_text}`);
+      if (asset.memory_id) console.log(`Memory ID:   ${asset.memory_id}`);
+      console.log(`Vector:      Indexed (384-dim embedding)\n`);
+    } catch (err: any) {
+      console.error(`Vision tag error: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+visionCmd
+  .command('search <query>')
+  .description('Semantic search across screenshots and diagrams')
+  .option('-l, --limit <n>', 'Max results to return', '10')
+  .option('-m, --memory <id>', 'Filter by memory ID')
+  .action(async (query: string, opts: any) => {
+    try {
+      const ctx = createFastrServerContext();
+      const results = await searchVisionAssets(ctx.db, ctx.config.projectId, query, {
+        limit: parseInt(opts.limit, 10),
+        memoryId: opts.memory
+      });
+      console.log(`\n=== FastrMemory Vision Search (${results.length} results) ===`);
+      for (const r of results) {
+        console.log(`[${r.id}] Score: ${r.score} | ${r.description}`);
+        console.log(`  Path: ${r.filePath}`);
+        if (r.ocrText) console.log(`  OCR:  ${r.ocrText}`);
+        if (r.memoryId) console.log(`  Memory: ${r.memoryId}`);
+      }
+      console.log('');
+    } catch (err: any) {
+      console.error(`Vision search error: ${err.message}`);
       process.exit(1);
     }
   });
