@@ -27,27 +27,27 @@
 }
 
 [data-theme="dark"] {
-  /* Fastr Precision Instrument - Obsidian Dark Mode (Linear Standard) */
-  --bg: #090c13;
-  --bg-subtle: #0f1420;
-  --surface: #111724;
-  --surface-hover: #161e2f;
-  --surface-active: #1b253b;
-  --card: #111724;
-  --card-hover: #161e2f;
-  --border: #1e2638;
-  --border-strong: #2c374e;
-  --text: #f1f5f9;
-  --text-muted: #8492a6;
-  --text-faint: #526075;
+  /* Fastr Precision Instrument - Linear/Raycast Dark Instrument */
+  --bg: #09090b;
+  --bg-subtle: #121215;
+  --surface: #141417;
+  --surface-hover: #1c1c20;
+  --surface-active: #232328;
+  --card: #141417;
+  --card-hover: #1c1c20;
+  --border: #27272a;
+  --border-strong: #3f3f46;
+  --text: #fafafa;
+  --text-muted: #a1a1aa;
+  --text-faint: #71717a;
   --accent: #38bdf8;
   --accent-ink: #7dd3fc;
-  --accent-weak: rgba(56, 189, 248, 0.12);
-  --accent-glow: rgba(56, 189, 248, 0.25);
+  --accent-weak: rgba(56, 189, 248, 0.10);
+  --accent-glow: rgba(56, 189, 248, 0.20);
   --risk: #f43f5e;
-  --risk-weak: rgba(244, 63, 94, 0.14);
+  --risk-weak: rgba(244, 63, 94, 0.12);
   --trap: #fbbf24;
-  --trap-weak: rgba(251, 191, 36, 0.14);
+  --trap-weak: rgba(251, 191, 36, 0.12);
   --success: #34d399;
   --success-weak: rgba(52, 211, 153, 0.12);
 }
@@ -218,8 +218,7 @@ code, pre, .font-mono {
   background: var(--surface-hover);
 }
 .instrument-row.active {
-  background: var(--accent-weak);
-  border-left: 3px solid var(--accent);
+  background: var(--surface-active);
 }
 
 /* Floating Alerts */

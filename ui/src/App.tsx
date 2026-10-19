@@ -402,31 +402,31 @@ export const App: React.FC = () => {
       <section style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px' }}>
         <div className="card-panel" style={{ padding: '12px 16px' }}>
           <div style={{ fontSize: '10px', color: 'var(--text-faint)', fontWeight: 600, letterSpacing: '0.05em' }}>ACTIVE RULES</div>
-          <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+          <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: 'var(--font-mono)', marginTop: '2px', color: 'var(--text)' }}>
             {loading ? '—' : status?.activeCount ?? 0}
           </div>
         </div>
-        <div className="card-panel" style={{ padding: '12px 16px', borderLeft: '3px solid var(--trap)' }}>
-          <div style={{ fontSize: '10px', color: 'var(--trap)', fontWeight: 600, letterSpacing: '0.05em' }}>2.0X ERROR TRAPS</div>
+        <div className="card-panel" style={{ padding: '12px 16px' }}>
+          <div style={{ fontSize: '10px', color: 'var(--text-faint)', fontWeight: 600, letterSpacing: '0.05em' }}>2.0X ERROR TRAPS</div>
           <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--trap)', marginTop: '2px' }}>
             {loading ? '—' : status?.trapsCount ?? 0}
           </div>
         </div>
-        <div className="card-panel" style={{ padding: '12px 16px', borderLeft: '3px solid var(--accent)' }}>
-          <div style={{ fontSize: '10px', color: 'var(--accent)', fontWeight: 600, letterSpacing: '0.05em' }}>FRONTIER TASKS</div>
+        <div className="card-panel" style={{ padding: '12px 16px' }}>
+          <div style={{ fontSize: '10px', color: 'var(--text-faint)', fontWeight: 600, letterSpacing: '0.05em' }}>FRONTIER TASKS</div>
           <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--accent)', marginTop: '2px' }}>
             {loading ? '—' : status?.frontierCount ?? 0}
           </div>
         </div>
         <div className="card-panel" style={{ padding: '12px 16px' }}>
           <div style={{ fontSize: '10px', color: 'var(--text-faint)', fontWeight: 600, letterSpacing: '0.05em' }}>KNOWLEDGE NODES</div>
-          <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+          <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: 'var(--font-mono)', marginTop: '2px', color: 'var(--text)' }}>
             {loading ? '—' : status?.graphNodesCount ?? 0}
           </div>
         </div>
-        <div className="card-panel" style={{ padding: '12px 16px', borderLeft: '3px solid var(--risk)' }}>
-          <div style={{ fontSize: '10px', color: 'var(--risk)', fontWeight: 600, letterSpacing: '0.05em' }}>CONTRADICTIONS</div>
-          <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--risk)', marginTop: '2px' }}>
+        <div className="card-panel" style={{ padding: '12px 16px' }}>
+          <div style={{ fontSize: '10px', color: 'var(--text-faint)', fontWeight: 600, letterSpacing: '0.05em' }}>CONTRADICTIONS</div>
+          <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: (status?.conflictsCount ?? 0) > 0 ? 'var(--risk)' : 'var(--text)', marginTop: '2px' }}>
             {loading ? '—' : status?.conflictsCount ?? 0}
           </div>
         </div>
@@ -580,7 +580,8 @@ export const App: React.FC = () => {
                     {/* Header */}
                     <div style={{
                       display: 'grid',
-                      gridTemplateColumns: '110px 80px 100px 1fr 180px 70px 60px',
+                      gridTemplateColumns: 'minmax(160px, 1.2fr) 85px 105px 2fr 160px 75px 50px',
+                      columnGap: '12px',
                       padding: '8px 14px',
                       background: 'var(--bg-subtle)',
                       borderBottom: '1px solid var(--border)',
@@ -610,12 +611,13 @@ export const App: React.FC = () => {
                             className={`instrument-row ${isSelected ? 'active' : ''}`}
                             style={{
                               display: 'grid',
-                              gridTemplateColumns: '110px 80px 100px 1fr 180px 70px 60px',
+                              gridTemplateColumns: 'minmax(160px, 1.2fr) 85px 105px 2fr 160px 75px 50px',
+                              columnGap: '12px',
                               alignItems: 'center',
                               fontSize: '12px'
                             }}
                           >
-                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--accent)', fontWeight: 600 }}>
+                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--accent)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={m.id}>
                               {m.id}
                             </div>
                             <div>
@@ -629,13 +631,13 @@ export const App: React.FC = () => {
                                 {m.kind === 'error_trap' ? 'TRAP' : m.kind.toUpperCase()}
                               </span>
                             </div>
-                            <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontSize: '11.5px' }}>
+                            <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontSize: '11.5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={m.module}>
                               {m.module}
                             </div>
-                            <div style={{ fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: '12px' }}>
+                            <div style={{ fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: '6px' }} title={m.title}>
                               {m.title}
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {m.provenance_hash ? (
                                 <span className="badge-tag" style={{ background: 'rgba(52, 211, 153, 0.15)', color: 'var(--success)' }}>
                                   🔒 prov_{m.provenance_hash.slice(0, 6)}
@@ -694,7 +696,8 @@ export const App: React.FC = () => {
                 <div className="card-panel" style={{ overflow: 'hidden' }}>
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: '110px 110px 1fr 140px 100px',
+                    gridTemplateColumns: 'minmax(160px, 1.2fr) 120px 2fr 160px 100px',
+                    columnGap: '12px',
                     padding: '8px 14px',
                     background: 'var(--bg-subtle)',
                     borderBottom: '1px solid var(--border)',
@@ -719,22 +722,22 @@ export const App: React.FC = () => {
                         className="instrument-row"
                         style={{
                           display: 'grid',
-                          gridTemplateColumns: '110px 110px 1fr 140px 100px',
+                          gridTemplateColumns: 'minmax(160px, 1.2fr) 120px 2fr 160px 100px',
+                          columnGap: '12px',
                           alignItems: 'center',
-                          borderLeft: '3px solid var(--trap)',
                           fontSize: '12px'
                         }}
                       >
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--trap)', fontWeight: 600 }}>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--trap)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={m.id}>
                           {m.id}
                         </div>
-                        <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                        <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={m.module}>
                           {m.module}
                         </div>
-                        <div style={{ fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: '12px' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: '6px' }} title={m.title}>
                           {m.title}
                         </div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={m.linked_files && m.linked_files.length > 0 ? m.linked_files.join(', ') : 'project-wide'}>
                           {m.linked_files && m.linked_files.length > 0 ? m.linked_files.join(', ') : 'project-wide'}
                         </div>
                         <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', color: 'var(--trap)', fontWeight: 600 }}>

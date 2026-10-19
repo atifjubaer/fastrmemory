@@ -8,6 +8,21 @@ export interface SetupOptions {
   autoInstall?: boolean;
 }
 
+export function getAntigravityConfigPath(): string {
+  return path.join(os.homedir(), '.gemini', 'antigravity', 'mcp_config.json');
+}
+
+export function getClaudeDesktopConfigPath(): string {
+  if (process.platform === 'win32') {
+    const appData = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
+    return path.join(appData, 'Claude', 'claude_desktop_config.json');
+  } else if (process.platform === 'darwin') {
+    return path.join(os.homedir(), 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json');
+  } else {
+    return path.join(os.homedir(), '.config', 'Claude', 'claude_desktop_config.json');
+  }
+}
+
 export function resolveMcpCommand(): { command: string; args: string[] } {
   try {
     const isWindows = process.platform === 'win32';
@@ -15,6 +30,11 @@ export function resolveMcpCommand(): { command: string; args: string[] } {
     execSync(checkCmd, { stdio: 'ignore' });
     return { command: 'fastrmemory', args: ['mcp'] };
   } catch {
+    // Check if running from local checkout where dist/bin/fastr.js exists
+    const localBin = path.resolve(__dirname, '../../dist/bin/fastr.js');
+    if (fs.existsSync(localBin)) {
+      return { command: 'node', args: [localBin, 'mcp'] };
+    }
     return { command: 'npx', args: ['-y', '@atifjubaer/fastrmemory', 'mcp'] };
   }
 }
@@ -28,21 +48,110 @@ export function runInteractiveSetup(options: SetupOptions = {}): void {
   // 1. Initialize local project database
   try {
     const ctx = createFastrServerContext();
-    console.log(`[1/3] Local project initialized:`);
+    console.log(`[1/7] Local project initialized:`);
     console.log(`      - Project ID: ${ctx.config.projectId}`);
     console.log(`      - Database:   ${ctx.config.dbPath}`);
     console.log(`      - Pages:      ${ctx.config.pagesDir}\n`);
   } catch (err: any) {
-    console.log(`[1/3] Project init note: ${err.message}\n`);
+    console.log(`[1/7] Project init note: ${err.message}\n`);
   }
 
-  // 2. Wire Claude Code (~/.claude.json)
+  const mcpTarget = resolveMcpCommand();
   const homeDir = os.homedir();
+
+  // 2. Wire Antigravity IDE (~/.gemini/antigravity/mcp_config.json)
+  const antigravityConfigPath = getAntigravityConfigPath();
+  let antigravityStatus = 'Skipped';
+  try {
+    const antigravityDir = path.dirname(antigravityConfigPath);
+    if (!fs.existsSync(antigravityDir)) {
+      fs.mkdirSync(antigravityDir, { recursive: true });
+    }
+    let agConfig: any = {};
+    if (fs.existsSync(antigravityConfigPath)) {
+      try {
+        agConfig = JSON.parse(fs.readFileSync(antigravityConfigPath, 'utf-8'));
+      } catch {
+        agConfig = {};
+      }
+    }
+    if (!agConfig.mcpServers) {
+      agConfig.mcpServers = {};
+    }
+    agConfig.mcpServers.fastrmemory = {
+      command: mcpTarget.command,
+      args: mcpTarget.args,
+    };
+    fs.writeFileSync(antigravityConfigPath, JSON.stringify(agConfig, null, 2), 'utf-8');
+    antigravityStatus = `Connected (${antigravityConfigPath})`;
+  } catch (err: any) {
+    antigravityStatus = `Failed (${err.message})`;
+  }
+  console.log(`[2/7] Antigravity IDE: ${antigravityStatus}`);
+
+  // 3. Wire Claude Desktop
+  const claudeDesktopPath = getClaudeDesktopConfigPath();
+  let claudeDesktopStatus = 'Skipped';
+  try {
+    const claudeDesktopDir = path.dirname(claudeDesktopPath);
+    if (!fs.existsSync(claudeDesktopDir)) {
+      fs.mkdirSync(claudeDesktopDir, { recursive: true });
+    }
+    let cdConfig: any = {};
+    if (fs.existsSync(claudeDesktopPath)) {
+      try {
+        cdConfig = JSON.parse(fs.readFileSync(claudeDesktopPath, 'utf-8'));
+      } catch {
+        cdConfig = {};
+      }
+    }
+    if (!cdConfig.mcpServers) {
+      cdConfig.mcpServers = {};
+    }
+    cdConfig.mcpServers.fastrmemory = {
+      command: mcpTarget.command,
+      args: mcpTarget.args,
+    };
+    fs.writeFileSync(claudeDesktopPath, JSON.stringify(cdConfig, null, 2), 'utf-8');
+    claudeDesktopStatus = `Connected (${claudeDesktopPath})`;
+  } catch (err: any) {
+    claudeDesktopStatus = `Failed (${err.message})`;
+  }
+  console.log(`[3/7] Claude Desktop:  ${claudeDesktopStatus}`);
+
+  // 4. Wire Cursor in current workspace (.cursor/mcp.json)
+  const cursorDir = path.join(process.cwd(), '.cursor');
+  const cursorConfigPath = path.join(cursorDir, 'mcp.json');
+  let cursorStatus = 'Configured';
+  try {
+    if (!fs.existsSync(cursorDir)) {
+      fs.mkdirSync(cursorDir, { recursive: true });
+    }
+    let cursorConfig: any = {};
+    if (fs.existsSync(cursorConfigPath)) {
+      try {
+        cursorConfig = JSON.parse(fs.readFileSync(cursorConfigPath, 'utf-8'));
+      } catch {
+        cursorConfig = {};
+      }
+    }
+    if (!cursorConfig.mcpServers) {
+      cursorConfig.mcpServers = {};
+    }
+    cursorConfig.mcpServers.fastrmemory = {
+      command: mcpTarget.command,
+      args: mcpTarget.args,
+    };
+    fs.writeFileSync(cursorConfigPath, JSON.stringify(cursorConfig, null, 2), 'utf-8');
+    cursorStatus = `Connected (${cursorConfigPath})`;
+  } catch (err: any) {
+    cursorStatus = `Failed (${err.message})`;
+  }
+  console.log(`[4/7] Cursor IDE:      ${cursorStatus}`);
+
+  // 5. Wire Claude Code (~/.claude.json)
   const claudeConfigPath = path.join(homeDir, '.claude.json');
   let claudeStatus = 'Skipped (file not found)';
-
-  const mcpTarget = resolveMcpCommand();
-
   try {
     let claudeConfig: any = {};
     if (fs.existsSync(claudeConfigPath)) {
@@ -52,63 +161,24 @@ export function runInteractiveSetup(options: SetupOptions = {}): void {
         claudeConfig = {};
       }
     }
-
     if (!claudeConfig.mcpServers) {
       claudeConfig.mcpServers = {};
     }
-
     claudeConfig.mcpServers.fastrmemory = {
       command: mcpTarget.command,
-      args: mcpTarget.args
+      args: mcpTarget.args,
     };
-
     fs.writeFileSync(claudeConfigPath, JSON.stringify(claudeConfig, null, 2), 'utf-8');
     claudeStatus = `Connected (${claudeConfigPath})`;
   } catch (err: any) {
     claudeStatus = `Failed (${err.message})`;
   }
-  console.log(`[2/3] Claude Code: ${claudeStatus}`);
+  console.log(`[5/7] Claude Code:     ${claudeStatus}`);
 
-  // 3. Wire Cursor in current workspace (.cursor/mcp.json)
-  const cursorDir = path.join(process.cwd(), '.cursor');
-  const cursorConfigPath = path.join(cursorDir, 'mcp.json');
-  let cursorStatus = 'Configured';
-
-  try {
-    if (!fs.existsSync(cursorDir)) {
-      fs.mkdirSync(cursorDir, { recursive: true });
-    }
-
-    let cursorConfig: any = {};
-    if (fs.existsSync(cursorConfigPath)) {
-      try {
-        cursorConfig = JSON.parse(fs.readFileSync(cursorConfigPath, 'utf-8'));
-      } catch {
-        cursorConfig = {};
-      }
-    }
-
-    if (!cursorConfig.mcpServers) {
-      cursorConfig.mcpServers = {};
-    }
-
-    cursorConfig.mcpServers.fastrmemory = {
-      command: mcpTarget.command,
-      args: mcpTarget.args
-    };
-
-    fs.writeFileSync(cursorConfigPath, JSON.stringify(cursorConfig, null, 2), 'utf-8');
-    cursorStatus = `Connected (${cursorConfigPath})`;
-  } catch (err: any) {
-    cursorStatus = `Failed (${err.message})`;
-  }
-  console.log(`[3/5] Cursor IDE:  ${cursorStatus}`);
-
-  // 4. Wire Windsurf IDE (~/.codeium/windsurf/mcp_config.json)
+  // 6. Wire Windsurf IDE (~/.codeium/windsurf/mcp_config.json)
   const windsurfDir = path.join(homeDir, '.codeium', 'windsurf');
   const windsurfConfigPath = path.join(windsurfDir, 'mcp_config.json');
   let windsurfStatus = 'Skipped (directory not present)';
-
   if (fs.existsSync(windsurfDir)) {
     try {
       let windsurfConfig: any = {};
@@ -132,9 +202,9 @@ export function runInteractiveSetup(options: SetupOptions = {}): void {
       windsurfStatus = `Failed (${err.message})`;
     }
   }
-  console.log(`[4/5] Windsurf:    ${windsurfStatus}`);
+  console.log(`[6/7] Windsurf:        ${windsurfStatus}`);
 
-  // 5. Wire Autonomous Agent Discipline in AGENTS.md & Auto-Seed Git Traps
+  // 7. Wire Autonomous Agent Discipline in AGENTS.md
   let agentStatus = 'Configured';
   try {
     const agentsPath = path.join(process.cwd(), 'AGENTS.md');
@@ -161,7 +231,7 @@ Every AI coding agent operating in this repository MUST follow these 3 cognitive
   } catch (err: any) {
     agentStatus = `Notice: ${err.message}`;
   }
-  console.log(`[5/5] Agent Rules: ${agentStatus}\n`);
+  console.log(`[7/7] Agent Rules:     ${agentStatus}\n`);
 
   console.log('-------------------------------------------------');
   console.log('✅ Setup Complete! FastrMemory is connected.');
