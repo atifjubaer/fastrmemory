@@ -131,24 +131,28 @@ Comprehensive comparison across the current agent memory landscape:
 
 ## 🚀 30-Second Quick Start
 
-### ⚡ Canonical Interactive Auto-Setup (Recommended)
+### ⚡ Direct Instant Execution (Zero Install Required)
 
-Run once to auto-wire FastrMemory into Claude Code (`~/.claude.json`) and Cursor (`.cursor/mcp.json`):
+Run immediately via GitHub or NPM:
 
 ```bash
-npx -y @atifjubaer/fastrmemory@latest
+# Instant interactive auto-setup:
+npx github:atifjubaer/fastrmemory setup
+
+# Or launch local Web UI:
+npx github:atifjubaer/fastrmemory ui
 ```
-*(Or run `fastrmemory setup` if already installed globally)*
 
 ---
 
-### Local Source Setup & Linking
+### Global Installation
 
 ```bash
-# In your fastrmemory repository:
-npm install
-npm run build
-npm link
+# Install globally from GitHub directly:
+npm install -g git+https://github.com/atifjubaer/fastrmemory.git
+
+# Or install from NPM Registry:
+npm install -g @atifjubaer/fastrmemory
 ```
 > Both `fastrmemory` and `fastr` (short alias) are now executable globally in your terminal.
 
