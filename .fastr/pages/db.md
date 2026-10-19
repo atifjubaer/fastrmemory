@@ -6,6 +6,18 @@
 
 ## Compiled Truth (Active Rules & Traps)
 
+### [mem_e16378a3] [TRAP] fix(ui): patch canvas click detection, add zoom controls, and enable 1-click conflict resolution
+- **Kind**: `error_trap`
+- **Status**: `staging` (Reward Score: 1)
+- **Linked Files**: `src/db/repository.ts`, `src/ui/server.ts`, `tests/ui-server.test.ts`
+- **Active Since**: `2026-10-19T11:14:23Z`
+
+Extracted from git fix commit a18c98e6:
+fix(ui): patch canvas click detection, add zoom controls, and enable 1-click conflict resolution
+Affected files: src/db/repository.ts, src/ui/server.ts, tests/ui-server.test.ts
+
+---
+
 ### [mem_pg_pool_trap] [TRAP] Postgres Client Must Always Call client.release() in Finally Block
 - **Kind**: `error_trap`
 - **Status**: `verified` (Reward Score: 1)
