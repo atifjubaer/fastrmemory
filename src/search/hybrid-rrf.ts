@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { Memory } from '../db/schema.js';
 import { computeEmbedding, cosineSimilarity, bufferToFloat32Array } from './embeddings.js';
 import { packMemoriesIntoBudget, ScoredMemory, TOKEN_LEVELS } from './budget.js';
+import { extractEntities } from '../learn/ner.js';
 
 export interface SearchParams {
   projectId: string;
@@ -127,28 +128,122 @@ export async function searchMemories(
     }
   }
 
-  // --- STREAM C: File Links Graph Search ---
-  if (files.length > 0) {
-    const placeholders = files.map(() => '?').join(',');
+  // --- STREAM C: Spreading Activation Graph Retrieval ---
+  // Seed activation using explicitly passed files + entities extracted from query
+  const seedFiles = new Set(files);
+  const queryEntities = extractEntities(query);
+  const seedEntityNames = queryEntities.map((e) => e.name.toLowerCase());
+
+  const activationScores = new Map<string, number>();
+
+  // Round 1: Direct file link matches
+  if (seedFiles.size > 0) {
+    const placeholders = Array.from(seedFiles).map(() => '?').join(',');
     const fileRows = db.prepare(`
-      SELECT DISTINCT m.*
+      SELECT DISTINCT m.id
       FROM file_links fl
       JOIN memories m ON m.id = fl.memory_id
       WHERE m.project_id = ?
         AND fl.file_path IN (${placeholders})
-      ORDER BY (m.kind = 'error_trap') DESC, m.reward_score DESC
-      LIMIT 50
-    `).all(projectId, ...files) as unknown as Memory[];
+    `).all(projectId, ...Array.from(seedFiles)) as unknown as Array<{ id: string }>;
 
-    let rank = 1;
-    for (const row of fileRows) {
-      if (passesFilter(row)) {
-        if (!candidatesMap.has(row.id)) {
-          candidatesMap.set(row.id, { memory: row, rankC: rank });
-        } else {
-          candidatesMap.get(row.id)!.rankC = rank;
+    for (const r of fileRows) {
+      activationScores.set(r.id, (activationScores.get(r.id) || 0) + 1.0);
+    }
+  }
+
+  // Round 1: Direct entity link matches
+  if (seedEntityNames.length > 0) {
+    const placeholders = seedEntityNames.map(() => '?').join(',');
+    const entityRows = db.prepare(`
+      SELECT DISTINCT ge.source_id AS memory_id, ge.weight
+      FROM entities e
+      JOIN graph_edges ge ON ge.target_id = e.id AND ge.edge_type = 'entity_link'
+      WHERE e.project_id = ?
+        AND LOWER(e.name) IN (${placeholders})
+    `).all(projectId, ...seedEntityNames) as unknown as Array<{ memory_id: string; weight: number }>;
+
+    for (const r of entityRows) {
+      activationScores.set(r.memory_id, (activationScores.get(r.memory_id) || 0) + (r.weight * 1.8));
+    }
+  }
+
+  // Round 1.5: Seed from top Stream A & B candidate matches
+  for (const candId of Array.from(candidatesMap.keys()).slice(0, 5)) {
+    if (!activationScores.has(candId)) {
+      activationScores.set(candId, 1.0);
+    }
+  }
+
+  // Round 2: 2-Hop Spreading Activation outward across graph edges
+  if (activationScores.size > 0) {
+    const edgeWeights: Record<string, number> = {
+      causal: 2.0,
+      entity_link: 1.8,
+      temporal: 1.5,
+      association: 1.0,
+      supersedes: 0.5,
+    };
+
+    // Propagate across 2 hops
+    for (let hop = 0; hop < 2; hop++) {
+      const activeKeys = Array.from(activationScores.keys());
+      if (activeKeys.length === 0) break;
+      const placeholders = activeKeys.map(() => '?').join(',');
+
+      const edgeRows = db.prepare(`
+        SELECT ge.source_id, ge.target_id, ge.edge_type, ge.weight
+        FROM graph_edges ge
+        WHERE ge.project_id = ?
+          AND (ge.source_id IN (${placeholders}) OR ge.target_id IN (${placeholders}))
+      `).all(projectId, ...activeKeys, ...activeKeys) as unknown as Array<{ source_id: string; target_id: string; edge_type: string; weight: number }>;
+
+      for (const edge of edgeRows) {
+        const isOutward = activationScores.has(edge.source_id);
+        const source = isOutward ? edge.source_id : edge.target_id;
+        const target = isOutward ? edge.target_id : edge.source_id;
+
+        if (source !== target) {
+          const sourceAct = activationScores.get(source) || 1.0;
+          const w = (edgeWeights[edge.edge_type] || 1.0) * (edge.weight || 1.0);
+          const spread = 0.8 * (w * sourceAct * 0.5);
+          activationScores.set(target, (activationScores.get(target) || 0) + spread);
         }
-        rank++;
+      }
+    }
+
+    // Lateral inhibition: top nodes suppress bottom nodes (beta = 0.15)
+    const memoryActEntries = Array.from(activationScores.entries()).filter(([k]) => k.startsWith('mem_'));
+    memoryActEntries.sort((a, b) => b[1] - a[1]);
+    if (memoryActEntries.length > 2) {
+      const topScore = memoryActEntries[0][1];
+      for (let i = 2; i < memoryActEntries.length; i++) {
+        const id = memoryActEntries[i][0];
+        const val = memoryActEntries[i][1];
+        activationScores.set(id, Math.max(0, val - 0.15 * (topScore - val)));
+      }
+    }
+
+    // Load candidate memories for activated memory IDs
+    const activatedIds = Array.from(activationScores.keys()).filter((id) => id.startsWith('mem_') && (activationScores.get(id) || 0) > 0.1);
+    if (activatedIds.length > 0) {
+      const memPlaceholders = activatedIds.map(() => '?').join(',');
+      const memRows = db.prepare(`
+        SELECT * FROM memories WHERE id IN (${memPlaceholders})
+      `).all(...activatedIds) as unknown as Memory[];
+
+      memRows.sort((a, b) => (activationScores.get(b.id) || 0) - (activationScores.get(a.id) || 0));
+
+      let rank = 1;
+      for (const row of memRows) {
+        if (passesFilter(row)) {
+          if (!candidatesMap.has(row.id)) {
+            candidatesMap.set(row.id, { memory: row, rankC: rank });
+          } else {
+            candidatesMap.get(row.id)!.rankC = rank;
+          }
+          rank++;
+        }
       }
     }
   }

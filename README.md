@@ -9,7 +9,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.16.0-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Protocol](https://img.shields.io/badge/Protocol-MCP%20v2-7C3AED?style=flat-square)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/Tests-25%20Passed-brightgreen?style=flat-square)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-48%20Passed-brightgreen?style=flat-square)](tests/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-key-architectural-pillars)
 
@@ -241,22 +241,45 @@ Add this JSON block to your agent's MCP settings to enable autonomous memory:
 
 Built using the official **v2 `@modelcontextprotocol/server`** SDK:
 
-### 14 Core MCP Tools
+### 26 Core MCP Tools
 
-1. `fastr_recall`: Triple-stream hybrid search (BM25 + Vector + Graph) with progressive L0–L3 token budgeting.
+#### Cognitive Retrieval & Memory Core
+1. `fastr_recall`: Triple-stream hybrid search (BM25 + Vector + Spreading Activation Graph) with progressive L0–L3 token budgeting.
 2. `fastr_drill`: Resolves `source_event_ids` to retrieve untruncated verbatim stack traces, diffs, and tool outputs from `raw_events`.
 3. `fastr_file_history`: Returns active rules, `[TRAP]` warnings, and past supersessions for a specific file path.
-4. `fastr_remember`: Records new rules, decisions, or traps. Automatically scrubs secrets and re-renders Two-Zone Markdown mirrors.
+4. `fastr_remember`: Records new rules, decisions, or traps. Automatically extracts NER entities, scrubs secrets, and re-renders Markdown mirrors.
 5. `fastr_supersede`: Retires an outdated rule (`valid_to = now`), records the rationale, and inserts a replacement verified rule.
 6. `fastr_feedback`: Updates `reward_score` on a specific memory ID (+0.2 good, -0.5 bad). Never penalizes innocent memories.
 7. `fastr_handoff`: Saves or retrieves cross-agent session milestones and promotes staging memories to verified.
 8. `fastr_status`: Returns active/staging counts, spool health, and embedding coverage %.
 9. `fastr_graph_query`: Explores 1-hop and 2-hop structural file-link dependencies and connected error traps.
 10. `fastr_timeline`: Chronological audit trail of memory events, newly verified rules, error traps, and historical supersessions.
+
+#### Versioning & Error Traps
 11. `fastr_snapshot`: Creates named point-in-time memory snapshots for branch tracking and experiment safety.
 12. `fastr_rollback`: Instant Git-like rollback to any previous memory snapshot.
-13. `fastr_trap_log`: One-line rapid logging of error traps and bug solutions during active coding.
-14. `fastr_trap_recall`: Targeted lookup of high-priority error traps matching a prompt or target file.
+13. `fastr_trap_log`: One-line rapid logging of error traps and bug solutions with 2.0x recall boost.
+14. `fastr_trap_recall`: Targeted lookup of high-priority error traps protecting specific target files before editing.
+
+#### Proactive Contradiction Detection & Resolution
+15. `fastr_conflicts`: Proactive contradiction detection using Jaccard token overlap ($\ge 0.5$) and 40-word opposing polarity analysis.
+16. `fastr_resolve`: Resolves contradictions by keeping preferred rule and superseding or weakening the loser.
+
+#### Kahneman Planning Fallacy & Base-Rate Calibrator
+17. `fastr_predict`: Records effort/time/risk predictions and closes predictions with actual empirical outcomes.
+18. `fastr_predict_baserate`: Computes historical reference-class statistics (Mean, Median p50 ratio, MAE) to debias agent estimates.
+
+#### Multi-Agent Action DAG & Frontier
+19. `fastr_action_create`: Creates structured work item actions with prerequisite (`requires`) and conflict (`conflicts_with`) constraints.
+20. `fastr_action_update`: Updates task lifecycle (`pending`, `active`, `done`, `blocked`), assignments, and memory crystallization.
+21. `fastr_frontier`: Computes unblocked, ready-to-execute frontier actions with satisfied dependencies.
+22. `fastr_next`: Atomically claims and returns the highest-priority frontier action for autonomous worker agents.
+
+#### Bounded Working Memory & Obsidian Vault Export
+23. `fastr_slot_get`: Retrieves bounded working memory slot (e.g. `current_goal`, `user_preferences`, `active_hypothesis`).
+24. `fastr_slot_set`: Updates working memory slot with hard character ceiling enforcement to prevent context bloat.
+25. `fastr_slot_list`: Lists all working memory slots and active character usage.
+26. `fastr_obsidian_export`: Exports all memories, entities, and relationships into an Obsidian-compatible markdown vault with YAML frontmatter, `[[wikilinks]]`, and `MOC.md`.
 
 ### 3 MCP Resources
 

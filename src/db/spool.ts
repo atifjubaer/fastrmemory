@@ -17,8 +17,20 @@ export class SpoolManager {
   /**
    * Fast append-only write (<5ms) for offline queueing during SQLite lock or high-concurrency hooks.
    */
-  append(event: RawEvent): void {
-    const line = JSON.stringify(event) + '\n';
+  append(event: Partial<RawEvent> & { project_id: string; session_id: string; event_type: string; raw_payload: string; content_hash: string }): void {
+    const fullEvent: RawEvent = {
+      id: event.id || `ev_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      project_id: event.project_id,
+      session_id: event.session_id,
+      agent_id: event.agent_id || 'default',
+      event_type: event.event_type,
+      tool_name: event.tool_name || null,
+      file_path: event.file_path || null,
+      raw_payload: event.raw_payload,
+      content_hash: event.content_hash,
+      created_at: event.created_at || new Date().toISOString(),
+    };
+    const line = JSON.stringify(fullEvent) + '\n';
     fs.appendFileSync(this.spoolFilePath, line, 'utf-8');
   }
 

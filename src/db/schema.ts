@@ -55,6 +55,77 @@ export interface Handoff {
   created_at?: string;
 }
 
+export interface Entity {
+  id: string;
+  project_id: string;
+  name: string;
+  entity_type: 'symbol' | 'file' | 'tech' | 'service' | 'pattern';
+  created_at?: string;
+}
+
+export interface GraphEdge {
+  id: string;
+  project_id: string;
+  source_id: string;
+  target_id: string;
+  edge_type: 'causal' | 'entity_link' | 'temporal' | 'association' | 'supersedes';
+  weight: number;
+  created_at?: string;
+}
+
+export interface MemoryConflict {
+  id?: number;
+  project_id: string;
+  memory_a_id: string;
+  memory_b_id: string;
+  reason: string;
+  score: number;
+  status: 'open' | 'resolved' | 'ignored';
+  resolved_winner_id?: string | null;
+  created_at?: string;
+  resolved_at?: string | null;
+}
+
+export interface Prediction {
+  id?: number;
+  project_id: string;
+  class_tag: string;
+  claim_text: string;
+  estimate_value?: number | null;
+  estimate_unit?: string | null;
+  actual_value?: number | null;
+  closure_state: 'open' | 'closed' | 'closed-unknown';
+  closed_at?: string | null;
+  created_at?: string;
+}
+
+export interface Action {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string;
+  status: 'pending' | 'active' | 'done' | 'blocked' | 'cancelled';
+  priority: number;
+  assigned_to?: string | null;
+  crystallized_into?: string | null;
+  created_at?: string;
+  completed_at?: string | null;
+}
+
+export interface ActionEdge {
+  source_action_id: string;
+  target_action_id: string;
+  edge_type: 'requires' | 'unlocks' | 'conflicts_with';
+}
+
+export interface MemorySlot {
+  project_id: string;
+  slot_key: string;
+  content: string;
+  size_limit: number;
+  updated_at?: string;
+}
+
 export const SCHEMA_SQL = `
 PRAGMA journal_mode = WAL;
 PRAGMA synchronous = NORMAL;
@@ -158,6 +229,95 @@ CREATE TABLE IF NOT EXISTS memory_snapshots (
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
 CREATE INDEX IF NOT EXISTS idx_snapshots_project ON memory_snapshots(project_id, created_at DESC);
+
+-- 7. Knowledge Graph Entities
+CREATE TABLE IF NOT EXISTS entities (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  entity_type TEXT NOT NULL CHECK (entity_type IN ('symbol', 'file', 'tech', 'service', 'pattern')),
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_entities_name ON entities(project_id, name);
+
+-- 8. Multi-Edge Knowledge Graph Links
+CREATE TABLE IF NOT EXISTS graph_edges (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  source_id TEXT NOT NULL,
+  target_id TEXT NOT NULL,
+  edge_type TEXT NOT NULL CHECK (edge_type IN ('causal', 'entity_link', 'temporal', 'association', 'supersedes')),
+  weight REAL NOT NULL DEFAULT 1.0,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_graph_edges_source ON graph_edges(project_id, source_id);
+CREATE INDEX IF NOT EXISTS idx_graph_edges_target ON graph_edges(project_id, target_id);
+
+-- 9. Proactive Contradiction Conflicts
+CREATE TABLE IF NOT EXISTS memory_conflicts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id TEXT NOT NULL,
+  memory_a_id TEXT NOT NULL,
+  memory_b_id TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  score REAL NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved', 'ignored')),
+  resolved_winner_id TEXT DEFAULT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  resolved_at TEXT DEFAULT NULL,
+  FOREIGN KEY (memory_a_id) REFERENCES memories(id) ON DELETE CASCADE,
+  FOREIGN KEY (memory_b_id) REFERENCES memories(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_conflicts_status ON memory_conflicts(project_id, status);
+
+-- 10. Planning Fallacy Predictions & Baserate
+CREATE TABLE IF NOT EXISTS predictions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id TEXT NOT NULL,
+  class_tag TEXT NOT NULL,
+  claim_text TEXT NOT NULL,
+  estimate_value REAL,
+  estimate_unit TEXT,
+  actual_value REAL DEFAULT NULL,
+  closure_state TEXT NOT NULL DEFAULT 'open' CHECK (closure_state IN ('open', 'closed', 'closed-unknown')),
+  closed_at TEXT DEFAULT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_predictions_class ON predictions(project_id, class_tag, closure_state);
+
+-- 11. Multi-Agent Work Item Action DAG
+CREATE TABLE IF NOT EXISTS actions (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'done', 'blocked', 'cancelled')),
+  priority INTEGER NOT NULL DEFAULT 5,
+  assigned_to TEXT DEFAULT NULL,
+  crystallized_into TEXT DEFAULT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  completed_at TEXT DEFAULT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_actions_status ON actions(project_id, status, priority DESC);
+
+CREATE TABLE IF NOT EXISTS action_edges (
+  source_action_id TEXT NOT NULL,
+  target_action_id TEXT NOT NULL,
+  edge_type TEXT NOT NULL CHECK (edge_type IN ('requires', 'unlocks', 'conflicts_with')),
+  PRIMARY KEY (source_action_id, target_action_id, edge_type),
+  FOREIGN KEY (source_action_id) REFERENCES actions(id) ON DELETE CASCADE,
+  FOREIGN KEY (target_action_id) REFERENCES actions(id) ON DELETE CASCADE
+);
+
+-- 12. Bounded Working Memory Slots
+CREATE TABLE IF NOT EXISTS memory_slots (
+  project_id TEXT NOT NULL,
+  slot_key TEXT NOT NULL,
+  content TEXT NOT NULL,
+  size_limit INTEGER NOT NULL DEFAULT 4000,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  PRIMARY KEY (project_id, slot_key)
+);
 `;
 
 export function applySchema(db: DatabaseSync): void {

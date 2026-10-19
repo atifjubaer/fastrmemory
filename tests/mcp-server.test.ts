@@ -187,4 +187,129 @@ describe('MCP v2 Server (Tools & Resources)', () => {
     expect(getRes.content[0].text).toContain('Database Migration');
     expect(getRes.content[0].text).toContain('Run integration test suite');
   });
+
+  it('detects and resolves conflicts via fastr_conflicts and fastr_resolve', async () => {
+    // 1. Remember rule A
+    await callTool('fastr_remember', {
+      title: 'CORS Credentials Policy',
+      content: 'Always allow credentials on CORS requests for auth routes.',
+      module: 'auth',
+      kind: 'rule'
+    });
+
+    // 2. Remember conflicting rule B
+    await callTool('fastr_remember', {
+      title: 'CORS Credentials Policy',
+      content: 'Never allow credentials on CORS requests for auth routes.',
+      module: 'auth',
+      kind: 'rule'
+    });
+
+    // 3. Query conflicts
+    const conflictsRes = await callTool('fastr_conflicts', { status: 'open' });
+    expect(conflictsRes.content[0].text).toContain('Conflict #');
+    expect(conflictsRes.content[0].text).toContain('Opposing prescriptions');
+
+    // Extract conflict ID
+    const match = conflictsRes.content[0].text.match(/Conflict #(\d+)/);
+    expect(match).not.toBeNull();
+    const conflictId = parseInt(match![1], 10);
+
+    // Extract memory A ID
+    const memMatch = conflictsRes.content[0].text.match(/Memory A \[([^\]]+)\]/);
+    expect(memMatch).not.toBeNull();
+    const keepId = memMatch![1];
+
+    // 4. Resolve conflict
+    const resolveRes = await callTool('fastr_resolve', {
+      conflictId,
+      keepId,
+      forgetLoser: true,
+      reason: 'Security review confirmed credentials required'
+    });
+    expect(resolveRes.content[0].text).toContain('Resolved Conflict');
+    expect(resolveRes.content[0].text).toContain('superseded');
+  });
+
+  it('records, closes, and computes baserate via fastr_predict and fastr_predict_baserate', async () => {
+    // 1. Create prediction
+    const createRes = await callTool('fastr_predict', {
+      action: 'create',
+      classTag: 'migration',
+      claimText: 'Database migration will take 2 hours',
+      estimateValue: 2,
+      estimateUnit: 'hours'
+    });
+    expect(createRes.content[0].text).toContain('Recorded Prediction #');
+
+    const predIdMatch = createRes.content[0].text.match(/Recorded Prediction #(\d+)/);
+    const predId = parseInt(predIdMatch![1], 10);
+
+    // 2. Close prediction
+    const closeRes = await callTool('fastr_predict', {
+      action: 'close',
+      predictionId: predId,
+      actualValue: 4
+    });
+    expect(closeRes.content[0].text).toContain('Closed Prediction #');
+    expect(closeRes.content[0].text).toContain('2.00x');
+
+    // 3. Query baserate
+    const baserateRes = await callTool('fastr_predict_baserate', { classTag: 'migration' });
+    expect(baserateRes.content[0].text).toContain('Reference Class Calibration: [migration]');
+    expect(baserateRes.content[0].text).toContain('2.00x');
+  });
+
+  it('manages Action DAG frontier and claims via fastr_action_create, fastr_frontier, and fastr_next', async () => {
+    // 1. Create task 1
+    const t1 = await callTool('fastr_action_create', {
+      title: 'Scaffold auth schemas',
+      priority: 8
+    });
+    expect(t1.content[0].text).toContain('Created Action [act_');
+    const t1Id = t1.content[0].text.match(/\[(act_[^\]]+)\]/)![1];
+
+    // 2. Create task 2 requiring task 1
+    const t2 = await callTool('fastr_action_create', {
+      title: 'Implement OAuth routes',
+      priority: 7,
+      requires: [t1Id]
+    });
+    const t2Id = t2.content[0].text.match(/\[(act_[^\]]+)\]/)![1];
+
+    // 3. Check frontier (only task 1 should be unblocked)
+    const frontierRes = await callTool('fastr_frontier', {});
+    expect(frontierRes.content[0].text).toContain(t1Id);
+    expect(frontierRes.content[0].text).not.toContain(t2Id);
+
+    // 4. Claim next task
+    const nextRes = await callTool('fastr_next', { agentId: 'agent-oauth' });
+    expect(nextRes.content[0].text).toContain(t1Id);
+    expect(nextRes.content[0].text).toContain('active');
+
+    // 5. Complete task 1
+    await callTool('fastr_action_update', { id: t1Id, status: 'done' });
+
+    // 6. Frontier now has task 2
+    const frontierRes2 = await callTool('fastr_frontier', {});
+    expect(frontierRes2.content[0].text).toContain(t2Id);
+  });
+
+  it('manages bounded working memory slots via fastr_slot_set, fastr_slot_get, and fastr_slot_list', async () => {
+    // 1. Set slot
+    const setRes = await callTool('fastr_slot_set', {
+      slotKey: 'active_plan',
+      content: 'Phase 4 and Phase 5 integration in progress'
+    });
+    expect(setRes.content[0].text).toContain('Updated Slot [active_plan]');
+
+    // 2. Get slot
+    const getRes = await callTool('fastr_slot_get', { slotKey: 'active_plan' });
+    expect(getRes.content[0].text).toContain('Phase 4 and Phase 5 integration in progress');
+
+    // 3. List slots
+    const listRes = await callTool('fastr_slot_list', {});
+    expect(listRes.content[0].text).toContain('[active_plan]');
+  });
 });
+

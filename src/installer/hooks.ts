@@ -38,11 +38,18 @@ export function installAgentHooks(projectRoot: string = process.cwd()): HookInst
       args: ['mcp']
     };
 
+    if (!claudeConfig.hooks) {
+      claudeConfig.hooks = {};
+    }
+    claudeConfig.hooks.SessionStart = 'fastrmemory hook run SessionStart';
+    claudeConfig.hooks.PreCompact = 'fastrmemory hook run PreCompact';
+    claudeConfig.hooks.SessionEnd = 'fastrmemory hook run SessionEnd';
+
     const dir = path.dirname(targetClaudeFile);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(targetClaudeFile, JSON.stringify(claudeConfig, null, 2), 'utf-8');
     claudeCodeUpdated = true;
-    details.push(`Wired FastrMemory MCP server into ${targetClaudeFile}`);
+    details.push(`Wired FastrMemory MCP server and lifecycle hooks into ${targetClaudeFile}`);
   } catch (err: any) {
     details.push(`Failed to update Claude Code: ${err.message}`);
   }

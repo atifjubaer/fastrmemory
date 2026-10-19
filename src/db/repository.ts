@@ -1,7 +1,10 @@
 import * as crypto from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
-import { RawEvent, Memory, FileLink, Handoff } from './schema.js';
+import { RawEvent, Memory, FileLink, Handoff, Entity, GraphEdge, MemoryConflict, Prediction, Action, ActionEdge, MemorySlot } from './schema.js';
 import { SpoolManager } from './spool.js';
+import { extractEntities } from '../learn/ner.js';
+import { detectConflict } from '../learn/conflicts.js';
+import { calculateBaserate, PredictionBaserate } from '../learn/planning-fallacy.js';
 
 export interface CreateMemoryParams {
   projectId: string;
@@ -129,8 +132,65 @@ export class FastrRepository {
       sourceIds
     );
 
+    // Explicit file links
     if (params.files && params.files.length > 0) {
       this.linkFiles(id, params.files, params.symbols);
+    }
+
+    // 1. Zero-LLM Fast-Path Named Entity Extraction (NER)
+    try {
+      const extracted = extractEntities(`${params.title} ${params.content}`);
+      const autoFiles: string[] = [];
+
+      for (const ent of extracted) {
+        const entId = `ent_${crypto.createHash('sha256').update(`${params.projectId}:${ent.name.toLowerCase()}`).digest('hex').slice(0, 12)}`;
+        
+        // Upsert entity
+        this.db.prepare(`
+          INSERT INTO entities (id, project_id, name, entity_type)
+          VALUES (?, ?, ?, ?)
+          ON CONFLICT(id) DO NOTHING
+        `).run(entId, params.projectId, ent.name, ent.type);
+
+        // Link memory to entity in knowledge graph
+        const edgeId = `edge_${crypto.randomBytes(6).toString('hex')}`;
+        this.db.prepare(`
+          INSERT INTO graph_edges (id, project_id, source_id, target_id, edge_type, weight)
+          VALUES (?, ?, ?, ?, 'entity_link', 1.0)
+          ON CONFLICT(id) DO NOTHING
+        `).run(edgeId, params.projectId, id, entId);
+
+        if (ent.type === 'file' && (!params.files || params.files.length === 0)) {
+          autoFiles.push(ent.name);
+        }
+      }
+
+      if (autoFiles.length > 0 && (!params.files || params.files.length === 0)) {
+        this.linkFiles(id, autoFiles.slice(0, 5));
+      }
+    } catch {
+      // Non-blocking NER failure protection
+    }
+
+    // 2. Proactive Contradiction & Conflict Detection
+    try {
+      const candidates = this.db.prepare(`
+        SELECT id, title, content FROM memories
+        WHERE project_id = ? AND valid_to IS NULL AND id != ?
+        ORDER BY id DESC LIMIT 50
+      `).all(params.projectId, id) as unknown as Array<{ id: string; title: string; content: string }>;
+
+      for (const c of candidates) {
+        const check = detectConflict(params.title, params.content, c.title, c.content);
+        if (check.hasConflict) {
+          this.db.prepare(`
+            INSERT INTO memory_conflicts (project_id, memory_a_id, memory_b_id, reason, score)
+            VALUES (?, ?, ?, ?, ?)
+          `).run(params.projectId, id, c.id, check.reason, check.score);
+        }
+      }
+    } catch {
+      // Non-blocking conflict check protection
     }
 
     return this.getMemory(id)!;
@@ -645,5 +705,365 @@ export class FastrRepository {
       this.db.exec('ROLLBACK');
       throw err;
     }
+  }
+
+  // --- CONFLICTS & NER ---
+
+  listConflicts(projectId: string, status: 'open' | 'resolved' | 'ignored' = 'open'): MemoryConflict[] {
+    const rows = this.db.prepare(`
+      SELECT * FROM memory_conflicts
+      WHERE project_id = ? AND status = ?
+      ORDER BY id DESC
+    `).all(projectId, status) as unknown as MemoryConflict[];
+    return rows;
+  }
+
+  resolveConflict(
+    conflictId: number,
+    keepMemoryId: string,
+    forgetLoser: boolean = false,
+    reason?: string
+  ): { success: boolean; keptId: string; loserId: string } {
+    const conflict = this.db.prepare('SELECT * FROM memory_conflicts WHERE id = ?').get(conflictId) as unknown as MemoryConflict | undefined;
+    if (!conflict) {
+      throw new Error(`Conflict ${conflictId} not found`);
+    }
+
+    const loserId = conflict.memory_a_id === keepMemoryId ? conflict.memory_b_id : conflict.memory_a_id;
+    const nowIso = new Date().toISOString();
+    const resolutionReason = reason || `Resolved conflict #${conflictId} in favor of ${keepMemoryId}`;
+
+    this.db.exec('BEGIN TRANSACTION');
+    try {
+      // 1. Mark conflict as resolved
+      this.db.prepare(`
+        UPDATE memory_conflicts
+        SET status = 'resolved', resolved_winner_id = ?, resolved_at = ?
+        WHERE id = ?
+      `).run(keepMemoryId, nowIso, conflictId);
+
+      // 2. Handle loser memory
+      if (forgetLoser) {
+        // Soft-delete / supersede loser
+        this.db.prepare(`
+          UPDATE memories
+          SET valid_to = ?, status = 'superseded', superseded_by_id = ?, superseded_reason = ?
+          WHERE id = ?
+        `).run(nowIso, keepMemoryId, resolutionReason, loserId);
+      } else {
+        // Weaken loser reward score by -0.4
+        this.db.prepare(`
+          UPDATE memories
+          SET reward_score = MAX(-1.0, reward_score - 0.4)
+          WHERE id = ?
+        `).run(loserId);
+      }
+
+      this.db.exec('COMMIT');
+      return { success: true, keptId: keepMemoryId, loserId };
+    } catch (err) {
+      this.db.exec('ROLLBACK');
+      throw err;
+    }
+  }
+
+  getEntities(projectId: string): Entity[] {
+    const rows = this.db.prepare(`
+      SELECT * FROM entities WHERE project_id = ? ORDER BY name ASC
+    `).all(projectId) as unknown as Entity[];
+    return rows;
+  }
+
+  // --- PREDICTIONS & PLANNING FALLACY ---
+
+  createPrediction(params: {
+    projectId: string;
+    classTag: string;
+    claimText: string;
+    estimateValue?: number | null;
+    estimateUnit?: string | null;
+  }): Prediction {
+    const res = this.db.prepare(`
+      INSERT INTO predictions (project_id, class_tag, claim_text, estimate_value, estimate_unit)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(
+      params.projectId,
+      params.classTag.trim().toLowerCase(),
+      params.claimText,
+      params.estimateValue ?? null,
+      params.estimateUnit ?? null
+    );
+
+    const row = this.db.prepare('SELECT * FROM predictions WHERE id = ?').get(res.lastInsertRowid) as unknown as Prediction;
+    return row;
+  }
+
+  closePrediction(id: number, actualValue: number): Prediction {
+    const nowIso = new Date().toISOString();
+    this.db.prepare(`
+      UPDATE predictions
+      SET actual_value = ?, closure_state = 'closed', closed_at = ?
+      WHERE id = ?
+    `).run(actualValue, nowIso, id);
+
+    const row = this.db.prepare('SELECT * FROM predictions WHERE id = ?').get(id) as unknown as Prediction | undefined;
+    if (!row) throw new Error(`Prediction #${id} not found`);
+    return row;
+  }
+
+  listPredictions(projectId: string, options?: { classTag?: string; state?: 'open' | 'closed' | 'closed-unknown' }): Prediction[] {
+    let sql = 'SELECT * FROM predictions WHERE project_id = ?';
+    const params: any[] = [projectId];
+
+    if (options?.classTag) {
+      sql += ' AND class_tag = ?';
+      params.push(options.classTag.trim().toLowerCase());
+    }
+    if (options?.state) {
+      sql += ' AND closure_state = ?';
+      params.push(options.state);
+    }
+
+    sql += ' ORDER BY id DESC';
+    return this.db.prepare(sql).all(...params) as unknown as Prediction[];
+  }
+
+  getPredictionBaserate(projectId: string, classTag: string): PredictionBaserate | null {
+    const normalizedTag = classTag.trim().toLowerCase();
+    const rows = this.db.prepare(`
+      SELECT estimate_value, actual_value
+      FROM predictions
+      WHERE project_id = ? AND class_tag = ? AND closure_state = 'closed'
+    `).all(projectId, normalizedTag) as Array<{ estimate_value: number | null; actual_value: number | null }>;
+
+    return calculateBaserate(normalizedTag, rows);
+  }
+
+  // --- MULTI-AGENT ACTION DAG ---
+
+  createAction(params: {
+    id?: string;
+    projectId: string;
+    title: string;
+    description?: string;
+    priority?: number;
+    assignedTo?: string | null;
+    requires?: string[];
+    conflictsWith?: string[];
+  }): Action {
+    const actionId = params.id || `act_${crypto.randomUUID().slice(0, 12)}`;
+    const priority = params.priority ?? 5;
+    const description = params.description ?? '';
+    const assignedTo = params.assignedTo ?? null;
+
+    this.db.exec('BEGIN TRANSACTION');
+    try {
+      this.db.prepare(`
+        INSERT INTO actions (id, project_id, title, description, status, priority, assigned_to)
+        VALUES (?, ?, ?, ?, 'pending', ?, ?)
+      `).run(actionId, params.projectId, params.title, description, priority, assignedTo);
+
+      if (params.requires && params.requires.length > 0) {
+        const stmt = this.db.prepare(`
+          INSERT OR IGNORE INTO action_edges (source_action_id, target_action_id, edge_type)
+          VALUES (?, ?, 'requires')
+        `);
+        for (const req of params.requires) {
+          stmt.run(actionId, req);
+        }
+      }
+
+      if (params.conflictsWith && params.conflictsWith.length > 0) {
+        const stmt = this.db.prepare(`
+          INSERT OR IGNORE INTO action_edges (source_action_id, target_action_id, edge_type)
+          VALUES (?, ?, 'conflicts_with')
+        `);
+        for (const conf of params.conflictsWith) {
+          stmt.run(actionId, conf);
+        }
+      }
+
+      this.db.exec('COMMIT');
+    } catch (err) {
+      this.db.exec('ROLLBACK');
+      throw err;
+    }
+
+    return this.getAction(actionId)!;
+  }
+
+  getAction(id: string): (Action & { requires: string[]; unlocks: string[]; conflictsWith: string[] }) | null {
+    const action = this.db.prepare('SELECT * FROM actions WHERE id = ?').get(id) as Action | undefined;
+    if (!action) return null;
+
+    const requiresRows = this.db.prepare(`
+      SELECT target_action_id FROM action_edges WHERE source_action_id = ? AND edge_type = 'requires'
+    `).all(id) as Array<{ target_action_id: string }>;
+
+    const unlocksRows = this.db.prepare(`
+      SELECT source_action_id FROM action_edges WHERE target_action_id = ? AND edge_type = 'requires'
+    `).all(id) as Array<{ source_action_id: string }>;
+
+    const conflictsRows = this.db.prepare(`
+      SELECT target_action_id FROM action_edges WHERE source_action_id = ? AND edge_type = 'conflicts_with'
+      UNION
+      SELECT source_action_id FROM action_edges WHERE target_action_id = ? AND edge_type = 'conflicts_with'
+    `).all(id, id) as Array<{ target_action_id: string }>;
+
+    return {
+      ...action,
+      requires: requiresRows.map((r) => r.target_action_id),
+      unlocks: unlocksRows.map((r) => r.source_action_id),
+      conflictsWith: conflictsRows.map((r) => (r as any).target_action_id),
+    };
+  }
+
+  updateAction(id: string, opts: {
+    status?: 'pending' | 'active' | 'done' | 'blocked' | 'cancelled';
+    assignedTo?: string | null;
+    crystallizedInto?: string | null;
+    priority?: number;
+    description?: string;
+  }): Action | null {
+    const existing = this.db.prepare('SELECT * FROM actions WHERE id = ?').get(id) as Action | undefined;
+    if (!existing) return null;
+
+    const sets: string[] = [];
+    const params: any[] = [];
+
+    if (opts.status !== undefined) {
+      sets.push('status = ?');
+      params.push(opts.status);
+      if (opts.status === 'done') {
+        sets.push('completed_at = ?');
+        params.push(new Date().toISOString());
+      }
+    }
+    if (opts.assignedTo !== undefined) {
+      sets.push('assigned_to = ?');
+      params.push(opts.assignedTo);
+    }
+    if (opts.crystallizedInto !== undefined) {
+      sets.push('crystallized_into = ?');
+      params.push(opts.crystallizedInto);
+    }
+    if (opts.priority !== undefined) {
+      sets.push('priority = ?');
+      params.push(opts.priority);
+    }
+    if (opts.description !== undefined) {
+      sets.push('description = ?');
+      params.push(opts.description);
+    }
+
+    if (sets.length > 0) {
+      params.push(id);
+      this.db.prepare(`UPDATE actions SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+    }
+
+    return this.getAction(id);
+  }
+
+  listActions(projectId: string, filter?: { status?: 'pending' | 'active' | 'done' | 'blocked' | 'cancelled'; assignedTo?: string }): Action[] {
+    let sql = 'SELECT * FROM actions WHERE project_id = ?';
+    const params: any[] = [projectId];
+
+    if (filter?.status) {
+      sql += ' AND status = ?';
+      params.push(filter.status);
+    }
+    if (filter?.assignedTo) {
+      sql += ' AND assigned_to = ?';
+      params.push(filter.assignedTo);
+    }
+
+    sql += ' ORDER BY priority DESC, created_at ASC';
+    return this.db.prepare(sql).all(...params) as unknown as Action[];
+  }
+
+  getFrontier(projectId: string): Action[] {
+    const query = `
+      SELECT a.*
+      FROM actions a
+      WHERE a.project_id = ?
+        AND a.status IN ('pending', 'active')
+        AND NOT EXISTS (
+          SELECT 1
+          FROM action_edges e
+          JOIN actions prereq ON prereq.id = e.target_action_id
+          WHERE e.source_action_id = a.id
+            AND e.edge_type = 'requires'
+            AND prereq.status != 'done'
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM action_edges e
+          JOIN actions conf ON (
+            (e.source_action_id = a.id AND conf.id = e.target_action_id)
+            OR
+            (e.target_action_id = a.id AND conf.id = e.source_action_id)
+          )
+          WHERE e.edge_type = 'conflicts_with'
+            AND conf.status = 'active'
+            AND conf.id != a.id
+        )
+      ORDER BY a.priority DESC, a.created_at ASC
+    `;
+    return this.db.prepare(query).all(projectId) as unknown as Action[];
+  }
+
+  getNextAction(projectId: string, agentId?: string): Action | null {
+    const frontier = this.getFrontier(projectId);
+    if (frontier.length === 0) return null;
+
+    const next = frontier[0];
+    if (agentId && next.status === 'pending') {
+      this.updateAction(next.id, { status: 'active', assignedTo: agentId });
+      return this.getAction(next.id);
+    }
+    return next;
+  }
+
+  // --- BOUNDED WORKING MEMORY SLOTS ---
+
+  setSlot(projectId: string, slotKey: string, content: string, sizeLimit: number = 4000): MemorySlot {
+    const normalizedKey = slotKey.trim().toLowerCase();
+    if (content.length > sizeLimit) {
+      throw new Error(`Content length (${content.length}) exceeds slot size limit (${sizeLimit} chars). Summarize before storing.`);
+    }
+
+    const nowIso = new Date().toISOString();
+    this.db.prepare(`
+      INSERT INTO memory_slots (project_id, slot_key, content, size_limit, updated_at)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(project_id, slot_key) DO UPDATE SET
+        content = excluded.content,
+        size_limit = excluded.size_limit,
+        updated_at = excluded.updated_at
+    `).run(projectId, normalizedKey, content, sizeLimit, nowIso);
+
+    return this.getSlot(projectId, normalizedKey)!;
+  }
+
+  getSlot(projectId: string, slotKey: string): MemorySlot | null {
+    const normalizedKey = slotKey.trim().toLowerCase();
+    const row = this.db.prepare(`
+      SELECT * FROM memory_slots WHERE project_id = ? AND slot_key = ?
+    `).get(projectId, normalizedKey) as unknown as MemorySlot | undefined;
+    return row ?? null;
+  }
+
+  listSlots(projectId: string): MemorySlot[] {
+    return this.db.prepare(`
+      SELECT * FROM memory_slots WHERE project_id = ? ORDER BY slot_key ASC
+    `).all(projectId) as unknown as MemorySlot[];
+  }
+
+  deleteSlot(projectId: string, slotKey: string): boolean {
+    const normalizedKey = slotKey.trim().toLowerCase();
+    const res = this.db.prepare(`
+      DELETE FROM memory_slots WHERE project_id = ? AND slot_key = ?
+    `).run(projectId, normalizedKey);
+    return res.changes > 0;
   }
 }

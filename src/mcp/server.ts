@@ -8,6 +8,7 @@ import { searchMemories } from '../search/hybrid-rrf.js';
 import { scrubSecrets } from '../privacy/scrubber.js';
 import { syncModulePage, syncAllModulePages } from '../mirror/markdown-pages.js';
 import { FastrConfig, loadConfig } from '../config.js';
+import { exportToObsidianVault } from '../export/obsidian.js';
 
 export interface ServerContext {
   db: DatabaseSync;
@@ -592,6 +593,448 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
       return {
         content: [{ type: 'text', text }]
       };
+    }
+  );
+
+  // ==========================================
+  // TOOL 15: fastr_conflicts
+  // ==========================================
+  server.registerTool(
+    'fastr_conflicts',
+    {
+      description: 'List detected contradictory memories and policy conflicts requiring resolution.',
+      inputSchema: {
+        status: z.enum(['open', 'resolved', 'ignored']).default('open').describe('Filter conflicts by status')
+      }
+    },
+    async ({ status }) => {
+      const conflicts = repo.listConflicts(config.projectId, status);
+      if (conflicts.length === 0) {
+        return {
+          content: [{ type: 'text', text: `_No ${status} memory conflicts detected in project._` }]
+        };
+      }
+
+      let text = `### FastrMemory Contradiction & Conflict Registry (${conflicts.length} ${status}):\n\n`;
+      for (const c of conflicts) {
+        const memA = repo.getMemory(c.memory_a_id);
+        const memB = repo.getMemory(c.memory_b_id);
+
+        text += `#### Conflict #${c.id} (Overlap Score: ${(c.score * 100).toFixed(0)}%)\n`;
+        text += `- **Reason**: ${c.reason}\n`;
+        text += `- **Memory A [${c.memory_a_id}]**: "${memA?.title || 'Unknown'}" (${memA?.module || 'general'})\n`;
+        text += `- **Memory B [${c.memory_b_id}]**: "${memB?.title || 'Unknown'}" (${memB?.module || 'general'})\n`;
+        if (c.status === 'resolved') {
+          text += `- **Status**: RESOLVED (Winner: \`${c.resolved_winner_id}\` at ${c.resolved_at})\n`;
+        } else {
+          text += `- **Action Required**: Call \`fastr_resolve\` with \`conflictId: ${c.id}\` and \`keepId\` set to the preferred rule.\n`;
+        }
+        text += `\n---\n\n`;
+      }
+
+      return {
+        content: [{ type: 'text', text }]
+      };
+    }
+  );
+
+  // ==========================================
+  // TOOL 16: fastr_resolve
+  // ==========================================
+  server.registerTool(
+    'fastr_resolve',
+    {
+      description: 'Resolve a memory contradiction by picking the winning rule and superseding or weakening the loser.',
+      inputSchema: {
+        conflictId: z.number().describe('Conflict ID from fastr_conflicts'),
+        keepId: z.string().describe('ID of the winning memory to preserve'),
+        forgetLoser: z.boolean().default(false).describe('Set true to supersede the loser immediately; false weakens loser score by -0.4'),
+        reason: z.string().optional().describe('Resolution rationale')
+      }
+    },
+    async ({ conflictId, keepId, forgetLoser, reason }) => {
+      try {
+        const res = repo.resolveConflict(conflictId, keepId, forgetLoser, reason);
+        const actionTaken = forgetLoser ? 'superseded' : 'penalized (-0.4)';
+        return {
+          content: [{
+            type: 'text',
+            text: `✅ **Resolved Conflict #${conflictId}**: Kept \`[${res.keptId}]\` as verified truth. Loser \`[${res.loserId}]\` was ${actionTaken}.`
+          }]
+        };
+      } catch (err: any) {
+        return {
+          content: [{ type: 'text', text: `❌ **Failed to resolve conflict #${conflictId}**: ${err.message}` }]
+        };
+      }
+    }
+  );
+
+  // ==========================================
+  // TOOL 17: fastr_predict
+  // ==========================================
+  server.registerTool(
+    'fastr_predict',
+    {
+      description: 'Record an effort/time/risk prediction or close an existing prediction with actual results.',
+      inputSchema: {
+        action: z.enum(['create', 'close', 'list']).default('create').describe('Action: create a new prediction, close with actual value, or list'),
+        classTag: z.string().optional().describe('Reference class category (e.g. migration, refactor, bugfix)'),
+        claimText: z.string().optional().describe('Forward-looking claim or task description'),
+        estimateValue: z.number().optional().describe('Numerical estimate (e.g. 2.5)'),
+        estimateUnit: z.string().optional().describe('Unit (e.g. hours, days, points)'),
+        predictionId: z.number().optional().describe('Prediction ID to close (required when action=close)'),
+        actualValue: z.number().optional().describe('Actual numerical outcome (required when action=close)')
+      }
+    },
+    async ({ action, classTag, claimText, estimateValue, estimateUnit, predictionId, actualValue }) => {
+      if (action === 'close') {
+        if (!predictionId || actualValue === undefined) {
+          return {
+            content: [{ type: 'text', text: `❌ **Error**: \`predictionId\` and \`actualValue\` are required to close a prediction.` }]
+          };
+        }
+        try {
+          const closed = repo.closePrediction(predictionId, actualValue);
+          const ratio = (closed.estimate_value && closed.estimate_value > 0)
+            ? (actualValue / closed.estimate_value).toFixed(2)
+            : 'N/A';
+          return {
+            content: [{
+              type: 'text',
+              text: `🎯 **Closed Prediction #${closed.id}** [${closed.class_tag}]: Estimated ${closed.estimate_value} ${closed.estimate_unit || ''} vs Actual ${closed.actual_value} (Ratio: ${ratio}x).`
+            }]
+          };
+        } catch (err: any) {
+          return { content: [{ type: 'text', text: `❌ **Error**: ${err.message}` }] };
+        }
+      }
+
+      if (action === 'list') {
+        const list = repo.listPredictions(config.projectId, { classTag });
+        if (list.length === 0) {
+          return { content: [{ type: 'text', text: `_No predictions found for project._` }] };
+        }
+        let text = `### Tracked Predictions (${list.length}):\n\n`;
+        for (const p of list) {
+          const statusIcon = p.closure_state === 'closed' ? '✅ CLOSED' : '⏳ OPEN';
+          text += `- **#${p.id}** [${p.class_tag}] (${statusIcon}): "${p.claim_text}" — Est: ${p.estimate_value ?? '?'} ${p.estimate_unit || ''}`;
+          if (p.actual_value !== null) text += ` | Act: ${p.actual_value}`;
+          text += `\n`;
+        }
+        return { content: [{ type: 'text', text }] };
+      }
+
+      // Default: create
+      if (!classTag || !claimText) {
+        return {
+          content: [{ type: 'text', text: `❌ **Error**: \`classTag\` and \`claimText\` are required to record a prediction.` }]
+        };
+      }
+
+      const pred = repo.createPrediction({
+        projectId: config.projectId,
+        classTag,
+        claimText,
+        estimateValue,
+        estimateUnit
+      });
+
+      // Also check if historical baserate exists to inform agent
+      const baserate = repo.getPredictionBaserate(config.projectId, classTag);
+      let text = `🎯 **Recorded Prediction #${pred.id}** [${pred.class_tag}]: "${pred.claim_text}" (Est: ${pred.estimate_value ?? '?'} ${pred.estimate_unit || ''})\n`;
+      if (baserate) {
+        text += `\n⚠️ **Planning Fallacy Calibration**: ${baserate.summary}\n`;
+      }
+
+      return {
+        content: [{ type: 'text', text }]
+      };
+    }
+  );
+
+  // ==========================================
+  // TOOL 18: fastr_predict_baserate
+  // ==========================================
+  server.registerTool(
+    'fastr_predict_baserate',
+    {
+      description: 'Get historical reference-class base-rate calibration statistics (Mean, Median p50 ratio, MAE) to debias agent planning.',
+      inputSchema: {
+        classTag: z.string().describe('Reference class category (e.g. migration, refactor, bugfix)')
+      }
+    },
+    async ({ classTag }) => {
+      const baserate = repo.getPredictionBaserate(config.projectId, classTag);
+      if (!baserate) {
+        return {
+          content: [{
+            type: 'text',
+            text: `_No closed prediction history found for class [${classTag}]. Record estimates and outcomes with \`fastr_predict\` to build calibration data._`
+          }]
+        };
+      }
+
+      let text = `### 📊 Reference Class Calibration: [${baserate.classTag}]\n\n`;
+      text += `- **Closed Samples**: ${baserate.count}\n`;
+      text += `- **Mean Ratio (Actual / Est)**: ${baserate.meanRatio.toFixed(2)}x\n`;
+      text += `- **Median Ratio (p50)**: ${baserate.medianRatio.toFixed(2)}x\n`;
+      text += `- **Mean Absolute Error (MAE)**: ${baserate.mae.toFixed(2)}\n`;
+      text += `- **Average Estimated**: ${baserate.meanEstimate.toFixed(1)}\n`;
+      text += `- **Average Actual**: ${baserate.meanActual.toFixed(1)}\n\n`;
+      text += `> **Debiasing Advice**: If estimating a task in this class, multiply your initial inside-view estimate by **${baserate.medianRatio.toFixed(2)}x** to avoid the Planning Fallacy.`;
+
+      return {
+        content: [{ type: 'text', text }]
+      };
+    }
+  );
+
+  // ==========================================
+  // TOOL 19: fastr_action_create
+  // ==========================================
+  server.registerTool(
+    'fastr_action_create',
+    {
+      description: 'Create a new work item action in the Multi-Agent Action DAG with dependencies and conflict constraints.',
+      inputSchema: {
+        title: z.string().describe('Clear imperative title of the action'),
+        description: z.string().optional().describe('Detailed action instructions or acceptance criteria'),
+        priority: z.number().default(5).describe('Priority from 1 (lowest) to 10 (highest)'),
+        requires: z.array(z.string()).optional().describe('Action IDs that must complete before this action is unblocked'),
+        conflictsWith: z.array(z.string()).optional().describe('Action IDs that cannot run concurrently with this action'),
+        assignedTo: z.string().optional().describe('Agent ID assigned to this action')
+      }
+    },
+    async ({ title, description, priority, requires, conflictsWith, assignedTo }) => {
+      const action = repo.createAction({
+        projectId: config.projectId,
+        title: scrubSecrets(title),
+        description: description ? scrubSecrets(description) : '',
+        priority,
+        requires,
+        conflictsWith,
+        assignedTo
+      });
+
+      return {
+        content: [{
+          type: 'text',
+          text: `📋 **Created Action [${action.id}]**: "${action.title}" (Priority: ${action.priority}, Status: ${action.status})`
+        }]
+      };
+    }
+  );
+
+  // ==========================================
+  // TOOL 20: fastr_action_update
+  // ==========================================
+  server.registerTool(
+    'fastr_action_update',
+    {
+      description: 'Update the lifecycle status, assignment, or crystallization of an action in the Action DAG.',
+      inputSchema: {
+        id: z.string().describe('Action ID to update'),
+        status: z.enum(['pending', 'active', 'done', 'blocked', 'cancelled']).optional().describe('New lifecycle status'),
+        assignedTo: z.string().optional().describe('Assign or reassign to an agent ID'),
+        crystallizedInto: z.string().optional().describe('Memory ID crystallized upon completion of this action'),
+        priority: z.number().optional().describe('Updated priority')
+      }
+    },
+    async ({ id, status, assignedTo, crystallizedInto, priority }) => {
+      const updated = repo.updateAction(id, {
+        status,
+        assignedTo,
+        crystallizedInto,
+        priority
+      });
+
+      if (!updated) {
+        return { content: [{ type: 'text', text: `❌ **Error**: Action \`${id}\` not found.` }] };
+      }
+
+      return {
+        content: [{
+          type: 'text',
+          text: `✅ **Updated Action [${updated.id}]**: Status changed to \`${updated.status}\`${updated.assigned_to ? ` (Assigned to: ${updated.assigned_to})` : ''}.`
+        }]
+      };
+    }
+  );
+
+  // ==========================================
+  // TOOL 21: fastr_frontier
+  // ==========================================
+  server.registerTool(
+    'fastr_frontier',
+    {
+      description: 'Get all unblocked, executable work item actions in the DAG whose prerequisites are satisfied and have no active conflicts.',
+      inputSchema: {
+        status: z.enum(['pending', 'active']).optional().describe('Optional status filter')
+      }
+    },
+    async ({ status }) => {
+      const frontier = repo.getFrontier(config.projectId);
+      if (frontier.length === 0) {
+        return {
+          content: [{ type: 'text', text: `_Frontier is empty. No unblocked actions currently pending._` }]
+        };
+      }
+
+      let text = `### 🚀 Action DAG Frontier (${frontier.length} unblocked actions):\n\n`;
+      for (const a of frontier) {
+        text += `- **[${a.id}]** [P${a.priority}] "${a.title}" — Status: \`${a.status}\`${a.assigned_to ? ` (Agent: \`${a.assigned_to}\`)` : ''}\n`;
+        if (a.description) text += `  > ${a.description.slice(0, 100)}\n`;
+      }
+
+      return { content: [{ type: 'text', text }] };
+    }
+  );
+
+  // ==========================================
+  // TOOL 22: fastr_next
+  // ==========================================
+  server.registerTool(
+    'fastr_next',
+    {
+      description: 'Atomically claim and return the highest-priority unblocked action ready for execution by an agent.',
+      inputSchema: {
+        agentId: z.string().optional().describe('Agent ID claiming this task (marks status as active)')
+      }
+    },
+    async ({ agentId }) => {
+      const next = repo.getNextAction(config.projectId, agentId);
+      if (!next) {
+        return {
+          content: [{ type: 'text', text: `_No executable tasks available in frontier._` }]
+        };
+      }
+
+      let text = `### 🎯 Next Claimed Action: [${next.id}]\n`;
+      text += `- **Title**: ${next.title}\n`;
+      text += `- **Priority**: ${next.priority}/10\n`;
+      text += `- **Status**: \`${next.status}\`\n`;
+      if (next.assigned_to) text += `- **Assigned To**: \`${next.assigned_to}\`\n`;
+      if (next.description) text += `\n**Instructions**:\n${next.description}\n`;
+
+      return { content: [{ type: 'text', text }] };
+    }
+  );
+
+  // ==========================================
+  // TOOL 23: fastr_slot_get
+  // ==========================================
+  server.registerTool(
+    'fastr_slot_get',
+    {
+      description: 'Retrieve a bounded working memory slot (e.g. current_goal, user_preferences, active_hypothesis).',
+      inputSchema: {
+        slotKey: z.string().describe('Key identifying the working memory slot')
+      }
+    },
+    async ({ slotKey }) => {
+      const slot = repo.getSlot(config.projectId, slotKey);
+      if (!slot) {
+        return {
+          content: [{ type: 'text', text: `_Working memory slot [${slotKey}] is empty._` }]
+        };
+      }
+
+      return {
+        content: [{
+          type: 'text',
+          text: `### 📌 Slot: [${slot.slot_key}]\n*(Updated: ${slot.updated_at} | Size: ${slot.content.length}/${slot.size_limit} chars)*\n\n${slot.content}`
+        }]
+      };
+    }
+  );
+
+  // ==========================================
+  // TOOL 24: fastr_slot_set
+  // ==========================================
+  server.registerTool(
+    'fastr_slot_set',
+    {
+      description: 'Store or update a bounded working memory slot. Enforces hard size bounds to avoid context bloat.',
+      inputSchema: {
+        slotKey: z.string().describe('Key identifying the working memory slot (e.g. current_goal)'),
+        content: z.string().describe('Text content to store in the slot'),
+        sizeLimit: z.number().default(4000).describe('Hard maximum character limit (default 4000)')
+      }
+    },
+    async ({ slotKey, content, sizeLimit }) => {
+      try {
+        const scrubbed = scrubSecrets(content);
+        const slot = repo.setSlot(config.projectId, slotKey, scrubbed, sizeLimit);
+        return {
+          content: [{
+            type: 'text',
+            text: `✅ **Updated Slot [${slot.slot_key}]**: ${slot.content.length}/${slot.size_limit} characters stored.`
+          }]
+        };
+      } catch (err: any) {
+        return {
+          content: [{ type: 'text', text: `❌ **Failed to set slot**: ${err.message}` }]
+        };
+      }
+    }
+  );
+
+  // ==========================================
+  // TOOL 25: fastr_slot_list
+  // ==========================================
+  server.registerTool(
+    'fastr_slot_list',
+    {
+      description: 'List all active bounded working memory slots and their size usages.',
+      inputSchema: {
+        filter: z.string().optional().describe('Optional slot key substring filter')
+      }
+    },
+    async ({ filter }) => {
+      let slots = repo.listSlots(config.projectId);
+      if (filter) {
+        slots = slots.filter((s) => s.slot_key.includes(filter.toLowerCase()));
+      }
+      if (slots.length === 0) {
+        return {
+          content: [{ type: 'text', text: `_No active working memory slots found._` }]
+        };
+      }
+
+      let text = `### 📌 Active Working Memory Slots (${slots.length}):\n\n`;
+      for (const s of slots) {
+        text += `- **[${s.slot_key}]**: ${s.content.length}/${s.size_limit} chars (updated: ${s.updated_at})\n`;
+      }
+      return { content: [{ type: 'text', text }] };
+    }
+  );
+
+  // ==========================================
+  // TOOL 26: fastr_obsidian_export
+  // ==========================================
+  server.registerTool(
+    'fastr_obsidian_export',
+    {
+      description: 'Export all project memories, entities, and links into an Obsidian-compatible markdown vault with YAML frontmatter, [[wikilinks]], and MOC.md.',
+      inputSchema: {
+        exportDir: z.string().describe('Target directory to output the Obsidian markdown vault')
+      }
+    },
+    async ({ exportDir }) => {
+      try {
+        const res = exportToObsidianVault(db, config.projectId, exportDir);
+        return {
+          content: [{
+            type: 'text',
+            text: `💎 **Exported Obsidian Vault**: ${res.exportedCount} memories and ${res.entitiesCount} entities exported to \`${res.targetDir}\` with YAML frontmatter, wikilinks, and \`MOC.md\` index.`
+          }]
+        };
+      } catch (err: any) {
+        return {
+          content: [{ type: 'text', text: `❌ **Failed to export Obsidian vault**: ${err.message}` }]
+        };
+      }
     }
   );
 

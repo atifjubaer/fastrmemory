@@ -10,6 +10,8 @@ import { runBenchmarks, formatBenchmarkMarkdown } from '../src/bench/benchmark.j
 import { startUiServer } from '../src/ui/server.js';
 import { installAgentHooks } from '../src/installer/hooks.js';
 import { learnFromGitHistory } from '../src/learn/git-learner.js';
+import { exportToObsidianVault } from '../src/export/obsidian.js';
+import { runLifecycleHook } from '../src/hooks/runner.js';
 
 const program = new Command();
 
@@ -225,6 +227,24 @@ hookCmd
     console.log(`\nAgent autonomous discipline active.\n`);
   });
 
+hookCmd
+  .command('run <event>')
+  .description('Direct sub-3ms execution of agent lifecycle hooks (SessionStart, PreToolUse, PreCompact, SessionEnd)')
+  .option('-p, --payload <json>', 'JSON payload with tool or session context', '{}')
+  .action((event, opts) => {
+    const ctx = createFastrServerContext();
+    let payload = {};
+    try {
+      payload = JSON.parse(opts.payload);
+    } catch {}
+    const res = runLifecycleHook(ctx, event, payload);
+    if (res.output) {
+      console.log(res.output);
+    } else {
+      console.log(res.message);
+    }
+  });
+
 // 11. Learn command (Git-History Auto-Learner)
 program
   .command('learn')
@@ -241,6 +261,19 @@ program
     for (const l of res.lessons) {
       console.log(`- [${l.commitHash}] (${l.module}): ${l.title}`);
     }
+  });
+
+// 12. Export command (Obsidian Vault & Markdown)
+program
+  .command('export')
+  .description('Export memories into external formats (Obsidian vault with wikilinks and YAML frontmatter)')
+  .requiredOption('--obsidian <dir>', 'Directory path to write Obsidian markdown vault')
+  .action((opts) => {
+    const ctx = createFastrServerContext();
+    console.log(`Exporting memories to Obsidian vault at: ${opts.obsidian}...`);
+    const res = exportToObsidianVault(ctx.db, ctx.config.projectId, opts.obsidian);
+    console.log(`Exported ${res.exportedCount} memories and ${res.entitiesCount} entities to ${res.targetDir}.`);
+    console.log(`Vault ready with YAML frontmatter, [[wikilinks]], and MOC.md index.`);
   });
 
 program.parse(process.argv);
