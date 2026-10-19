@@ -1,9 +1,13 @@
 import * as http from 'node:http';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { exec } from 'node:child_process';
 import { FastrConfig } from '../config.js';
 import { initDatabase } from '../db/schema.js';
 import { FastrRepository } from '../db/repository.js';
 import { SpoolManager } from '../db/spool.js';
+import { globalBroadcaster } from './sse.js';
 
 export interface UiServerOptions {
   port?: number;
@@ -183,6 +187,7 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
             const reason = data.reason ? String(data.reason) : undefined;
 
             const result = repo.resolveConflict(conflictId, keepMemoryId, forgetLoser, reason);
+            globalBroadcaster.broadcast('conflict_resolved', result);
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify(result));
           } catch (err: any) {
@@ -193,7 +198,33 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
         return;
       }
 
-      // UI Single-Page Dashboard
+      // API: Server-Sent Events (SSE) Stream
+      if (url.pathname === '/api/stream') {
+        globalBroadcaster.addClient(res);
+        return;
+      }
+
+      // Static File Serving (from precompiled dist-ui if present)
+      const distDir = getDistUiDir();
+      if (distDir && fs.existsSync(path.join(distDir, 'index.html'))) {
+        const reqPath = url.pathname === '/' ? '/index.html' : url.pathname;
+        const filePath = path.join(distDir, reqPath);
+        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+          const ext = path.extname(filePath).toLowerCase();
+          res.writeHead(200, { 'Content-Type': MIME_TYPES[ext] || 'application/octet-stream' });
+          fs.createReadStream(filePath).pipe(res);
+          return;
+        }
+
+        // SPA fallback for non-API routes
+        if (!url.pathname.startsWith('/api')) {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          fs.createReadStream(path.join(distDir, 'index.html')).pipe(res);
+          return;
+        }
+      }
+
+      // Fallback UI Single-Page Dashboard (inline template)
       if (url.pathname === '/' || url.pathname === '/index.html') {
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
         res.end(renderDashboardHtml(config.projectId, config.projectName));
@@ -227,6 +258,9 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
 
     server.on('close', () => {
       try {
+        globalBroadcaster.close();
+      } catch {}
+      try {
         db.close();
       } catch {
         // Already closed
@@ -235,6 +269,33 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
 
     server.listen(preferredPort);
   });
+}
+
+const MIME_TYPES: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.json': 'application/json',
+  '.ico': 'image/x-icon',
+};
+
+function getDistUiDir(): string | null {
+  try {
+    const base = path.dirname(fileURLToPath(import.meta.url));
+    const candidates = [
+      path.resolve(base, '..', '..', 'dist-ui'),
+      path.resolve(base, '..', 'dist-ui'),
+      path.resolve(process.cwd(), 'dist-ui'),
+    ];
+    for (const c of candidates) {
+      if (fs.existsSync(c)) {
+        return c;
+      }
+    }
+  } catch {}
+  return null;
 }
 
 function renderDashboardHtml(projectId: string, projectName: string): string {

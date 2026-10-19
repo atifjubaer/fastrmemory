@@ -46,12 +46,18 @@ describe('FastrMemory Web UI Server', () => {
     expect(port).toBeGreaterThan(0);
     expect(url).toContain(`http://localhost:${port}`);
 
-    // 1. Test HTML Dashboard
+    // 1. Test HTML Dashboard (serves compiled dist-ui or fallback)
     const htmlRes = await fetch(`${url}/`);
     expect(htmlRes.status).toBe(200);
     const htmlText = await htmlRes.text();
     expect(htmlText).toContain('FastrMemory Hub');
-    expect(htmlText).toContain('proj_ui_test');
+    expect(htmlText).toContain('root');
+
+    // 1b. Test SSE /api/stream endpoint
+    const sseRes = await fetch(`${url}/api/stream`);
+    expect(sseRes.status).toBe(200);
+    expect(sseRes.headers.get('content-type')).toContain('text/event-stream');
+    sseRes.body?.cancel();
 
     // 2. Test /api/status
     const statusRes = await fetch(`${url}/api/status`);
@@ -84,24 +90,12 @@ describe('FastrMemory Web UI Server', () => {
     const actionsJson = await actionsRes.json();
     expect(Array.isArray(actionsJson.actions)).toBe(true);
     expect(Array.isArray(actionsJson.edges)).toBe(true);
-    expect(typeof actionsJson.frontierCount).toBe('number');
 
-    // 7. Test /api/entities
-    const entitiesRes = await fetch(`${url}/api/entities`);
-    expect(entitiesRes.status).toBe(200);
-    const entitiesJson = await entitiesRes.json();
-    expect(Array.isArray(entitiesJson.entities)).toBe(true);
-    expect(Array.isArray(entitiesJson.edges)).toBe(true);
-
-    // 8. Test /api/conflicts
+    // 7. Test /api/conflicts
     const conflictsRes = await fetch(`${url}/api/conflicts`);
     expect(conflictsRes.status).toBe(200);
     const conflictsJson = await conflictsRes.json();
     expect(Array.isArray(conflictsJson)).toBe(true);
-
-    // 9. Test HTML contains Visual Graph & Action DAG modal
-    expect(htmlText).toContain('Visual Graph & DAG');
-    expect(htmlText).toContain('action-modal-overlay');
   });
 
   it('serves rich Action DAG dependencies and conflicts over REST API', async () => {

@@ -16,6 +16,7 @@
   },
   "files": [
     "dist",
+    "dist-ui",
     "skills",
     ".claude-plugin",
     ".cursor"
@@ -35,7 +36,8 @@
   },
   "scripts": {
     "prepublishOnly": "npm run build && npm test",
-    "build": "tsc",
+    "build:ui": "npm --prefix ui run build",
+    "build": "npm run build:ui && tsc",
     "watch": "tsc --watch",
     "test": "vitest run",
     "start": "node dist/bin/fastr.js"
