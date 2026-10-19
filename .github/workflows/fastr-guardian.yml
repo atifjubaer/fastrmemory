@@ -1,0 +1,88 @@
+name: FastrMemory Trap Guardian
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  trap-guardian:
+    name: Pre-Merge Trap Guardian
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository with Full History
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: |
+          npm ci --ignore-scripts
+          npm --prefix ui ci --ignore-scripts
+
+      - name: Build Engine & UI
+        run: npm run build
+
+      - name: Run FastrMemory Pre-Merge Trap Guardian
+        id: guardian
+        run: |
+          BASE_REF="${{ github.base_ref || 'main' }}"
+          echo "Checking modified files against base: origin/$BASE_REF"
+          node dist/bin/fastr.js guard --base "origin/$BASE_REF" --output guardian-report.md
+        continue-on-error: true
+
+      - name: Publish Job Summary
+        if: always()
+        run: |
+          if [ -f guardian-report.md ]; then
+            cat guardian-report.md >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Post PR Review Comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (!fs.existsSync('guardian-report.md')) return;
+            const report = fs.readFileSync('guardian-report.md', 'utf8');
+
+            const botHeader = '<!-- fastrmemory-trap-guardian -->';
+            const body = `${botHeader}\n${report}`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existingComment = comments.find(c => c.body && c.body.includes(botHeader));
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }

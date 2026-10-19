@@ -20,6 +20,7 @@ import { executeMemoryCommit } from '../src/git/commit.js';
 import { compressFile } from '../src/compress/markdown.js';
 import { diagnoseDatabase, healDatabase } from '../src/db/doctor.js';
 import { tagVisionAsset, searchVisionAssets } from '../src/vision/assets.js';
+import { runTrapGuardian } from '../src/ci/guardian.js';
 
 const BANNER = `
 \x1b[38;2;56;189;248m   ______           __        __  ___                                \x1b[0m
@@ -670,6 +671,38 @@ visionCmd
       console.log('');
     } catch (err: any) {
       console.error(`Vision search error: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+// 21. Trap Guardian command (CI/CD and local pre-merge gate)
+program
+  .command('guard')
+  .description('Run Pre-Merge Trap Guardian to detect error traps protecting modified files')
+  .option('-b, --base <branch>', 'Base branch to diff against', 'origin/main')
+  .option('-s, --strict', 'Fail CI with exit code 1 if active traps are detected on modified files', false)
+  .option('-o, --output <file>', 'Write markdown report to file (e.g. for GITHUB_STEP_SUMMARY)')
+  .option('-f, --files <fileList>', 'Comma-separated list of files to check (overrides git diff)')
+  .action((opts: any) => {
+    try {
+      const customFiles = opts.files ? opts.files.split(',').map((f: string) => f.trim()).filter(Boolean) : undefined;
+      const res = runTrapGuardian({
+        baseBranch: opts.base,
+        strict: opts.strict,
+        customFiles
+      });
+
+      console.log(res.markdownReport);
+
+      if (opts.output) {
+        fs.writeFileSync(opts.output, res.markdownReport, 'utf-8');
+      }
+
+      if (!res.success) {
+        process.exit(1);
+      }
+    } catch (err: any) {
+      console.error(`Guardian error: ${err.message}`);
       process.exit(1);
     }
   });
