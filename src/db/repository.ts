@@ -143,6 +143,7 @@ export class FastrRepository {
   insertMemory(params: CreateMemoryParams): Memory {
     const id = `mem_${crypto.randomBytes(4).toString('hex')}`;
     const module = params.module?.trim().toLowerCase() || 'general';
+    const kind = params.kind || 'rule';
     const status = params.verified ? 'verified' : 'staging';
     const pinned = params.pinned ? 1 : 0;
     const sourceIds = JSON.stringify(params.sourceEventIds?.slice(-32) || []);
@@ -159,7 +160,7 @@ export class FastrRepository {
       targetProject,
       params.agentId || 'default',
       module,
-      params.kind,
+      kind,
       params.title,
       params.content,
       status,

@@ -144,6 +144,42 @@ describe('FastrMemory Web UI Server', () => {
     expect(itemB.isFrontier).toBe(false);
     expect(itemB.requires).toContain(taskA.id);
 
+    // Test POST /api/conflicts/resolve endpoint
+    const mem1 = repo.insertMemory({
+      projectId: config.projectId,
+      title: 'Always use tabs',
+      content: 'Always use tabs for indentation across all files.',
+      module: 'formatting',
+    });
+    const mem2 = repo.insertMemory({
+      projectId: config.projectId,
+      title: 'Never use tabs, use spaces',
+      content: 'Never use tabs, use spaces for indentation.',
+      module: 'formatting',
+    });
+
+    const conflicts = repo.listConflicts(config.projectId, 'open');
+    expect(conflicts.length).toBeGreaterThan(0);
+    const targetConflict = conflicts[0];
+
+    const resolveRes = await fetch(`http://localhost:${(serverInstance!.address() as any).port}/api/conflicts/resolve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        conflictId: targetConflict.id,
+        keepMemoryId: mem1.id,
+        forgetLoser: true,
+      }),
+    });
+
+    expect(resolveRes.status).toBe(200);
+    const resolveJson = await resolveRes.json();
+    expect(resolveJson.success).toBe(true);
+    expect(resolveJson.keptId).toBe(mem1.id);
+
+    const updatedConflicts = repo.listConflicts(config.projectId, 'open');
+    expect(updatedConflicts.find(c => c.id === targetConflict.id)).toBeUndefined();
+
     db.close();
   });
 });

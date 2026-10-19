@@ -26,7 +26,8 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
 
       // Enable CORS for local dev
       res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
       res.setHeader('Connection', 'close');
 
       if (req.method === 'OPTIONS') {
@@ -166,6 +167,29 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
         const conflicts = repo.listConflicts(config.projectId, 'open');
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(conflicts));
+        return;
+      }
+
+      // API: Resolve Memory Conflict
+      if (req.method === 'POST' && url.pathname === '/api/conflicts/resolve') {
+        let body = '';
+        req.on('data', (chunk) => { body += chunk; });
+        req.on('end', () => {
+          try {
+            const data = JSON.parse(body || '{}');
+            const conflictId = Number(data.conflictId);
+            const keepMemoryId = String(data.keepMemoryId);
+            const forgetLoser = Boolean(data.forgetLoser);
+            const reason = data.reason ? String(data.reason) : undefined;
+
+            const result = repo.resolveConflict(conflictId, keepMemoryId, forgetLoser, reason);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(result));
+          } catch (err: any) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: err.message || 'Failed to resolve conflict' }));
+          }
+        });
         return;
       }
 
@@ -651,6 +675,8 @@ function renderDashboardHtml(projectId: string, projectName: string): string {
           <div class="legend-item"><div class="legend-dot" style="background: #ec4899;"></div> Entity Link</div>
         </div>
         <div class="graph-controls">
+          <button class="graph-btn" onclick="zoomGraph(1.2)">Zoom +</button>
+          <button class="graph-btn" onclick="zoomGraph(0.8)">Zoom -</button>
           <button class="graph-btn" onclick="resetGraphZoom()">Reset View</button>
           <button class="graph-btn" onclick="toggleGraphPhysics()">Pause/Play Physics</button>
         </div>
@@ -963,6 +989,25 @@ function renderDashboardHtml(projectId: string, projectName: string): string {
       }).join('');
     }
 
+    async function resolveConflictAction(conflictId, keepMemoryId, forgetLoser) {
+      try {
+        const res = await fetch('/api/conflicts/resolve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conflictId, keepMemoryId, forgetLoser, reason: 'Resolved via FastrMemory Hub' })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          alert('Failed to resolve: ' + (err.error || 'Unknown error'));
+          return;
+        }
+        await loadConflictsList();
+        await loadStatus();
+      } catch (err) {
+        alert('Resolution request failed: ' + err.message);
+      }
+    }
+
     async function loadConflictsList() {
       try {
         const res = await fetch('/api/conflicts');
@@ -981,8 +1026,13 @@ function renderDashboardHtml(projectId: string, projectName: string): string {
               '<span style="font-size: 11px; color: var(--text-muted);">' + c.created_at + '</span>' +
             '</div>' +
             '<div style="font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 6px;">' + escapeHtml(c.reason) + '</div>' +
-            '<div style="font-size: 12px; color: var(--text-muted); font-family: monospace;">' +
+            '<div style="font-size: 12px; color: var(--text-muted); font-family: monospace; margin-bottom: 12px;">' +
               'Memory A: <code style="color: #60a5fa;">' + c.memory_a_id + '</code> vs Memory B: <code style="color: #f43f5e;">' + c.memory_b_id + '</code>' +
+            '</div>' +
+            '<div style="display: flex; gap: 8px; flex-wrap: wrap;">' +
+              '<button class="pill" style="background: rgba(59, 130, 246, 0.15); border-color: #3b82f6; color: #93c5fd; font-size: 11px; padding: 4px 10px;" onclick="resolveConflictAction(' + c.id + ', \'' + c.memory_a_id + '\', true)">Keep ' + c.memory_a_id + ' (Deprecate B)</button>' +
+              '<button class="pill" style="background: rgba(244, 63, 94, 0.15); border-color: #f43f5e; color: #fca5a5; font-size: 11px; padding: 4px 10px;" onclick="resolveConflictAction(' + c.id + ', \'' + c.memory_b_id + '\', true)">Keep ' + c.memory_b_id + ' (Deprecate A)</button>' +
+              '<button class="pill" style="background: rgba(255, 255, 255, 0.05); color: #cbd5e1; font-size: 11px; padding: 4px 10px;" onclick="resolveConflictAction(' + c.id + ', \'' + c.memory_a_id + '\', false)">Keep Both (Weaken B)</button>' +
             '</div>' +
           '</div>';
         }).join('');
@@ -991,8 +1041,15 @@ function renderDashboardHtml(projectId: string, projectName: string): string {
       }
     }
 
-    function openMemoryModal(id) {
-      const mem = allMemories.find(m => m.id === id);
+    async function openMemoryModal(id) {
+      let mem = allMemories.find(m => m.id === id);
+      if (!mem) {
+        try {
+          const res = await fetch('/api/memories?q=' + encodeURIComponent(id));
+          const results = await res.json();
+          mem = results.find(m => m.id === id);
+        } catch (e) {}
+      }
       if (!mem) return;
 
       document.getElementById('modal-title').textContent = mem.title;
@@ -1017,8 +1074,14 @@ function renderDashboardHtml(projectId: string, projectName: string): string {
       document.getElementById('modal-overlay').classList.remove('active');
     }
 
-    function openActionModal(id) {
-      const act = allActionsData.actions.find(a => a.id === id);
+    async function openActionModal(id) {
+      if (!allActionsData || !allActionsData.actions) {
+        try {
+          const res = await fetch('/api/actions');
+          allActionsData = await res.json();
+        } catch (e) {}
+      }
+      const act = (allActionsData?.actions || []).find(a => a.id === id);
       if (!act) return;
 
       document.getElementById('act-modal-title').textContent = act.title;
@@ -1056,14 +1119,18 @@ function renderDashboardHtml(projectId: string, projectName: string): string {
 
     // --- HTML5 CANVAS VISUALIZER (KNOWLEDGE GRAPH & ACTION DAG) ---
     let canvas, ctx, nodes = [], edges = [], transform = { x: 0, y: 0, k: 1 };
-    let isDragging = false, dragNode = null, dragStart = { x: 0, y: 0 };
+    let isDragging = false, dragNode = null, dragStart = { x: 0, y: 0 }, dragStartMouse = { x: 0, y: 0 };
+    let resizeListenerAdded = false, animationFrameId = null;
 
     async function initGraphCanvas() {
       canvas = document.getElementById('graph-canvas');
       if (!canvas) return;
       ctx = canvas.getContext('2d');
       resizeCanvas();
-      window.addEventListener('resize', resizeCanvas);
+      if (!resizeListenerAdded) {
+        window.addEventListener('resize', resizeCanvas);
+        resizeListenerAdded = true;
+      }
 
       if (graphMode === 'knowledge') {
         await loadKnowledgeGraph();
@@ -1071,6 +1138,10 @@ function renderDashboardHtml(projectId: string, projectName: string): string {
         await loadActionsGraph();
       }
       setupGraphInteraction();
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
       animateGraph();
     }
 
@@ -1190,6 +1261,7 @@ function renderDashboardHtml(projectId: string, projectName: string): string {
 
     function setupGraphInteraction() {
       canvas.onmousedown = (e) => {
+        dragStartMouse = { x: e.clientX, y: e.clientY };
         const mouseX = (e.offsetX - transform.x) / transform.k;
         const mouseY = (e.offsetY - transform.y) / transform.k;
         const hit = nodes.find(n => Math.hypot(n.x - mouseX, n.y - mouseY) < n.radius + 6);
@@ -1213,12 +1285,20 @@ function renderDashboardHtml(projectId: string, projectName: string): string {
         }
       };
 
-      window.onmouseup = () => {
-        if (dragNode && Math.hypot(dragNode.vx, dragNode.vy) < 0.1) {
+      window.onmouseup = (e) => {
+        const mouseDist = Math.hypot(e.clientX - dragStartMouse.x, e.clientY - dragStartMouse.y);
+        if (dragNode && mouseDist < 6) {
           if (dragNode.type === 'memory') {
             openMemoryModal(dragNode.id);
           } else if (dragNode.type === 'action') {
             openActionModal(dragNode.id);
+          } else if (dragNode.type === 'file') {
+            switchTab('memories');
+            const searchInput = document.getElementById('search-input');
+            if (searchInput) {
+              searchInput.value = dragNode.label;
+              loadMemories(dragNode.label);
+            }
           }
         }
         dragNode = null;
@@ -1232,6 +1312,10 @@ function renderDashboardHtml(projectId: string, projectName: string): string {
       };
     }
 
+    function zoomGraph(factor) {
+      transform.k = Math.max(0.3, Math.min(3, transform.k * factor));
+    }
+
     function resetGraphZoom() {
       transform = { x: 0, y: 0, k: 1 };
     }
@@ -1241,7 +1325,10 @@ function renderDashboardHtml(projectId: string, projectName: string): string {
     }
 
     function animateGraph() {
-      if (currentTab !== 'graph') return;
+      if (currentTab !== 'graph') {
+        animationFrameId = null;
+        return;
+      }
 
       if (graphSimulationRunning) {
         // Node repulsion
@@ -1381,7 +1468,7 @@ function renderDashboardHtml(projectId: string, projectName: string): string {
       }
 
       ctx.restore();
-      requestAnimationFrame(animateGraph);
+      animationFrameId = requestAnimationFrame(animateGraph);
     }
 
     // Debounce search
@@ -1395,6 +1482,8 @@ function renderDashboardHtml(projectId: string, projectName: string): string {
 
     loadStatus();
     loadMemories();
+    loadActionsBoard();
+    loadConflictsList();
   </script>
 </body>
 </html>`;
