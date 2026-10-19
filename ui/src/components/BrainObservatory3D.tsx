@@ -46,6 +46,9 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
   const controlsRef = useRef<OrbitControls | null>(null);
   const nodesRef = useRef<Node3DData[]>([]);
   const linesMeshRef = useRef<THREE.LineSegments | null>(null);
+  const targetCamPosRef = useRef<THREE.Vector3 | null>(null);
+  const targetLookAtRef = useRef<THREE.Vector3 | null>(null);
+  const starFieldRef = useRef<THREE.Points | null>(null);
 
   // Filter memories
   const filteredMemories = useMemo(() => {
@@ -115,10 +118,49 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
     (gridHelper.material as THREE.Material).opacity = 0.25;
     scene.add(gridHelper);
 
+    // 7. Ambient Cosmic Star Dust Field (350 floating particles)
+    const starCount = 350;
+    const starGeom = new THREE.BufferGeometry();
+    const starPositions = new Float32Array(starCount * 3);
+    for (let s = 0; s < starCount * 3; s += 3) {
+      starPositions[s] = (Math.random() - 0.5) * 90;
+      starPositions[s + 1] = (Math.random() - 0.5) * 60;
+      starPositions[s + 2] = (Math.random() - 0.5) * 90;
+    }
+    starGeom.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+    const starMat = new THREE.PointsMaterial({
+      color: 0x94a3b8,
+      size: 0.18,
+      transparent: true,
+      opacity: 0.45,
+    });
+    const starField = new THREE.Points(starGeom, starMat);
+    scene.add(starField);
+    starFieldRef.current = starField;
+
     // Animation Loop
     let animId: number;
     const animate = () => {
       animId = requestAnimationFrame(animate);
+
+      if (starFieldRef.current) {
+        starFieldRef.current.rotation.y += 0.0003;
+      }
+
+      // Smooth camera lerp interpolation (60 FPS fluid transitions)
+      if (targetCamPosRef.current && camera) {
+        camera.position.lerp(targetCamPosRef.current, 0.06);
+        if (camera.position.distanceTo(targetCamPosRef.current) < 0.04) {
+          targetCamPosRef.current = null;
+        }
+      }
+
+      if (targetLookAtRef.current && controls) {
+        controls.target.lerp(targetLookAtRef.current, 0.06);
+        if (controls.target.distanceTo(targetLookAtRef.current) < 0.04) {
+          targetLookAtRef.current = null;
+        }
+      }
 
       controls.autoRotate = isRotatingRef.current;
       controls.update();
@@ -372,6 +414,8 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
         const found = nodesRef.current.find((n) => n.mesh === hitMesh);
         if (found) {
           onSelectMemory(found.memory);
+          targetCamPosRef.current = found.position.clone().add(new THREE.Vector3(0, 1.8, 6.5));
+          targetLookAtRef.current = found.position.clone();
         }
       }
     },
@@ -379,11 +423,8 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
   );
 
   const resetCamera = () => {
-    if (!cameraRef.current || !controlsRef.current) return;
-    cameraRef.current.position.set(0, 12, 34);
-    cameraRef.current.lookAt(0, 0, 0);
-    controlsRef.current.target.set(0, 0, 0);
-    controlsRef.current.update();
+    targetCamPosRef.current = new THREE.Vector3(0, 12, 34);
+    targetLookAtRef.current = new THREE.Vector3(0, 0, 0);
   };
 
   return (

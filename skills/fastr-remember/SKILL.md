@@ -1,31 +1,28 @@
 ---
 name: fastr-remember
-description: Curated memory ingestion with automatic secret scrubbing, module tagging, and Two-Zone Git mirroring.
+description: Autonomous memory consolidation, semantic deduplication, and slot allocation.
 ---
 
-# FastrMemory: Curated Memory Ingestion Protocol
+# FastrMemory Remember Protocol
 
-## Ingestion Guidelines
-FastrMemory emphasizes high signal-to-noise ratio. Record durable lessons, architectural invariants, and preventative error traps. Avoid transient noise.
+## Overview
+Stores durable learnings, architecture patterns, user preferences, and implementation invariants into the project's SQLite WAL store with cryptographic provenance and bi-temporal timestamps.
 
-## Memory Kinds
-- `rule`: Hard architectural invariant (e.g. "Always use integer seconds for JWT exp").
-- `error_trap`: Bug fix or subtle trap to prevent future regression (receives 2.0x boost).
-- `decision`: Architecture Decision Record (ADR) explaining why a technology or pattern was chosen.
-- `workflow`: Step-by-step procedure (e.g. migration, release process).
+## When to Invoke
+- After successfully establishing a new architectural pattern.
+- After discovering a subtle API constraint or library nuance.
+- When the user explicitly states a project preference or guideline.
 
-## Usage
-Invoke `fastr_remember`:
-
-```json
-{
-  "module": "api",
-  "kind": "rule",
-  "title": "Strict DTO Validation on Incoming Requests",
-  "content": "All REST endpoints must validate input through Zod v4 schemas before processing.",
-  "files": ["src/api/routes.ts"],
-  "verified": true,
-  "pinned": false
-}
-```
-All credentials, API keys, and Bearer tokens are automatically scrubbed before persistence.
+## Execution Rules
+1. **Check for Redundancy First**:
+   Always call `fastr_recall` with the prospective title before storing.
+   - If an identical memory exists: skip storage or call `fastr_feedback`.
+   - If a superseded version exists: call `fastr_supersede(oldId, newContent)`.
+2. **Store Structured Memory**:
+   Call `fastr_remember` with:
+   - `content`: Clear, actionable, imperative rule or finding.
+   - `category`: `architecture` | `convention` | `preference` | `bugfix` | `workflow`.
+   - `tags`: Key searchable identifiers (e.g., `["auth", "fastify", "jwt"]`).
+   - `tier`: `verified` (high confidence) or `staging` (experimental).
+3. **Slot Allocation**:
+   For key-value settings or project metadata (e.g., `active_model`, `target_node_version`), use `fastr_slot_set(key, value)`.

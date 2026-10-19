@@ -1,27 +1,30 @@
 ---
 name: fastr-handoff
-description: Seamless multi-agent task handoff and session milestone synchronization.
+description: Structured agent session handoff, staging memory graduation, and context compaction.
 ---
 
-# FastrMemory: Cross-Agent Session Handoff Protocol
+# FastrMemory Session Handoff & Staging Graduation
 
-## When to Execute
-- When handing over work to another developer or AI agent (e.g. from Claude Code in terminal to Cursor in IDE).
-- When ending a coding session or reaching a major milestone.
+## Overview
+Generates zero-loss session compaction summaries, computes memory deltas, graduates staging hypotheses into permanent verified rules, and writes a handoff transcript for incoming agents.
 
-## Steps
-1. Ensure all new code passes automated tests (`npm test`).
-2. Call `fastr_handoff` with `action: 'save'` and `verifyStaging: true`:
+## When to Invoke
+- At the end of every significant work session or task completion.
+- Prior to context window compaction (`/compact`) or agent handoff.
+- When passing project state from one subagent to another.
 
-```json
-{
-  "action": "save",
-  "taskTitle": "Feature name or refactor milestone",
-  "summary": "Concrete summary of what was completed, tested, and verified.",
-  "nextStep": "Immediate bounded action for the resuming agent.",
-  "activeFiles": ["src/path/to/file.ts"],
-  "verifyStaging": true
-}
-```
-
-3. When a new session resumes, inspect `fastr://session/handoff` or call `fastr_handoff({ action: "latest" })` to immediately pick up without lost context.
+## Workflow
+1. **Pre-Handoff Verification**:
+   Verify that all unit tests pass and active error traps were obeyed.
+2. **Execute Handoff Tool**:
+   ```ts
+   fastr_handoff({
+     verifyStaging: true, // Promotes staging hypotheses to verified tier
+     summary: "Completed Phase 1 Planetary Skills and multi-IDE auto-installer.",
+     nextAction: "Implement src/daemon/service.ts for background REST/SSE execution."
+   })
+   ```
+3. **Inspect Handoff Artifact**:
+   - `graduated_memories`: List of promoted rules.
+   - `purged_deadends`: Staging hypotheses that failed verification.
+   - `handoff_token`: Cryptographic hash binding the session lineage.

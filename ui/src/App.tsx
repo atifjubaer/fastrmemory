@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Zap,
   Search,
@@ -50,6 +50,8 @@ export const App: React.FC = () => {
   const [activeModalAction, setActiveModalAction] = useState<ActionItem | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [liveNotification, setLiveNotification] = useState<string | null>(null);
+  const [focusedRowIndex, setFocusedRowIndex] = useState(0);
+  const filteredMemoriesRef = useRef<MemoryItem[]>([]);
 
   // New Memory Form State
   const [newTitle, setNewTitle] = useState('');
@@ -160,7 +162,21 @@ export const App: React.FC = () => {
         setActiveModalAction(null);
         setIsCreateModalOpen(false);
       } else if (!isInput) {
-        if (e.key === '1') { switchTab('overview'); }
+        if (e.key === 'j' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          setFocusedRowIndex((prev) => Math.min(prev + 1, Math.max(0, filteredMemoriesRef.current.length - 1)));
+        } else if (e.key === 'k' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          setFocusedRowIndex((prev) => Math.max(0, prev - 1));
+        } else if (e.key === 'Enter') {
+          setFocusedRowIndex((idx) => {
+            const mem = filteredMemoriesRef.current[idx];
+            if (mem) {
+              setActiveModalMemory(mem);
+            }
+            return idx;
+          });
+        } else if (e.key === '1') { switchTab('overview'); }
         else if (e.key === '2' || e.key.toLowerCase() === 'o') { switchTab('observatory'); }
         else if (e.key === '3') { switchTab('memories'); }
         else if (e.key === '4') { switchTab('traps'); }
@@ -286,6 +302,7 @@ export const App: React.FC = () => {
       m.id.toLowerCase().includes(searchQuery.toLowerCase());
     return matchMod && matchQ;
   });
+  filteredMemoriesRef.current = filteredMemories;
 
   const traps = memories.filter((m) => m.kind === 'error_trap');
 
@@ -627,12 +644,15 @@ export const App: React.FC = () => {
 
                     {/* Table Rows */}
                     <div style={{ maxHeight: '640px', overflowY: 'auto' }}>
-                      {filteredMemories.map((m) => {
-                        const isSelected = activeModalMemory?.id === m.id;
+                      {filteredMemories.map((m, idx) => {
+                        const isSelected = activeModalMemory?.id === m.id || focusedRowIndex === idx;
                         return (
                           <div
                             key={m.id}
-                            onClick={() => setActiveModalMemory(m)}
+                            onClick={() => {
+                              setFocusedRowIndex(idx);
+                              setActiveModalMemory(m);
+                            }}
                             className={`instrument-row ${isSelected ? 'active' : ''}`}
                             style={{
                               display: 'grid',

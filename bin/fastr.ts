@@ -12,6 +12,11 @@ import { installAgentHooks } from '../src/installer/hooks.js';
 import { learnFromGitHistory } from '../src/learn/git-learner.js';
 import { exportToObsidianVault } from '../src/export/obsidian.js';
 import { runLifecycleHook } from '../src/hooks/runner.js';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { startDaemon, stopDaemon, getDaemonStatus, getDaemonPidFile } from '../src/daemon/service.js';
+import { cognitiveBlame } from '../src/git/blame.js';
+import { executeMemoryCommit } from '../src/git/commit.js';
 
 const BANNER = `
 \x1b[38;2;56;189;248m   ______           __        __  ___                                \x1b[0m
@@ -366,6 +371,154 @@ globalCmd
       verified: true,
     });
     console.log(`Recorded global organization memory [${mem.id}] "${mem.title}". Applies across all projects.`);
+  });
+
+// 14. Hybrid Background Daemon commands
+const daemonCmd = program.command('daemon').description('Manage hybrid background REST API & SSE daemon service');
+
+daemonCmd
+  .command('start')
+  .description('Start FastrMemory daemon in the background')
+  .option('-p, --port <number>', 'Port to listen on', '4242')
+  .action(async (opts) => {
+    const port = parseInt(opts.port, 10) || 4242;
+    console.log(`Starting FastrMemory hybrid background daemon on port ${port}...`);
+    try {
+      const res = await startDaemon({ port });
+      if (res.newlyStarted) {
+        console.log(`⚡ FastrMemory daemon started in background (PID ${res.pid}).`);
+        console.log(`   Web Observatory & REST API: ${res.url}`);
+      } else {
+        console.log(`FastrMemory daemon is already running (PID ${res.pid}) at ${res.url}.`);
+      }
+    } catch (err: any) {
+      console.error(`Failed to start daemon: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+daemonCmd
+  .command('stop')
+  .description('Stop running FastrMemory background daemon')
+  .action(async () => {
+    const res = await stopDaemon();
+    console.log(res.message);
+  });
+
+daemonCmd
+  .command('status')
+  .description('Check FastrMemory background daemon status and health')
+  .action(async () => {
+    const status = await getDaemonStatus();
+    if (!status.running) {
+      console.log('FastrMemory daemon is NOT running.');
+      console.log('To start: fastrmemory daemon start');
+    } else {
+      console.log(`\n=== FastrMemory Daemon Status ===`);
+      console.log(`- Status:   ONLINE`);
+      console.log(`- PID:      ${status.pid}`);
+      console.log(`- Port:     ${status.port}`);
+      console.log(`- URL:      ${status.url}`);
+      console.log(`- Started:  ${status.startedAt}`);
+      console.log(`- Uptime:   ${status.uptimeSeconds}s`);
+      if (status.health) {
+        console.log(`- Health:   Project ${status.health.projectName || status.health.projectId || 'OK'}`);
+      }
+      console.log('');
+    }
+  });
+
+daemonCmd
+  .command('run')
+  .description('Internal worker process for running the daemon server loop')
+  .option('-p, --port <number>', 'Port to listen on', '4242')
+  .action(async (opts) => {
+    const ctx = createFastrServerContext();
+    const port = parseInt(opts.port, 10) || 4242;
+
+    try {
+      const logPath = path.join(ctx.config.projectRoot, '.fastr', 'daemon.log');
+      const logFile = fs.createWriteStream(logPath, { flags: 'a' });
+      process.stdout.write = logFile.write.bind(logFile) as any;
+      process.stderr.write = logFile.write.bind(logFile) as any;
+    } catch {}
+
+    const { url } = await startUiServer(ctx.config, { port, openBrowser: false });
+
+    // Write daemon.json with this worker's actual PID
+    const pidFile = getDaemonPidFile(ctx.config.projectRoot);
+    const info = {
+      pid: process.pid,
+      port,
+      url,
+      startedAt: new Date().toISOString()
+    };
+    fs.writeFileSync(pidFile, JSON.stringify(info, null, 2), 'utf-8');
+
+    // Keep process alive indefinitely
+    setInterval(() => {}, 60000);
+  });
+
+// 15. Cognitive Blame command (Memory-Aware Git Blame)
+program
+  .command('blame <target>')
+  .description('Cognitive git blame linking code lines to memory rationale and error traps')
+  .option('-L, --line <number>', 'Line number to inspect')
+  .action((target: string, opts: any) => {
+    const line = opts.line ? parseInt(opts.line, 10) : undefined;
+    try {
+      const res = cognitiveBlame(target, line);
+      console.log(`\n=== FastrMemory Cognitive Blame ===`);
+      console.log(`File:    ${res.filePath}:${res.lineNumber}`);
+      console.log(`Line:    ${res.lineContent.trim()}`);
+      console.log(`Commit:  ${res.commitHash.slice(0, 10)} ("${res.summary}")`);
+      console.log(`Author:  ${res.author} (${res.authorTime})`);
+      console.log(`Rationale: ${res.cognitiveRationale}`);
+      if (res.governingTraps.length > 0) {
+        console.log(`\n⚠️ Active Error Traps Protecting This Line:`);
+        for (const t of res.governingTraps) {
+          console.log(`  - [${t.id}] "${t.title}" (${t.module}) [2.0x RECALL BOOST]`);
+        }
+      }
+      if (res.associatedMemories.length > 0) {
+        console.log(`\n🧠 Associated Memory Rules:`);
+        for (const m of res.associatedMemories) {
+          console.log(`  - [${m.id}] (${m.kind}) "${m.title}"`);
+        }
+      }
+      console.log('');
+    } catch (err: any) {
+      console.error(`Blame error: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+// 16. Memory-Aware Conventional Commit command
+program
+  .command('commit')
+  .description('Execute memory-aware git commit with 2.0x error trap verification')
+  .option('-m, --message <msg>', 'Commit message (auto-synthesized if omitted)')
+  .option('-f, --force', 'Force commit even if active traps are detected', false)
+  .action((opts: any) => {
+    try {
+      const res = executeMemoryCommit({ message: opts.message, force: opts.force });
+      console.log(`\n=== FastrMemory Conventional Commit ===`);
+      console.log(`Commit:  ${res.commitHash.slice(0, 10)}`);
+      console.log(`Summary: ${res.summary}`);
+      console.log(`Files:   ${res.stagedFiles.length} file(s) committed`);
+      if (res.trapWarnings.length > 0) {
+        console.log(`\n⚠️ Active Error Traps Checked (${res.trapWarnings.length}):`);
+        for (const w of res.trapWarnings) {
+          console.log(`  - [TRAP ${w.trapId}] "${w.trapTitle}" on ${w.matchedFile}`);
+        }
+      } else {
+        console.log(`Traps:   Passed (0 active trap violations)`);
+      }
+      console.log(`Provenance ledger updated with cryptographic signature.\n`);
+    } catch (err: any) {
+      console.error(`Commit error: ${err.message}`);
+      process.exit(1);
+    }
   });
 
 program.parse(process.argv);

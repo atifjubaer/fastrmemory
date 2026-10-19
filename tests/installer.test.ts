@@ -53,4 +53,17 @@ describe('Installer & MCP Multi-Client Configuration', () => {
 
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
+
+  it('locates planetary skills directory and installs 12+ skills', async () => {
+    const { findSkillsDir, installSkills } = await import('../src/installer/setup.js');
+    const skillsDir = findSkillsDir();
+    expect(skillsDir).not.toBeNull();
+    expect(fs.existsSync(skillsDir!)).toBe(true);
+
+    const counts = installSkills();
+    expect(counts.antigravityCount).toBeGreaterThanOrEqual(12);
+    expect(counts.claudeCount).toBeGreaterThanOrEqual(12);
+    expect(counts.cursorCount).toBeGreaterThanOrEqual(12);
+  });
 });
+

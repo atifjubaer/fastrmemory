@@ -1,0 +1,86 @@
+{
+  "$schema": "https://skills.sh/schema/v1.json",
+  "name": "fastrmemory-skills",
+  "version": "1.0.0",
+  "description": "The official FastrMemory planetary skills suite for autonomous AI coding agents.",
+  "author": "Atif Jubaer <atifjubaer@fastrsoft.com>",
+  "homepage": "https://github.com/atifjubaer/fastrmemory",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/atifjubaer/fastrmemory.git"
+  },
+  "skills": [
+    {
+      "name": "fastr-discipline",
+      "path": "skills/fastr-discipline/SKILL.md",
+      "description": "Anti-hallucination and cognitive hygiene discipline for autonomous coding agents.",
+      "triggers": ["fastr-discipline", "agent-rules", "hallucination-prevention"]
+    },
+    {
+      "name": "fastr-recall",
+      "path": "skills/fastr-recall/SKILL.md",
+      "description": "High-precision triple-stream reciprocal rank fusion (RRF) memory retrieval.",
+      "triggers": ["fastr-recall", "search-memory", "recall-context"]
+    },
+    {
+      "name": "fastr-remember",
+      "path": "skills/fastr-remember/SKILL.md",
+      "description": "Autonomous memory consolidation, semantic deduplication, and slot allocation.",
+      "triggers": ["fastr-remember", "store-memory", "save-learning"]
+    },
+    {
+      "name": "fastr-trap",
+      "path": "skills/fastr-trap/SKILL.md",
+      "description": "2.0x recall boost failure logging, pre-edit trap checks, and zero-regression guarantees.",
+      "triggers": ["fastr-trap", "trap-check", "trap-log", "error-prevention"]
+    },
+    {
+      "name": "fastr-commit",
+      "path": "skills/fastr-commit/SKILL.md",
+      "description": "Memory-aware git commit synthesis with pre-commit trap validation and SHA-256 provenance signing.",
+      "triggers": ["fastr-commit", "commit", "git-commit", "memory-commit"]
+    },
+    {
+      "name": "fastr-blame",
+      "path": "skills/fastr-blame/SKILL.md",
+      "description": "Cognitive git blame linking codebase lines to memory rationale, agent decisions, and task objectives.",
+      "triggers": ["fastr-blame", "blame", "git-blame", "why-code"]
+    },
+    {
+      "name": "fastr-dag",
+      "path": "skills/fastr-dag/SKILL.md",
+      "description": "Multi-agent task frontier orchestration, dependency propagation, and DAG state management.",
+      "triggers": ["fastr-dag", "frontier", "action-dag", "multi-agent"]
+    },
+    {
+      "name": "fastr-handoff",
+      "path": "skills/fastr-handoff/SKILL.md",
+      "description": "Structured agent session handoff, staging memory graduation, and context compaction.",
+      "triggers": ["fastr-handoff", "handoff", "session-end", "context-compaction"]
+    },
+    {
+      "name": "fastr-learn",
+      "path": "skills/fastr-learn/SKILL.md",
+      "description": "Autonomous pattern extraction, rule consolidation, and memory graph refinement.",
+      "triggers": ["fastr-learn", "consolidate", "learn-rules"]
+    },
+    {
+      "name": "fastr-conflicts",
+      "path": "skills/fastr-conflicts/SKILL.md",
+      "description": "Bi-temporal contradiction detection and structured rule collision resolution.",
+      "triggers": ["fastr-conflicts", "resolve-conflict", "supersede-rule"]
+    },
+    {
+      "name": "fastr-mcp",
+      "path": "skills/fastr-mcp/SKILL.md",
+      "description": "Model Context Protocol (MCP) tool mastery, client configuration, and stream transport.",
+      "triggers": ["fastr-mcp", "mcp-tools", "fastrmemory-mcp"]
+    },
+    {
+      "name": "fastr-architecture",
+      "path": "skills/fastr-architecture/SKILL.md",
+      "description": "FastrMemory systems architecture, zero-loss durability, and in-process SQLite WAL design.",
+      "triggers": ["fastr-architecture", "wal-sqlite", "system-design"]
+    }
+  ]
+}

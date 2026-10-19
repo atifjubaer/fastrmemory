@@ -2,7 +2,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { execSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { createFastrServerContext } from '../mcp/server.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export interface SetupOptions {
   autoInstall?: boolean;
@@ -48,12 +52,12 @@ export function runInteractiveSetup(options: SetupOptions = {}): void {
   // 1. Initialize local project database
   try {
     const ctx = createFastrServerContext();
-    console.log(`[1/7] Local project initialized:`);
+    console.log(`[1/8] Local project initialized:`);
     console.log(`      - Project ID: ${ctx.config.projectId}`);
     console.log(`      - Database:   ${ctx.config.dbPath}`);
     console.log(`      - Pages:      ${ctx.config.pagesDir}\n`);
   } catch (err: any) {
-    console.log(`[1/7] Project init note: ${err.message}\n`);
+    console.log(`[1/8] Project init note: ${err.message}\n`);
   }
 
   const mcpTarget = resolveMcpCommand();
@@ -87,7 +91,7 @@ export function runInteractiveSetup(options: SetupOptions = {}): void {
   } catch (err: any) {
     antigravityStatus = `Failed (${err.message})`;
   }
-  console.log(`[2/7] Antigravity IDE: ${antigravityStatus}`);
+  console.log(`[2/8] Antigravity IDE: ${antigravityStatus}`);
 
   // 3. Wire Claude Desktop
   const claudeDesktopPath = getClaudeDesktopConfigPath();
@@ -117,7 +121,7 @@ export function runInteractiveSetup(options: SetupOptions = {}): void {
   } catch (err: any) {
     claudeDesktopStatus = `Failed (${err.message})`;
   }
-  console.log(`[3/7] Claude Desktop:  ${claudeDesktopStatus}`);
+  console.log(`[3/8] Claude Desktop:  ${claudeDesktopStatus}`);
 
   // 4. Wire Cursor in current workspace (.cursor/mcp.json)
   const cursorDir = path.join(process.cwd(), '.cursor');
@@ -147,7 +151,7 @@ export function runInteractiveSetup(options: SetupOptions = {}): void {
   } catch (err: any) {
     cursorStatus = `Failed (${err.message})`;
   }
-  console.log(`[4/7] Cursor IDE:      ${cursorStatus}`);
+  console.log(`[4/8] Cursor IDE:      ${cursorStatus}`);
 
   // 5. Wire Claude Code (~/.claude.json)
   const claudeConfigPath = path.join(homeDir, '.claude.json');
@@ -173,7 +177,7 @@ export function runInteractiveSetup(options: SetupOptions = {}): void {
   } catch (err: any) {
     claudeStatus = `Failed (${err.message})`;
   }
-  console.log(`[5/7] Claude Code:     ${claudeStatus}`);
+  console.log(`[5/8] Claude Code:     ${claudeStatus}`);
 
   // 6. Wire Windsurf IDE (~/.codeium/windsurf/mcp_config.json)
   const windsurfDir = path.join(homeDir, '.codeium', 'windsurf');
@@ -202,7 +206,7 @@ export function runInteractiveSetup(options: SetupOptions = {}): void {
       windsurfStatus = `Failed (${err.message})`;
     }
   }
-  console.log(`[6/7] Windsurf:        ${windsurfStatus}`);
+  console.log(`[6/8] Windsurf:        ${windsurfStatus}`);
 
   // 7. Wire Autonomous Agent Discipline in AGENTS.md
   let agentStatus = 'Configured';
@@ -231,7 +235,17 @@ Every AI coding agent operating in this repository MUST follow these 3 cognitive
   } catch (err: any) {
     agentStatus = `Notice: ${err.message}`;
   }
-  console.log(`[7/7] Agent Rules:     ${agentStatus}\n`);
+  console.log(`[7/8] Agent Rules:     ${agentStatus}`);
+
+  // 8. Auto-Install Planetary Skills Suite into IDEs & Global Agent Environments
+  let skillsStatus = 'Installed';
+  try {
+    const counts = installSkills();
+    skillsStatus = `Installed (${counts.antigravityCount} to Antigravity, ${counts.claudeCount} to Claude, ${counts.cursorCount} to Cursor)`;
+  } catch (err: any) {
+    skillsStatus = `Notice: ${err.message}`;
+  }
+  console.log(`[8/8] Skills Suite:    ${skillsStatus}\n`);
 
   console.log('-------------------------------------------------');
   console.log('✅ Setup Complete! FastrMemory is connected.');
@@ -241,5 +255,67 @@ Every AI coding agent operating in this repository MUST follow these 3 cognitive
   console.log('Quick verification commands:');
   console.log('  fastrmemory status    # Inspect database health');
   console.log('  fastrmemory trap list # Check active 2.0x error traps');
+  console.log('  fastrmemory daemon    # Manage background daemon');
   console.log('  fastrmemory ui        # Launch local Web Dashboard\n');
+}
+
+export function findSkillsDir(): string | null {
+  const candidates = [
+    path.resolve(__dirname, '../../skills'),
+    path.resolve(__dirname, '../../../skills'),
+    path.resolve(process.cwd(), 'skills'),
+  ];
+  for (const cand of candidates) {
+    if (fs.existsSync(cand) && (fs.existsSync(path.join(cand, 'skills.json')) || fs.existsSync(path.join(cand, 'fastr-discipline')))) {
+      return cand;
+    }
+  }
+  return null;
+}
+
+export function installSkills(): {
+  antigravityCount: number;
+  claudeCount: number;
+  cursorCount: number;
+} {
+  const skillsDir = findSkillsDir();
+  const counts = { antigravityCount: 0, claudeCount: 0, cursorCount: 0 };
+  if (!skillsDir) return counts;
+
+  const skillEntries = fs.readdirSync(skillsDir, { withFileTypes: true });
+  const skillDirs = skillEntries.filter((e) => e.isDirectory()).map((e) => e.name);
+
+  const targets = [
+    { dir: path.join(os.homedir(), '.gemini', 'config', 'skills'), key: 'antigravityCount' as const },
+    { dir: path.join(os.homedir(), '.claude', 'skills'), key: 'claudeCount' as const },
+    { dir: path.join(process.cwd(), '.cursor', 'skills'), key: 'cursorCount' as const },
+  ];
+
+  for (const target of targets) {
+    try {
+      if (!fs.existsSync(target.dir)) {
+        fs.mkdirSync(target.dir, { recursive: true });
+      }
+      for (const skillName of skillDirs) {
+        const srcSkill = path.join(skillsDir, skillName);
+        const destSkill = path.join(target.dir, skillName);
+        if (!fs.existsSync(destSkill)) {
+          fs.mkdirSync(destSkill, { recursive: true });
+        }
+        const files = fs.readdirSync(srcSkill);
+        for (const file of files) {
+          const srcFile = path.join(srcSkill, file);
+          const destFile = path.join(destSkill, file);
+          if (fs.statSync(srcFile).isFile()) {
+            fs.copyFileSync(srcFile, destFile);
+          }
+        }
+        counts[target.key]++;
+      }
+    } catch {
+      // Continue for best effort across environments
+    }
+  }
+
+  return counts;
 }
