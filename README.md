@@ -9,7 +9,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.16.0-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Protocol](https://img.shields.io/badge/Protocol-MCP%20v2-7C3AED?style=flat-square)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/Tests-56%20Passed-brightgreen?style=flat-square)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-77%20Passed-brightgreen?style=flat-square)](tests/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-key-architectural-pillars)
 
@@ -194,7 +194,17 @@ Output:
 JWT exp claims expect integer seconds. Always use Math.floor(Date.now() / 1000).
 ```
 
-### 4. Git Snapshots, Rollback & Autonomous Hooks
+### 4. Cognitive Git Blame & Memory-Aware Commit
+
+```bash
+# Cognitive Git Blame linking lines directly to commit, author, and governing 2.0x error traps:
+fastrmemory blame src/auth/jwt.ts:42
+
+# Pre-commit error trap validation & conventional commit synthesis:
+fastrmemory commit
+```
+
+### 5. Git Snapshots, Rollback & Background Daemon
 
 ```bash
 # Point-in-time memory snapshot (Git for Agent Memory):
@@ -202,8 +212,14 @@ fastrmemory snapshot create "pre-refactor-checkpoint"
 fastrmemory snapshot list
 fastrmemory snapshot rollback "pre-refactor-checkpoint"
 
-# Auto-wire autonomous hooks into Claude Code, Cursor, and AGENTS.md:
+# Hybrid Background Daemon (Optional HTTP/SSE service for cross-process tools):
+fastrmemory daemon start
+fastrmemory daemon status
+fastrmemory daemon stop
+
+# Auto-wire autonomous hooks and Planetary Skills into Antigravity, Claude Code, and Cursor:
 fastrmemory hook install
+fastrmemory setup
 
 # Mine past Git bug fixes directly into staging error traps:
 fastrmemory learn -n 30 --days 90
@@ -331,17 +347,25 @@ JWT exp claims expect integer seconds. Always use Math.floor(Date.now() / 1000).
 
 ---
 
-## 🧠 Bundled Agent Skills
+## 🧠 Planetary Agent Skills Suite
 
-FastrMemory packages 7 auto-pilot skill instructions that train agents when to use memory tools:
+FastrMemory packages 15 auto-pilot skill instructions that train agents when to recall, trap, commit, and coordinate:
 
-- [skills/fastr-before-coding/SKILL.md](skills/fastr-before-coding/SKILL.md): Enforces calling `fastr_recall` and reviewing `[TRAP]` warnings before editing any file.
+- [skills/fastr-before-coding/SKILL.md](skills/fastr-before-coding/SKILL.md): Enforces calling `fastr_trap_recall` before editing any codebase file.
 - [skills/fastr-trap-logger/SKILL.md](skills/fastr-trap-logger/SKILL.md): Immediately logs error traps the exact moment a build error or test failure is diagnosed.
-- [skills/fastr-session-commit/SKILL.md](skills/fastr-session-commit/SKILL.md): Supersedes outdated rules, records per-ID outcome feedback, and verifies staging memories after tests pass.
-- [skills/fastr-recall/SKILL.md](skills/fastr-recall/SKILL.md): High-precision hybrid search, progressive token budgeting, and `fastr_drill` for verbatim evidence.
-- [skills/fastr-remember/SKILL.md](skills/fastr-remember/SKILL.md): Curated ingestion protocol with automatic secret scrubbing and module tagging.
-- [skills/fastr-discipline/SKILL.md](skills/fastr-discipline/SKILL.md): Anti-hallucination guardrails and ground-truth validation rules.
+- [skills/fastr-session-commit/SKILL.md](skills/fastr-session-commit/SKILL.md): Supersedes outdated rules, records per-ID outcome feedback, and verifies staging memories.
+- [skills/fastr-blame/SKILL.md](skills/fastr-blame/SKILL.md): Cognitive Git blame linking codebase lines to memory rationale and error traps.
+- [skills/fastr-commit/SKILL.md](skills/fastr-commit/SKILL.md): Memory-aware pre-commit trap validation and conventional commit synthesis.
+- [skills/fastr-trap/SKILL.md](skills/fastr-trap/SKILL.md): 2.0x recall boost failure logging and zero-regression safeguards.
+- [skills/fastr-dag/SKILL.md](skills/fastr-dag/SKILL.md): Multi-agent task frontier orchestration and dependency propagation.
+- [skills/fastr-conflicts/SKILL.md](skills/fastr-conflicts/SKILL.md): Bi-temporal contradiction detection and structured rule collision resolution.
+- [skills/fastr-recall/SKILL.md](skills/fastr-recall/SKILL.md): High-precision triple-stream hybrid search with progressive token budgeting.
+- [skills/fastr-remember/SKILL.md](skills/fastr-remember/SKILL.md): Autonomous memory consolidation, semantic deduplication, and slot allocation.
 - [skills/fastr-handoff/SKILL.md](skills/fastr-handoff/SKILL.md): Multi-agent session milestone handoffs and cross-IDE state preservation.
+- [skills/fastr-discipline/SKILL.md](skills/fastr-discipline/SKILL.md): Anti-hallucination guardrails and cognitive hygiene.
+- [skills/fastr-learn/SKILL.md](skills/fastr-learn/SKILL.md): Autonomous pattern extraction and rule consolidation from Git history.
+- [skills/fastr-mcp/SKILL.md](skills/fastr-mcp/SKILL.md): Model Context Protocol tool mastery and client configuration.
+- [skills/fastr-architecture/SKILL.md](skills/fastr-architecture/SKILL.md): FastrMemory systems architecture, zero-loss durability, and SQLite WAL design.
 
 ---
 
@@ -372,7 +396,7 @@ flowchart TD
 
     subgraph Protocol["4. Official MCP Protocol"]
         Budget --> MCPServer["Official MCP v2 Server\n(@modelcontextprotocol/server)"]
-        MCPServer --> Tools["14 Tools & 3 Resources"]
+        MCPServer --> Tools["27 Tools & 3 Resources"]
         Tools --> Agent
     end
 ```
@@ -387,7 +411,7 @@ Run the comprehensive unit test suite:
 npm test
 ```
 
-All 25 tests pass in $<550\text{ms}$ across 10 test suites covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, git-learner, and web dashboard server.
+All 77 tests pass in ~1.0s across 21 test suites covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, git-learner, cognitive blame, commit synthesis, hybrid background daemon, and web dashboard server.
 
 ---
 
@@ -411,17 +435,19 @@ fastrmemory bench
 
 ---
 
-## 🖥️ Local Web Dashboard & Knowledge Graph Studio
+## 🖥️ Local Web Dashboard & 3D Brain Observatory
 
-Visualize active rules, error traps, timeline audits, and interactive force-directed file graphs directly in your browser with zero external dependencies:
+Visualize active rules, error traps, timeline audits, and interactive 3D memory constellations directly in your browser with zero external dependencies:
 
 ```bash
 fastrmemory ui
 ```
 
 - **Live URL**: `http://localhost:4242`
-- **Interactive Knowledge Graph**: HTML5 Canvas force-directed physics graph with drag/drop, zoom/pan, glowing amber trap halos, and slide-in detail inspector.
-- **5 Studio Tabs**: Overview, All Memories, Error Traps (2.0x Boost), Interactive Knowledge Graph, and Chronological Timeline.
+- **3D Brain Observatory**: High-performance Three.js constellation with 60 FPS smooth camera lerp interpolation, 350-particle celestial star dust, glowing amber trap halos, and click-to-focus inspection.
+- **Vim & Keyboard Navigation**: Full keyboard control (`j`/`k` row navigation, `Enter` to open memory inspector, `Escape` to close).
+- **Real-Time SSE Streaming**: Live event streaming (`/api/stream`) updating the dashboard instantly as coding agents record memories in the background.
+- **6 Studio Tabs**: Overview, 3D Observatory, All Memories, Error Traps (2.0x Boost), Interactive Knowledge Graph, and Chronological Timeline.
 - **Instant Search**: Real-time debounce filter by keyword, file path, or `[mem_xxxx]` identifier.
 - **Zero Daemons**: Powered entirely by native Node.js HTTP server and embedded SQLite WAL mode.
 
