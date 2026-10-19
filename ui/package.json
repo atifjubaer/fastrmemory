@@ -8,9 +8,11 @@
     "build": "tsc -b && vite build --outDir ../dist-ui --emptyOutDir"
   },
   "dependencies": {
+    "@types/three": "^0.186.0",
     "lucide-react": "^0.475.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "three": "^0.186.1"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

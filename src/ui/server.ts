@@ -252,6 +252,37 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
         return;
       }
 
+      // API: Seed Example Action DAG Tasks
+      if (req.method === 'POST' && url.pathname === '/api/actions/seed') {
+        const a1 = repo.createAction({
+          id: 'task_sqlite_wal_bench',
+          projectId: config.projectId,
+          title: 'Tune SQLite WAL & Concurrency Timeout',
+          description: 'Set PRAGMA busy_timeout = 5000 and benchmark multi-client read/write',
+          priority: 1,
+        });
+        const a2 = repo.createAction({
+          id: 'task_crypto_provenance',
+          projectId: config.projectId,
+          title: 'Verify SHA-256 Provenance Signatures',
+          description: 'Authenticate all incoming memories against tamper-evident cryptographic hashes',
+          priority: 2,
+          requires: ['task_sqlite_wal_bench'],
+        });
+        const a3 = repo.createAction({
+          id: 'task_observatory_3d',
+          projectId: config.projectId,
+          title: '3D Brain Observatory Galaxy Telemetry',
+          description: 'Render Three.js orbital constellation galaxy for agent memory clusters',
+          priority: 3,
+          requires: ['task_crypto_provenance'],
+        });
+        globalBroadcaster.broadcast('action_claimed', { actionId: 'task_sqlite_wal_bench', claimedBy: 'lead-agent' });
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ seeded: [a1, a2, a3] }));
+        return;
+      }
+
       // API: Entities & Knowledge Relations
       if (url.pathname === '/api/entities') {
         const entities = repo.getEntities(config.projectId);

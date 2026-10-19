@@ -20,9 +20,10 @@ import { RrfWaterfall } from './components/RrfWaterfall';
 import { BiTemporalDiff } from './components/BiTemporalDiff';
 import { CopyButton } from './components/CopyButton';
 import { MemoryDrawer } from './components/MemoryDrawer';
+import { BrainObservatory3D } from './components/BrainObservatory3D';
 import type { FastrStatus, MemoryItem, ActionItem, ConflictItem } from './types';
 
-type TabType = 'overview' | 'memories' | 'traps' | 'dag' | 'treemap' | 'rrf' | 'conflicts';
+type TabType = 'overview' | 'observatory' | 'memories' | 'traps' | 'dag' | 'treemap' | 'rrf' | 'conflicts';
 
 export const App: React.FC = () => {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
@@ -85,11 +86,21 @@ export const App: React.FC = () => {
     loadAll();
   }, [loadAll]);
 
+  // Seed example actions if empty
+  const handleSeedActions = async () => {
+    try {
+      await fetch('/api/actions/seed', { method: 'POST' });
+      loadAll();
+    } catch (err) {
+      console.error('Failed to seed actions:', err);
+    }
+  };
+
   // URL Hash Routing synchronization
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace(/^#\/?/, '');
-      if (['overview', 'memories', 'traps', 'dag', 'treemap', 'rrf', 'conflicts'].includes(hash)) {
+      if (['overview', 'observatory', 'memories', 'traps', 'dag', 'treemap', 'rrf', 'conflicts'].includes(hash)) {
         setCurrentTab(hash as TabType);
       }
     };
@@ -149,13 +160,14 @@ export const App: React.FC = () => {
         setActiveModalAction(null);
         setIsCreateModalOpen(false);
       } else if (!isInput) {
-        if (e.key === '1') { setCurrentTab('overview'); window.location.hash = '#/overview'; }
-        else if (e.key === '2') { setCurrentTab('memories'); window.location.hash = '#/memories'; }
-        else if (e.key === '3') { setCurrentTab('traps'); window.location.hash = '#/traps'; }
-        else if (e.key === '4') { setCurrentTab('dag'); window.location.hash = '#/dag'; }
-        else if (e.key === '5') { setCurrentTab('treemap'); window.location.hash = '#/treemap'; }
-        else if (e.key === '6') { setCurrentTab('rrf'); window.location.hash = '#/rrf'; }
-        else if (e.key === '7') { setCurrentTab('conflicts'); window.location.hash = '#/conflicts'; }
+        if (e.key === '1') { switchTab('overview'); }
+        else if (e.key === '2' || e.key.toLowerCase() === 'o') { switchTab('observatory'); }
+        else if (e.key === '3') { switchTab('memories'); }
+        else if (e.key === '4') { switchTab('traps'); }
+        else if (e.key === '5') { switchTab('dag'); }
+        else if (e.key === '6') { switchTab('treemap'); }
+        else if (e.key === '7') { switchTab('rrf'); }
+        else if (e.key === '8') { switchTab('conflicts'); }
         else if (e.key.toLowerCase() === 'n' || e.key.toLowerCase() === 'c') { setIsCreateModalOpen(true); }
       }
     };
@@ -444,6 +456,7 @@ export const App: React.FC = () => {
       }}>
         {[
           { id: 'overview', label: 'OVERVIEW', count: null },
+          { id: 'observatory', label: '3D OBSERVATORY', count: memories.length },
           { id: 'memories', label: 'RULES & TRAPS', count: memories.length },
           { id: 'traps', label: '2.0X TRAPS', count: traps.length },
           { id: 'dag', label: 'ACTION DAG', count: actions.length },
@@ -510,7 +523,10 @@ export const App: React.FC = () => {
                     FastrMemory operates inside Node 24 with <b>zero external background daemons</b>. Rules, bug-fix traps, and architectural decisions are persisted via SQLite WAL mode, mirrored to <code>.fastr/pages/*.md</code> for Git pull requests, and fused via Triple-Stream RRF ($k=60$).
                   </p>
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    <button onClick={() => switchTab('traps')} className="btn btn-primary">
+                    <button onClick={() => switchTab('observatory')} className="btn btn-primary">
+                      🔭 3D Brain Observatory &rarr;
+                    </button>
+                    <button onClick={() => switchTab('traps')} className="btn">
                       Inspect 2.0x Error Traps &rarr;
                     </button>
                     <button onClick={() => switchTab('dag')} className="btn">
@@ -539,6 +555,15 @@ export const App: React.FC = () => {
                   </div>
                 </div>
               </div>
+            )}
+
+            {/* TAB: 3D BRAIN OBSERVATORY (Hippo Standard Cosmic Constellation Galaxy) */}
+            {currentTab === 'observatory' && (
+              <BrainObservatory3D
+                memories={memories}
+                status={status}
+                onSelectMemory={(m) => setActiveModalMemory(m)}
+              />
             )}
 
             {/* TAB 2: HIGH-DENSITY RULES & TRAPS TABLE */}
@@ -756,6 +781,7 @@ export const App: React.FC = () => {
                 actions={actions}
                 edges={actionEdges}
                 onSelectAction={(action) => setActiveModalAction(action)}
+                onSeed={handleSeedActions}
               />
             )}
 

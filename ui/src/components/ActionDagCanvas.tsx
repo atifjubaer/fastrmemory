@@ -6,6 +6,7 @@ interface ActionDagCanvasProps {
   actions: ActionItem[];
   edges: Array<{ source_action_id: string; target_action_id: string; edge_type: string }>;
   onSelectAction: (action: ActionItem) => void;
+  onSeed?: () => void;
 }
 
 interface SimNode {
@@ -18,7 +19,7 @@ interface SimNode {
   radius: number;
 }
 
-export const ActionDagCanvas: React.FC<ActionDagCanvasProps> = ({ actions, edges, onSelectAction }) => {
+export const ActionDagCanvas: React.FC<ActionDagCanvasProps> = ({ actions, edges, onSelectAction, onSeed }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(true);
   const [filter, setFilter] = useState<'all' | 'frontier' | 'active' | 'blocked' | 'done'>('all');
@@ -368,6 +369,56 @@ export const ActionDagCanvas: React.FC<ActionDagCanvasProps> = ({ actions, edges
         onWheel={handleWheel}
         style={{ width: '100%', height: '100%', cursor: 'grab' }}
       />
+
+      {/* Empty State Overlay */}
+      {actions.length === 0 && (
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '14px',
+          zIndex: 5,
+          background: 'rgba(9, 9, 11, 0.85)',
+          backdropFilter: 'blur(6px)',
+          textAlign: 'center',
+          padding: '24px'
+        }}>
+          <div style={{
+            width: '44px',
+            height: '44px',
+            borderRadius: '10px',
+            background: 'var(--accent-weak)',
+            border: '1px solid rgba(56, 189, 248, 0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--accent)',
+            fontSize: '22px'
+          }}>
+            ⚡
+          </div>
+          <div>
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.2px' }}>
+              Action DAG Queue Is Currently Empty
+            </h3>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', maxWidth: '460px', marginTop: '6px', lineHeight: '1.5' }}>
+              The Action DAG coordinates distributed autonomous multi-agent task dependencies with topological frontier scheduling. Agents claim and execute tasks via <code>fastr_claim</code> and <code>fastr_frontier</code>.
+            </p>
+          </div>
+          {onSeed && (
+            <button
+              onClick={onSeed}
+              className="btn btn-primary"
+              style={{ marginTop: '8px', padding: '7px 16px', fontSize: '12px' }}
+            >
+              <Sparkles size={14} /> Seed Example 3-Agent Workflow
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Legend Footer */}
       <div style={{ position: 'absolute', bottom: '14px', left: '16px', display: 'flex', gap: '16px', fontSize: '11px', color: 'var(--text-muted)', zIndex: 10, background: 'rgba(0,0,0,0.5)', padding: '6px 14px', borderRadius: '8px', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.08)' }}>
