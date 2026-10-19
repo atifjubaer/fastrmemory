@@ -2,11 +2,13 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
-import { RawEvent, Memory, FileLink, Handoff, Entity, GraphEdge, MemoryConflict, Prediction, Action, ActionEdge, MemorySlot, applySchema } from './schema.js';
+import { RawEvent, Memory, FileLink, Handoff, Entity, GraphEdge, MemoryConflict, Prediction, Action, ActionEdge, MemorySlot, applySchema, configurePragmas } from './schema.js';
 import { SpoolManager } from './spool.js';
 import { extractEntities } from '../learn/ner.js';
 import { detectConflict } from '../learn/conflicts.js';
 import { calculateBaserate, PredictionBaserate } from '../learn/planning-fallacy.js';
+import { computeProvenanceHash, verifyProvenanceHash } from './provenance.js';
+import { globalBroadcaster } from '../ui/sse.js';
 
 export interface CreateMemoryParams {
   projectId: string;
@@ -58,6 +60,7 @@ export class FastrRepository {
         const dir = path.dirname(globalDbPath);
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
         const gDb = new DatabaseSync(globalDbPath);
+        configurePragmas(gDb);
         applySchema(gDb);
         gDb.close();
       }
@@ -66,6 +69,7 @@ export class FastrRepository {
 
       const normalized = globalDbPath.replace(/\\/g, '/');
       this.db.exec(`ATTACH DATABASE '${normalized}' AS global_db`);
+      this.db.exec('PRAGMA busy_timeout = 5000;');
       return true;
     } catch {
       return false;
@@ -150,22 +154,36 @@ export class FastrRepository {
     const isGlobal = params.scope === 'global';
     const targetProject = isGlobal ? 'global' : params.projectId;
     const targetTable = (isGlobal && this.hasGlobalDb()) ? 'global_db.memories' : 'memories';
+    const agentId = params.agentId || 'default';
+    const nowIso = new Date().toISOString();
+
+    const provenanceHash = computeProvenanceHash({
+      projectId: targetProject,
+      agentId,
+      module,
+      kind,
+      title: params.title,
+      content: params.content,
+      createdAt: nowIso
+    });
 
     this.db.prepare(`
       INSERT INTO ${targetTable} (
-        id, project_id, agent_id, module, kind, title, content, status, pinned, source_event_ids
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, project_id, agent_id, module, kind, title, content, status, pinned, source_event_ids, created_at, provenance_hash
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       id,
       targetProject,
-      params.agentId || 'default',
+      agentId,
       module,
       kind,
       params.title,
       params.content,
       status,
       pinned,
-      sourceIds
+      sourceIds,
+      nowIso,
+      provenanceHash
     );
 
     if (isGlobal && this.hasGlobalDb()) {
@@ -238,7 +256,20 @@ export class FastrRepository {
       // Non-blocking conflict check protection
     }
 
-    return this.getMemory(id)!;
+    const createdMemory = this.getMemory(id)!;
+    globalBroadcaster.broadcast('memory_created', createdMemory);
+    if (createdMemory.kind === 'error_trap') {
+      globalBroadcaster.broadcast('trap_logged', {
+        memoryId: createdMemory.id,
+        title: createdMemory.title,
+        module: createdMemory.module,
+        agentId: createdMemory.agent_id,
+        files: params.files || [],
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    return createdMemory;
   }
 
   getMemory(id: string): Memory | null {
@@ -334,11 +365,21 @@ export class FastrRepository {
         WHERE id = ?
       `).run(nowIso, newId, reason, oldMemoryId);
 
-      // 2. Insert new memory with verified status
+      // 2. Insert new memory with verified status and authentic cryptographic provenance
+      const provHash = computeProvenanceHash({
+        projectId: oldMem.project_id,
+        agentId: oldMem.agent_id,
+        module: oldMem.module,
+        kind: oldMem.kind,
+        title: newTitle,
+        content: newContent,
+        createdAt: nowIso
+      });
+
       this.db.prepare(`
         INSERT INTO memories (
-          id, project_id, agent_id, module, kind, title, content, status, pinned, reward_score, source_event_ids
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'verified', ?, ?, ?)
+          id, project_id, agent_id, module, kind, title, content, status, pinned, reward_score, source_event_ids, created_at, provenance_hash
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'verified', ?, ?, ?, ?, ?)
       `).run(
         newId,
         oldMem.project_id,
@@ -349,7 +390,9 @@ export class FastrRepository {
         newContent,
         oldMem.pinned,
         oldMem.reward_score,
-        oldMem.source_event_ids
+        oldMem.source_event_ids,
+        nowIso,
+        provHash
       );
 
       // 3. Link files
@@ -360,9 +403,15 @@ export class FastrRepository {
 
       this.db.exec('COMMIT');
 
+      const oldMemory = this.getMemory(oldMemoryId)!;
+      const newMemory = this.getMemory(newId)!;
+
+      globalBroadcaster.broadcast('memory_updated', { id: oldMemoryId, status: 'superseded', superseded_by: newId });
+      globalBroadcaster.broadcast('memory_created', newMemory);
+
       return {
-        oldMemory: this.getMemory(oldMemoryId)!,
-        newMemory: this.getMemory(newId)!
+        oldMemory,
+        newMemory
       };
     } catch (err) {
       this.db.exec('ROLLBACK');
@@ -1036,7 +1085,9 @@ export class FastrRepository {
       throw err;
     }
 
-    return this.getAction(actionId)!;
+    const created = this.getAction(actionId)!;
+    globalBroadcaster.broadcast('action_created', created);
+    return created;
   }
 
   getAction(id: string): (Action & { requires: string[]; unlocks: string[]; conflictsWith: string[] }) | null {
@@ -1108,7 +1159,27 @@ export class FastrRepository {
       this.db.prepare(`UPDATE actions SET ${sets.join(', ')} WHERE id = ?`).run(...params);
     }
 
-    return this.getAction(id);
+    const updated = this.getAction(id);
+    if (updated) {
+      if (opts.assignedTo !== undefined && opts.assignedTo !== existing.assigned_to) {
+        globalBroadcaster.broadcast('action_claimed', {
+          actionId: id,
+          title: updated.title,
+          claimedBy: opts.assignedTo,
+          claimedAt: new Date().toISOString()
+        });
+      }
+      if (opts.status === 'done') {
+        globalBroadcaster.broadcast('action_completed', {
+          actionId: id,
+          title: updated.title,
+          crystallizedInto: updated.crystallized_into
+        });
+      }
+      globalBroadcaster.broadcast('action_updated', updated);
+    }
+
+    return updated;
   }
 
   listActions(projectId: string, filter?: { status?: 'pending' | 'active' | 'done' | 'blocked' | 'cancelled'; assignedTo?: string }): Action[] {
@@ -1212,5 +1283,60 @@ export class FastrRepository {
       DELETE FROM memory_slots WHERE project_id = ? AND slot_key = ?
     `).run(projectId, normalizedKey);
     return res.changes > 0;
+  }
+
+  // --- CRYPTOGRAPHIC PROVENANCE VERIFICATION ---
+
+  verifyMemoryProvenance(memoryId: string): {
+    id: string;
+    verified: boolean;
+    signature: string | null;
+    agentId: string;
+    createdAt: string;
+    reason: string;
+  } {
+    const mem = this.getMemory(memoryId);
+    if (!mem) {
+      return {
+        id: memoryId,
+        verified: false,
+        signature: null,
+        agentId: 'unknown',
+        createdAt: '',
+        reason: 'Memory not found'
+      };
+    }
+
+    if (!mem.provenance_hash) {
+      return {
+        id: mem.id,
+        verified: false,
+        signature: null,
+        agentId: mem.agent_id,
+        createdAt: mem.created_at,
+        reason: 'Legacy unsigned memory (no cryptographic provenance record)'
+      };
+    }
+
+    const isValid = verifyProvenanceHash(mem.provenance_hash, {
+      projectId: mem.project_id,
+      agentId: mem.agent_id,
+      module: mem.module,
+      kind: mem.kind,
+      title: mem.title,
+      content: mem.content,
+      createdAt: mem.created_at
+    });
+
+    return {
+      id: mem.id,
+      verified: isValid,
+      signature: mem.provenance_hash,
+      agentId: mem.agent_id,
+      createdAt: mem.created_at,
+      reason: isValid
+        ? 'Signature valid: Authenticated author and unmodified canonical content'
+        : 'Signature mismatch: Payload content, project, or author modified post-creation'
+    };
   }
 }

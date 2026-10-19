@@ -82,7 +82,8 @@ export async function assemblePromptContext(
     xmlLines.push(`  <architectural_rules count="${uniqueRules.length}">`);
     for (const r of uniqueRules) {
       const m = r.memory;
-      xmlLines.push(`    <rule id="${m.id}" kind="${m.kind}" module="${m.module}" score="${r.score.toFixed(2)}" title="${escapeXml(m.title)}">`);
+      const provTag = m.provenance_hash ? `prov_${m.provenance_hash.slice(0, 8)}` : 'unsigned';
+      xmlLines.push(`    <rule id="${m.id}" kind="${m.kind}" module="${m.module}" score="${r.score.toFixed(2)}" signed="${provTag}" author="${m.agent_id || 'default'}" title="${escapeXml(m.title)}">`);
       xmlLines.push(`      ${escapeXml(m.content)}`);
       xmlLines.push(`    </rule>`);
     }

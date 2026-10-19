@@ -42,6 +42,7 @@ export interface MemoryItem {
   superseded_by_id?: string | null;
   superseded_reason?: string | null;
   linked_files: string[];
+  provenance_hash?: string | null;
 }
 
 export interface ActionItem {

@@ -44,6 +44,8 @@ export function useFastrStream(options: UseFastrStreamOptions = {}) {
           'conflict_detected',
           'conflict_resolved',
           'action_created',
+          'action_claimed',
+          'action_completed',
           'action_updated',
           'sync_complete'
         ];

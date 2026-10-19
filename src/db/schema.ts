@@ -36,6 +36,7 @@ export interface Memory {
   embedded: number;
   created_at: string;
   last_recalled_at: string | null;
+  provenance_hash: string | null;
 }
 
 export interface FileLink {
@@ -169,7 +170,8 @@ CREATE TABLE IF NOT EXISTS memories (
   embedding BLOB DEFAULT NULL,
   embedded INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
-  last_recalled_at TEXT DEFAULT NULL
+  last_recalled_at TEXT DEFAULT NULL,
+  provenance_hash TEXT DEFAULT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_memories_active ON memories(project_id, module, valid_to, status);
 
@@ -320,8 +322,21 @@ CREATE TABLE IF NOT EXISTS memory_slots (
 );
 `;
 
+export function configurePragmas(db: DatabaseSync): void {
+  try { db.exec('PRAGMA journal_mode = WAL;'); } catch {}
+  try { db.exec('PRAGMA synchronous = NORMAL;'); } catch {}
+  try { db.exec('PRAGMA foreign_keys = ON;'); } catch {}
+  try { db.exec('PRAGMA busy_timeout = 5000;'); } catch {}
+}
+
 export function applySchema(db: DatabaseSync): void {
+  configurePragmas(db);
   db.exec(SCHEMA_SQL);
+
+  // Auto-migrate: add provenance_hash if missing from older DB versions
+  try {
+    db.exec('ALTER TABLE memories ADD COLUMN provenance_hash TEXT DEFAULT NULL;');
+  } catch {}
 }
 
 export function initDatabase(dbPath: string): DatabaseSync {
@@ -331,8 +346,7 @@ export function initDatabase(dbPath: string): DatabaseSync {
   }
 
   const db = new DatabaseSync(dbPath);
-  db.exec('PRAGMA busy_timeout = 5000;');
-  db.exec('PRAGMA synchronous = NORMAL;');
+  configurePragmas(db);
   applySchema(db);
   return db;
 }

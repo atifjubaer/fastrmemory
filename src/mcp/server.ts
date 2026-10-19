@@ -211,10 +211,14 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
         } catch {}
       }
 
+      const provBadge = mem.provenance_hash
+        ? `\n- **Cryptographic Provenance**: \`prov_${mem.provenance_hash.slice(0, 12)}\` (SHA-256 authentic signature)`
+        : '';
+
       return {
         content: [{
           type: 'text',
-          text: `Recorded ${scope} memory [${mem.id}] (${mem.kind}) in module "${mem.module}" with status "${mem.status}".`
+          text: `Recorded ${scope} memory [${mem.id}] (${mem.kind}) in module "${mem.module}" with status "${mem.status}".${provBadge}`
         }]
       };
     }
@@ -1173,6 +1177,32 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
       for (const rec of res.recommendations) {
         text += `- ${rec}\n`;
       }
+
+      return {
+        content: [{ type: 'text', text }]
+      };
+    }
+  );
+
+  // ==========================================
+  // TOOL 30: fastr_verify_provenance
+  // ==========================================
+  server.registerTool(
+    'fastr_verify_provenance',
+    {
+      description: 'Verifies the cryptographic SHA-256 provenance signature of a memory to ensure authentic agent authoring and tamper-free storage.',
+      inputSchema: {
+        memoryId: z.string().describe('Memory ID to cryptographically verify (e.g. mem_8f2a1c)')
+      }
+    },
+    async ({ memoryId }) => {
+      const res = repo.verifyMemoryProvenance(memoryId);
+      let text = `### 🔒 Cryptographic Provenance Verification: \`${res.id}\`\n\n`;
+      text += `- **Authenticity Status**: ${res.verified ? '✅ **AUTHENTIC & VERIFIED**' : '❌ **UNVERIFIED / TAMPERED**'}\n`;
+      text += `- **Authoring Agent**: \`${res.agentId}\`\n`;
+      text += `- **Timestamp**: ${res.createdAt || 'N/A'}\n`;
+      text += `- **SHA-256 Signature**: \`${res.signature || 'NONE'}\`\n`;
+      text += `- **Audit Details**: ${res.reason}\n`;
 
       return {
         content: [{ type: 'text', text }]

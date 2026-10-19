@@ -54,6 +54,7 @@ export const App: React.FC = () => {
   const [activeModalMemory, setActiveModalMemory] = useState<MemoryItem | null>(null);
   const [activeModalAction, setActiveModalAction] = useState<ActionItem | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [liveNotification, setLiveNotification] = useState<string | null>(null);
 
   // New Memory Form State
   const [newTitle, setNewTitle] = useState('');
@@ -108,12 +109,25 @@ export const App: React.FC = () => {
     window.location.hash = `#/${tab}`;
   };
 
-  // Real-Time Server-Sent Events (SSE)
+  // Real-Time Server-Sent Events (SSE) Multi-Agent Stream
   const { status: sseStatus, lastEventTime } = useFastrStream({
-    onEvent: () => {
+    onEvent: (evt, data) => {
       loadAll();
+      if (evt === 'trap_logged') {
+        setLiveNotification(`⚠️ Active Error Trap Logged: "${data?.title || 'Unknown Trap'}"`);
+      } else if (evt === 'action_claimed') {
+        setLiveNotification(`⚡ Agent [${data?.claimedBy || 'agent'}] claimed task: "${data?.title || data?.actionId}"`);
+      } else if (evt === 'action_completed') {
+        setLiveNotification(`✅ Action completed: "${data?.title || data?.actionId}"`);
+      }
     },
   });
+
+  useEffect(() => {
+    if (!liveNotification) return;
+    const t = setTimeout(() => setLiveNotification(null), 4500);
+    return () => clearTimeout(t);
+  }, [liveNotification]);
 
   // Theme switcher & persistence
   const toggleTheme = () => {
@@ -615,6 +629,30 @@ export const App: React.FC = () => {
         )}
       </main>
 
+      {/* Floating Multi-Agent Real-Time Live Notification Banner */}
+      {liveNotification && (
+        <div style={{
+          position: 'fixed',
+          top: '16px',
+          right: '24px',
+          zIndex: 9999,
+          background: 'var(--bg-panel)',
+          border: '1px solid var(--accent)',
+          borderRadius: '8px',
+          padding: '10px 16px',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          fontSize: '13px',
+          fontWeight: 600,
+          color: 'var(--text)'
+        }}>
+          <span>{liveNotification}</span>
+          <button onClick={() => setLiveNotification(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
+        </div>
+      )}
+
       {/* Memory Detail Modal with Copy & Forget Actions */}
       {activeModalMemory && (
         <div
@@ -628,7 +666,15 @@ export const App: React.FC = () => {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <span style={{ fontSize: '11px', color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>[{activeModalMemory.id}]</span>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>[{activeModalMemory.id}]</span>
+                  {activeModalMemory.provenance_hash && (
+                    <span className="badge-tag" style={{ fontSize: '10px', background: 'rgba(52, 211, 153, 0.15)', color: '#10b981', border: '1px solid rgba(52, 211, 153, 0.3)' }} title={`SHA-256 Provenance Signature: ${activeModalMemory.provenance_hash}`}>
+                      🔒 prov_{activeModalMemory.provenance_hash.slice(0, 8)}
+                    </span>
+                  )}
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>author: @{activeModalMemory.agent_id || 'default'}</span>
+                </div>
                 <h3 style={{ fontSize: '16px', fontWeight: 700, marginTop: '4px' }}>{activeModalMemory.title}</h3>
               </div>
               <button onClick={() => setActiveModalMemory(null)} className="btn" style={{ padding: '4px 8px' }}>✕</button>
