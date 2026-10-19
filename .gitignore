@@ -11,3 +11,4 @@ tests/temp_*
 Thumbs.db
 coverage/
 *.tsbuildinfo
+*.tgz

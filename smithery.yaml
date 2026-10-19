@@ -1,0 +1,10 @@
+# Smithery configuration file for FastrMemory
+# Enables 1-click installation across Claude Desktop, Cursor, and Windsurf via Smithery CLI
+# Documentation: https://smithery.ai/docs/config
+
+startCommand:
+  type: stdio
+  config:
+    command: fastrmemory
+    args:
+      - mcp
