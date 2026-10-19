@@ -23,6 +23,13 @@ export function createFastrServerContext(customRoot?: string): ServerContext {
   const spool = new SpoolManager(config.spoolPath);
   const repo = new FastrRepository(db, spool);
 
+  // Auto-attach global database for cross-repository federation
+  if (config.globalDbPath) {
+    try {
+      repo.attachGlobalDatabase(config.globalDbPath);
+    } catch {}
+  }
+
   // Auto-drain any pending spool events on startup
   if (spool.hasPending()) {
     try {
@@ -172,10 +179,11 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
         files: z.array(z.string()).default([]).describe('Related file paths'),
         symbols: z.array(z.string()).default([]).describe('Related symbol or function names'),
         verified: z.boolean().default(false).describe('Set true if already verified by passing tests'),
-        pinned: z.boolean().default(false).describe('Pin to always surface during recall')
+        pinned: z.boolean().default(false).describe('Pin to always surface during recall'),
+        scope: z.enum(['project', 'global']).default('project').describe('Storage scope: project-local or organization-wide global')
       }
     },
-    async ({ module, kind, title, content, files, symbols, verified, pinned }) => {
+    async ({ module, kind, title, content, files, symbols, verified, pinned, scope }) => {
       // 1. Scrub secrets
       const scrubbedTitle = scrubSecrets(title);
       const scrubbedContent = scrubSecrets(content);
@@ -183,6 +191,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
       // 2. Insert into database
       const mem = repo.insertMemory({
         projectId: config.projectId,
+        scope,
         module,
         kind,
         title: scrubbedTitle,
@@ -193,15 +202,17 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
         pinned
       });
 
-      // 3. Re-render Two-Zone Markdown page
-      try {
-        syncModulePage(db, config.projectRoot, config.projectId, module);
-      } catch {}
+      // 3. Re-render Two-Zone Markdown page (only for project scope)
+      if (scope !== 'global') {
+        try {
+          syncModulePage(db, config.projectRoot, config.projectId, module);
+        } catch {}
+      }
 
       return {
         content: [{
           type: 'text',
-          text: `Recorded memory [${mem.id}] (${mem.kind}) in module "${mem.module}" with status "${mem.status}".`
+          text: `Recorded ${scope} memory [${mem.id}] (${mem.kind}) in module "${mem.module}" with status "${mem.status}".`
         }]
       };
     }
@@ -1035,6 +1046,64 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
           content: [{ type: 'text', text: `❌ **Failed to export Obsidian vault**: ${err.message}` }]
         };
       }
+    }
+  );
+
+  // ==========================================
+  // TOOL 27: fastr_federate
+  // ==========================================
+  server.registerTool(
+    'fastr_federate',
+    {
+      description: 'Manage cross-repository organization federation. Inspect attached global memory databases or list shared rules.',
+      inputSchema: {
+        action: z.enum(['status', 'list_global', 'attach']).default('status').describe('Action: status, list_global, or attach custom global DB'),
+        globalDbPath: z.string().optional().describe('Path to global database (required if action=attach)')
+      }
+    },
+    async ({ action, globalDbPath }) => {
+      if (action === 'attach') {
+        if (!globalDbPath) {
+          return { content: [{ type: 'text', text: '❌ **Error**: `globalDbPath` is required for attach action.' }] };
+        }
+        const ok = repo.attachGlobalDatabase(globalDbPath);
+        return {
+          content: [{
+            type: 'text',
+            text: ok
+              ? `🌐 **Attached Global Federation DB**: Successfully attached \`${globalDbPath}\` as \`global_db\`.`
+              : `❌ **Failed to attach**: Could not open or attach database at \`${globalDbPath}\`.`
+          }]
+        };
+      }
+
+      if (action === 'list_global') {
+        const globals = repo.listGlobalMemories();
+        if (globals.length === 0) {
+          return { content: [{ type: 'text', text: '_No global organization memories currently recorded._' }] };
+        }
+        let text = `### 🌐 Global Organization Memories (${globals.length}):\n\n`;
+        for (const g of globals) {
+          text += `- **[${g.id}]** (${g.kind.toUpperCase()}) "${g.title}" [${g.module}] — Score: ${g.reward_score}\n`;
+        }
+        return { content: [{ type: 'text', text }] };
+      }
+
+      // Default: status
+      const isAttached = repo.hasGlobalDb();
+      const count = repo.listGlobalMemories().length;
+      return {
+        content: [{
+          type: 'text',
+          text: (
+            `### 🌐 FastrMemory Cross-Repository Federation Status\n` +
+            `- **Federation Active**: ${isAttached ? '✅ YES (`global_db` attached)' : '⚠️ NO (Standalone project mode)'}\n` +
+            `- **Global Database Path**: \`${config.globalDbPath}\`\n` +
+            `- **Global Shared Memories**: ${count}\n` +
+            `Global rules and security error traps automatically protect every local repository on this machine without running daemons.`
+          )
+        }]
+      };
     }
   );
 

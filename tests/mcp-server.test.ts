@@ -110,7 +110,7 @@ describe('MCP v2 Server (Tools & Resources)', () => {
       files: ['src/auth/jwt.ts'],
       verified: true
     });
-    expect(rememberRes.content[0].text).toContain('Recorded memory');
+    expect(rememberRes.content[0].text).toContain('Recorded');
     expect(rememberRes.content[0].text).toContain('[mem_');
 
     // Extract memory ID
@@ -311,5 +311,26 @@ describe('MCP v2 Server (Tools & Resources)', () => {
     const listRes = await callTool('fastr_slot_list', {});
     expect(listRes.content[0].text).toContain('[active_plan]');
   });
+
+  it('manages cross-repository federation via fastr_federate and global memories', async () => {
+    // 1. Check federation status
+    const fedStatus = await callTool('fastr_federate', { action: 'status' });
+    expect(fedStatus.content[0].text).toContain('Cross-Repository Federation Status');
+
+    // 2. Remember global memory
+    const rememberGlobal = await callTool('fastr_remember', {
+      title: 'Global Security Invariant',
+      content: 'Never store plain-text passwords in configuration.',
+      scope: 'global',
+      kind: 'rule',
+      module: 'security'
+    });
+    expect(rememberGlobal.content[0].text).toContain('Recorded global memory');
+
+    // 3. List global memories
+    const listGlobal = await callTool('fastr_federate', { action: 'list_global' });
+    expect(listGlobal.content[0].text).toContain('Global Security Invariant');
+  });
 });
+
 

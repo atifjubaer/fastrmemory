@@ -1,12 +1,14 @@
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import * as crypto from 'node:crypto';
+import * as os from 'node:os';
 
 export interface FastrConfig {
   projectId: string;
   projectName: string;
   projectRoot: string;
   dbPath: string;
+  globalDbPath: string;
   spoolPath: string;
   pagesDir: string;
 }
@@ -63,6 +65,7 @@ export function loadConfig(customRoot?: string): FastrConfig {
     projectName,
     projectRoot,
     dbPath: path.join(fastrDir, 'fastr.db'),
+    globalDbPath: path.join(os.homedir(), '.fastr', 'global.db'),
     spoolPath: path.join(fastrDir, 'spool', 'pending.jsonl'),
     pagesDir: path.join(fastrDir, 'pages')
   };

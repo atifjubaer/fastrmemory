@@ -276,4 +276,44 @@ program
     console.log(`Vault ready with YAML frontmatter, [[wikilinks]], and MOC.md index.`);
   });
 
+// 13. Global federation command (Cross-repo organization memory)
+const globalCmd = program.command('global').description('Manage organization-wide shared rules and error traps');
+
+globalCmd
+  .command('list')
+  .description('List all global organization memories')
+  .action(() => {
+    const ctx = createFastrServerContext();
+    const list = ctx.repo.listGlobalMemories();
+    console.log(`\n=== FastrMemory Global Shared Rules (${list.length}) ===`);
+    if (list.length === 0) {
+      console.log('No global organization rules currently recorded.');
+    } else {
+      for (const m of list) {
+        console.log(`- [${m.id}] (${m.kind.toUpperCase()}) "${m.title}" [${m.module}] (score: ${m.reward_score})`);
+      }
+    }
+    console.log('');
+  });
+
+globalCmd
+  .command('remember <title>')
+  .description('Record an organization-wide global rule or error trap')
+  .requiredOption('-c, --content <content>', 'Detailed memory content')
+  .option('-m, --module <module>', 'Module name', 'general')
+  .option('-k, --kind <kind>', 'rule | decision | error_trap | workflow', 'rule')
+  .action((title, opts) => {
+    const ctx = createFastrServerContext();
+    const mem = ctx.repo.insertMemory({
+      projectId: ctx.config.projectId,
+      scope: 'global',
+      module: opts.module,
+      kind: opts.kind,
+      title: scrubSecrets(title),
+      content: scrubSecrets(opts.content),
+      verified: true,
+    });
+    console.log(`Recorded global organization memory [${mem.id}] "${mem.title}". Applies across all projects.`);
+  });
+
 program.parse(process.argv);

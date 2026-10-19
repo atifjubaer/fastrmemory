@@ -9,7 +9,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.16.0-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Protocol](https://img.shields.io/badge/Protocol-MCP%20v2-7C3AED?style=flat-square)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/Tests-48%20Passed-brightgreen?style=flat-square)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-56%20Passed-brightgreen?style=flat-square)](tests/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-key-architectural-pillars)
 
@@ -241,18 +241,18 @@ Add this JSON block to your agent's MCP settings to enable autonomous memory:
 
 Built using the official **v2 `@modelcontextprotocol/server`** SDK:
 
-### 26 Core MCP Tools
+### 27 Core MCP Tools
 
 #### Cognitive Retrieval & Memory Core
-1. `fastr_recall`: Triple-stream hybrid search (BM25 + Vector + Spreading Activation Graph) with progressive L0–L3 token budgeting.
+1. `fastr_recall`: Triple-stream hybrid search (BM25 + Vector + Spreading Activation Graph) with progressive L0–L3 token budgeting and air-gapped offline vector fallback.
 2. `fastr_drill`: Resolves `source_event_ids` to retrieve untruncated verbatim stack traces, diffs, and tool outputs from `raw_events`.
 3. `fastr_file_history`: Returns active rules, `[TRAP]` warnings, and past supersessions for a specific file path.
-4. `fastr_remember`: Records new rules, decisions, or traps. Automatically extracts NER entities, scrubs secrets, and re-renders Markdown mirrors.
+4. `fastr_remember`: Records new rules, decisions, or traps. Automatically extracts NER entities, scrubs secrets, and re-renders Markdown mirrors. Supports `scope: 'project' | 'global'`.
 5. `fastr_supersede`: Retires an outdated rule (`valid_to = now`), records the rationale, and inserts a replacement verified rule.
 6. `fastr_feedback`: Updates `reward_score` on a specific memory ID (+0.2 good, -0.5 bad). Never penalizes innocent memories.
 7. `fastr_handoff`: Saves or retrieves cross-agent session milestones and promotes staging memories to verified.
 8. `fastr_status`: Returns active/staging counts, spool health, and embedding coverage %.
-9. `fastr_graph_query`: Explores 1-hop and 2-hop structural file-link dependencies and connected error traps.
+9. `fastr_graph_query`: Explores 1-hop and 2-hop structural file-link dependencies, entity links, and connected error traps.
 10. `fastr_timeline`: Chronological audit trail of memory events, newly verified rules, error traps, and historical supersessions.
 
 #### Versioning & Error Traps
@@ -280,6 +280,9 @@ Built using the official **v2 `@modelcontextprotocol/server`** SDK:
 24. `fastr_slot_set`: Updates working memory slot with hard character ceiling enforcement to prevent context bloat.
 25. `fastr_slot_list`: Lists all working memory slots and active character usage.
 26. `fastr_obsidian_export`: Exports all memories, entities, and relationships into an Obsidian-compatible markdown vault with YAML frontmatter, `[[wikilinks]]`, and `MOC.md`.
+
+#### Multi-Repository Organization Federation
+27. `fastr_federate`: Manages cross-repository organization-wide shared rules and error traps via SQLite native `ATTACH DATABASE` (`~/.fastr/global.db`), enabling unified search across local project and organization standards with sub-millisecond query time.
 
 ### 3 MCP Resources
 

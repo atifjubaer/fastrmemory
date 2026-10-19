@@ -1,6 +1,8 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
-import { RawEvent, Memory, FileLink, Handoff, Entity, GraphEdge, MemoryConflict, Prediction, Action, ActionEdge, MemorySlot } from './schema.js';
+import { RawEvent, Memory, FileLink, Handoff, Entity, GraphEdge, MemoryConflict, Prediction, Action, ActionEdge, MemorySlot, applySchema } from './schema.js';
 import { SpoolManager } from './spool.js';
 import { extractEntities } from '../learn/ner.js';
 import { detectConflict } from '../learn/conflicts.js';
@@ -8,6 +10,7 @@ import { calculateBaserate, PredictionBaserate } from '../learn/planning-fallacy
 
 export interface CreateMemoryParams {
   projectId: string;
+  scope?: 'project' | 'global';
   agentId?: string;
   module?: string;
   kind: 'rule' | 'decision' | 'error_trap' | 'workflow';
@@ -38,6 +41,35 @@ export class FastrRepository {
   constructor(db: DatabaseSync, spool?: SpoolManager) {
     this.db = db;
     this.spool = spool;
+  }
+
+  hasGlobalDb(): boolean {
+    try {
+      const list = this.db.prepare('PRAGMA database_list').all() as any[];
+      return list.some((d) => d.name === 'global_db');
+    } catch {
+      return false;
+    }
+  }
+
+  attachGlobalDatabase(globalDbPath: string): boolean {
+    try {
+      if (globalDbPath !== ':memory:') {
+        const dir = path.dirname(globalDbPath);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        const gDb = new DatabaseSync(globalDbPath);
+        applySchema(gDb);
+        gDb.close();
+      }
+
+      if (this.hasGlobalDb()) return true;
+
+      const normalized = globalDbPath.replace(/\\/g, '/');
+      this.db.exec(`ATTACH DATABASE '${normalized}' AS global_db`);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   // --- RAW EVENTS ---
@@ -114,14 +146,17 @@ export class FastrRepository {
     const status = params.verified ? 'verified' : 'staging';
     const pinned = params.pinned ? 1 : 0;
     const sourceIds = JSON.stringify(params.sourceEventIds?.slice(-32) || []);
+    const isGlobal = params.scope === 'global';
+    const targetProject = isGlobal ? 'global' : params.projectId;
+    const targetTable = (isGlobal && this.hasGlobalDb()) ? 'global_db.memories' : 'memories';
 
     this.db.prepare(`
-      INSERT INTO memories (
+      INSERT INTO ${targetTable} (
         id, project_id, agent_id, module, kind, title, content, status, pinned, source_event_ids
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       id,
-      params.projectId,
+      targetProject,
       params.agentId || 'default',
       module,
       params.kind,
@@ -132,9 +167,18 @@ export class FastrRepository {
       sourceIds
     );
 
+    if (isGlobal && this.hasGlobalDb()) {
+      try {
+        this.db.prepare(`
+          INSERT OR REPLACE INTO global_db.memories_fts (id, title, module, content)
+          VALUES (?, ?, ?, ?)
+        `).run(id, params.title, module, params.content);
+      } catch {}
+    }
+
     // Explicit file links
     if (params.files && params.files.length > 0) {
-      this.linkFiles(id, params.files, params.symbols);
+      this.linkFiles(id, params.files, params.symbols, isGlobal && this.hasGlobalDb());
     }
 
     // 1. Zero-LLM Fast-Path Named Entity Extraction (NER)
@@ -197,14 +241,17 @@ export class FastrRepository {
   }
 
   getMemory(id: string): Memory | null {
-    const row = this.db.prepare('SELECT * FROM memories WHERE id = ?').get(id) as unknown as Memory | undefined;
+    let row = this.db.prepare('SELECT * FROM memories WHERE id = ?').get(id) as unknown as Memory | undefined;
+    if (!row && this.hasGlobalDb()) {
+      row = this.db.prepare('SELECT * FROM global_db.memories WHERE id = ?').get(id) as unknown as Memory | undefined;
+    }
     return row || null;
   }
 
   listActiveMemories(projectId: string, module?: string): Memory[] {
     let query = `
       SELECT * FROM memories
-      WHERE project_id = ?
+      WHERE (project_id = ? OR project_id = 'global')
         AND valid_to IS NULL
         AND status != 'superseded'
         AND status != 'dormant'
@@ -216,21 +263,46 @@ export class FastrRepository {
       params.push(module.trim().toLowerCase());
     }
 
+    if (this.hasGlobalDb()) {
+      let gQuery = `
+        UNION ALL
+        SELECT * FROM global_db.memories
+        WHERE valid_to IS NULL
+          AND status != 'superseded'
+          AND status != 'dormant'
+      `;
+      if (module) {
+        gQuery += ' AND module = ?';
+        params.push(module.trim().toLowerCase());
+      }
+      query += gQuery;
+    }
+
     query += ' ORDER BY pinned DESC, reward_score DESC, created_at DESC';
 
     return this.db.prepare(query).all(...params) as unknown as Memory[];
   }
 
   listTraps(projectId: string): Memory[] {
-    const query = `
+    let query = `
       SELECT * FROM memories
-      WHERE project_id = ?
+      WHERE (project_id = ? OR project_id = 'global')
         AND kind = 'error_trap'
         AND valid_to IS NULL
         AND status != 'superseded'
         AND status != 'dormant'
-      ORDER BY reward_score DESC, created_at DESC
     `;
+    if (this.hasGlobalDb()) {
+      query += `
+        UNION ALL
+        SELECT * FROM global_db.memories
+        WHERE kind = 'error_trap'
+          AND valid_to IS NULL
+          AND status != 'superseded'
+          AND status != 'dormant'
+      `;
+    }
+    query += ' ORDER BY reward_score DESC, created_at DESC';
     return this.db.prepare(query).all(projectId) as unknown as Memory[];
   }
 
@@ -358,9 +430,10 @@ export class FastrRepository {
 
   // --- FILE LINKS ---
 
-  linkFiles(memoryId: string, files: string[], symbols?: string[]): void {
+  linkFiles(memoryId: string, files: string[], symbols?: string[], inGlobal: boolean = false): void {
+    const table = inGlobal && this.hasGlobalDb() ? 'global_db.file_links' : 'file_links';
     const stmt = this.db.prepare(`
-      INSERT OR IGNORE INTO file_links (memory_id, file_path, symbol_name)
+      INSERT OR IGNORE INTO ${table} (memory_id, file_path, symbol_name)
       VALUES (?, ?, ?)
     `);
 
@@ -373,26 +446,63 @@ export class FastrRepository {
   }
 
   getFilesForMemory(memoryId: string): string[] {
-    const rows = this.db.prepare(`
+    let rows = this.db.prepare(`
       SELECT DISTINCT file_path FROM file_links WHERE memory_id = ?
     `).all(memoryId) as { file_path: string }[];
+    if (rows.length === 0 && this.hasGlobalDb()) {
+      rows = this.db.prepare(`
+        SELECT DISTINCT file_path FROM global_db.file_links WHERE memory_id = ?
+      `).all(memoryId) as { file_path: string }[];
+    }
     return rows.map((r) => r.file_path);
   }
 
   getMemoriesForFile(projectId: string, filePath: string): Memory[] {
-    const rows = this.db.prepare(`
+    let innerQuery = `
       SELECT m.*
       FROM memories m
       JOIN file_links fl ON fl.memory_id = m.id
-      WHERE m.project_id = ?
+      WHERE (m.project_id = ? OR m.project_id = 'global')
         AND fl.file_path = ?
         AND m.valid_to IS NULL
         AND m.status != 'superseded'
         AND m.status != 'dormant'
-      ORDER BY m.kind = 'error_trap' DESC, m.reward_score DESC
-    `).all(projectId, filePath) as unknown as Memory[];
+    `;
+    const params: any[] = [projectId, filePath];
+
+    if (this.hasGlobalDb()) {
+      innerQuery += `
+        UNION ALL
+        SELECT gm.*
+        FROM global_db.memories gm
+        JOIN global_db.file_links gfl ON gfl.memory_id = gm.id
+        WHERE gfl.file_path = ?
+          AND gm.valid_to IS NULL
+          AND gm.status != 'superseded'
+          AND gm.status != 'dormant'
+      `;
+      params.push(filePath);
+    }
+
+    const query = `SELECT * FROM (${innerQuery}) ORDER BY kind = 'error_trap' DESC, reward_score DESC`;
+    const rows = this.db.prepare(query).all(...params) as unknown as Memory[];
 
     return rows;
+  }
+
+  listGlobalMemories(): Memory[] {
+    if (this.hasGlobalDb()) {
+      return this.db.prepare(`
+        SELECT * FROM global_db.memories
+        WHERE valid_to IS NULL AND status != 'superseded'
+        ORDER BY reward_score DESC, created_at DESC
+      `).all() as unknown as Memory[];
+    }
+    return this.db.prepare(`
+      SELECT * FROM memories
+      WHERE project_id = 'global' AND valid_to IS NULL AND status != 'superseded'
+      ORDER BY reward_score DESC, created_at DESC
+    `).all() as unknown as Memory[];
   }
 
   getTimeline(projectId: string, options: { module?: string; limit?: number } = {}): Array<{
@@ -442,7 +552,7 @@ export class FastrRepository {
   }
 
   queryGraph(projectId: string, options: { startFilePath?: string; depth?: number } = {}): {
-    nodes: Array<{ id: string; label: string; type: 'file' | 'memory'; kind?: string; module?: string; score?: number }>;
+    nodes: Array<{ id: string; label: string; type: 'file' | 'memory' | 'entity'; kind?: string; module?: string; score?: number }>;
     edges: Array<{ source: string; target: string; relation: string }>;
   } {
     const { startFilePath, depth = 2 } = options;
@@ -502,7 +612,7 @@ export class FastrRepository {
       WHERE m.project_id = ? AND m.valid_to IS NULL
     `).all(projectId) as any[];
 
-    const nodesMap = new Map<string, { id: string; label: string; type: 'file' | 'memory'; kind?: string; module?: string; score?: number }>();
+    const nodesMap = new Map<string, { id: string; label: string; type: 'file' | 'memory' | 'entity'; kind?: string; module?: string; score?: number }>();
     const edges: Array<{ source: string; target: string; relation: string }> = [];
 
     for (const m of memories) {
@@ -514,6 +624,20 @@ export class FastrRepository {
         nodesMap.set(fl.file_path, { id: fl.file_path, label: fl.file_path, type: 'file' });
       }
       edges.push({ source: fl.memory_id, target: fl.file_path, relation: 'links' });
+    }
+
+    const entities = this.getEntities(projectId);
+    for (const ent of entities) {
+      if (!nodesMap.has(ent.id)) {
+        nodesMap.set(ent.id, { id: ent.id, label: ent.name, type: 'entity', kind: ent.entity_type });
+      }
+    }
+
+    const graphEdges = this.db.prepare(`
+      SELECT source_id, target_id, edge_type FROM graph_edges WHERE project_id = ?
+    `).all(projectId) as Array<{ source_id: string; target_id: string; edge_type: string }>;
+    for (const ge of graphEdges) {
+      edges.push({ source: ge.source_id, target: ge.target_id, relation: ge.edge_type });
     }
 
     return {

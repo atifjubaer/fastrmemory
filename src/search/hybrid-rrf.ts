@@ -23,6 +23,15 @@ export interface SearchResult {
 
 const STOP_WORDS = new Set(['do', 'a', 'an', 'the', 'in', 'on', 'at', 'is', 'it', 'to', 'of', 'for', 'by', 'i', 'me', 'my', 'we', 'our']);
 
+export function hasGlobalDb(db: DatabaseSync): boolean {
+  try {
+    const list = db.prepare('PRAGMA database_list').all() as any[];
+    return list.some((d) => d.name === 'global_db');
+  } catch {
+    return false;
+  }
+}
+
 export function sanitizeFtsQuery(query: string): string {
   const words = query
     .replace(/[^\w\s-]/g, ' ')
@@ -56,7 +65,7 @@ export async function searchMemories(
 
   // Helper to test if a memory passes filters
   const passesFilter = (m: Memory): boolean => {
-    if (m.project_id !== projectId) return false;
+    if (m.project_id !== projectId && m.project_id !== 'global') return false;
     if (targetModule && m.module.toLowerCase() !== targetModule.trim().toLowerCase()) return false;
     if (!includeHistory) {
       if (m.valid_to !== null) return false;
@@ -69,15 +78,29 @@ export async function searchMemories(
   const ftsQuery = sanitizeFtsQuery(query);
   if (ftsQuery) {
     try {
-      const rows = db.prepare(`
+      const isGlobalAttached = hasGlobalDb(db);
+      let querySql = `
         SELECT m.*, f.rank
         FROM memories_fts f
         JOIN memories m ON m.id = f.id
-        WHERE m.project_id = ?
+        WHERE (m.project_id = ? OR m.project_id = 'global')
           AND memories_fts MATCH ?
-        ORDER BY f.rank ASC
-        LIMIT 50
-      `).all(projectId, ftsQuery) as unknown as (Memory & { rank: number })[];
+      `;
+      const ftsParams: any[] = [projectId, ftsQuery];
+
+      if (isGlobalAttached) {
+        querySql += `
+          UNION ALL
+          SELECT gm.*, gf.rank
+          FROM global_db.memories_fts gf
+          JOIN global_db.memories gm ON gm.id = gf.id
+          WHERE memories_fts MATCH ?
+        `;
+        ftsParams.push(ftsQuery);
+      }
+
+      querySql += ` ORDER BY rank ASC LIMIT 50`;
+      const rows = db.prepare(querySql).all(...ftsParams) as unknown as (Memory & { rank: number })[];
 
       let rank = 1;
       for (const row of rows) {
@@ -98,12 +121,22 @@ export async function searchMemories(
   // --- STREAM B: Vector Cosine Similarity Search ---
   const queryVec = await computeEmbedding(query);
   if (queryVec) {
-    const embeddedRows = db.prepare(`
+    const isGlobalAttached = hasGlobalDb(db);
+    let vecSql = `
       SELECT * FROM memories
-      WHERE project_id = ?
+      WHERE (project_id = ? OR project_id = 'global')
         AND embedded = 1
         AND embedding IS NOT NULL
-    `).all(projectId) as unknown as Memory[];
+    `;
+    if (isGlobalAttached) {
+      vecSql += `
+        UNION ALL
+        SELECT * FROM global_db.memories
+        WHERE embedded = 1
+          AND embedding IS NOT NULL
+      `;
+    }
+    const embeddedRows = db.prepare(vecSql).all(projectId) as unknown as Memory[];
 
     const scoredVectors: Array<{ memory: Memory; sim: number }> = [];
     for (const row of embeddedRows) {
@@ -227,10 +260,15 @@ export async function searchMemories(
     // Load candidate memories for activated memory IDs
     const activatedIds = Array.from(activationScores.keys()).filter((id) => id.startsWith('mem_') && (activationScores.get(id) || 0) > 0.1);
     if (activatedIds.length > 0) {
+      const isGlobalAttached = hasGlobalDb(db);
       const memPlaceholders = activatedIds.map(() => '?').join(',');
-      const memRows = db.prepare(`
-        SELECT * FROM memories WHERE id IN (${memPlaceholders})
-      `).all(...activatedIds) as unknown as Memory[];
+      let memSql = `SELECT * FROM memories WHERE id IN (${memPlaceholders})`;
+      let memParams: any[] = [...activatedIds];
+      if (isGlobalAttached) {
+        memSql += ` UNION ALL SELECT * FROM global_db.memories WHERE id IN (${memPlaceholders})`;
+        memParams = [...activatedIds, ...activatedIds];
+      }
+      const memRows = db.prepare(memSql).all(...memParams) as unknown as Memory[];
 
       memRows.sort((a, b) => (activationScores.get(b.id) || 0) - (activationScores.get(a.id) || 0));
 

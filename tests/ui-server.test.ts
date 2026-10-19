@@ -17,7 +17,11 @@ describe('FastrMemory Web UI Server', () => {
       await new Promise<void>((resolve) => serverInstance!.close(() => resolve()));
     }
     if (fs.existsSync(testDir)) {
-      fs.rmSync(testDir, { recursive: true, force: true });
+      try {
+        fs.rmSync(testDir, { recursive: true, force: true });
+      } catch {
+        // Safe Windows handle cleanup
+      }
     }
   });
 
@@ -73,5 +77,73 @@ describe('FastrMemory Web UI Server', () => {
     expect(timelineRes.status).toBe(200);
     const timelineJson = await timelineRes.json();
     expect(Array.isArray(timelineJson)).toBe(true);
+
+    // 6. Test /api/actions
+    const actionsRes = await fetch(`${url}/api/actions`);
+    expect(actionsRes.status).toBe(200);
+    const actionsJson = await actionsRes.json();
+    expect(Array.isArray(actionsJson.actions)).toBe(true);
+    expect(Array.isArray(actionsJson.edges)).toBe(true);
+    expect(typeof actionsJson.frontierCount).toBe('number');
+
+    // 7. Test /api/entities
+    const entitiesRes = await fetch(`${url}/api/entities`);
+    expect(entitiesRes.status).toBe(200);
+    const entitiesJson = await entitiesRes.json();
+    expect(Array.isArray(entitiesJson.entities)).toBe(true);
+    expect(Array.isArray(entitiesJson.edges)).toBe(true);
+
+    // 8. Test /api/conflicts
+    const conflictsRes = await fetch(`${url}/api/conflicts`);
+    expect(conflictsRes.status).toBe(200);
+    const conflictsJson = await conflictsRes.json();
+    expect(Array.isArray(conflictsJson)).toBe(true);
+
+    // 9. Test HTML contains Visual Graph & Action DAG modal
+    expect(htmlText).toContain('Visual Graph & DAG');
+    expect(htmlText).toContain('action-modal-overlay');
+  });
+
+  it('serves rich Action DAG dependencies and conflicts over REST API', async () => {
+    const config: FastrConfig = {
+      projectId: 'proj_ui_test',
+      projectName: 'ui_test',
+      projectRoot: testDir,
+      dbPath: path.join(testDir, '.fastr', 'fastr.db'),
+      pagesDir: path.join(testDir, '.fastr', 'pages'),
+      spoolPath: path.join(testDir, '.fastr', 'spool', 'pending.jsonl'),
+    };
+
+    // Open db connection to inject actions
+    const { initDatabase } = await import('../src/db/schema.js');
+    const { FastrRepository } = await import('../src/db/repository.js');
+    const { SpoolManager } = await import('../src/db/spool.js');
+    const db = initDatabase(config.dbPath);
+    const repo = new FastrRepository(db, new SpoolManager(config.spoolPath));
+
+    const taskA = repo.createAction({
+      projectId: config.projectId,
+      title: 'Prerequisite Task A',
+      priority: 2,
+    });
+    const taskB = repo.createAction({
+      projectId: config.projectId,
+      title: 'Dependent Task B',
+      priority: 1,
+      requires: [taskA.id],
+    });
+
+    const actionsRes = await fetch(`http://localhost:${(serverInstance!.address() as any).port}/api/actions`);
+    expect(actionsRes.status).toBe(200);
+    const actionsJson = await actionsRes.json();
+    expect(actionsJson.actions.length).toBeGreaterThanOrEqual(2);
+    
+    const itemA = actionsJson.actions.find((a: any) => a.id === taskA.id);
+    const itemB = actionsJson.actions.find((a: any) => a.id === taskB.id);
+    expect(itemA.isFrontier).toBe(true);
+    expect(itemB.isFrontier).toBe(false);
+    expect(itemB.requires).toContain(taskA.id);
+
+    db.close();
   });
 });
