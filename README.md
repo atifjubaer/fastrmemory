@@ -77,6 +77,9 @@ Comprehensive comparison across the current agent memory landscape:
 | **Feedback Multiplier**| **Per-ID attribution (`[mem_xxxx]`)** | Passive telemetry only | Edge re-weighting | Manual edit | None | Batch penalty | None |
 | **External Dependencies**| **Zero** (Standard Node.js) | Compiled Rust binary | MatrixOne / Docker | Qdrant / pgvector | PostgreSQL | None | None |
 | **Token Budgeting** | **Progressive L0–L3 (~150 to 4000t)** | ~1,900t / session | Uncapped | Varies | Core context | Varies | 22k+ tokens |
+| **Autonomous Self-Healing** | **Built-in (`fastr_heal`, FTS5 rebuild, WAL vacuum)** | Daemon restart | None | Manual SQL | Manual | None | None |
+| **Token Compression** | **AST structural compression (`fastr_compress`)** | External LLM call | None | None | None | None | None |
+| **Multimodal Vision** | **Indexed screenshots + OCR + 384-dim vector** | Heavy CLIP daemon | None | None | None | None | None |
 
 ---
 
@@ -223,6 +226,25 @@ fastrmemory setup
 
 # Mine past Git bug fixes directly into staging error traps:
 fastrmemory learn -n 30 --days 90
+```
+
+### 6. Token Compression, Database Doctor & Vision Search
+
+```bash
+# Compress markdown docs & LLM prompt context to reduce token usage:
+fastrmemory compress docs/architecture.md --dry-run
+
+# Run deep health check across SQLite, FTS5 indices, file links, and task DAGs:
+fastrmemory diagnose
+
+# Auto-repair FTS5 indices, orphaned file links, and WAL fragmentation:
+fastrmemory heal
+
+# Tag a UI screenshot or architecture diagram with OCR & 384-dim vector indexing:
+fastrmemory vision tag screenshots/modal-error.png --desc "Modal error 401 alert" --ocr "HTTP 401"
+
+# Semantic search across tagged screenshots and visual diagrams:
+fastrmemory vision search "modal error 401"
 ```
 
 ---
