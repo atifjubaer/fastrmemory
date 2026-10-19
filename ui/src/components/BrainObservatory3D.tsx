@@ -1,13 +1,16 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { Pause, Play, RotateCcw, ZoomIn, ZoomOut, Sparkles, Filter, ShieldAlert } from 'lucide-react';
-import type { MemoryItem, FastrStatus } from '../types';
+import { Pause, Play, RotateCcw, ShieldAlert, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BiTemporalDiff } from './BiTemporalDiff';
+import type { MemoryItem, FastrStatus, ConflictItem } from '../types';
 
 interface BrainObservatory3DProps {
   memories: MemoryItem[];
   status: FastrStatus | null;
+  conflicts?: ConflictItem[];
   onSelectMemory: (memory: MemoryItem) => void;
+  onResolveConflict?: (conflictId: number, keepMemoryId: string, forgetLoser: boolean) => void;
 }
 
 interface Node3DData {
@@ -16,29 +19,33 @@ interface Node3DData {
   mesh: THREE.Mesh;
   halo: THREE.Mesh;
   ring?: THREE.Mesh;
+  conflictRing?: THREE.Mesh;
   position: THREE.Vector3;
   color: string;
   isTrap: boolean;
+  isConflicted: boolean;
   screenPos: { x: number; y: number; visible: boolean };
 }
 
 export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
   memories,
   status,
+  conflicts = [],
   onSelectMemory,
+  onResolveConflict,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [filterKind, setFilterKind] = useState<'all' | 'rules' | 'traps'>('all');
+  const [filterKind, setFilterKind] = useState<'all' | 'rules' | 'traps' | 'conflicts'>('all');
   const [isRotating, setIsRotating] = useState(true);
   const [hoveredNode, setHoveredNode] = useState<Node3DData | null>(null);
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
-  const [leaderLabels, setLeaderLabels] = useState<Array<{ id: string; title: string; isTrap: boolean; x: number; y: number; visible: boolean }>>([]);
+  const [leaderLabels, setLeaderLabels] = useState<
+    Array<{ id: string; title: string; isTrap: boolean; isConflicted: boolean; x: number; y: number; visible: boolean }>
+  >([]);
+  const [activeConflict, setActiveConflict] = useState<ConflictItem | null>(null);
 
   const isRotatingRef = useRef(isRotating);
   isRotatingRef.current = isRotating;
-
-  const filterKindRef = useRef(filterKind);
-  filterKindRef.current = filterKind;
 
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -46,18 +53,31 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
   const controlsRef = useRef<OrbitControls | null>(null);
   const nodesRef = useRef<Node3DData[]>([]);
   const linesMeshRef = useRef<THREE.LineSegments | null>(null);
+  const conflictLinesMeshRef = useRef<THREE.LineSegments | null>(null);
+  const conflictMaterialRef = useRef<THREE.LineBasicMaterial | null>(null);
   const targetCamPosRef = useRef<THREE.Vector3 | null>(null);
   const targetLookAtRef = useRef<THREE.Vector3 | null>(null);
   const starFieldRef = useRef<THREE.Points | null>(null);
+
+  // Conflicted memory IDs set
+  const conflictedMemoryIds = useMemo(() => {
+    const ids = new Set<string>();
+    conflicts.forEach((c) => {
+      ids.add(c.memory_a_id);
+      ids.add(c.memory_b_id);
+    });
+    return ids;
+  }, [conflicts]);
 
   // Filter memories
   const filteredMemories = useMemo(() => {
     return memories.filter((m) => {
       if (filterKind === 'rules') return m.kind === 'rule';
       if (filterKind === 'traps') return m.kind === 'error_trap';
+      if (filterKind === 'conflicts') return conflictedMemoryIds.has(m.id);
       return true;
     });
-  }, [memories, filterKind]);
+  }, [memories, filterKind, conflictedMemoryIds]);
 
   // Setup Three.js scene
   useEffect(() => {
@@ -147,6 +167,12 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
         starFieldRef.current.rotation.y += 0.0003;
       }
 
+      // Conflict tension lines neon pulsing
+      if (conflictMaterialRef.current) {
+        const pulse = (Math.sin(Date.now() * 0.007) + 1) * 0.5;
+        conflictMaterialRef.current.opacity = 0.4 + 0.6 * pulse;
+      }
+
       // Smooth camera lerp interpolation (60 FPS fluid transitions)
       if (targetCamPosRef.current && camera) {
         camera.position.lerp(targetCamPosRef.current, 0.06);
@@ -170,11 +196,11 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
       const heightHalf = container.clientHeight / 2;
       const tempVec = new THREE.Vector3();
 
-      const labels: Array<{ id: string; title: string; isTrap: boolean; x: number; y: number; visible: boolean }> = [];
+      const labels: Array<{ id: string; title: string; isTrap: boolean; isConflicted: boolean; x: number; y: number; visible: boolean }> = [];
 
       nodesRef.current.forEach((n, idx) => {
-        // Only show top 8 prominent memories as leader labels to keep galaxy uncluttered
-        if (n.isTrap || idx < 5) {
+        // Show prominent memories, traps, and all conflicted nodes
+        if (n.isConflicted || n.isTrap || idx < 5) {
           tempVec.copy(n.position);
           tempVec.project(camera);
 
@@ -184,6 +210,7 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
               id: n.id,
               title: n.memory.title,
               isTrap: n.isTrap,
+              isConflicted: n.isConflicted,
               x: tempVec.x * widthHalf + widthHalf,
               y: -(tempVec.y * heightHalf) + heightHalf,
               visible: true,
@@ -221,7 +248,7 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
     };
   }, []);
 
-  // Populate Nodes & Constellation Wires
+  // Populate Nodes, Constellation Wires, & Conflict Tension Lines
   useEffect(() => {
     const scene = sceneRef.current;
     if (!scene) return;
@@ -231,9 +258,11 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
       scene.remove(n.mesh);
       scene.remove(n.halo);
       if (n.ring) scene.remove(n.ring);
+      if (n.conflictRing) scene.remove(n.conflictRing);
       n.mesh.geometry.dispose();
       n.halo.geometry.dispose();
       if (n.ring) n.ring.geometry.dispose();
+      if (n.conflictRing) n.conflictRing.geometry.dispose();
     });
     nodesRef.current = [];
 
@@ -241,6 +270,13 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
       scene.remove(linesMeshRef.current);
       linesMeshRef.current.geometry.dispose();
       linesMeshRef.current = null;
+    }
+
+    if (conflictLinesMeshRef.current) {
+      scene.remove(conflictLinesMeshRef.current);
+      conflictLinesMeshRef.current.geometry.dispose();
+      conflictLinesMeshRef.current = null;
+      conflictMaterialRef.current = null;
     }
 
     const count = filteredMemories.length;
@@ -252,10 +288,11 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
     // Distribute nodes in celestial orbital galaxy
     filteredMemories.forEach((m, i) => {
       const isTrap = m.kind === 'error_trap';
+      const isConflicted = conflictedMemoryIds.has(m.id);
       const phi = Math.acos(-1 + (2 * i) / Math.max(1, count));
       const theta = Math.sqrt(count * Math.PI) * phi;
 
-      // Orbital radius: Traps form an elevated radiant crown, rules orbit in disc
+      // Orbital radius: Traps form an elevated crown, rules orbit in disc
       const radius = isTrap ? 14 + (i % 3) * 2.5 : 10 + (i % 4) * 3;
       const x = radius * Math.cos(theta) * Math.sin(phi);
       const y = isTrap ? 4 + Math.sin(theta) * 3.5 : (Math.sin(phi) * 6 - 2);
@@ -268,21 +305,21 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
       const baseRadius = isTrap ? 0.55 : 0.42;
       const sphereRadius = baseRadius + Math.min(0.4, (m.reward_score - 1) * 0.2);
 
-      const colorHex = isTrap ? 0xfbbf24 : 0x38bdf8;
-      const emissiveHex = isTrap ? 0xd97706 : 0x0284c7;
+      const colorHex = isConflicted ? 0xf43f5e : isTrap ? 0xfbbf24 : 0x38bdf8;
+      const emissiveHex = isConflicted ? 0xbe123c : isTrap ? 0xd97706 : 0x0284c7;
 
       // 1. Core Sphere
       const geom = new THREE.SphereGeometry(sphereRadius, 24, 24);
       const mat = new THREE.MeshStandardMaterial({
         color: colorHex,
         emissive: emissiveHex,
-        emissiveIntensity: isTrap ? 0.55 : 0.35,
+        emissiveIntensity: isConflicted ? 0.75 : isTrap ? 0.55 : 0.35,
         roughness: 0.25,
         metalness: 0.1,
       });
       const mesh = new THREE.Mesh(geom, mat);
       mesh.position.copy(pos);
-      mesh.userData = { memoryId: m.id, memory: m };
+      mesh.userData = { memoryId: m.id, memory: m, isConflicted };
       scene.add(mesh);
 
       // 2. Luminous Halo
@@ -290,7 +327,7 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
       const haloMat = new THREE.MeshBasicMaterial({
         color: colorHex,
         transparent: true,
-        opacity: isTrap ? 0.14 : 0.08,
+        opacity: isConflicted ? 0.22 : isTrap ? 0.14 : 0.08,
         side: THREE.BackSide,
       });
       const halo = new THREE.Mesh(haloGeom, haloMat);
@@ -313,29 +350,46 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
         scene.add(ring);
       }
 
+      // 4. Pulsing Crimson Hazard Ring for Conflicted Rules
+      let conflictRing: THREE.Mesh | undefined;
+      if (isConflicted) {
+        const cRingGeom = new THREE.RingGeometry(sphereRadius * 2.1, sphereRadius * 2.6, 32);
+        const cRingMat = new THREE.MeshBasicMaterial({
+          color: 0xf43f5e,
+          transparent: true,
+          opacity: 0.85,
+          side: THREE.DoubleSide,
+        });
+        conflictRing = new THREE.Mesh(cRingGeom, cRingMat);
+        conflictRing.position.copy(pos);
+        conflictRing.rotation.x = Math.PI / 2;
+        scene.add(conflictRing);
+      }
+
       newNodes.push({
         id: m.id,
         memory: m,
         mesh,
         halo,
         ring,
+        conflictRing,
         position: pos,
-        color: isTrap ? '#fbbf24' : '#38bdf8',
+        color: isConflicted ? '#f43f5e' : isTrap ? '#fbbf24' : '#38bdf8',
         isTrap,
+        isConflicted,
         screenPos: { x: 0, y: 0, visible: false },
       });
     });
 
     nodesRef.current = newNodes;
 
-    // 4. Generate Constellation Wires (Tendril Connections)
+    // 5. Generate Constellation Wires (Standard Knowledge Links)
     const linePoints: THREE.Vector3[] = [];
     for (let i = 0; i < newNodes.length; i++) {
       for (let j = i + 1; j < newNodes.length; j++) {
         const a = newNodes[i];
         const b = newNodes[j];
 
-        // Connect if in same module or share linked files
         const sameModule = a.memory.module.toLowerCase() === b.memory.module.toLowerCase();
         const sharedFile = a.memory.linked_files?.some((f) => b.memory.linked_files?.includes(f));
         const dist = a.position.distanceTo(b.position);
@@ -357,7 +411,47 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
       scene.add(linesMesh);
       linesMeshRef.current = linesMesh;
     }
-  }, [filteredMemories]);
+
+    // 6. Generate Pulsing Conflict Tension Lines (Bi-Temporal Contradiction Wires)
+    const conflictLinePoints: THREE.Vector3[] = [];
+    if (conflicts && conflicts.length > 0) {
+      conflicts.forEach((c) => {
+        const nodeA = newNodes.find((n) => n.id === c.memory_a_id);
+        const nodeB = newNodes.find((n) => n.id === c.memory_b_id);
+        if (nodeA && nodeB) {
+          conflictLinePoints.push(nodeA.position, nodeB.position);
+        }
+      });
+    }
+
+    if (conflictLinePoints.length > 0) {
+      const cLineGeom = new THREE.BufferGeometry().setFromPoints(conflictLinePoints);
+      const cLineMat = new THREE.LineBasicMaterial({
+        color: 0xf43f5e,
+        transparent: true,
+        opacity: 0.85,
+      });
+      conflictMaterialRef.current = cLineMat;
+      const cMesh = new THREE.LineSegments(cLineGeom, cLineMat);
+      scene.add(cMesh);
+      conflictLinesMeshRef.current = cMesh;
+    }
+  }, [filteredMemories, conflicts, conflictedMemoryIds]);
+
+  // Focus Camera on Conflict Pair
+  const handleFocusConflict = useCallback((conflict: ConflictItem) => {
+    setActiveConflict(conflict);
+    const nodeA = nodesRef.current.find((n) => n.id === conflict.memory_a_id);
+    const nodeB = nodesRef.current.find((n) => n.id === conflict.memory_b_id);
+    if (nodeA && nodeB) {
+      const mid = nodeA.position.clone().add(nodeB.position).multiplyScalar(0.5);
+      targetCamPosRef.current = mid.clone().add(new THREE.Vector3(0, 4, 12));
+      targetLookAtRef.current = mid.clone();
+    } else if (nodeA) {
+      targetCamPosRef.current = nodeA.position.clone().add(new THREE.Vector3(0, 2, 8));
+      targetLookAtRef.current = nodeA.position.clone();
+    }
+  }, []);
 
   // Raycaster for Hover & Click
   const handlePointerMove = useCallback(
@@ -413,13 +507,19 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
         const hitMesh = intersects[0].object as THREE.Mesh;
         const found = nodesRef.current.find((n) => n.mesh === hitMesh);
         if (found) {
-          onSelectMemory(found.memory);
-          targetCamPosRef.current = found.position.clone().add(new THREE.Vector3(0, 1.8, 6.5));
-          targetLookAtRef.current = found.position.clone();
+          // If node has an active contradiction, focus conflict resolver HUD directly!
+          const relatedConflict = conflicts.find((c) => c.memory_a_id === found.id || c.memory_b_id === found.id);
+          if (relatedConflict) {
+            handleFocusConflict(relatedConflict);
+          } else {
+            onSelectMemory(found.memory);
+            targetCamPosRef.current = found.position.clone().add(new THREE.Vector3(0, 1.8, 6.5));
+            targetLookAtRef.current = found.position.clone();
+          }
         }
       }
     },
-    [onSelectMemory]
+    [onSelectMemory, conflicts, handleFocusConflict]
   );
 
   const resetCamera = () => {
@@ -432,10 +532,10 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
       style={{
         position: 'relative',
         width: '100%',
-        height: '640px',
+        height: '660px',
         background: '#09090b',
         border: '1px solid var(--border)',
-        borderRadius: '6px',
+        borderRadius: '8px',
         overflow: 'hidden',
       }}
     >
@@ -447,15 +547,20 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
         style={{ width: '100%', height: '100%', cursor: 'grab' }}
       />
 
-      {/* Floating 3D Leader Labels (Hippo Standard) */}
+      {/* Floating 3D Leader Labels */}
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
         {leaderLabels.map((lbl) => (
           <div
             key={lbl.id}
             onClick={(e) => {
               e.stopPropagation();
-              const target = memories.find((m) => m.id === lbl.id);
-              if (target) onSelectMemory(target);
+              const relatedConflict = conflicts.find((c) => c.memory_a_id === lbl.id || c.memory_b_id === lbl.id);
+              if (relatedConflict) {
+                handleFocusConflict(relatedConflict);
+              } else {
+                const target = memories.find((m) => m.id === lbl.id);
+                if (target) onSelectMemory(target);
+              }
             }}
             style={{
               position: 'absolute',
@@ -470,11 +575,17 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
               padding: '3px 8px',
               borderRadius: '12px',
               background: 'rgba(20, 20, 23, 0.85)',
-              border: `1px solid ${lbl.isTrap ? 'rgba(251, 191, 36, 0.4)' : 'rgba(56, 189, 248, 0.3)'}`,
+              border: `1px solid ${
+                lbl.isConflicted
+                  ? 'rgba(244, 63, 94, 0.7)'
+                  : lbl.isTrap
+                  ? 'rgba(251, 191, 36, 0.5)'
+                  : 'rgba(56, 189, 248, 0.3)'
+              }`,
               backdropFilter: 'blur(8px)',
               fontSize: '11px',
               fontFamily: 'var(--font-mono)',
-              color: lbl.isTrap ? '#fbbf24' : 'var(--text)',
+              color: lbl.isConflicted ? '#fb7185' : lbl.isTrap ? '#fbbf24' : 'var(--text)',
               whiteSpace: 'nowrap',
               maxWidth: '220px',
               overflow: 'hidden',
@@ -488,8 +599,8 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
                 width: '6px',
                 height: '6px',
                 borderRadius: '50%',
-                background: lbl.isTrap ? '#fbbf24' : 'var(--accent)',
-                boxShadow: `0 0 6px ${lbl.isTrap ? '#fbbf24' : 'var(--accent)'}`,
+                background: lbl.isConflicted ? '#f43f5e' : lbl.isTrap ? '#fbbf24' : 'var(--accent)',
+                boxShadow: `0 0 6px ${lbl.isConflicted ? '#f43f5e' : lbl.isTrap ? '#fbbf24' : 'var(--accent)'}`,
               }}
             />
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{lbl.title}</span>
@@ -537,6 +648,35 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
 
         {/* Filter Toolbar & Camera Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'auto' }}>
+          {/* Active Conflicts Quick Launcher Pill */}
+          {conflicts && conflicts.length > 0 && (
+            <button
+              onClick={() => {
+                if (activeConflict) {
+                  setActiveConflict(null);
+                } else {
+                  handleFocusConflict(conflicts[0]);
+                }
+              }}
+              className="btn"
+              style={{
+                padding: '4px 10px',
+                fontSize: '11px',
+                background: activeConflict ? 'var(--risk)' : 'var(--risk-weak)',
+                color: activeConflict ? '#ffffff' : 'var(--risk)',
+                border: '1px solid var(--risk)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontWeight: 600,
+                boxShadow: '0 0 12px rgba(244, 63, 94, 0.3)',
+              }}
+            >
+              <ShieldAlert size={12} />
+              <span>{conflicts.length} Conflict{conflicts.length > 1 ? 's' : ''}</span>
+            </button>
+          )}
+
           {/* Kind Filter Pills */}
           <div
             style={{
@@ -588,6 +728,21 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
             >
               2.0x Traps ({memories.filter((m) => m.kind === 'error_trap').length})
             </button>
+            {conflicts.length > 0 && (
+              <button
+                onClick={() => setFilterKind('conflicts')}
+                className="btn"
+                style={{
+                  padding: '3px 8px',
+                  fontSize: '11px',
+                  background: filterKind === 'conflicts' ? 'var(--risk-weak)' : 'transparent',
+                  color: filterKind === 'conflicts' ? 'var(--risk)' : 'var(--text-muted)',
+                  border: 'none',
+                }}
+              >
+                Conflicts ({conflicts.length})
+              </button>
+            )}
           </div>
 
           {/* Rotation Toggle */}
@@ -612,8 +767,98 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
         </div>
       </div>
 
+      {/* Embedded 3D Bi-Temporal Conflict Resolver Glass HUD */}
+      {activeConflict && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '56px',
+            right: '16px',
+            width: '590px',
+            maxWidth: 'calc(100% - 32px)',
+            maxHeight: 'calc(100% - 76px)',
+            overflowY: 'auto',
+            zIndex: 250,
+            background: 'rgba(15, 15, 18, 0.94)',
+            backdropFilter: 'blur(16px)',
+            border: '1px solid var(--risk)',
+            borderRadius: '8px',
+            boxShadow: '0 16px 40px rgba(0, 0, 0, 0.85), 0 0 24px rgba(244, 63, 94, 0.3)',
+            padding: '16px',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="badge-tag" style={{ background: 'var(--risk-weak)', color: 'var(--risk)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <ShieldAlert size={12} />
+                CONTRADICTION DETECTED
+              </span>
+              {conflicts.length > 1 && (
+                <span style={{ fontSize: '11px', color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>
+                  ({conflicts.findIndex((c) => c.id === activeConflict.id) + 1} of {conflicts.length})
+                </span>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {conflicts.length > 1 && (
+                <>
+                  <button
+                    onClick={() => {
+                      const idx = conflicts.findIndex((c) => c.id === activeConflict.id);
+                      const prev = conflicts[(idx - 1 + conflicts.length) % conflicts.length];
+                      handleFocusConflict(prev);
+                    }}
+                    className="btn"
+                    style={{ padding: '3px 6px', fontSize: '11px' }}
+                    title="Previous conflict"
+                  >
+                    <ChevronLeft size={13} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      const idx = conflicts.findIndex((c) => c.id === activeConflict.id);
+                      const next = conflicts[(idx + 1) % conflicts.length];
+                      handleFocusConflict(next);
+                    }}
+                    className="btn"
+                    style={{ padding: '3px 6px', fontSize: '11px' }}
+                    title="Next conflict"
+                  >
+                    <ChevronRight size={13} />
+                  </button>
+                </>
+              )}
+              <button
+                onClick={() => setActiveConflict(null)}
+                className="btn"
+                style={{ padding: '3px 6px', fontSize: '11px' }}
+                title="Dismiss overlay"
+              >
+                <X size={13} />
+              </button>
+            </div>
+          </div>
+
+          <BiTemporalDiff
+            conflict={activeConflict}
+            memoryA={memories.find((m) => m.id === activeConflict.memory_a_id)}
+            memoryB={memories.find((m) => m.id === activeConflict.memory_b_id)}
+            onResolve={(cid, keepId, forgetLoser) => {
+              onResolveConflict?.(cid, keepId, forgetLoser);
+              // Advance to next conflict if one remains, or dismiss
+              const remaining = conflicts.filter((c) => c.id !== cid);
+              if (remaining.length > 0) {
+                handleFocusConflict(remaining[0]);
+              } else {
+                setActiveConflict(null);
+              }
+            }}
+          />
+        </div>
+      )}
+
       {/* Hover Tooltip Card */}
-      {hoveredNode && (
+      {hoveredNode && !activeConflict && (
         <div
           style={{
             position: 'absolute',
@@ -621,7 +866,7 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
             top: `${Math.min(hoverPos.y + 16, 520)}px`,
             pointerEvents: 'none',
             background: 'rgba(20, 20, 23, 0.95)',
-            border: `1px solid ${hoveredNode.isTrap ? 'var(--trap)' : 'var(--accent)'}`,
+            border: `1px solid ${hoveredNode.isConflicted ? 'var(--risk)' : hoveredNode.isTrap ? 'var(--trap)' : 'var(--accent)'}`,
             borderRadius: '6px',
             padding: '10px 14px',
             boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
@@ -634,11 +879,11 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
             <span
               className="badge-tag"
               style={{
-                background: hoveredNode.isTrap ? 'var(--trap-weak)' : 'var(--accent-weak)',
-                color: hoveredNode.isTrap ? 'var(--trap)' : 'var(--accent)',
+                background: hoveredNode.isConflicted ? 'var(--risk-weak)' : hoveredNode.isTrap ? 'var(--trap-weak)' : 'var(--accent-weak)',
+                color: hoveredNode.isConflicted ? 'var(--risk)' : hoveredNode.isTrap ? 'var(--trap)' : 'var(--accent)',
               }}
             >
-              {hoveredNode.isTrap ? '2.0X ERROR TRAP' : 'VERIFIED RULE'}
+              {hoveredNode.isConflicted ? '⚠️ CONTRADICTION' : hoveredNode.isTrap ? '2.0X ERROR TRAP' : 'VERIFIED RULE'}
             </span>
             <span style={{ fontSize: '10.5px', color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>
               {hoveredNode.memory.module}
@@ -660,8 +905,8 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
             }}
           >
             <span>[{hoveredNode.id}]</span>
-            <span style={{ color: hoveredNode.isTrap ? 'var(--trap)' : 'var(--accent)', fontWeight: 600 }}>
-              {hoveredNode.memory.reward_score.toFixed(2)}x boost
+            <span style={{ color: hoveredNode.isConflicted ? 'var(--risk)' : hoveredNode.isTrap ? 'var(--trap)' : 'var(--accent)', fontWeight: 600 }}>
+              {hoveredNode.isConflicted ? 'Click to resolve' : `${hoveredNode.memory.reward_score.toFixed(2)}x boost`}
             </span>
           </div>
         </div>
@@ -705,8 +950,12 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
             <span style={{ color: '#38bdf8' }}>VERIFIED RULE</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'rgba(56, 189, 248, 0.4)' }} />
-            <span style={{ color: 'var(--text-faint)' }}>CONSTELLATION WIRE</span>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f43f5e', boxShadow: '0 0 6px #f43f5e' }} />
+            <span style={{ color: '#fb7185' }}>CONTRADICTION</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'rgba(244, 63, 94, 0.6)' }} />
+            <span style={{ color: '#fb7185' }}>TENSION WIRE</span>
           </div>
         </div>
 
@@ -729,7 +978,7 @@ export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
           <span>Left-Drag: <b>Orbit 3D</b></span>
           <span>Right-Drag: <b>Pan</b></span>
           <span>Scroll: <b>Zoom</b></span>
-          <span>Click Node: <b>Inspect Rule</b></span>
+          <span>Click Node: <b>Inspect / Resolve</b></span>
         </div>
       </div>
     </div>

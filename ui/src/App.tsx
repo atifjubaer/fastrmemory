@@ -579,7 +579,9 @@ export const App: React.FC = () => {
               <BrainObservatory3D
                 memories={memories}
                 status={status}
+                conflicts={conflicts}
                 onSelectMemory={(m) => setActiveModalMemory(m)}
+                onResolveConflict={handleResolveConflict}
               />
             )}
 
