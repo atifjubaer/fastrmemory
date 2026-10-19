@@ -459,8 +459,10 @@ export class FastrRepository {
 
     const symbolList = symbols && symbols.length > 0 ? symbols : [''];
     for (const f of files) {
+      const normalized = f.replace(/\\/g, '/').trim();
+      if (!normalized) continue;
       for (const s of symbolList) {
-        stmt.run(memoryId, f, s);
+        stmt.run(memoryId, normalized, s);
       }
     }
   }
@@ -478,6 +480,7 @@ export class FastrRepository {
   }
 
   getMemoriesForFile(projectId: string, filePath: string): Memory[] {
+    const targetPath = filePath.replace(/\\/g, '/').trim();
     let innerQuery = `
       SELECT m.*
       FROM memories m
@@ -488,7 +491,7 @@ export class FastrRepository {
         AND m.status != 'superseded'
         AND m.status != 'dormant'
     `;
-    const params: any[] = [projectId, filePath];
+    const params: any[] = [projectId, targetPath];
 
     if (this.hasGlobalDb()) {
       innerQuery += `
@@ -501,7 +504,7 @@ export class FastrRepository {
           AND gm.status != 'superseded'
           AND gm.status != 'dormant'
       `;
-      params.push(filePath);
+      params.push(targetPath);
     }
 
     const query = `SELECT * FROM (${innerQuery}) ORDER BY kind = 'error_trap' DESC, reward_score DESC`;

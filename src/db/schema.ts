@@ -331,6 +331,8 @@ export function initDatabase(dbPath: string): DatabaseSync {
   }
 
   const db = new DatabaseSync(dbPath);
+  db.exec('PRAGMA busy_timeout = 5000;');
+  db.exec('PRAGMA synchronous = NORMAL;');
   applySchema(db);
   return db;
 }

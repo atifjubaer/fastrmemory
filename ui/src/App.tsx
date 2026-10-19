@@ -25,12 +25,21 @@ import { TreemapCanvas } from './components/TreemapCanvas';
 import { RrfWaterfall } from './components/RrfWaterfall';
 import { BiTemporalDiff } from './components/BiTemporalDiff';
 import { CopyButton } from './components/CopyButton';
+import { MarkdownView } from './components/MarkdownView';
 import type { FastrStatus, MemoryItem, ActionItem, ConflictItem } from './types';
 
 type TabType = 'overview' | 'memories' | 'traps' | 'dag' | 'treemap' | 'rrf' | 'conflicts';
 
 export const App: React.FC = () => {
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    try {
+      const saved = localStorage.getItem('fastr-theme');
+      if (saved === 'light' || saved === 'dark') return saved;
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    } catch {
+      return 'dark';
+    }
+  });
   const [currentTab, setCurrentTab] = useState<TabType>('overview');
   const [loading, setLoading] = useState(true);
 
@@ -106,23 +115,40 @@ export const App: React.FC = () => {
     },
   });
 
-  // Theme switcher
+  // Theme switcher & persistence
   const toggleTheme = () => {
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(nextTheme);
+    try {
+      localStorage.setItem('fastr-theme', nextTheme);
+    } catch {}
     document.documentElement.setAttribute('data-theme', nextTheme);
   };
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, []);
 
   // Keyboard shortcut listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+      const isInput = document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA';
+      if (e.key === '/' && !isInput) {
         e.preventDefault();
         document.getElementById('fastr-search-input')?.focus();
       } else if (e.key === 'Escape') {
         setActiveModalMemory(null);
         setActiveModalAction(null);
         setIsCreateModalOpen(false);
+      } else if (!isInput) {
+        if (e.key === '1') { setCurrentTab('overview'); window.location.hash = '#/overview'; }
+        else if (e.key === '2') { setCurrentTab('memories'); window.location.hash = '#/memories'; }
+        else if (e.key === '3') { setCurrentTab('traps'); window.location.hash = '#/traps'; }
+        else if (e.key === '4') { setCurrentTab('dag'); window.location.hash = '#/dag'; }
+        else if (e.key === '5') { setCurrentTab('treemap'); window.location.hash = '#/treemap'; }
+        else if (e.key === '6') { setCurrentTab('rrf'); window.location.hash = '#/rrf'; }
+        else if (e.key === '7') { setCurrentTab('conflicts'); window.location.hash = '#/conflicts'; }
+        else if (e.key.toLowerCase() === 'n' || e.key.toLowerCase() === 'c') { setIsCreateModalOpen(true); }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -432,6 +458,18 @@ export const App: React.FC = () => {
                   </div>
                 </div>
 
+                {filteredMemories.length === 0 ? (
+                  <div className="card-panel" style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔍</div>
+                    <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text)' }}>No memories match your criteria</div>
+                    <p style={{ fontSize: '12px', marginTop: '4px', maxWidth: '380px', margin: '4px auto 16px auto' }}>
+                      Try adjusting your search query, selecting a different module filter, or record a new rule.
+                    </p>
+                    <button onClick={() => setIsCreateModalOpen(true)} className="btn btn-primary" style={{ margin: '0 auto' }}>
+                      <Plus size={14} /> Record New Rule
+                    </button>
+                  </div>
+                ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
                   {filteredMemories.map((m) => (
                     <div
@@ -489,6 +527,7 @@ export const App: React.FC = () => {
                     </div>
                   ))}
                 </div>
+                )}
               </div>
             )}
 
@@ -595,9 +634,9 @@ export const App: React.FC = () => {
               <button onClick={() => setActiveModalMemory(null)} className="btn" style={{ padding: '4px 8px' }}>✕</button>
             </div>
 
-            {/* Markdown Code Presentation */}
-            <div style={{ marginTop: '16px', fontSize: '13px', lineHeight: '1.6', color: 'var(--text-muted)', background: 'var(--bg)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border)', whiteSpace: 'pre-wrap', maxHeight: '220px', overflowY: 'auto' }}>
-              {activeModalMemory.content}
+            {/* Structured Markdown Presentation */}
+            <div style={{ marginTop: '16px', background: 'var(--bg)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border)', maxHeight: '340px', overflowY: 'auto' }}>
+              <MarkdownView content={activeModalMemory.content} />
             </div>
 
             {/* Linked Files */}

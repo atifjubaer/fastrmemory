@@ -13,6 +13,16 @@ import { learnFromGitHistory } from '../src/learn/git-learner.js';
 import { exportToObsidianVault } from '../src/export/obsidian.js';
 import { runLifecycleHook } from '../src/hooks/runner.js';
 
+const BANNER = `
+\x1b[38;2;56;189;248m   ______           __        __  ___                                \x1b[0m
+\x1b[38;2;56;189;248m  / ____/___ ______/ /______ /  |/  /___  ____ ___  ____  _______  __\x1b[0m
+\x1b[38;2;56;189;248m / /_  / __ \`/ ___/ __/ ___// /|_/ / __ \\/ __ \`__ \\/ __ \\/ ___/ / / /\x1b[0m
+\x1b[38;2;56;189;248m/ __/ / /_/ (__  ) /_/ /   / /  / /  __/ / / / / / /_/ / /  / /_/ / \x1b[0m
+\x1b[38;2;56;189;248m/_/    \\__,_/____/\\__/_/   /_/  /_/\\___/_/ /_/ /_/\\____/_/   \\__, /  \x1b[0m
+\x1b[38;2;56;189;248m                                                            /____/   \x1b[0m
+\x1b[2m  ⚡ Sovereign Cognitive Agent Memory • Zero Daemon • Native Node 24 WAL\x1b[0m
+`;
+
 const program = new Command();
 
 program
@@ -20,14 +30,15 @@ program
   .alias('fastr')
   .description('FastrMemory: High-Performance Cognitive Agent Memory Engine')
   .version('0.1.0')
+  .addHelpText('before', BANNER)
   .action(() => {
-    // Default action when invoked with no arguments (e.g. npx fastrmemory)
+    console.log(BANNER);
     runInteractiveSetup();
   });
 
 program
   .command('setup')
-  .description('Run interactive auto-setup wizard for Claude Code and Cursor')
+  .description('Run interactive auto-setup wizard for Claude Code, Cursor, and Windsurf')
   .action(() => {
     runInteractiveSetup();
   });

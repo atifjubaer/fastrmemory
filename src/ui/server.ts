@@ -332,6 +332,10 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
       res.end('Not Found');
     });
 
+    let currentPort = preferredPort;
+    let attempts = 0;
+    const maxAttempts = 10;
+
     server.on('listening', () => {
       if (!resolved) {
         resolved = true;
@@ -346,14 +350,31 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
     });
 
     server.on('error', (err: any) => {
-      if (err.code === 'EADDRINUSE') {
+      if (err.code === 'EADDRINUSE' && attempts < maxAttempts) {
+        attempts++;
+        currentPort++;
+        server.listen(currentPort);
+      } else if (err.code === 'EADDRINUSE') {
         server.listen(0);
       } else {
         reject(err);
       }
     });
 
+    const cleanup = () => {
+      try {
+        if (typeof (server as any).closeAllConnections === 'function') {
+          (server as any).closeAllConnections();
+        }
+        server.close();
+      } catch {}
+    };
+    process.once('SIGINT', cleanup);
+    process.once('SIGTERM', cleanup);
+
     server.on('close', () => {
+      process.removeListener('SIGINT', cleanup);
+      process.removeListener('SIGTERM', cleanup);
       try {
         globalBroadcaster.close();
       } catch {}
@@ -364,7 +385,7 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
       }
     });
 
-    server.listen(preferredPort);
+    server.listen(currentPort);
   });
 }
 
