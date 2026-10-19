@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { ZoomIn, ZoomOut, RotateCcw, Pause, Play, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Pause, Play, Sparkles } from 'lucide-react';
 import type { ActionItem } from '../types';
 
 interface ActionDagCanvasProps {
@@ -22,6 +22,7 @@ export const ActionDagCanvas: React.FC<ActionDagCanvasProps> = ({ actions, edges
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(true);
   const [filter, setFilter] = useState<'all' | 'frontier' | 'active' | 'blocked' | 'done'>('all');
+  const [isAwake, setIsAwake] = useState(true);
 
   const nodesRef = useRef<SimNode[]>([]);
   const transformRef = useRef({ x: 0, y: 0, k: 1 });
@@ -37,7 +38,11 @@ export const ActionDagCanvas: React.FC<ActionDagCanvasProps> = ({ actions, edges
     startTransform: { x: 0, y: 0 },
   });
 
-  // Initialize node positions
+  const wakePhysics = useCallback(() => {
+    setIsAwake(true);
+  }, []);
+
+  // Initialize node layout
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -64,9 +69,10 @@ export const ActionDagCanvas: React.FC<ActionDagCanvasProps> = ({ actions, edges
         radius: a.isFrontier ? 20 : 16,
       };
     });
-  }, [actions, filter]);
+    wakePhysics();
+  }, [actions, filter, wakePhysics]);
 
-  // Canvas resize and render loop
+  // High-DPI canvas loop with physics sleeping
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -77,19 +83,28 @@ export const ActionDagCanvas: React.FC<ActionDagCanvasProps> = ({ actions, edges
 
     const resize = () => {
       const rect = canvas.parentElement?.getBoundingClientRect();
-      if (rect) {
-        canvas.width = rect.width;
-        canvas.height = rect.height;
-      }
+      if (!rect) return;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+      wakePhysics();
     };
+
     resize();
     window.addEventListener('resize', resize);
 
     const render = () => {
       const nodes = nodesRef.current;
       const t = transformRef.current;
+      const dpr = window.devicePixelRatio || 1;
+      const logicalWidth = canvas.width / dpr;
+      const logicalHeight = canvas.height / dpr;
 
-      if (isPlaying) {
+      let maxVelocity = 0;
+
+      if (isPlaying && isAwake) {
         // Node repulsion
         for (let i = 0; i < nodes.length; i++) {
           for (let j = i + 1; j < nodes.length; j++) {
@@ -121,19 +136,27 @@ export const ActionDagCanvas: React.FC<ActionDagCanvasProps> = ({ actions, edges
           }
         }
 
-        // Apply friction
+        // Apply friction and compute max velocity
         for (const n of nodes) {
           if (n !== dragRef.current.dragNode) {
             n.x += n.vx;
             n.y += n.vy;
             n.vx *= 0.85;
             n.vy *= 0.85;
+            const v = Math.hypot(n.vx, n.vy);
+            if (v > maxVelocity) maxVelocity = v;
           }
+        }
+
+        // Sleep physics when settled
+        if (maxVelocity < 0.04 && !dragRef.current.isDragging) {
+          setIsAwake(false);
         }
       }
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.save();
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, logicalWidth, logicalHeight);
       ctx.translate(t.x, t.y);
       ctx.scale(t.k, t.k);
 
@@ -145,7 +168,7 @@ export const ActionDagCanvas: React.FC<ActionDagCanvasProps> = ({ actions, edges
           ctx.beginPath();
           if (edge.edge_type === 'conflicts_with') {
             ctx.setLineDash([5, 4]);
-            ctx.strokeStyle = '#ef4444';
+            ctx.strokeStyle = '#f43f5e';
             ctx.lineWidth = 2;
             ctx.moveTo(s.x, s.y);
             ctx.lineTo(tNode.x, tNode.y);
@@ -178,15 +201,15 @@ export const ActionDagCanvas: React.FC<ActionDagCanvasProps> = ({ actions, edges
       for (const n of nodes) {
         const a = n.action;
 
-        // Glowing aura for unblocked Frontier tasks
+        // Glowing pulsating aura for unblocked Frontier tasks
         if (a.isFrontier) {
           const pulse = (Math.sin(Date.now() / 240) + 1) * 4;
           ctx.beginPath();
           ctx.arc(n.x, n.y, n.radius + pulse + 3, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(56, 189, 248, 0.2)';
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.22)';
           ctx.fill();
           ctx.strokeStyle = '#38bdf8';
-          ctx.lineWidth = 1.8;
+          ctx.lineWidth = 2;
           ctx.stroke();
         }
 
@@ -211,7 +234,7 @@ export const ActionDagCanvas: React.FC<ActionDagCanvasProps> = ({ actions, edges
 
         // Node label
         ctx.fillStyle = '#f8fafc';
-        ctx.font = '11px -apple-system, sans-serif';
+        ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
         ctx.textAlign = 'center';
         const label = `[P${a.priority}] ${a.title}`;
         const truncated = label.length > 20 ? label.slice(0, 18) + '...' : label;
@@ -228,10 +251,11 @@ export const ActionDagCanvas: React.FC<ActionDagCanvasProps> = ({ actions, edges
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', resize);
     };
-  }, [edges, isPlaying]);
+  }, [edges, isPlaying, isAwake, wakePhysics]);
 
   // Pointer interactions
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    wakePhysics();
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
@@ -251,6 +275,7 @@ export const ActionDagCanvas: React.FC<ActionDagCanvasProps> = ({ actions, edges
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { isDragging, dragNode, startMouse, startTransform } = dragRef.current;
     if (!isDragging) return;
+    wakePhysics();
 
     if (dragNode) {
       const canvas = canvasRef.current;
@@ -280,20 +305,23 @@ export const ActionDagCanvas: React.FC<ActionDagCanvasProps> = ({ actions, edges
 
   const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
     e.preventDefault();
+    wakePhysics();
     const factor = e.deltaY < 0 ? 1.15 : 0.88;
     transformRef.current.k = Math.max(0.25, Math.min(3.5, transformRef.current.k * factor));
   };
 
   const zoom = (factor: number) => {
+    wakePhysics();
     transformRef.current.k = Math.max(0.25, Math.min(3.5, transformRef.current.k * factor));
   };
 
   const resetView = () => {
+    wakePhysics();
     transformRef.current = { x: 0, y: 0, k: 1 };
   };
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '560px', background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--border)', overflow: 'hidden' }}>
+    <div style={{ position: 'relative', width: '100%', height: '580px', background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--border)', overflow: 'hidden' }}>
       {/* Controls Header */}
       <div style={{ position: 'absolute', top: '16px', left: '16px', right: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10, pointerEvents: 'none' }}>
         {/* Filter Pills */}
@@ -301,19 +329,11 @@ export const ActionDagCanvas: React.FC<ActionDagCanvasProps> = ({ actions, edges
           {(['all', 'frontier', 'active', 'blocked', 'done'] as const).map((st) => (
             <button
               key={st}
-              onClick={() => setFilter(st)}
-              style={{
-                background: filter === st ? 'var(--accent)' : 'var(--bg-subtle)',
-                color: filter === st ? '#fff' : 'var(--text-muted)',
-                border: '1px solid var(--border)',
-                borderRadius: '20px',
-                padding: '4px 12px',
-                fontSize: '12px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                textTransform: 'capitalize',
-              }}
+              onClick={() => { setFilter(st); wakePhysics(); }}
+              className={`btn btn-pill ${filter === st ? 'btn-primary' : ''}`}
+              style={{ textTransform: 'capitalize' }}
             >
+              {st === 'frontier' && <Sparkles size={12} />}
               {st}
             </button>
           ))}
@@ -322,30 +342,19 @@ export const ActionDagCanvas: React.FC<ActionDagCanvasProps> = ({ actions, edges
         {/* Zoom & Physics Controls */}
         <div style={{ display: 'flex', gap: '8px', pointerEvents: 'auto' }}>
           <button
-            onClick={() => setIsPlaying(!isPlaying)}
-            style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderRadius: '8px',
-              padding: '6px 10px',
-              color: 'var(--text)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              fontSize: '12px',
-            }}
+            onClick={() => { setIsPlaying(!isPlaying); wakePhysics(); }}
+            className="btn"
           >
             {isPlaying ? <Pause size={14} /> : <Play size={14} />}
             {isPlaying ? 'Pause' : 'Play'}
           </button>
-          <button onClick={() => zoom(1.2)} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px', color: 'var(--text)', cursor: 'pointer' }}>
+          <button onClick={() => zoom(1.2)} className="btn" title="Zoom in">
             <ZoomIn size={14} />
           </button>
-          <button onClick={() => zoom(0.8)} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px', color: 'var(--text)', cursor: 'pointer' }}>
+          <button onClick={() => zoom(0.8)} className="btn" title="Zoom out">
             <ZoomOut size={14} />
           </button>
-          <button onClick={resetView} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px', color: 'var(--text)', cursor: 'pointer' }}>
+          <button onClick={resetView} className="btn" title="Reset view">
             <RotateCcw size={14} />
           </button>
         </div>
@@ -361,7 +370,7 @@ export const ActionDagCanvas: React.FC<ActionDagCanvasProps> = ({ actions, edges
       />
 
       {/* Legend Footer */}
-      <div style={{ position: 'absolute', bottom: '14px', left: '16px', display: 'flex', gap: '16px', fontSize: '11px', color: 'var(--text-muted)', zIndex: 10, background: 'rgba(0,0,0,0.4)', padding: '6px 12px', borderRadius: '8px', backdropFilter: 'blur(4px)' }}>
+      <div style={{ position: 'absolute', bottom: '14px', left: '16px', display: 'flex', gap: '16px', fontSize: '11px', color: 'var(--text-muted)', zIndex: 10, background: 'rgba(0,0,0,0.5)', padding: '6px 14px', borderRadius: '8px', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.08)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#0284c7', boxShadow: '0 0 8px #38bdf8' }} />
           <span>Frontier (Unblocked)</span>
@@ -379,7 +388,7 @@ export const ActionDagCanvas: React.FC<ActionDagCanvasProps> = ({ actions, edges
           <span>Done</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ color: '#ef4444', fontWeight: 'bold' }}>- - -</span>
+          <span style={{ color: '#f43f5e', fontWeight: 'bold' }}>- - -</span>
           <span>Mutex Lock</span>
         </div>
       </div>

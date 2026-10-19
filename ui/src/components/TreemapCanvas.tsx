@@ -1,5 +1,7 @@
-import React, { useState, useMemo } from 'react';
-import { LayoutGrid, Table as TableIcon, ShieldAlert, Pin, Sparkles } from 'lucide-react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
+import { LayoutGrid, Table as TableIcon, Pin, ShieldAlert } from 'lucide-react';
+import { squarify, Rect } from '../utils/squarify';
+import { CopyButton } from './CopyButton';
 import type { MemoryItem } from '../types';
 
 interface TreemapCanvasProps {
@@ -7,203 +9,206 @@ interface TreemapCanvasProps {
   onSelectMemory: (mem: MemoryItem) => void;
 }
 
-interface ModuleBand {
+interface TileInfo extends Rect {
   module: string;
   items: MemoryItem[];
-  pinnedCount: number;
-  strongCount: number;
-  fadingCount: number;
-  atRiskCount: number;
 }
 
 export const TreemapCanvas: React.FC<TreemapCanvasProps> = ({ memories, onSelectMemory }) => {
   const [viewMode, setViewMode] = useState<'treemap' | 'table'>('treemap');
-  const [hoveredMemory, setHoveredMemory] = useState<MemoryItem | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [hoveredTile, setHoveredTile] = useState<TileInfo | null>(null);
+  const tilesRef = useRef<TileInfo[]>([]);
 
-  // Group memories into modules and strength bands
-  const moduleBands = useMemo<ModuleBand[]>(() => {
+  // Group memories into modules
+  const moduleGroups = useMemo(() => {
     const map = new Map<string, MemoryItem[]>();
     for (const m of memories) {
       const mod = m.module || 'general';
       if (!map.has(mod)) map.set(mod, []);
       map.get(mod)!.push(m);
     }
+    return Array.from(map.entries())
+      .map(([module, items]) => ({ module, items, count: items.length }))
+      .sort((a, b) => b.count - a.count);
+  }, [memories]);
 
-    return Array.from(map.entries()).map(([module, items]) => {
-      let pinnedCount = 0;
-      let strongCount = 0;
-      let fadingCount = 0;
-      let atRiskCount = 0;
+  // High-DPI Canvas Rendering
+  useEffect(() => {
+    if (viewMode !== 'treemap') return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-      for (const item of items) {
-        if (item.pinned) {
-          pinnedCount++;
-        } else if (item.kind === 'error_trap' || item.reward_score < 0) {
-          atRiskCount++;
-        } else if (item.reward_score >= 0.7) {
-          strongCount++;
-        } else {
-          fadingCount++;
+    const render = () => {
+      const rect = canvas.parentElement?.getBoundingClientRect();
+      if (!rect) return;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+
+      const logicalW = rect.width;
+      const logicalH = rect.height;
+
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, logicalW, logicalH);
+
+      const PAD = 10;
+      const counts = moduleGroups.map((g) => g.count);
+      const squarifiedRects = squarify(counts, PAD, PAD, logicalW - 2 * PAD, logicalH - 2 * PAD);
+
+      tilesRef.current = moduleGroups.map((g, idx) => ({
+        ...squarifiedRects[idx],
+        module: g.module,
+        items: g.items,
+      }));
+
+      for (const tile of tilesRef.current) {
+        if (tile.w <= 0 || tile.h <= 0) continue;
+
+        const isHovered = hoveredTile?.module === tile.module;
+
+        // Tile base background
+        ctx.fillStyle = isHovered ? 'rgba(56, 189, 248, 0.12)' : 'rgba(255, 255, 255, 0.03)';
+        ctx.fillRect(tile.x, tile.y, tile.w, tile.h);
+
+        // Tile border
+        ctx.strokeStyle = isHovered ? '#38bdf8' : 'rgba(255, 255, 255, 0.12)';
+        ctx.lineWidth = isHovered ? 2 : 1;
+        ctx.strokeRect(tile.x, tile.y, tile.w, tile.h);
+
+        // Module Label Header
+        ctx.fillStyle = isHovered ? '#38bdf8' : '#e2e8f0';
+        ctx.font = 'bold 12px -apple-system, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(`${tile.module.toUpperCase()} (${tile.items.length})`, tile.x + 8, tile.y + 20);
+
+        // Sub-partition: strength bands bar inside the tile
+        const barY = tile.y + 28;
+        const barH = Math.max(4, Math.min(12, tile.h - 38));
+        const barW = tile.w - 16;
+
+        if (barH > 4 && barW > 10) {
+          let currX = tile.x + 8;
+          for (const item of tile.items) {
+            const itemW = barW / tile.items.length;
+            ctx.fillStyle = item.pinned
+              ? '#8b5cf6'
+              : item.kind === 'error_trap'
+              ? '#fbbf24'
+              : item.reward_score >= 0.7
+              ? '#3b82f6'
+              : item.reward_score >= 0.3
+              ? '#64748b'
+              : '#f43f5e';
+            ctx.fillRect(currX, barY, Math.max(1, itemW - 1), barH);
+            currX += itemW;
+          }
         }
       }
 
-      return { module, items, pinnedCount, strongCount, fadingCount, atRiskCount };
-    });
-  }, [memories]);
+      ctx.restore();
+    };
 
-  const getStrengthColor = (m: MemoryItem) => {
-    if (m.pinned) return '#8b5cf6'; // Violet: Pinned
-    if (m.kind === 'error_trap') return '#fbbf24'; // Amber: Error Trap 2.0x
-    if (m.reward_score >= 0.7) return '#3b82f6'; // Blue: Strong
-    if (m.reward_score >= 0.3) return '#64748b'; // Slate: Fading
-    return '#f43f5e'; // Rose: At-Risk
+    render();
+    window.addEventListener('resize', render);
+    return () => window.removeEventListener('resize', render);
+  }, [viewMode, moduleGroups, hoveredTile]);
+
+  // Pointer hit testing
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const hit = tilesRef.current.find((t) => x >= t.x && x <= t.x + t.w && y >= t.y && y <= t.y + t.h);
+    setHoveredTile(hit || null);
+  };
+
+  const handleClick = () => {
+    if (hoveredTile && hoveredTile.items.length > 0) {
+      onSelectMemory(hoveredTile.items[0]);
+    }
   };
 
   return (
-    <div style={{ background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--border)', overflow: 'hidden' }}>
-      {/* Header toolbar */}
+    <div className="card-panel" style={{ overflow: 'hidden' }}>
       <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h3 style={{ fontSize: '15px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
             <LayoutGrid size={16} color="var(--accent)" />
-            Memory Strength & Decay Bands
+            Squarified Memory Strength Treemap
           </h3>
           <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-            Visualizing cognitive decay bands: Pinned (permanent), Strong (&gt;0.7), Fading (0.3-0.7), and 2.0x Error Traps.
+            High-DPI area-proportional partition: Pinned (violet), Strong (blue), Fading (slate), and 2.0x Error Traps (amber).
           </p>
         </div>
 
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
             onClick={() => setViewMode('treemap')}
-            style={{
-              background: viewMode === 'treemap' ? 'var(--accent)' : 'var(--bg-subtle)',
-              color: viewMode === 'treemap' ? '#fff' : 'var(--text-muted)',
-              border: '1px solid var(--border)',
-              borderRadius: '6px',
-              padding: '6px 12px',
-              fontSize: '12px',
-              fontWeight: 500,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
+            className={`btn btn-pill ${viewMode === 'treemap' ? 'btn-primary' : ''}`}
           >
-            <LayoutGrid size={14} /> Treemap View
+            <LayoutGrid size={13} /> Treemap Canvas
           </button>
           <button
             onClick={() => setViewMode('table')}
-            style={{
-              background: viewMode === 'table' ? 'var(--accent)' : 'var(--bg-subtle)',
-              color: viewMode === 'table' ? '#fff' : 'var(--text-muted)',
-              border: '1px solid var(--border)',
-              borderRadius: '6px',
-              padding: '6px 12px',
-              fontSize: '12px',
-              fontWeight: 500,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
+            className={`btn btn-pill ${viewMode === 'table' ? 'btn-primary' : ''}`}
           >
-            <TableIcon size={14} /> Table Twin
+            <TableIcon size={13} /> Table Twin
           </button>
         </div>
       </div>
 
       {viewMode === 'treemap' ? (
-        <div style={{ padding: '20px' }}>
-          {/* Treemap Grid Container */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '16px' }}>
-            {moduleBands.map((band) => (
-              <div
-                key={band.module}
-                style={{
-                  background: 'var(--bg-subtle)',
-                  borderRadius: '10px',
-                  border: '1px solid var(--border)',
-                  padding: '16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 600, fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    {band.module}
-                  </span>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                    {band.items.length} items
-                  </span>
-                </div>
+        <div style={{ padding: '16px', position: 'relative' }}>
+          <canvas
+            ref={canvasRef}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={() => setHoveredTile(null)}
+            onClick={handleClick}
+            style={{ width: '100%', height: '480px', display: 'block', cursor: hoveredTile ? 'pointer' : 'default' }}
+          />
 
-                {/* Micro-cell cluster representing memories */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {band.items.map((m) => (
-                    <div
-                      key={m.id}
-                      onClick={() => onSelectMemory(m)}
-                      onMouseEnter={() => setHoveredMemory(m)}
-                      onMouseLeave={() => setHoveredMemory(null)}
-                      title={`${m.title} (${m.kind}) - Score: ${m.reward_score}`}
-                      style={{
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '6px',
-                        background: getStrengthColor(m),
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#fff',
-                        transition: 'transform 0.1s ease, filter 0.1s ease',
-                        border: hoveredMemory?.id === m.id ? '2px solid #fff' : '1px solid rgba(0,0,0,0.2)',
-                        transform: hoveredMemory?.id === m.id ? 'scale(1.15)' : 'scale(1)',
-                      }}
-                    >
-                      {m.pinned ? <Pin size={12} /> : m.kind === 'error_trap' ? <ShieldAlert size={12} /> : null}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Sub-band summary */}
-                <div style={{ display: 'flex', gap: '8px', fontSize: '11px', color: 'var(--text-muted)', paddingTop: '4px', borderTop: '1px dashed var(--border)' }}>
-                  {band.pinnedCount > 0 && <span style={{ color: '#8b5cf6' }}>{band.pinnedCount} Pinned</span>}
-                  {band.strongCount > 0 && <span style={{ color: '#3b82f6' }}>{band.strongCount} Strong</span>}
-                  {band.atRiskCount > 0 && <span style={{ color: '#fbbf24' }}>{band.atRiskCount} Traps/Risk</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Hover preview tooltip */}
-          {hoveredMemory && (
+          {hoveredTile && (
             <div
               style={{
-                marginTop: '16px',
-                padding: '12px 16px',
-                borderRadius: '8px',
-                background: 'var(--surface-hover)',
+                position: 'absolute',
+                bottom: '24px',
+                left: '24px',
+                right: '24px',
+                background: 'rgba(15, 23, 42, 0.95)',
                 border: '1px solid var(--accent)',
+                borderRadius: '8px',
+                padding: '12px 18px',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                backdropFilter: 'blur(8px)',
               }}
             >
               <div>
-                <span style={{ fontSize: '11px', color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>[{hoveredMemory.id}]</span>
-                <span style={{ fontSize: '13px', fontWeight: 600, marginLeft: '8px' }}>{hoveredMemory.title}</span>
+                <span style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: 700, textTransform: 'uppercase' }}>
+                  {hoveredTile.module} Module
+                </span>
+                <div style={{ fontSize: '13px', fontWeight: 600, marginTop: '2px' }}>
+                  {hoveredTile.items.length} Memories &bull; Click to inspect top rule
+                </div>
               </div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                Score: <b>{hoveredMemory.reward_score}</b> &bull; Status: <span style={{ textTransform: 'capitalize' }}>{hoveredMemory.status}</span>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <CopyButton text={`fastrmemory recall "${hoveredTile.module}"`} label="Copy Recall CLI" />
               </div>
             </div>
           )}
         </div>
       ) : (
-        /* Accessible Table Twin */
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }} aria-rowcount={memories.length}>
             <thead>
@@ -212,8 +217,8 @@ export const TreemapCanvas: React.FC<TreemapCanvasProps> = ({ memories, onSelect
                 <th style={{ padding: '10px 16px', color: 'var(--text-muted)' }}>Title</th>
                 <th style={{ padding: '10px 16px', color: 'var(--text-muted)' }}>Module</th>
                 <th style={{ padding: '10px 16px', color: 'var(--text-muted)' }}>Kind</th>
-                <th style={{ padding: '10px 16px', color: 'var(--text-muted)' }}>Reward Score</th>
-                <th style={{ padding: '10px 16px', color: 'var(--text-muted)' }}>Status</th>
+                <th style={{ padding: '10px 16px', color: 'var(--text-muted)' }}>Score</th>
+                <th style={{ padding: '10px 16px', color: 'var(--text-muted)' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -232,11 +237,8 @@ export const TreemapCanvas: React.FC<TreemapCanvasProps> = ({ memories, onSelect
                   <td style={{ padding: '10px 16px', color: 'var(--text-muted)' }}>{m.module}</td>
                   <td style={{ padding: '10px 16px' }}>
                     <span
+                      className="badge-tag"
                       style={{
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                        fontWeight: 600,
                         background: m.kind === 'error_trap' ? 'var(--trap-weak)' : 'var(--accent-weak)',
                         color: m.kind === 'error_trap' ? 'var(--trap)' : 'var(--accent)',
                       }}
@@ -245,7 +247,9 @@ export const TreemapCanvas: React.FC<TreemapCanvasProps> = ({ memories, onSelect
                     </span>
                   </td>
                   <td style={{ padding: '10px 16px', fontFamily: 'var(--font-mono)' }}>{m.reward_score}</td>
-                  <td style={{ padding: '10px 16px', textTransform: 'capitalize' }}>{m.status}</td>
+                  <td style={{ padding: '10px 16px' }}>
+                    <CopyButton text={m.id} label="ID" />
+                  </td>
                 </tr>
               ))}
             </tbody>

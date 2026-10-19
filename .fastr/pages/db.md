@@ -6,6 +6,36 @@
 
 ## Compiled Truth (Active Rules & Traps)
 
+### [mem_pg_pool_trap] [TRAP] Postgres Client Must Always Call client.release() in Finally Block
+- **Kind**: `error_trap`
+- **Status**: `verified` (Reward Score: 1)
+- **Linked Files**: `src/db/postgres.ts`
+- **Active Since**: `2026-10-18T23:07:29Z`
+
+Failing to release pool clients causes pool exhaustion within 10 concurrent requests.
+
+---
+
+### [mem_sql_params_rule] [RULE] Mandatory Parameterized Queries in SQL
+- **Kind**: `rule`
+- **Status**: `verified` (Reward Score: 1)
+- **Linked Files**: `src/db/queries.ts`
+- **Active Since**: `2026-10-18T23:07:29Z`
+
+Never concatenate user input directly into SQL strings. Always pass parameters via bind variables.
+
+---
+
+### [mem_sqlite_wal] [RULE] Native Node 24 SQLite Standard
+- **Kind**: `rule`
+- **Status**: `verified` (Reward Score: 1)
+- **Linked Files**: `src/db/connection.ts`, `src/db/sqlite.ts`
+- **Active Since**: `2026-10-18T23:07:29Z`
+
+Always use import { DatabaseSync } from "node:sqlite" with WAL mode for FastrMemory.
+
+---
+
 ### [mem_4b20cbab] [RULE] Native Node 24 SQLite Standard
 - **Kind**: `rule`
 - **Status**: `verified` (Reward Score: 1)

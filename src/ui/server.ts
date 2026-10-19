@@ -7,6 +7,7 @@ import { FastrConfig } from '../config.js';
 import { initDatabase } from '../db/schema.js';
 import { FastrRepository } from '../db/repository.js';
 import { SpoolManager } from '../db/spool.js';
+import { searchMemories } from '../search/hybrid-rrf.js';
 import { globalBroadcaster } from './sse.js';
 
 export interface UiServerOptions {
@@ -74,7 +75,7 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
       }
 
       // API: Memories List / Search with Kind & Module Filters
-      if (url.pathname === '/api/memories') {
+      if (req.method === 'GET' && url.pathname === '/api/memories') {
         const targetModule = url.searchParams.get('module') || undefined;
         const targetKind = url.searchParams.get('kind') || undefined;
         const query = url.searchParams.get('q') || '';
@@ -104,6 +105,102 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(enhanced));
+        return;
+      }
+
+      // API: Create Memory / Error Trap from UI
+      if (req.method === 'POST' && url.pathname === '/api/memories') {
+        let body = '';
+        req.on('data', (chunk) => { body += chunk; });
+        req.on('end', () => {
+          try {
+            const data = JSON.parse(body || '{}');
+            const memory = repo.insertMemory({
+              projectId: config.projectId,
+              title: String(data.title || '').trim(),
+              content: String(data.content || '').trim(),
+              module: data.module ? String(data.module).trim() : 'general',
+              kind: data.kind || 'rule',
+              files: Array.isArray(data.files) ? data.files : [],
+              verified: true,
+            });
+            globalBroadcaster.broadcast('memory_created', memory);
+            res.writeHead(201, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(memory));
+          } catch (err: any) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: err.message || 'Failed to create memory' }));
+          }
+        });
+        return;
+      }
+
+      // API: Pin / Unpin Memory
+      if (req.method === 'POST' && url.pathname === '/api/memories/pin') {
+        let body = '';
+        req.on('data', (chunk) => { body += chunk; });
+        req.on('end', () => {
+          try {
+            const data = JSON.parse(body || '{}');
+            const result = repo.pinMemory(String(data.memoryId), Boolean(data.pinned));
+            globalBroadcaster.broadcast('memory_updated', { id: data.memoryId, pinned: data.pinned });
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(result));
+          } catch (err: any) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: err.message || 'Failed to update pin' }));
+          }
+        });
+        return;
+      }
+
+      // API: Forget / Soft-Delete Memory
+      if (req.method === 'POST' && url.pathname === '/api/memories/forget') {
+        let body = '';
+        req.on('data', (chunk) => { body += chunk; });
+        req.on('end', () => {
+          try {
+            const data = JSON.parse(body || '{}');
+            const result = repo.forgetMemory(String(data.memoryId), data.reason);
+            globalBroadcaster.broadcast('memory_updated', { id: data.memoryId, status: 'superseded' });
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(result));
+          } catch (err: any) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: err.message || 'Failed to forget memory' }));
+          }
+        });
+        return;
+      }
+
+      // API: RRF Search Diagnostics & Explain
+      if (url.pathname === '/api/search/explain') {
+        const query = url.searchParams.get('q') || '';
+        const t0 = performance.now();
+        searchMemories(db, { projectId: config.projectId, query })
+          .then((searchRes) => {
+            const totalTimeMs = Number((performance.now() - t0).toFixed(2));
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+              query,
+              totalTimeMs,
+              totalTokens: searchRes.totalTokens,
+              results: searchRes.memories.map((m) => ({
+                id: m.memory.id,
+                title: m.memory.title,
+                kind: m.memory.kind,
+                module: m.memory.module,
+                score: Number(m.score.toFixed(4)),
+                rankA: m.bm25Rank ?? 0,
+                rankB: m.vectorRank ?? 0,
+                rankC: m.graphRank ?? 0,
+              })),
+            }));
+          })
+          .catch((err) => {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: err.message }));
+          });
         return;
       }
 

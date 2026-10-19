@@ -174,6 +174,58 @@ describe('FastrMemory Web UI Server', () => {
     const updatedConflicts = repo.listConflicts(config.projectId, 'open');
     expect(updatedConflicts.find(c => c.id === targetConflict.id)).toBeUndefined();
 
+    // Test POST /api/memories (Create)
+    const createRes = await fetch(`http://localhost:${(serverInstance!.address() as any).port}/api/memories`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Production Verification Rule',
+        content: 'Ensure all tests pass before deploying.',
+        module: 'deploy',
+        kind: 'rule',
+        files: ['deploy.sh'],
+      }),
+    });
+    expect(createRes.status).toBe(201);
+    const createdMemory = await createRes.json();
+    expect(createdMemory.id).toBeDefined();
+    expect(createdMemory.title).toBe('Production Verification Rule');
+
+    // Test POST /api/memories/pin
+    const pinRes = await fetch(`http://localhost:${(serverInstance!.address() as any).port}/api/memories/pin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: createdMemory.id,
+        pinned: true,
+      }),
+    });
+    expect(pinRes.status).toBe(200);
+    const pinJson = await pinRes.json();
+    expect(pinJson.success).toBe(true);
+    expect(pinJson.pinned).toBe(true);
+
+    // Test GET /api/search/explain
+    const explainRes = await fetch(`http://localhost:${(serverInstance!.address() as any).port}/api/search/explain?q=deploy`);
+    expect(explainRes.status).toBe(200);
+    const explainJson = await explainRes.json();
+    expect(explainJson.query).toBe('deploy');
+    expect(typeof explainJson.totalTimeMs).toBe('number');
+    expect(Array.isArray(explainJson.results)).toBe(true);
+
+    // Test POST /api/memories/forget
+    const forgetRes = await fetch(`http://localhost:${(serverInstance!.address() as any).port}/api/memories/forget`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: createdMemory.id,
+        reason: 'Superseded in test',
+      }),
+    });
+    expect(forgetRes.status).toBe(200);
+    const forgetJson = await forgetRes.json();
+    expect(forgetJson.success).toBe(true);
+
     db.close();
   });
 });

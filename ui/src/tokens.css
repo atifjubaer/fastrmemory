@@ -4,20 +4,21 @@
   --surface: #ffffff;
   --surface-hover: #f8fafc;
   --card: #ffffff;
+  --card-hover: #fcfdfe;
   --border: #e2e8f0;
   --border-strong: #cbd5e1;
   --text: #0f172a;
   --text-muted: #64748b;
   --text-faint: #94a3b8;
   --accent: #2563eb;
-  --accent-weak: rgba(37, 99, 235, 0.1);
-  --accent-glow: rgba(37, 99, 235, 0.3);
+  --accent-weak: rgba(37, 99, 235, 0.08);
+  --accent-glow: rgba(37, 99, 235, 0.25);
   --risk: #dc2626;
-  --risk-weak: rgba(220, 38, 38, 0.1);
+  --risk-weak: rgba(220, 38, 38, 0.08);
   --trap: #d97706;
   --trap-weak: rgba(217, 119, 6, 0.1);
   --success: #16a34a;
-  --success-weak: rgba(22, 163, 74, 0.1);
+  --success-weak: rgba(22, 163, 74, 0.08);
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", Menlo, Monaco, Consolas, monospace;
 }
@@ -28,6 +29,7 @@
   --surface: #111827;
   --surface-hover: #1e293b;
   --card: #141d2e;
+  --card-hover: #19243a;
   --border: #1f293d;
   --border-strong: #334155;
   --text: #f9fafb;
@@ -58,13 +60,14 @@ body {
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
   overflow-x: hidden;
+  font-variant-numeric: tabular-nums;
 }
 
 code, pre, .font-mono {
   font-family: var(--font-mono);
 }
 
-/* Scrollbar */
+/* Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -75,6 +78,96 @@ code, pre, .font-mono {
 ::-webkit-scrollbar-thumb {
   background: var(--border-strong);
   border-radius: 3px;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 8px;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover {
+  filter: brightness(1.1);
+  background: var(--accent);
+}
+
+.btn-pill {
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
+/* Card Architecture */
+.card-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+.card-panel:hover {
+  border-color: var(--border-strong);
+}
+
+.card-interactive {
+  cursor: pointer;
+}
+.card-interactive:hover {
+  background: var(--card-hover);
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* Badges */
+.badge-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.3px;
+}
+
+/* Shimmer Skeleton */
+.skeleton-box {
+  background: linear-gradient(90deg, var(--bg-subtle) 25%, var(--surface-hover) 50%, var(--bg-subtle) 75%);
+  background-size: 200% 100%;
+  animation: skeletonPulse 1.6s infinite ease-in-out;
+  border-radius: 6px;
+}
+@keyframes skeletonPulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 /* Animations */

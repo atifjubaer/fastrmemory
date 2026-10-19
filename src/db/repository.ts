@@ -398,6 +398,25 @@ export class FastrRepository {
     return { reward_score: newScore, status: newStatus };
   }
 
+  pinMemory(memoryId: string, pinned: boolean): { success: boolean; pinned: boolean } {
+    this.db.prepare(`
+      UPDATE memories
+      SET pinned = ?
+      WHERE id = ?
+    `).run(pinned ? 1 : 0, memoryId);
+    return { success: true, pinned };
+  }
+
+  forgetMemory(memoryId: string, reason: string = 'User requested forget via dashboard'): { success: boolean } {
+    const nowIso = new Date().toISOString();
+    this.db.prepare(`
+      UPDATE memories
+      SET status = 'superseded', valid_to = ?, superseded_reason = ?
+      WHERE id = ?
+    `).run(nowIso, reason, memoryId);
+    return { success: true };
+  }
+
   verifyStaging(projectId: string): number {
     const res = this.db.prepare(`
       UPDATE memories

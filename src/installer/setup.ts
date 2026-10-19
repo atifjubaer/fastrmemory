@@ -1,10 +1,22 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import { execSync } from 'node:child_process';
 import { createFastrServerContext } from '../mcp/server.js';
 
 export interface SetupOptions {
   autoInstall?: boolean;
+}
+
+export function resolveMcpCommand(): { command: string; args: string[] } {
+  try {
+    const isWindows = process.platform === 'win32';
+    const checkCmd = isWindows ? 'where fastrmemory' : 'which fastrmemory';
+    execSync(checkCmd, { stdio: 'ignore' });
+    return { command: 'fastrmemory', args: ['mcp'] };
+  } catch {
+    return { command: 'npx', args: ['-y', '@atifjubaer/fastrmemory', 'mcp'] };
+  }
 }
 
 export function runInteractiveSetup(options: SetupOptions = {}): void {
@@ -29,6 +41,8 @@ export function runInteractiveSetup(options: SetupOptions = {}): void {
   const claudeConfigPath = path.join(homeDir, '.claude.json');
   let claudeStatus = 'Skipped (file not found)';
 
+  const mcpTarget = resolveMcpCommand();
+
   try {
     let claudeConfig: any = {};
     if (fs.existsSync(claudeConfigPath)) {
@@ -44,8 +58,8 @@ export function runInteractiveSetup(options: SetupOptions = {}): void {
     }
 
     claudeConfig.mcpServers.fastrmemory = {
-      command: 'fastrmemory',
-      args: ['mcp']
+      command: mcpTarget.command,
+      args: mcpTarget.args
     };
 
     fs.writeFileSync(claudeConfigPath, JSON.stringify(claudeConfig, null, 2), 'utf-8');
@@ -79,8 +93,8 @@ export function runInteractiveSetup(options: SetupOptions = {}): void {
     }
 
     cursorConfig.mcpServers.fastrmemory = {
-      command: 'fastrmemory',
-      args: ['mcp']
+      command: mcpTarget.command,
+      args: mcpTarget.args
     };
 
     fs.writeFileSync(cursorConfigPath, JSON.stringify(cursorConfig, null, 2), 'utf-8');

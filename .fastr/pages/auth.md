@@ -6,6 +6,16 @@
 
 ## Compiled Truth (Active Rules & Traps)
 
+### [mem_jwt_trap] [TRAP] Never Use Date.now() Milliseconds for JWT Expiration
+- **Kind**: `error_trap`
+- **Status**: `verified` (Reward Score: 1)
+- **Linked Files**: `src/auth/jwt.ts`
+- **Active Since**: `2026-10-18T23:07:29Z`
+
+JWT exp claims expect integer seconds. Always use Math.floor(Date.now() / 1000).
+
+---
+
 ### [mem_009e4a7d] [TRAP] Never Use Date.now() Milliseconds for JWT Expiration
 - **Kind**: `error_trap`
 - **Status**: `verified` (Reward Score: 1)
@@ -16,6 +26,22 @@ JWT exp claims expect integer seconds. Always use Math.floor(Date.now() / 1000).
 
 ---
 
+### [mem_jwt_active] [RULE] Token Signing Ed25519 Standard
+- **Kind**: `rule`
+- **Status**: `verified` (Reward Score: 1)
+- **Linked Files**: `src/auth/jwt.ts`
+- **Active Since**: `2026-10-18T23:07:29Z`
+
+Standardize on Ed25519 asymmetric signatures for ultra-low latency token verification.
+
+---
+
 ## Append-Only Timeline (History & Superseded)
 
-_No superseded history for this module._
+### [EXPIRED 2026-10-18T23:07:29Z -> 2026-10-18T20:00:00Z] [mem_jwt_old] Token Signing RS256 Algorithm
+- **Superseded By**: Manual Retirement
+- **Historical Status**: `superseded`
+
+> Use RS256 with 2048-bit RSA keys for JWT token signing.
+
+---

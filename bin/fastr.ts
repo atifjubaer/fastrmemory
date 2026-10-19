@@ -129,6 +129,47 @@ program
     console.log(`Recorded [${mem.id}] (${mem.kind}) in module "${mem.module}" [${mem.status}].`);
   });
 
+// 5b. Trap commands (Active Error Trap Management)
+const trapCmd = program.command('trap').description('Manage active [TRAP] error warnings and 2.0x recall boost quarantine');
+
+trapCmd
+  .command('list')
+  .description('List all active error traps and their recall boost multipliers')
+  .action(() => {
+    const ctx = createFastrServerContext();
+    const traps = ctx.repo.listTraps(ctx.config.projectId);
+    console.log(`\n=== FastrMemory Active Error Traps (${traps.length}) ===`);
+    if (traps.length === 0) {
+      console.log('No active error traps found for this project.');
+    } else {
+      for (const t of traps) {
+        console.log(`- [${t.id}] [${t.status.toUpperCase()}] "${t.title}" (${t.module}) • Recall Boost: 2.0x`);
+      }
+    }
+    console.log('');
+  });
+
+trapCmd
+  .command('log <title>')
+  .description('Log a critical error trap with 2.0x recall boost')
+  .requiredOption('-c, --content <content>', 'Error cause, symptom, and preventive solution')
+  .option('-m, --module <module>', 'Affected module or domain', 'general')
+  .option('-f, --files <files...>', 'Related file paths')
+  .action((title: string, opts: any) => {
+    const ctx = createFastrServerContext();
+    const mem = ctx.repo.insertMemory({
+      projectId: ctx.config.projectId,
+      module: opts.module,
+      kind: 'error_trap',
+      title: scrubSecrets(title),
+      content: scrubSecrets(opts.content),
+      files: opts.files || [],
+      verified: false,
+    });
+    syncAllModulePages(ctx.db, ctx.config.projectRoot, ctx.config.projectId);
+    console.log(`⚠️ Logged error trap [${mem.id}] in module "${mem.module}" with 2.0x recall boost.`);
+  });
+
 // 6. Sync command
 program
   .command('sync')
