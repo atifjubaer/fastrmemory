@@ -1,11 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Zap,
-  Brain,
-  ShieldAlert,
-  GitBranch,
-  LayoutGrid,
-  Activity,
   Search,
   Sun,
   Moon,
@@ -13,9 +8,8 @@ import {
   Plus,
   Pin,
   Trash2,
-  CheckCircle2,
   ExternalLink,
-  Code2,
+  ShieldAlert,
 } from 'lucide-react';
 import { useFastrStream } from './hooks/useFastrStream';
 import { useActionQueue } from './hooks/useActionQueue';
@@ -25,7 +19,7 @@ import { TreemapCanvas } from './components/TreemapCanvas';
 import { RrfWaterfall } from './components/RrfWaterfall';
 import { BiTemporalDiff } from './components/BiTemporalDiff';
 import { CopyButton } from './components/CopyButton';
-import { MarkdownView } from './components/MarkdownView';
+import { MemoryDrawer } from './components/MemoryDrawer';
 import type { FastrStatus, MemoryItem, ActionItem, ConflictItem } from './types';
 
 type TabType = 'overview' | 'memories' | 'traps' | 'dag' | 'treemap' | 'rrf' | 'conflicts';
@@ -141,7 +135,7 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-  }, []);
+  }, [theme]);
 
   // Keyboard shortcut listener
   useEffect(() => {
@@ -194,6 +188,9 @@ export const App: React.FC = () => {
   const handleTogglePin = (memoryId: string, currentPinned: number) => {
     const nextPinned = currentPinned ? 0 : 1;
     setMemories((mems) => mems.map((m) => (m.id === memoryId ? { ...m, pinned: nextPinned } : m)));
+    if (activeModalMemory && activeModalMemory.id === memoryId) {
+      setActiveModalMemory({ ...activeModalMemory, pinned: nextPinned });
+    }
 
     enqueue(
       `${nextPinned ? 'Pinned' : 'Unpinned'} rule ${memoryId}`,
@@ -207,6 +204,9 @@ export const App: React.FC = () => {
       },
       () => {
         setMemories((mems) => mems.map((m) => (m.id === memoryId ? { ...m, pinned: currentPinned } : m)));
+        if (activeModalMemory && activeModalMemory.id === memoryId) {
+          setActiveModalMemory({ ...activeModalMemory, pinned: currentPinned });
+        }
       }
     );
   };
@@ -254,19 +254,19 @@ export const App: React.FC = () => {
       });
 
       if (res.ok) {
-        setIsCreateModalOpen(false);
         setNewTitle('');
         setNewContent('');
         setNewFiles('');
+        setIsCreateModalOpen(false);
         loadAll();
       }
     } catch (err) {
-      alert('Failed to create memory: ' + (err as any).message);
+      console.error('Failed to create memory:', err);
     }
   };
 
   const filteredMemories = memories.filter((m) => {
-    const matchMod = selectedModule === 'all' || m.module === selectedModule;
+    const matchMod = selectedModule === 'all' || m.module.toLowerCase() === selectedModule.toLowerCase();
     const matchQ =
       !searchQuery ||
       m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -278,31 +278,94 @@ export const App: React.FC = () => {
   const traps = memories.filter((m) => m.kind === 'error_trap');
 
   return (
-    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '24px 20px', minHeight: '100vh', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Brand Header */}
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', boxShadow: '0 4px 14px var(--accent-glow)' }}>
-            <Zap size={22} fill="#fff" />
+    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '16px 20px', minHeight: '100vh', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {/* Precision Instrument Top Bar */}
+      <header style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        borderRadius: '6px',
+        padding: '10px 16px',
+        gap: '16px'
+      }}>
+        {/* Brand */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
+            width: '28px',
+            height: '28px',
+            borderRadius: '4px',
+            background: 'var(--accent)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            fontWeight: 800,
+            fontSize: '14px'
+          }}>
+            ⚡
           </div>
           <div>
-            <h1 style={{ fontSize: '18px', fontWeight: 700, letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              ⚡ FastrMemory <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '6px', background: 'var(--accent-weak)', color: 'var(--accent)' }}>Sovereign Hub</span>
-            </h1>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              Node 24 WAL &bull; <code style={{ color: 'var(--accent)' }}>{status?.projectId || 'loading...'}</code>
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '14px', fontWeight: 700, letterSpacing: '-0.2px', fontFamily: 'var(--font-mono)' }}>
+                FASTR<span style={{ color: 'var(--accent)' }}>MEMORY</span>
+              </span>
+              <span className="badge-tag" style={{ background: 'var(--accent-weak)', color: 'var(--accent)' }}>
+                NODE 24 WAL
+              </span>
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: '1px' }}>
+              {status?.projectId || 'loading...'}
+            </div>
           </div>
         </div>
 
-        {/* Live SSE Status & Action Bar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* Global Omnibar Search */}
+        <div style={{ flex: 1, maxWidth: '440px', position: 'relative' }}>
+          <Search size={14} style={{ position: 'absolute', left: '10px', top: '8px', color: 'var(--text-faint)' }} />
+          <input
+            id="fastr-search-input"
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search rules, error traps, files (Press /)..."
+            style={{
+              width: '100%',
+              padding: '6px 32px 6px 30px',
+              borderRadius: '4px',
+              border: '1px solid var(--border)',
+              background: 'var(--bg)',
+              color: 'var(--text)',
+              fontSize: '12px',
+              outline: 'none',
+              fontFamily: 'var(--font-sans)',
+            }}
+          />
+          <kbd style={{
+            position: 'absolute',
+            right: '8px',
+            top: '6px',
+            fontSize: '10px',
+            fontFamily: 'var(--font-mono)',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            padding: '1px 5px',
+            borderRadius: '3px',
+            color: 'var(--text-faint)'
+          }}>
+            /
+          </kbd>
+        </div>
+
+        {/* Control Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="btn btn-primary"
-            style={{ fontWeight: 600 }}
+            title="Create new rule or error trap (Hotkey: N)"
           >
-            <Plus size={15} /> New Rule / Trap
+            <Plus size={13} /> New Rule
           </button>
 
           <div
@@ -311,91 +374,139 @@ export const App: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '6px 12px',
-              borderRadius: '20px',
+              padding: '4px 9px',
+              borderRadius: '4px',
               background: sseStatus === 'live' ? 'var(--success-weak)' : 'var(--risk-weak)',
-              border: `1px solid ${sseStatus === 'live' ? 'var(--success)' : 'var(--risk)'}`,
+              border: `1px solid ${sseStatus === 'live' ? 'rgba(52, 211, 153, 0.3)' : 'rgba(244, 63, 94, 0.3)'}`,
               color: sseStatus === 'live' ? 'var(--success)' : 'var(--risk)',
-              fontSize: '12px',
+              fontSize: '11px',
               fontWeight: 600,
+              fontFamily: 'var(--font-mono)',
             }}
           >
-            <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: sseStatus === 'live' ? 'var(--success)' : 'var(--risk)' }} />
-            <span>{sseStatus === 'live' ? 'Live SSE' : 'Offline'}</span>
+            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: sseStatus === 'live' ? 'var(--success)' : 'var(--risk)' }} />
+            <span>{sseStatus === 'live' ? 'LIVE SSE' : 'OFFLINE'}</span>
           </div>
 
-          <button onClick={toggleTheme} className="btn" title="Toggle light/dark theme">
-            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+          <button onClick={toggleTheme} className="btn" style={{ padding: '5px 8px' }} title="Toggle light/dark theme">
+            {theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
           </button>
 
-          <button onClick={loadAll} className="btn" title="Refresh state">
-            <RefreshCw size={15} />
+          <button onClick={loadAll} className="btn" style={{ padding: '5px 8px' }} title="Refresh snapshot">
+            <RefreshCw size={13} />
           </button>
         </div>
       </header>
 
-      {/* KPI Stats Bar */}
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
-        <div className="card-panel" style={{ padding: '16px' }}>
-          <div style={{ fontSize: '24px', fontWeight: 700 }}>{loading ? '—' : status?.activeCount ?? 0}</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Active Rules</div>
+      {/* Precision KPI Ribbon */}
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px' }}>
+        <div className="card-panel" style={{ padding: '12px 16px' }}>
+          <div style={{ fontSize: '10px', color: 'var(--text-faint)', fontWeight: 600, letterSpacing: '0.05em' }}>ACTIVE RULES</div>
+          <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+            {loading ? '—' : status?.activeCount ?? 0}
+          </div>
         </div>
-        <div className="card-panel" style={{ padding: '16px' }}>
-          <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--trap)' }}>{loading ? '—' : status?.trapsCount ?? 0}</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>2.0x Error Traps</div>
+        <div className="card-panel" style={{ padding: '12px 16px', borderLeft: '3px solid var(--trap)' }}>
+          <div style={{ fontSize: '10px', color: 'var(--trap)', fontWeight: 600, letterSpacing: '0.05em' }}>2.0X ERROR TRAPS</div>
+          <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--trap)', marginTop: '2px' }}>
+            {loading ? '—' : status?.trapsCount ?? 0}
+          </div>
         </div>
-        <div className="card-panel" style={{ padding: '16px' }}>
-          <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--accent)' }}>{loading ? '—' : status?.frontierCount ?? 0}</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Ready Frontier Tasks</div>
+        <div className="card-panel" style={{ padding: '12px 16px', borderLeft: '3px solid var(--accent)' }}>
+          <div style={{ fontSize: '10px', color: 'var(--accent)', fontWeight: 600, letterSpacing: '0.05em' }}>FRONTIER TASKS</div>
+          <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--accent)', marginTop: '2px' }}>
+            {loading ? '—' : status?.frontierCount ?? 0}
+          </div>
         </div>
-        <div className="card-panel" style={{ padding: '16px' }}>
-          <div style={{ fontSize: '24px', fontWeight: 700, color: '#38bdf8' }}>{loading ? '—' : status?.graphNodesCount ?? 0}</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Knowledge Nodes</div>
+        <div className="card-panel" style={{ padding: '12px 16px' }}>
+          <div style={{ fontSize: '10px', color: 'var(--text-faint)', fontWeight: 600, letterSpacing: '0.05em' }}>KNOWLEDGE NODES</div>
+          <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+            {loading ? '—' : status?.graphNodesCount ?? 0}
+          </div>
         </div>
-        <div className="card-panel" style={{ padding: '16px' }}>
-          <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--risk)' }}>{loading ? '—' : status?.conflictsCount ?? 0}</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Contradictions</div>
+        <div className="card-panel" style={{ padding: '12px 16px', borderLeft: '3px solid var(--risk)' }}>
+          <div style={{ fontSize: '10px', color: 'var(--risk)', fontWeight: 600, letterSpacing: '0.05em' }}>CONTRADICTIONS</div>
+          <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--risk)', marginTop: '2px' }}>
+            {loading ? '—' : status?.conflictsCount ?? 0}
+          </div>
         </div>
       </section>
 
-      {/* Nav Tabs Bar */}
-      <nav style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '12px', overflowX: 'auto' }}>
+      {/* Precision Segmented Tab Bar */}
+      <nav style={{
+        display: 'flex',
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        borderRadius: '6px',
+        padding: '3px',
+        gap: '4px',
+        overflowX: 'auto'
+      }}>
         {[
-          { id: 'overview', label: '📊 Overview' },
-          { id: 'memories', label: `🧠 Memories (${memories.length})` },
-          { id: 'traps', label: `⚠️ 2.0x Traps (${traps.length})` },
-          { id: 'dag', label: `🔀 Action DAG (${actions.length})` },
-          { id: 'treemap', label: '🗺️ Treemap' },
-          { id: 'rrf', label: '⏱️ RRF Diagnostics' },
-          { id: 'conflicts', label: `⚔️ Contradictions (${conflicts.length})` },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => switchTab(tab.id as TabType)}
-            className={`btn btn-pill ${currentTab === tab.id ? 'btn-primary' : ''}`}
-            style={{ fontWeight: 600, border: 'none' }}
-          >
-            {tab.label}
-          </button>
-        ))}
+          { id: 'overview', label: 'OVERVIEW', count: null },
+          { id: 'memories', label: 'RULES & TRAPS', count: memories.length },
+          { id: 'traps', label: '2.0X TRAPS', count: traps.length },
+          { id: 'dag', label: 'ACTION DAG', count: actions.length },
+          { id: 'treemap', label: 'TREEMAP', count: null },
+          { id: 'rrf', label: 'RRF TRACE', count: null },
+          { id: 'conflicts', label: 'CONTRADICTIONS', count: conflicts.length },
+        ].map((tab) => {
+          const isActive = currentTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => switchTab(tab.id as TabType)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '4px',
+                fontSize: '11px',
+                fontWeight: 600,
+                letterSpacing: '0.04em',
+                fontFamily: 'var(--font-mono)',
+                border: 'none',
+                background: isActive ? 'var(--accent-weak)' : 'transparent',
+                color: isActive ? 'var(--accent)' : 'var(--text-muted)',
+                cursor: 'pointer',
+                transition: 'all 0.1s ease',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <span>{tab.label}</span>
+              {tab.count !== null && (
+                <span style={{
+                  fontSize: '10px',
+                  padding: '1px 5px',
+                  borderRadius: '3px',
+                  background: isActive ? 'var(--accent)' : 'var(--bg-subtle)',
+                  color: isActive ? '#fff' : 'var(--text-faint)'
+                }}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </nav>
 
       {/* Main Content Area */}
       <main style={{ minHeight: '440px' }}>
         {loading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-            <div className="skeleton-box" style={{ height: '140px' }} />
-            <div className="skeleton-box" style={{ height: '140px' }} />
-            <div className="skeleton-box" style={{ height: '140px' }} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+            <div className="card-panel" style={{ height: '140px', background: 'var(--surface)' }} />
+            <div className="card-panel" style={{ height: '140px', background: 'var(--surface)' }} />
+            <div className="card-panel" style={{ height: '140px', background: 'var(--surface)' }} />
           </div>
         ) : (
           <>
             {/* TAB 1: OVERVIEW */}
             {currentTab === 'overview' && (
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
-                <div className="card-panel" style={{ padding: '24px' }}>
-                  <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>Cognitive Agent Memory System</h2>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: '1.6', marginBottom: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+                <div className="card-panel" style={{ padding: '20px' }}>
+                  <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '6px' }}>Sovereign Cognitive Agent Memory Engine</h2>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '13px', lineHeight: '1.5', marginBottom: '16px' }}>
                     FastrMemory operates inside Node 24 with <b>zero external background daemons</b>. Rules, bug-fix traps, and architectural decisions are persisted via SQLite WAL mode, mirrored to <code>.fastr/pages/*.md</code> for Git pull requests, and fused via Triple-Stream RRF ($k=60$).
                   </p>
                   <div style={{ display: 'flex', gap: '10px' }}>
@@ -408,174 +519,230 @@ export const App: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="card-panel" style={{ padding: '24px' }}>
-                  <h3 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '12px' }}>Instant CLI Shortcuts</h3>
+                <div className="card-panel" style={{ padding: '20px' }}>
+                  <h3 style={{ fontSize: '13px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-faint)', letterSpacing: '0.04em', marginBottom: '12px' }}>
+                    CLI Shortcuts
+                  </h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
-                      <code>fastrmemory status</code>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
+                      <code style={{ color: 'var(--accent)' }}>fastrmemory status</code>
                       <CopyButton text="fastrmemory status" />
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
-                      <code>fastrmemory bench</code>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
+                      <code style={{ color: 'var(--accent)' }}>fastrmemory bench</code>
                       <CopyButton text="fastrmemory bench" />
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
-                      <code>fastrmemory learn</code>
-                      <CopyButton text="fastrmemory learn" />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
+                      <code style={{ color: 'var(--accent)' }}>fastrmemory sync</code>
+                      <CopyButton text="fastrmemory sync" />
                     </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* TAB 2: ALL MEMORIES */}
+            {/* TAB 2: HIGH-DENSITY RULES & TRAPS TABLE */}
             {currentTab === 'memories' && (
               <div>
-                <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1, minWidth: '240px', position: 'relative' }}>
-                    <Search size={16} style={{ position: 'absolute', left: '12px', top: '10px', color: 'var(--text-muted)' }} />
-                    <input
-                      id="fastr-search-input"
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Press / to search by keyword, file, or [mem_id]..."
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px 8px 36px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--border)',
-                        background: 'var(--surface)',
-                        color: 'var(--text)',
-                        fontSize: '13px',
-                        outline: 'none',
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '6px', overflowX: 'auto' }}>
+                {/* Filter Toolbar */}
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: '4px', overflowX: 'auto' }}>
                     <button
                       onClick={() => setSelectedModule('all')}
-                      className={`btn btn-pill ${selectedModule === 'all' ? 'btn-primary' : ''}`}
+                      className={`btn ${selectedModule === 'all' ? 'btn-primary' : ''}`}
+                      style={{ padding: '4px 10px', fontSize: '11px' }}
                     >
-                      All Modules
+                      All Modules ({memories.length})
                     </button>
                     {(status?.modules || []).map((m) => (
                       <button
                         key={m}
                         onClick={() => setSelectedModule(m)}
-                        className={`btn btn-pill ${selectedModule === m ? 'btn-primary' : ''}`}
+                        className={`btn ${selectedModule === m ? 'btn-primary' : ''}`}
+                        style={{ padding: '4px 10px', fontSize: '11px' }}
                       >
                         {m}
                       </button>
                     ))}
                   </div>
+                  <div style={{ marginLeft: 'auto', fontSize: '11px', color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>
+                    Showing {filteredMemories.length} item(s) &bull; Click row to inspect
+                  </div>
                 </div>
 
                 {filteredMemories.length === 0 ? (
                   <div className="card-panel" style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔍</div>
-                    <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text)' }}>No memories match your criteria</div>
-                    <p style={{ fontSize: '12px', marginTop: '4px', maxWidth: '380px', margin: '4px auto 16px auto' }}>
-                      Try adjusting your search query, selecting a different module filter, or record a new rule.
-                    </p>
-                    <button onClick={() => setIsCreateModalOpen(true)} className="btn btn-primary" style={{ margin: '0 auto' }}>
-                      <Plus size={14} /> Record New Rule
-                    </button>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)' }}>No memories match criteria</div>
+                    <p style={{ fontSize: '12px', marginTop: '4px' }}>Adjust search query or select another module.</p>
                   </div>
                 ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
-                  {filteredMemories.map((m) => (
-                    <div
-                      key={m.id}
-                      onClick={() => setActiveModalMemory(m)}
-                      className="card-panel card-interactive"
-                      style={{
-                        padding: '16px',
-                        borderLeft: `4px solid ${m.kind === 'error_trap' ? 'var(--trap)' : m.pinned ? '#8b5cf6' : 'var(--accent)'}`,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        gap: '12px',
-                      }}
-                    >
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                          <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                            [{m.id}] &bull; {m.module}
-                          </span>
-                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                            {m.pinned === 1 && <span className="badge-tag" style={{ background: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6' }}>PINNED</span>}
-                            <span
-                              className="badge-tag"
-                              style={{
-                                background: m.kind === 'error_trap' ? 'var(--trap-weak)' : 'var(--accent-weak)',
-                                color: m.kind === 'error_trap' ? 'var(--trap)' : 'var(--accent)',
-                              }}
-                            >
-                              {m.kind.toUpperCase()}
-                            </span>
-                          </div>
-                        </div>
-                        <div style={{ fontSize: '14px', fontWeight: 600, marginTop: '6px' }}>{m.title}</div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', maxHeight: '42px', overflow: 'hidden' }}>{m.content}</div>
-                      </div>
-
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '10px' }}>
-                        <span>Files: {m.linked_files?.length || 0}</span>
-                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                          <CopyButton text={m.id} label="ID" />
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleTogglePin(m.id, m.pinned);
-                            }}
-                            className="btn"
-                            style={{ padding: '3px 8px', fontSize: '11px' }}
-                            title={m.pinned ? 'Unpin rule' : 'Pin rule'}
-                          >
-                            <Pin size={12} color={m.pinned ? '#8b5cf6' : 'var(--text-muted)'} />
-                          </button>
-                        </div>
-                      </div>
+                  <div className="card-panel" style={{ overflow: 'hidden' }}>
+                    {/* Header */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: '110px 80px 100px 1fr 180px 70px 60px',
+                      padding: '8px 14px',
+                      background: 'var(--bg-subtle)',
+                      borderBottom: '1px solid var(--border)',
+                      fontSize: '10.5px',
+                      fontWeight: 600,
+                      letterSpacing: '0.05em',
+                      color: 'var(--text-faint)',
+                      fontFamily: 'var(--font-mono)'
+                    }}>
+                      <div>ID</div>
+                      <div>KIND</div>
+                      <div>MODULE</div>
+                      <div>TITLE</div>
+                      <div>PROVENANCE</div>
+                      <div>REWARD</div>
+                      <div style={{ textAlign: 'right' }}>PIN</div>
                     </div>
-                  ))}
-                </div>
+
+                    {/* Table Rows */}
+                    <div style={{ maxHeight: '640px', overflowY: 'auto' }}>
+                      {filteredMemories.map((m) => {
+                        const isSelected = activeModalMemory?.id === m.id;
+                        return (
+                          <div
+                            key={m.id}
+                            onClick={() => setActiveModalMemory(m)}
+                            className={`instrument-row ${isSelected ? 'active' : ''}`}
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: '110px 80px 100px 1fr 180px 70px 60px',
+                              alignItems: 'center',
+                              fontSize: '12px'
+                            }}
+                          >
+                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--accent)', fontWeight: 600 }}>
+                              {m.id}
+                            </div>
+                            <div>
+                              <span
+                                className="badge-tag"
+                                style={{
+                                  background: m.kind === 'error_trap' ? 'var(--trap-weak)' : 'var(--accent-weak)',
+                                  color: m.kind === 'error_trap' ? 'var(--trap)' : 'var(--accent)',
+                                }}
+                              >
+                                {m.kind === 'error_trap' ? 'TRAP' : m.kind.toUpperCase()}
+                              </span>
+                            </div>
+                            <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontSize: '11.5px' }}>
+                              {m.module}
+                            </div>
+                            <div style={{ fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: '12px' }}>
+                              {m.title}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              {m.provenance_hash ? (
+                                <span className="badge-tag" style={{ background: 'rgba(52, 211, 153, 0.15)', color: 'var(--success)' }}>
+                                  🔒 prov_{m.provenance_hash.slice(0, 6)}
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: '10px', color: 'var(--text-faint)' }}>legacy</span>
+                              )}
+                              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>@{m.agent_id || 'default'}</span>
+                            </div>
+                            <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent)', fontSize: '11.5px' }}>
+                              {m.reward_score.toFixed(2)}x
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleTogglePin(m.id, m.pinned);
+                                }}
+                                className="btn"
+                                style={{ padding: '2px 6px', fontSize: '10px' }}
+                                title={m.pinned ? 'Unpin' : 'Pin'}
+                              >
+                                <Pin size={11} color={m.pinned ? '#8b5cf6' : 'var(--text-muted)'} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
               </div>
             )}
 
-            {/* TAB 3: 2.0X ERROR TRAPS */}
+            {/* TAB 3: 2.0X ERROR TRAPS DEDICATED TABLE */}
             {currentTab === 'traps' && (
               <div>
-                <div style={{ marginBottom: '16px', color: 'var(--text-muted)', fontSize: '13px' }}>
-                  Error traps automatically receive a <b>2.0x boost</b> during recall to prevent AI agents from repeating known bugs.
+                <div style={{
+                  padding: '10px 14px',
+                  background: 'var(--trap-weak)',
+                  border: '1px solid rgba(217, 119, 6, 0.3)',
+                  borderRadius: '6px',
+                  color: 'var(--trap)',
+                  fontSize: '12px',
+                  marginBottom: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <ShieldAlert size={15} />
+                  <span>
+                    Error traps receive an automatic <b>2.0x recall boost</b> to proactively prevent AI agents from repeating known bugs.
+                  </span>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
-                  {traps.map((m) => (
-                    <div
-                      key={m.id}
-                      onClick={() => setActiveModalMemory(m)}
-                      className="card-panel card-interactive"
-                      style={{
-                        padding: '16px',
-                        borderLeft: '5px solid var(--trap)',
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span className="badge-tag" style={{ background: 'var(--trap-weak)', color: 'var(--trap)' }}>
-                          [TRAP 2.0X]
-                        </span>
-                        <CopyButton text={m.id} label="ID" />
+
+                <div className="card-panel" style={{ overflow: 'hidden' }}>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '110px 110px 1fr 140px 100px',
+                    padding: '8px 14px',
+                    background: 'var(--bg-subtle)',
+                    borderBottom: '1px solid var(--border)',
+                    fontSize: '10.5px',
+                    fontWeight: 600,
+                    letterSpacing: '0.05em',
+                    color: 'var(--text-faint)',
+                    fontFamily: 'var(--font-mono)'
+                  }}>
+                    <div>TRAP ID</div>
+                    <div>MODULE</div>
+                    <div>WARNING HEADLINE</div>
+                    <div>LINKED FILES</div>
+                    <div style={{ textAlign: 'right' }}>RECALL BOOST</div>
+                  </div>
+
+                  <div style={{ maxHeight: '640px', overflowY: 'auto' }}>
+                    {traps.map((m) => (
+                      <div
+                        key={m.id}
+                        onClick={() => setActiveModalMemory(m)}
+                        className="instrument-row"
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: '110px 110px 1fr 140px 100px',
+                          alignItems: 'center',
+                          borderLeft: '3px solid var(--trap)',
+                          fontSize: '12px'
+                        }}
+                      >
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--trap)', fontWeight: 600 }}>
+                          {m.id}
+                        </div>
+                        <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                          {m.module}
+                        </div>
+                        <div style={{ fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: '12px' }}>
+                          {m.title}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {m.linked_files && m.linked_files.length > 0 ? m.linked_files.join(', ') : 'project-wide'}
+                        </div>
+                        <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', color: 'var(--trap)', fontWeight: 600 }}>
+                          2.0x BOOST
+                        </div>
                       </div>
-                      <div style={{ fontSize: '14px', fontWeight: 600, marginTop: '8px' }}>{m.title}</div>
-                      <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>{m.content}</div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', borderTop: '1px solid var(--border)', paddingTop: '8px', fontSize: '11px', color: 'var(--text-muted)' }}>
-                        <span>Module: <b>{m.module}</b></span>
-                        <span>Score: <b>{m.reward_score}</b></span>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
@@ -605,11 +772,11 @@ export const App: React.FC = () => {
             {/* TAB 7: CONFLICTS & LINE DIFF */}
             {currentTab === 'conflicts' && (
               <div>
-                <div style={{ marginBottom: '16px', color: 'var(--text-muted)', fontSize: '13px' }}>
+                <div style={{ marginBottom: '12px', color: 'var(--text-muted)', fontSize: '12px' }}>
                   Contradictions detected between active memories. Use 1-click resolution with optimistic 6-second rollback window.
                 </div>
                 {conflicts.length === 0 ? (
-                  <div style={{ padding: '40px', textAlign: 'center', background: 'var(--surface)', borderRadius: '10px', border: '1px solid var(--border)', color: 'var(--success)' }}>
+                  <div className="card-panel" style={{ padding: '36px', textAlign: 'center', color: 'var(--success)' }}>
                     ✨ Zero open contradictions detected. Knowledge base is 100% consistent!
                   </div>
                 ) : (
@@ -631,123 +798,42 @@ export const App: React.FC = () => {
 
       {/* Floating Multi-Agent Real-Time Live Notification Banner */}
       {liveNotification && (
-        <div style={{
-          position: 'fixed',
-          top: '16px',
-          right: '24px',
-          zIndex: 9999,
-          background: 'var(--bg-panel)',
-          border: '1px solid var(--accent)',
-          borderRadius: '8px',
-          padding: '10px 16px',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          fontSize: '13px',
-          fontWeight: 600,
-          color: 'var(--text)'
-        }}>
+        <div className="floating-alert">
           <span>{liveNotification}</span>
           <button onClick={() => setLiveNotification(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
         </div>
       )}
 
-      {/* Memory Detail Modal with Copy & Forget Actions */}
-      {activeModalMemory && (
-        <div
-          onClick={() => setActiveModalMemory(null)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9000 }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="card-panel"
-            style={{ width: '90%', maxWidth: '620px', padding: '24px', boxShadow: '0 20px 40px rgba(0,0,0,0.4)' }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '11px', color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>[{activeModalMemory.id}]</span>
-                  {activeModalMemory.provenance_hash && (
-                    <span className="badge-tag" style={{ fontSize: '10px', background: 'rgba(52, 211, 153, 0.15)', color: '#10b981', border: '1px solid rgba(52, 211, 153, 0.3)' }} title={`SHA-256 Provenance Signature: ${activeModalMemory.provenance_hash}`}>
-                      🔒 prov_{activeModalMemory.provenance_hash.slice(0, 8)}
-                    </span>
-                  )}
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>author: @{activeModalMemory.agent_id || 'default'}</span>
-                </div>
-                <h3 style={{ fontSize: '16px', fontWeight: 700, marginTop: '4px' }}>{activeModalMemory.title}</h3>
-              </div>
-              <button onClick={() => setActiveModalMemory(null)} className="btn" style={{ padding: '4px 8px' }}>✕</button>
-            </div>
-
-            {/* Structured Markdown Presentation */}
-            <div style={{ marginTop: '16px', background: 'var(--bg)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border)', maxHeight: '340px', overflowY: 'auto' }}>
-              <MarkdownView content={activeModalMemory.content} />
-            </div>
-
-            {/* Linked Files */}
-            {activeModalMemory.linked_files && activeModalMemory.linked_files.length > 0 && (
-              <div style={{ marginTop: '14px', fontSize: '12px' }}>
-                <span style={{ fontWeight: 600, color: 'var(--text)' }}>Linked Files:</span>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
-                  {activeModalMemory.linked_files.map((f) => (
-                    <span key={f} className="badge-tag" style={{ background: 'var(--bg-subtle)', color: 'var(--text-muted)' }}>
-                      {f}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            <div style={{ marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <CopyButton text={activeModalMemory.content} label="Copy Content" />
-                <CopyButton text={`fastrmemory recall "${activeModalMemory.title}"`} label="Copy CLI" />
-                <button
-                  onClick={() => handleTogglePin(activeModalMemory.id, activeModalMemory.pinned)}
-                  className="btn"
-                  style={{ fontSize: '12px' }}
-                >
-                  <Pin size={13} color={activeModalMemory.pinned ? '#8b5cf6' : 'var(--text-muted)'} />
-                  {activeModalMemory.pinned ? 'Unpin' : 'Pin'}
-                </button>
-              </div>
-
-              <button
-                onClick={() => handleForgetMemory(activeModalMemory.id)}
-                className="btn"
-                style={{ borderColor: 'var(--risk)', color: 'var(--risk)', fontSize: '12px' }}
-              >
-                <Trash2 size={13} /> Forget
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Linear & Hippo Style Slide-Over Drawer */}
+      <MemoryDrawer
+        memory={activeModalMemory}
+        onClose={() => setActiveModalMemory(null)}
+        onTogglePin={handleTogglePin}
+        onForget={handleForgetMemory}
+      />
 
       {/* Action Task Detail Modal */}
       {activeModalAction && (
         <div
           onClick={() => setActiveModalAction(null)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9000 }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9000 }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
             className="card-panel"
-            style={{ width: '90%', maxWidth: '580px', padding: '24px', boxShadow: '0 20px 40px rgba(0,0,0,0.4)' }}
+            style={{ width: '90%', maxWidth: '540px', padding: '20px' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <span style={{ fontSize: '11px', color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>[{activeModalAction.id}] &bull; P{activeModalAction.priority}</span>
-                <h3 style={{ fontSize: '16px', fontWeight: 700, marginTop: '4px' }}>{activeModalAction.title}</h3>
+                <h3 style={{ fontSize: '15px', fontWeight: 600, marginTop: '4px' }}>{activeModalAction.title}</h3>
               </div>
-              <button onClick={() => setActiveModalAction(null)} className="btn" style={{ padding: '4px 8px' }}>✕</button>
+              <button onClick={() => setActiveModalAction(null)} className="btn" style={{ padding: '3px 7px' }}>✕</button>
             </div>
-            <div style={{ marginTop: '16px', fontSize: '13px', lineHeight: '1.6', color: 'var(--text-muted)' }}>
+            <div style={{ marginTop: '14px', fontSize: '12.5px', lineHeight: '1.5', color: 'var(--text-muted)' }}>
               {activeModalAction.description || 'No detailed task description provided.'}
             </div>
-            <div style={{ marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-muted)' }}>
+            <div style={{ marginTop: '18px', borderTop: '1px solid var(--border)', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', color: 'var(--text-muted)' }}>
               <span>Status: <b style={{ textTransform: 'capitalize' }}>{activeModalAction.status}</b></span>
               <span>Assignee: <b>{activeModalAction.assigned_to || 'Unassigned (Open)'}</b></span>
             </div>
@@ -759,61 +845,61 @@ export const App: React.FC = () => {
       {isCreateModalOpen && (
         <div
           onClick={() => setIsCreateModalOpen(false)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9000 }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9000 }}
         >
           <form
             onSubmit={handleCreateMemory}
             onClick={(e) => e.stopPropagation()}
             className="card-panel"
-            style={{ width: '90%', maxWidth: '540px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}
+            style={{ width: '90%', maxWidth: '520px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Record Memory / Error Trap</h3>
-              <button type="button" onClick={() => setIsCreateModalOpen(false)} className="btn" style={{ padding: '4px 8px' }}>✕</button>
+              <h3 style={{ fontSize: '15px', fontWeight: 600 }}>Record Memory / Error Trap</h3>
+              <button type="button" onClick={() => setIsCreateModalOpen(false)} className="btn" style={{ padding: '3px 7px' }}>✕</button>
             </div>
 
             <div>
-              <label style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Title</label>
+              <label style={{ fontSize: '11.5px', fontWeight: 600, display: 'block', marginBottom: '3px', color: 'var(--text-muted)' }}>Title</label>
               <input
                 type="text"
                 required
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
                 placeholder="e.g. Always Use BigEndian for Binary Protocol"
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '13px', outline: 'none' }}
+                style={{ width: '100%', padding: '7px 10px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '12px', outline: 'none' }}
               />
             </div>
 
             <div>
-              <label style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Rule Content</label>
+              <label style={{ fontSize: '11.5px', fontWeight: 600, display: 'block', marginBottom: '3px', color: 'var(--text-muted)' }}>Rule Content</label>
               <textarea
                 required
                 rows={4}
                 value={newContent}
                 onChange={(e) => setNewContent(e.target.value)}
                 placeholder="Explain the pattern, gotcha, or fix in detail..."
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '13px', outline: 'none', resize: 'vertical' }}
+                style={{ width: '100%', padding: '7px 10px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '12px', outline: 'none', resize: 'vertical' }}
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
-                <label style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Module</label>
+                <label style={{ fontSize: '11.5px', fontWeight: 600, display: 'block', marginBottom: '3px', color: 'var(--text-muted)' }}>Module</label>
                 <input
                   type="text"
                   value={newModule}
                   onChange={(e) => setNewModule(e.target.value)}
                   placeholder="e.g. auth, api, db"
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '13px', outline: 'none' }}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '12px', outline: 'none' }}
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Type</label>
+                <label style={{ fontSize: '11.5px', fontWeight: 600, display: 'block', marginBottom: '3px', color: 'var(--text-muted)' }}>Type</label>
                 <select
                   value={newKind}
                   onChange={(e) => setNewKind(e.target.value as any)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '13px', outline: 'none' }}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '12px', outline: 'none' }}
                 >
                   <option value="rule">Rule (Verified)</option>
                   <option value="error_trap">Error Trap [2.0x Boost]</option>
@@ -822,17 +908,17 @@ export const App: React.FC = () => {
             </div>
 
             <div>
-              <label style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Linked Files (comma separated)</label>
+              <label style={{ fontSize: '11.5px', fontWeight: 600, display: 'block', marginBottom: '3px', color: 'var(--text-muted)' }}>Linked Files (comma separated)</label>
               <input
                 type="text"
                 value={newFiles}
                 onChange={(e) => setNewFiles(e.target.value)}
                 placeholder="src/auth.ts, src/server.ts"
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '13px', outline: 'none' }}
+                style={{ width: '100%', padding: '7px 10px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '12px', outline: 'none' }}
               />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px' }}>
               <button type="button" onClick={() => setIsCreateModalOpen(false)} className="btn">Cancel</button>
               <button type="submit" className="btn btn-primary">Save Memory</button>
             </div>
