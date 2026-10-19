@@ -22,6 +22,7 @@
   <a href="#-30-second-quick-start">Quick Start</a> &bull;
   <a href="#-mcp-server-tools--resources">MCP Tools</a> &bull;
   <a href="#-architecture">Architecture</a> &bull;
+  <a href="ROADMAP.md">Roadmap</a> &bull;
   <a href="#-contributing">Contributing</a>
 </p>
 
