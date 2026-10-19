@@ -17,13 +17,15 @@ describe('FastrMemory Benchmark Suite', () => {
     const report = await runBenchmarks(db, 'test_bench_proj');
 
     expect(report.totalCases).toBeGreaterThanOrEqual(8);
-    expect(report.engines.length).toBe(3);
+    expect(report.engines.length).toBeGreaterThanOrEqual(3);
 
     const fastr = report.engines.find((e) => e.name.includes('FastrMemory'))!;
     const bm25 = report.engines.find((e) => e.name.includes('BM25'))!;
+    const memoria = report.engines.find((e) => e.name.includes('Memoria'))!;
 
     expect(fastr).toBeDefined();
     expect(bm25).toBeDefined();
+    expect(memoria).toBeDefined();
 
     // FastrMemory should achieve high Hit@5 and Trap recall
     expect(fastr.hitAt5).toBeGreaterThanOrEqual(75);
@@ -31,7 +33,7 @@ describe('FastrMemory Benchmark Suite', () => {
     expect(fastr.avgLatencyMs).toBeLessThan(100); // Sub-100ms in in-memory test
 
     const md = formatBenchmarkMarkdown(report);
-    expect(md).toContain('FastrMemory Retrieval Benchmark Suite');
+    expect(md).toContain('FastrMemory Cognitive Retrieval Benchmark Suite');
     expect(md).toContain('Triple-Stream RRF');
   });
 });

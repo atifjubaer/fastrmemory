@@ -206,14 +206,20 @@ program
   .description('Run automated retrieval accuracy & latency benchmarks')
   .option('--markdown', 'Output results as a Markdown table')
   .option('--json', 'Output results as raw JSON')
+  .option('--save <file>', 'Save benchmark report to a file')
   .action(async (options) => {
     const ctx = createFastrServerContext();
-    console.log('⚡ Running FastrMemory Cognitive Retrieval Benchmarks...\n');
+    console.log('⚡ Running FastrMemory Cognitive Retrieval Benchmarks against Hippo, Memoria & Baselines...\n');
     const report = await runBenchmarks(ctx.db, ctx.config.projectId);
+    const md = formatBenchmarkMarkdown(report);
     if (options.json) {
       console.log(JSON.stringify(report, null, 2));
     } else {
-      console.log(formatBenchmarkMarkdown(report));
+      console.log(md);
+    }
+    if (options.save) {
+      fs.writeFileSync(path.resolve(options.save), md, 'utf-8');
+      console.log(`\n📄 Saved benchmark report to ${options.save}`);
     }
   });
 
