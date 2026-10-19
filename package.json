@@ -38,7 +38,9 @@
     "prepare": "npm run build:ui && tsc",
     "prepublishOnly": "npm run build && npm test",
     "build:ui": "npm --prefix ui run build",
+    "build:extension": "tsc -p extensions/vscode",
     "build": "npm run build:ui && tsc",
+    "build:all": "npm run build && npm run build:extension",
     "watch": "tsc --watch",
     "test": "vitest run",
     "start": "node dist/bin/fastr.js"

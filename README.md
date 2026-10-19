@@ -452,7 +452,7 @@ Run the comprehensive unit test suite:
 npm test
 ```
 
-All 91 tests pass in ~1.1s across 24 test suites covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, and web dashboard server.
+All **94 tests pass** across **25 test suites** in ~1.1s covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, and pre-merge trap guardian.
 
 ---
 
@@ -485,12 +485,32 @@ fastrmemory ui
 ```
 
 - **Live URL**: `http://localhost:4242`
-- **3D Brain Observatory**: High-performance Three.js constellation with 60 FPS smooth camera lerp interpolation, 350-particle celestial star dust, glowing amber trap halos, and click-to-focus inspection.
+- **3D Brain Observatory**: High-performance Three.js constellation galaxy with 60 FPS camera lerp interpolation, 350-particle celestial star dust, glowing amber trap halos, and click-to-focus inspection.
+- **3D Conflict Resolver**: Pulsing neon crimson tension wires (`#f43f5e`) connecting contradictory rules in 3D space with an embedded glassmorphic Bi-Temporal Diff HUD for 1-click resolution (`Keep A`, `Keep B`, `Keep Both`).
+- **Multi-Agent Action DAG**: Real-time interactive canvas visualizing task dependencies, worker assignments, and glowing frontier aura.
 - **Vim & Keyboard Navigation**: Full keyboard control (`j`/`k` row navigation, `Enter` to open memory inspector, `Escape` to close).
 - **Real-Time SSE Streaming**: Live event streaming (`/api/stream`) updating the dashboard instantly as coding agents record memories in the background.
-- **6 Studio Tabs**: Overview, 3D Observatory, All Memories, Error Traps (2.0x Boost), Interactive Knowledge Graph, and Chronological Timeline.
-- **Instant Search**: Real-time debounce filter by keyword, file path, or `[mem_xxxx]` identifier.
 - **Zero Daemons**: Powered entirely by native Node.js HTTP server and embedded SQLite WAL mode.
+
+---
+
+## 🧩 Native VS Code & Cursor Extension
+
+Package and install the native FastrMemory Guardian extension for **VS Code** and **Cursor**:
+
+```bash
+# Compile and package extension
+npm run build:extension
+npx @vscode/vsce package --no-dependencies
+
+# Install into Cursor or VS Code
+cursor --install-extension fastrmemory-vscode-0.1.0.vsix
+```
+
+- **⚡ Status Bar Pill**: Displays active trap count in the status bar (`⚡ 3 Traps Active` or `⚡ 1 Trap on File`). Clicking opens an interactive QuickPick listing all active traps.
+- **Amber Underlines**: Trapped files are underlined in amber with full hover mitigation instructions and 2.0x boost weights.
+- **Problems Tab Integration**: Active error traps populate the IDE Problems panel as non-blocking warning diagnostics.
+- **Zero Daemons**: Reads directly from `.fastr/fastr.db` via `node:sqlite`.
 
 ---
 

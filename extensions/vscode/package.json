@@ -1,0 +1,69 @@
+{
+  "name": "fastrmemory-vscode",
+  "displayName": "FastrMemory Guardian (VS Code & Cursor)",
+  "description": "Native status bar pill & active error trap underlines for VS Code and Cursor",
+  "version": "0.1.0",
+  "publisher": "atifjubaer",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/atifjubaer/fastrmemory"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "fastrmemory",
+    "ai",
+    "memory",
+    "error-trap",
+    "cursor",
+    "claude"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "fastrmemory.showTraps",
+        "title": "FastrMemory: Show Active Error Traps",
+        "category": "FastrMemory"
+      },
+      {
+        "command": "fastrmemory.openDashboard",
+        "title": "FastrMemory: Open 3D Brain Observatory",
+        "category": "FastrMemory"
+      },
+      {
+        "command": "fastrmemory.guardWorkspace",
+        "title": "FastrMemory: Run Pre-Merge Trap Guardian",
+        "category": "FastrMemory"
+      }
+    ],
+    "configuration": {
+      "title": "FastrMemory",
+      "properties": {
+        "fastrmemory.enableUnderlines": {
+          "type": "boolean",
+          "default": true,
+          "description": "Highlight trapped code files and lines with amber warning underlines"
+        },
+        "fastrmemory.serverPort": {
+          "type": "number",
+          "default": 4242,
+          "description": "Port for FastrMemory 3D Observatory UI server"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w"
+  }
+}
