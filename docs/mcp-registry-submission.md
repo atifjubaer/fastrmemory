@@ -15,7 +15,7 @@ Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://gi
 ```
 
 ### Full Server Description & Metadata
-- **Name**: FastrMemory (`@atifjubaer/fastrmemory`)
+- **Name**: `fastrmemory` (npm package: `@atifjubaer/fastrmemory`; registry ID: `io.github.atifjubaer/fastrmemory`)
 - **Repository**: [https://github.com/atifjubaer/fastrmemory](https://github.com/atifjubaer/fastrmemory)
 - **Author**: Atif Jubaer / Fastrsoft
 - **Transport**: `stdio` (Zero network daemon, in-process WAL SQLite)

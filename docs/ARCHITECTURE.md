@@ -90,6 +90,7 @@ CLI: `fastr replay`, `fastr diff`, `fastr snapshot export|import`, `fastr consol
 
 ## 7. MCP surface
 
+- **Server name:** `fastrmemory` (registry ID: `io.github.atifjubaer/fastrmemory`).
 - **41 tools** (memory CRUD, recall/drill, traps, conflicts, DAG actions, planning, slots, federation, snapshot/rollback, replay/diff, compression, doctor, vision).
 - **2 prompts**: `pre-edit-check`, `session-wrap-up`.
 - **4 resources**: `fastr://project/overview`, `fastr://project/traps`, `fastr://session/handoff`, and the `fastr://memory/{id}` template.

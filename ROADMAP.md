@@ -26,7 +26,7 @@ Current state (2026-10-21, code HEAD `a91ad6d`): 234 tests green locally across 
 
 - Split `build:core`, `build:ui`, and `build:all`; stop rebuilding the tracked UI bundle on every publish.
 - Add `scripts/check-package.mjs` (bin paths, `files`, exports, tarball <5 MB, no tests/docs/DBs) and `scripts/check-dist-ui.mjs` (UI source freshness).
-- Set `mcpName` to `io.github.atifjubaer/fastrmemory` and align the MCP server name with the npm package name.
+- Set `mcpName` to `io.github.atifjubaer/fastrmemory` and expose the MCP server name as `fastrmemory`.
 - Add `fail-fast: false` and the isolation/package/docs/bench checks to the 3 OS × Node 22/24 matrix.
 - Publish 0.2.0 **only if** `npm whoami` works and the account is not suspended. If blocked, produce the tarball, document the exact resume command, and stop. Do not bypass 2FA or the suspension.
 - Verify `npm view @atifjubaer/fastrmemory version` and `npx @atifjubaer/fastrmemory@latest --version` in a clean temp directory.

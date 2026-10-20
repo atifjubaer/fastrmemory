@@ -9,6 +9,7 @@ describe('MCP v2 Server (Tools & Resources)', () => {
   let ctx: any;
   let server: any;
   let clientTransport: any;
+  let initializeResult: any;
 
   beforeEach(async () => {
     if (fs.existsSync(testDir)) {
@@ -29,7 +30,10 @@ describe('MCP v2 Server (Tools & Resources)', () => {
     let msgId = 1;
     await new Promise((resolve) => {
       clientTransport.onmessage = (msg: any) => {
-        if (msg.id === 1) resolve(msg);
+        if (msg.id === 1) {
+          initializeResult = msg.result;
+          resolve(msg);
+        }
       };
       clientTransport.send({
         jsonrpc: '2.0',
@@ -76,6 +80,8 @@ describe('MCP v2 Server (Tools & Resources)', () => {
   }
 
   it('exposes the full registered MCP tool set', async () => {
+    expect(initializeResult.serverInfo.name).toBe('fastrmemory');
+
     const id = 999;
     const res: any = await new Promise((resolve) => {
       clientTransport.onmessage = (msg: any) => {

@@ -2,8 +2,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-/** Official MCP registry name; must match package.json `mcpName`. */
-export const MCP_SERVER_NAME = '@atifjubaer/fastrmemory';
+/** Human-readable MCP server name exposed during initialize. Registry identity lives in package.json `mcpName`. */
+export const MCP_SERVER_NAME = 'fastrmemory';
 
 /**
  * Reads the package version from the nearest package.json.
