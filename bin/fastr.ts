@@ -190,6 +190,22 @@ trapCmd
     console.log(`⚠️ Logged error trap [${mem.id}] in module "${mem.module}" with 2.0x recall boost.`);
   });
 
+trapCmd
+  .command('resolve <id>')
+  .description('Mark an error trap as dormant / resolved so it no longer blocks pre-merge CI')
+  .option('-r, --reason <reason>', 'Resolution reason or commit link', 'Bug permanently resolved and verified')
+  .action((id: string, opts: any) => {
+    const ctx = createFastrServerContext();
+    const trap = ctx.db.prepare('SELECT id, title FROM memories WHERE id = ?').get(id) as any;
+    if (!trap) {
+      console.error(`Error: Trap [${id}] not found.`);
+      process.exit(1);
+    }
+    ctx.db.prepare("UPDATE memories SET status = 'dormant', superseded_reason = ? WHERE id = ?").run(opts.reason, id);
+    syncAllModulePages(ctx.db, ctx.config.projectRoot, ctx.config.projectId);
+    console.log(`✅ Trap [${id}] "${trap.title}" marked as dormant (${opts.reason}).`);
+  });
+
 // 6. Sync command
 program
   .command('sync')
