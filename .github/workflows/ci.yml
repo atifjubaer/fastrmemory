@@ -30,11 +30,17 @@ jobs:
       - name: Install UI dependencies
         run: npm --prefix ui ci --ignore-scripts
 
-      - name: Typecheck & Build
-        run: npm run build
+      - name: Verify tracked UI bundle
+        run: npm run check:dist-ui
 
-      - name: Run Test Suite
-        run: npx vitest run
+      - name: Typecheck & Build core
+        run: npm run build:core
 
-      - name: Validate Agent Skills
-        run: npm run check:skills
+      - name: Build UI and verify tracked bundle
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '24.x'
+        run: |
+          npm run build:ui
+          git diff --exit-code -- dist-ui
+
+      - name: Run full checks
+        run: npm run check:ci
