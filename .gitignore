@@ -6,6 +6,7 @@ references/
 **/.fastr/fastr.db*
 .fastr/spool/
 tests/temp_*
+tests/.tmp-home/
 *.log
 .DS_Store
 Thumbs.db

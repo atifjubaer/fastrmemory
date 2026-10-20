@@ -31,7 +31,11 @@ export function findProjectRoot(startDir: string = process.cwd()): string {
   }
 }
 
-export function loadConfig(customRoot?: string): FastrConfig {
+export function resolveFastrHome(homeDir?: string): string {
+  return homeDir ?? process.env.FASTR_HOME ?? os.homedir();
+}
+
+export function loadConfig(customRoot?: string, homeDir?: string): FastrConfig {
   const projectRoot = customRoot ? path.resolve(customRoot) : findProjectRoot();
   const fastrDir = path.join(projectRoot, '.fastr');
   const projectConfigFile = path.join(fastrDir, 'project.json');
@@ -65,7 +69,7 @@ export function loadConfig(customRoot?: string): FastrConfig {
     projectName,
     projectRoot,
     dbPath: path.join(fastrDir, 'fastr.db'),
-    globalDbPath: path.join(os.homedir(), '.fastr', 'global.db'),
+    globalDbPath: path.join(resolveFastrHome(homeDir), '.fastr', 'global.db'),
     spoolPath: path.join(fastrDir, 'spool', 'pending.jsonl'),
     pagesDir: path.join(fastrDir, 'pages')
   };

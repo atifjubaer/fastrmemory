@@ -71,8 +71,8 @@ export interface ServerContext {
   config: FastrConfig;
 }
 
-export function createFastrServerContext(customRoot?: string): ServerContext {
-  const config = loadConfig(customRoot);
+export function createFastrServerContext(customRoot?: string, homeDir?: string): ServerContext {
+  const config = loadConfig(customRoot, homeDir);
   const db = initDatabase(config.dbPath);
   const spool = new SpoolManager(config.spoolPath);
   const repo = new FastrRepository(db, spool);
