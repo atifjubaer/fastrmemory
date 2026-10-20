@@ -1,986 +1,256 @@
-import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import * as React from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { Pause, Play, RotateCcw, ShieldAlert, X, ChevronLeft, ChevronRight } from 'lucide-react';
-import { BiTemporalDiff } from './BiTemporalDiff';
-import type { MemoryItem, FastrStatus, ConflictItem } from '../types';
+import { Pause, Play, RotateCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import type { Conflict, Memory } from '@/lib/api';
+import { cssVar, useTheme } from '@/lib/theme';
+import { usePrefersReducedMotion } from '@/hooks/useMediaQuery';
 
-interface BrainObservatory3DProps {
-  memories: MemoryItem[];
-  status: FastrStatus | null;
-  conflicts?: ConflictItem[];
-  onSelectMemory: (memory: MemoryItem) => void;
-  onResolveConflict?: (conflictId: number, keepMemoryId: string, forgetLoser: boolean) => void;
+export type ObservatoryFilter = 'all' | 'rules' | 'traps' | 'conflicts';
+
+/** Places each module on its own shell so clusters read as "areas of knowledge". */
+function positions(memories: Memory[]): Map<string, THREE.Vector3> {
+  const modules = [...new Set(memories.map((m) => m.module))].sort();
+  const out = new Map<string, THREE.Vector3>();
+  modules.forEach((mod, mi) => {
+    const members = memories.filter((m) => m.module === mod);
+    const theta = (mi / Math.max(modules.length, 1)) * Math.PI * 2;
+    const center = new THREE.Vector3(Math.cos(theta) * 14, ((mi % 3) - 1) * 5, Math.sin(theta) * 14);
+    const golden = Math.PI * (3 - Math.sqrt(5));
+    members.forEach((m, i) => {
+      const y = 1 - (i / Math.max(members.length - 1, 1)) * 2;
+      const r = Math.sqrt(1 - y * y);
+      const radius = 2.5 + Math.sqrt(members.length) * 0.9;
+      out.set(m.id, new THREE.Vector3(center.x + Math.cos(golden * i) * r * radius, center.y + y * radius, center.z + Math.sin(golden * i) * r * radius));
+    });
+  });
+  return out;
 }
 
-interface Node3DData {
-  id: string;
-  memory: MemoryItem;
-  mesh: THREE.Mesh;
-  halo: THREE.Mesh;
-  ring?: THREE.Mesh;
-  conflictRing?: THREE.Mesh;
-  position: THREE.Vector3;
-  color: string;
-  isTrap: boolean;
-  isConflicted: boolean;
-  screenPos: { x: number; y: number; visible: boolean };
-}
-
-export const BrainObservatory3D: React.FC<BrainObservatory3DProps> = ({
+export function BrainObservatory3D({
   memories,
-  status,
-  conflicts = [],
-  onSelectMemory,
-  onResolveConflict,
-}) => {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [filterKind, setFilterKind] = useState<'all' | 'rules' | 'traps' | 'conflicts'>('all');
-  const [isRotating, setIsRotating] = useState(true);
-  const [hoveredNode, setHoveredNode] = useState<Node3DData | null>(null);
-  const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
-  const [leaderLabels, setLeaderLabels] = useState<
-    Array<{ id: string; title: string; isTrap: boolean; isConflicted: boolean; x: number; y: number; visible: boolean }>
-  >([]);
-  const [activeConflict, setActiveConflict] = useState<ConflictItem | null>(null);
+  conflicts,
+  filter,
+  onSelect,
+}: {
+  memories: Memory[];
+  conflicts: Conflict[];
+  filter: ObservatoryFilter;
+  onSelect: (id: string) => void;
+}) {
+  const mountRef = React.useRef<HTMLDivElement>(null);
+  const labelRef = React.useRef<HTMLDivElement>(null);
+  const reducedMotion = usePrefersReducedMotion();
+  const { resolved: theme } = useTheme();
+  const [rotating, setRotating] = React.useState(!reducedMotion);
+  const controlsRef = React.useRef<OrbitControls | null>(null);
+  const onSelectRef = React.useRef(onSelect);
+  onSelectRef.current = onSelect;
 
-  const isRotatingRef = useRef(isRotating);
-  isRotatingRef.current = isRotating;
+  React.useEffect(() => setRotating(!reducedMotion), [reducedMotion]);
+  React.useEffect(() => {
+    if (controlsRef.current) controlsRef.current.autoRotate = rotating;
+  }, [rotating]);
 
-  const sceneRef = useRef<THREE.Scene | null>(null);
-  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
-  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
-  const controlsRef = useRef<OrbitControls | null>(null);
-  const nodesRef = useRef<Node3DData[]>([]);
-  const linesMeshRef = useRef<THREE.LineSegments | null>(null);
-  const conflictLinesMeshRef = useRef<THREE.LineSegments | null>(null);
-  const conflictMaterialRef = useRef<THREE.LineBasicMaterial | null>(null);
-  const targetCamPosRef = useRef<THREE.Vector3 | null>(null);
-  const targetLookAtRef = useRef<THREE.Vector3 | null>(null);
-  const starFieldRef = useRef<THREE.Points | null>(null);
+  const visible = React.useMemo(() => {
+    const inConflict = new Set(conflicts.flatMap((c) => [c.memory_a_id, c.memory_b_id]));
+    return memories.filter((m) =>
+      filter === 'all' ? true : filter === 'traps' ? m.kind === 'error_trap' : filter === 'rules' ? m.kind !== 'error_trap' : inConflict.has(m.id)
+    );
+  }, [memories, conflicts, filter]);
 
-  // Conflicted memory IDs set
-  const conflictedMemoryIds = useMemo(() => {
-    const ids = new Set<string>();
-    conflicts.forEach((c) => {
-      ids.add(c.memory_a_id);
-      ids.add(c.memory_b_id);
-    });
-    return ids;
-  }, [conflicts]);
+  React.useEffect(() => {
+    const mount = mountRef.current;
+    if (!mount) return;
+    const width = mount.clientWidth || 800;
+    const height = mount.clientHeight || 500;
 
-  // Filter memories
-  const filteredMemories = useMemo(() => {
-    return memories.filter((m) => {
-      if (filterKind === 'rules') return m.kind === 'rule';
-      if (filterKind === 'traps') return m.kind === 'error_trap';
-      if (filterKind === 'conflicts') return conflictedMemoryIds.has(m.id);
-      return true;
-    });
-  }, [memories, filterKind, conflictedMemoryIds]);
-
-  // Setup Three.js scene
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const width = container.clientWidth;
-    const height = container.clientHeight || 640;
-
-    // 1. Scene & Depth Fog
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x09090b);
-    scene.fog = new THREE.FogExp2(0x09090b, 0.015);
-    sceneRef.current = scene;
-
-    // 2. Camera
-    const camera = new THREE.PerspectiveCamera(55, width / height, 0.1, 300);
-    camera.position.set(0, 12, 34);
-    camera.lookAt(0, 0, 0);
-    cameraRef.current = camera;
-
-    // 3. Renderer with High-DPI
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(width, height);
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.1;
-    container.appendChild(renderer.domElement);
-    rendererRef.current = renderer;
+    mount.appendChild(renderer.domElement);
+    renderer.domElement.setAttribute('aria-hidden', 'true');
 
-    // 4. OrbitControls
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(55, width / height, 0.1, 500);
+    camera.position.set(0, 14, 42);
+
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.autoRotate = true;
-    controls.autoRotateSpeed = 0.45;
-    controls.minDistance = 6;
-    controls.maxDistance = 90;
-    controls.maxPolarAngle = Math.PI * 0.85;
+    controls.autoRotate = rotating;
+    controls.autoRotateSpeed = 0.6;
     controlsRef.current = controls;
 
-    // 5. Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-    scene.add(ambientLight);
-
-    const dirLight1 = new THREE.DirectionalLight(0x38bdf8, 1.2);
-    dirLight1.position.set(10, 20, 15);
-    scene.add(dirLight1);
-
-    const dirLight2 = new THREE.DirectionalLight(0xfbbf24, 0.8);
-    dirLight2.position.set(-15, -10, -10);
-    scene.add(dirLight2);
-
-    // 6. Subtle Floor Grid
-    const gridHelper = new THREE.GridHelper(60, 30, 0x27272a, 0x18181b);
-    gridHelper.position.y = -12;
-    (gridHelper.material as THREE.Material).transparent = true;
-    (gridHelper.material as THREE.Material).opacity = 0.25;
-    scene.add(gridHelper);
-
-    // 7. Ambient Cosmic Star Dust Field (350 floating particles)
-    const starCount = 350;
-    const starGeom = new THREE.BufferGeometry();
-    const starPositions = new Float32Array(starCount * 3);
-    for (let s = 0; s < starCount * 3; s += 3) {
-      starPositions[s] = (Math.random() - 0.5) * 90;
-      starPositions[s + 1] = (Math.random() - 0.5) * 60;
-      starPositions[s + 2] = (Math.random() - 0.5) * 90;
-    }
-    starGeom.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-    const starMat = new THREE.PointsMaterial({
-      color: 0x94a3b8,
-      size: 0.18,
-      transparent: true,
-      opacity: 0.45,
-    });
-    const starField = new THREE.Points(starGeom, starMat);
-    scene.add(starField);
-    starFieldRef.current = starField;
-
-    // Animation Loop
-    let animId: number;
-    const animate = () => {
-      animId = requestAnimationFrame(animate);
-
-      if (starFieldRef.current) {
-        starFieldRef.current.rotation.y += 0.0003;
-      }
-
-      // Conflict tension lines neon pulsing
-      if (conflictMaterialRef.current) {
-        const pulse = (Math.sin(Date.now() * 0.007) + 1) * 0.5;
-        conflictMaterialRef.current.opacity = 0.4 + 0.6 * pulse;
-      }
-
-      // Smooth camera lerp interpolation (60 FPS fluid transitions)
-      if (targetCamPosRef.current && camera) {
-        camera.position.lerp(targetCamPosRef.current, 0.06);
-        if (camera.position.distanceTo(targetCamPosRef.current) < 0.04) {
-          targetCamPosRef.current = null;
-        }
-      }
-
-      if (targetLookAtRef.current && controls) {
-        controls.target.lerp(targetLookAtRef.current, 0.06);
-        if (controls.target.distanceTo(targetLookAtRef.current) < 0.04) {
-          targetLookAtRef.current = null;
-        }
-      }
-
-      controls.autoRotate = isRotatingRef.current;
-      controls.update();
-
-      // Update projected screen coordinates for billboard labels
-      const widthHalf = container.clientWidth / 2;
-      const heightHalf = container.clientHeight / 2;
-      const tempVec = new THREE.Vector3();
-
-      const labels: Array<{ id: string; title: string; isTrap: boolean; isConflicted: boolean; x: number; y: number; visible: boolean }> = [];
-
-      nodesRef.current.forEach((n, idx) => {
-        // Show prominent memories, traps, and all conflicted nodes
-        if (n.isConflicted || n.isTrap || idx < 5) {
-          tempVec.copy(n.position);
-          tempVec.project(camera);
-
-          const isVisible = tempVec.z < 1 && tempVec.x >= -0.9 && tempVec.x <= 0.9 && tempVec.y >= -0.9 && tempVec.y <= 0.9;
-          if (isVisible) {
-            labels.push({
-              id: n.id,
-              title: n.memory.title,
-              isTrap: n.isTrap,
-              isConflicted: n.isConflicted,
-              x: tempVec.x * widthHalf + widthHalf,
-              y: -(tempVec.y * heightHalf) + heightHalf,
-              visible: true,
-            });
-          }
-        }
-      });
-
-      setLeaderLabels(labels);
-      renderer.render(scene, camera);
+    // Everything disposable is tracked so unmount and rebuilds release GPU memory.
+    const geometries: THREE.BufferGeometry[] = [];
+    const materials: THREE.Material[] = [];
+    const track = <G extends THREE.BufferGeometry, M extends THREE.Material>(g: G, m: M) => {
+      geometries.push(g);
+      materials.push(m);
+      return [g, m] as const;
     };
 
-    animate();
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    const light = new THREE.DirectionalLight(0xffffff, 0.8);
+    light.position.set(10, 20, 15);
+    scene.add(light);
 
-    // Resize Handler
-    const handleResize = () => {
-      if (!container || !renderer || !camera) return;
-      const w = container.clientWidth;
-      const h = container.clientHeight || 640;
+    const brand = new THREE.Color(cssVar('--brand', '#3b82f6'));
+    const trap = new THREE.Color(cssVar('--trap', '#f59e0b'));
+    const risk = new THREE.Color(cssVar('--risk', '#f43f5e'));
+    const muted = new THREE.Color(cssVar('--muted-foreground', '#71717a'));
+
+    // Background star dust (static, one draw call)
+    const starCount = reducedMotion ? 120 : 300;
+    const starPos = new Float32Array(starCount * 3);
+    for (let i = 0; i < starCount * 3; i++) starPos[i] = (Math.random() - 0.5) * 160;
+    const [starGeo, starMat] = track(new THREE.BufferGeometry(), new THREE.PointsMaterial({ color: muted, size: 0.25, transparent: true, opacity: 0.5 }));
+    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+    scene.add(new THREE.Points(starGeo, starMat));
+
+    const pos = positions(visible);
+    const meshes: THREE.Mesh[] = [];
+    const [sphereGeo] = track(new THREE.SphereGeometry(0.55, 20, 16), new THREE.MeshBasicMaterial());
+    const [haloGeo, haloMat] = track(new THREE.RingGeometry(0.85, 1.05, 32), new THREE.MeshBasicMaterial({ color: trap, transparent: true, opacity: 0.55, side: THREE.DoubleSide }));
+    const halos: THREE.Mesh[] = [];
+    for (const m of visible) {
+      const p = pos.get(m.id);
+      if (!p) continue;
+      const color = m.kind === 'error_trap' ? trap : m.status === 'staging' ? muted : brand;
+      const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.35, roughness: 0.4 });
+      materials.push(mat);
+      const mesh = new THREE.Mesh(sphereGeo, mat);
+      mesh.position.copy(p);
+      mesh.scale.setScalar(0.8 + Math.min(m.reward_score, 3) * 0.25);
+      mesh.userData = { id: m.id, title: m.title };
+      scene.add(mesh);
+      meshes.push(mesh);
+      if (m.kind === 'error_trap') {
+        const halo = new THREE.Mesh(haloGeo, haloMat);
+        halo.position.copy(p);
+        scene.add(halo);
+        halos.push(halo);
+      }
+    }
+
+    // Conflict "tension wires"
+    const conflictPts: number[] = [];
+    for (const c of conflicts) {
+      const a = pos.get(c.memory_a_id);
+      const b = pos.get(c.memory_b_id);
+      if (a && b) conflictPts.push(a.x, a.y, a.z, b.x, b.y, b.z);
+    }
+    if (conflictPts.length) {
+      const [g, mat] = track(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: risk, transparent: true, opacity: 0.9 }));
+      g.setAttribute('position', new THREE.Float32BufferAttribute(conflictPts, 3));
+      scene.add(new THREE.LineSegments(g, mat));
+    }
+
+    // Picking: a click selects only if the pointer barely moved (orbit drags must not select).
+    const raycaster = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+    let down: { x: number; y: number } | null = null;
+    let hovered: THREE.Mesh | null = null;
+    const pick = (clientX: number, clientY: number): THREE.Mesh | null => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      ndc.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+      raycaster.setFromCamera(ndc, camera);
+      return (raycaster.intersectObjects(meshes, false)[0]?.object as THREE.Mesh) ?? null;
+    };
+    const onDown = (e: PointerEvent) => { down = { x: e.clientX, y: e.clientY }; };
+    const onUp = (e: PointerEvent) => {
+      if (!down) return;
+      const moved = Math.abs(e.clientX - down.x) + Math.abs(e.clientY - down.y);
+      down = null;
+      if (moved > 5) return;
+      const hit = pick(e.clientX, e.clientY);
+      if (hit) onSelectRef.current(hit.userData.id as string);
+    };
+    const onMove = (e: PointerEvent) => {
+      const hit = pick(e.clientX, e.clientY);
+      if (hit !== hovered) {
+        hovered = hit;
+        renderer.domElement.style.cursor = hit ? 'pointer' : 'grab';
+        // Hover label is updated directly in the DOM: no React state changes from the render loop.
+        const label = labelRef.current;
+        if (label) {
+          label.textContent = hit ? String(hit.userData.title) : '';
+          label.style.opacity = hit ? '1' : '0';
+        }
+      }
+      const label = labelRef.current;
+      if (label && hit) {
+        const rect = mount.getBoundingClientRect();
+        label.style.transform = `translate(${e.clientX - rect.left + 12}px, ${e.clientY - rect.top + 12}px)`;
+      }
+    };
+    renderer.domElement.addEventListener('pointerdown', onDown);
+    renderer.domElement.addEventListener('pointerup', onUp);
+    renderer.domElement.addEventListener('pointermove', onMove);
+
+    const ro = new ResizeObserver(() => {
+      const w = mount.clientWidth;
+      const h = mount.clientHeight;
+      if (!w || !h) return;
+      renderer.setSize(w, h);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
-    };
+    });
+    ro.observe(mount);
 
-    window.addEventListener('resize', handleResize);
+    let frame = 0;
+    const tick = () => {
+      frame = requestAnimationFrame(tick);
+      controls.update();
+      for (const h of halos) h.lookAt(camera.position);
+      renderer.render(scene, camera);
+    };
+    tick();
 
     return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener('resize', handleResize);
+      cancelAnimationFrame(frame);
+      ro.disconnect();
+      renderer.domElement.removeEventListener('pointerdown', onDown);
+      renderer.domElement.removeEventListener('pointerup', onUp);
+      renderer.domElement.removeEventListener('pointermove', onMove);
       controls.dispose();
+      controlsRef.current = null;
+      geometries.forEach((g) => g.dispose());
+      materials.forEach((m) => m.dispose());
       renderer.dispose();
-      if (renderer.domElement && container.contains(renderer.domElement)) {
-        container.removeChild(renderer.domElement);
-      }
+      renderer.forceContextLoss();
+      renderer.domElement.remove();
     };
-  }, []);
+    // Rebuild only when the visible data changes; rotation is toggled through the controls ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, conflicts, reducedMotion, theme]);
 
-  // Populate Nodes, Constellation Wires, & Conflict Tension Lines
-  useEffect(() => {
-    const scene = sceneRef.current;
-    if (!scene) return;
-
-    // Clean up existing meshes
-    nodesRef.current.forEach((n) => {
-      scene.remove(n.mesh);
-      scene.remove(n.halo);
-      if (n.ring) scene.remove(n.ring);
-      if (n.conflictRing) scene.remove(n.conflictRing);
-      n.mesh.geometry.dispose();
-      n.halo.geometry.dispose();
-      if (n.ring) n.ring.geometry.dispose();
-      if (n.conflictRing) n.conflictRing.geometry.dispose();
-    });
-    nodesRef.current = [];
-
-    if (linesMeshRef.current) {
-      scene.remove(linesMeshRef.current);
-      linesMeshRef.current.geometry.dispose();
-      linesMeshRef.current = null;
-    }
-
-    if (conflictLinesMeshRef.current) {
-      scene.remove(conflictLinesMeshRef.current);
-      conflictLinesMeshRef.current.geometry.dispose();
-      conflictLinesMeshRef.current = null;
-      conflictMaterialRef.current = null;
-    }
-
-    const count = filteredMemories.length;
-    if (count === 0) return;
-
-    const newNodes: Node3DData[] = [];
-    const positions: THREE.Vector3[] = [];
-
-    // Distribute nodes in celestial orbital galaxy
-    filteredMemories.forEach((m, i) => {
-      const isTrap = m.kind === 'error_trap';
-      const isConflicted = conflictedMemoryIds.has(m.id);
-      const phi = Math.acos(-1 + (2 * i) / Math.max(1, count));
-      const theta = Math.sqrt(count * Math.PI) * phi;
-
-      // Orbital radius: Traps form an elevated crown, rules orbit in disc
-      const radius = isTrap ? 14 + (i % 3) * 2.5 : 10 + (i % 4) * 3;
-      const x = radius * Math.cos(theta) * Math.sin(phi);
-      const y = isTrap ? 4 + Math.sin(theta) * 3.5 : (Math.sin(phi) * 6 - 2);
-      const z = radius * Math.sin(theta) * Math.sin(phi);
-
-      const pos = new THREE.Vector3(x, y, z);
-      positions.push(pos);
-
-      // Node sphere size based on reward score / trap boost
-      const baseRadius = isTrap ? 0.55 : 0.42;
-      const sphereRadius = baseRadius + Math.min(0.4, (m.reward_score - 1) * 0.2);
-
-      const colorHex = isConflicted ? 0xf43f5e : isTrap ? 0xfbbf24 : 0x38bdf8;
-      const emissiveHex = isConflicted ? 0xbe123c : isTrap ? 0xd97706 : 0x0284c7;
-
-      // 1. Core Sphere
-      const geom = new THREE.SphereGeometry(sphereRadius, 24, 24);
-      const mat = new THREE.MeshStandardMaterial({
-        color: colorHex,
-        emissive: emissiveHex,
-        emissiveIntensity: isConflicted ? 0.75 : isTrap ? 0.55 : 0.35,
-        roughness: 0.25,
-        metalness: 0.1,
-      });
-      const mesh = new THREE.Mesh(geom, mat);
-      mesh.position.copy(pos);
-      mesh.userData = { memoryId: m.id, memory: m, isConflicted };
-      scene.add(mesh);
-
-      // 2. Luminous Halo
-      const haloGeom = new THREE.SphereGeometry(sphereRadius * 2.2, 16, 16);
-      const haloMat = new THREE.MeshBasicMaterial({
-        color: colorHex,
-        transparent: true,
-        opacity: isConflicted ? 0.22 : isTrap ? 0.14 : 0.08,
-        side: THREE.BackSide,
-      });
-      const halo = new THREE.Mesh(haloGeom, haloMat);
-      halo.position.copy(pos);
-      scene.add(halo);
-
-      // 3. Orbital Warning Ring for 2.0x Error Traps
-      let ring: THREE.Mesh | undefined;
-      if (isTrap) {
-        const ringGeom = new THREE.RingGeometry(sphereRadius * 1.5, sphereRadius * 1.9, 32);
-        const ringMat = new THREE.MeshBasicMaterial({
-          color: 0xfbbf24,
-          transparent: true,
-          opacity: 0.65,
-          side: THREE.DoubleSide,
-        });
-        ring = new THREE.Mesh(ringGeom, ringMat);
-        ring.position.copy(pos);
-        ring.rotation.x = Math.PI / 2;
-        scene.add(ring);
-      }
-
-      // 4. Pulsing Crimson Hazard Ring for Conflicted Rules
-      let conflictRing: THREE.Mesh | undefined;
-      if (isConflicted) {
-        const cRingGeom = new THREE.RingGeometry(sphereRadius * 2.1, sphereRadius * 2.6, 32);
-        const cRingMat = new THREE.MeshBasicMaterial({
-          color: 0xf43f5e,
-          transparent: true,
-          opacity: 0.85,
-          side: THREE.DoubleSide,
-        });
-        conflictRing = new THREE.Mesh(cRingGeom, cRingMat);
-        conflictRing.position.copy(pos);
-        conflictRing.rotation.x = Math.PI / 2;
-        scene.add(conflictRing);
-      }
-
-      newNodes.push({
-        id: m.id,
-        memory: m,
-        mesh,
-        halo,
-        ring,
-        conflictRing,
-        position: pos,
-        color: isConflicted ? '#f43f5e' : isTrap ? '#fbbf24' : '#38bdf8',
-        isTrap,
-        isConflicted,
-        screenPos: { x: 0, y: 0, visible: false },
-      });
-    });
-
-    nodesRef.current = newNodes;
-
-    // 5. Generate Constellation Wires (Standard Knowledge Links)
-    const linePoints: THREE.Vector3[] = [];
-    for (let i = 0; i < newNodes.length; i++) {
-      for (let j = i + 1; j < newNodes.length; j++) {
-        const a = newNodes[i];
-        const b = newNodes[j];
-
-        const sameModule = a.memory.module.toLowerCase() === b.memory.module.toLowerCase();
-        const sharedFile = a.memory.linked_files?.some((f) => b.memory.linked_files?.includes(f));
-        const dist = a.position.distanceTo(b.position);
-
-        if ((sameModule || sharedFile) && dist < 18) {
-          linePoints.push(a.position, b.position);
-        }
-      }
-    }
-
-    if (linePoints.length > 0) {
-      const lineGeom = new THREE.BufferGeometry().setFromPoints(linePoints);
-      const lineMat = new THREE.LineBasicMaterial({
-        color: 0x38bdf8,
-        transparent: true,
-        opacity: 0.12,
-      });
-      const linesMesh = new THREE.LineSegments(lineGeom, lineMat);
-      scene.add(linesMesh);
-      linesMeshRef.current = linesMesh;
-    }
-
-    // 6. Generate Pulsing Conflict Tension Lines (Bi-Temporal Contradiction Wires)
-    const conflictLinePoints: THREE.Vector3[] = [];
-    if (conflicts && conflicts.length > 0) {
-      conflicts.forEach((c) => {
-        const nodeA = newNodes.find((n) => n.id === c.memory_a_id);
-        const nodeB = newNodes.find((n) => n.id === c.memory_b_id);
-        if (nodeA && nodeB) {
-          conflictLinePoints.push(nodeA.position, nodeB.position);
-        }
-      });
-    }
-
-    if (conflictLinePoints.length > 0) {
-      const cLineGeom = new THREE.BufferGeometry().setFromPoints(conflictLinePoints);
-      const cLineMat = new THREE.LineBasicMaterial({
-        color: 0xf43f5e,
-        transparent: true,
-        opacity: 0.85,
-      });
-      conflictMaterialRef.current = cLineMat;
-      const cMesh = new THREE.LineSegments(cLineGeom, cLineMat);
-      scene.add(cMesh);
-      conflictLinesMeshRef.current = cMesh;
-    }
-  }, [filteredMemories, conflicts, conflictedMemoryIds]);
-
-  // Focus Camera on Conflict Pair
-  const handleFocusConflict = useCallback((conflict: ConflictItem) => {
-    setActiveConflict(conflict);
-    const nodeA = nodesRef.current.find((n) => n.id === conflict.memory_a_id);
-    const nodeB = nodesRef.current.find((n) => n.id === conflict.memory_b_id);
-    if (nodeA && nodeB) {
-      const mid = nodeA.position.clone().add(nodeB.position).multiplyScalar(0.5);
-      targetCamPosRef.current = mid.clone().add(new THREE.Vector3(0, 4, 12));
-      targetLookAtRef.current = mid.clone();
-    } else if (nodeA) {
-      targetCamPosRef.current = nodeA.position.clone().add(new THREE.Vector3(0, 2, 8));
-      targetLookAtRef.current = nodeA.position.clone();
-    }
-  }, []);
-
-  // Raycaster for Hover & Click
-  const handlePointerMove = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      const container = containerRef.current;
-      const camera = cameraRef.current;
-      if (!container || !camera) return;
-
-      const rect = container.getBoundingClientRect();
-      const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
-      const raycaster = new THREE.Raycaster();
-      raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
-
-      const meshes = nodesRef.current.map((n) => n.mesh);
-      const intersects = raycaster.intersectObjects(meshes);
-
-      if (intersects.length > 0) {
-        const hitMesh = intersects[0].object as THREE.Mesh;
-        const found = nodesRef.current.find((n) => n.mesh === hitMesh);
-        if (found) {
-          setHoveredNode(found);
-          setHoverPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-          container.style.cursor = 'pointer';
-          return;
-        }
-      }
-
-      setHoveredNode(null);
-      container.style.cursor = 'grab';
-    },
-    []
-  );
-
-  const handleClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      const container = containerRef.current;
-      const camera = cameraRef.current;
-      if (!container || !camera) return;
-
-      const rect = container.getBoundingClientRect();
-      const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
-      const raycaster = new THREE.Raycaster();
-      raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
-
-      const meshes = nodesRef.current.map((n) => n.mesh);
-      const intersects = raycaster.intersectObjects(meshes);
-
-      if (intersects.length > 0) {
-        const hitMesh = intersects[0].object as THREE.Mesh;
-        const found = nodesRef.current.find((n) => n.mesh === hitMesh);
-        if (found) {
-          // If node has an active contradiction, focus conflict resolver HUD directly!
-          const relatedConflict = conflicts.find((c) => c.memory_a_id === found.id || c.memory_b_id === found.id);
-          if (relatedConflict) {
-            handleFocusConflict(relatedConflict);
-          } else {
-            onSelectMemory(found.memory);
-            targetCamPosRef.current = found.position.clone().add(new THREE.Vector3(0, 1.8, 6.5));
-            targetLookAtRef.current = found.position.clone();
-          }
-        }
-      }
-    },
-    [onSelectMemory, conflicts, handleFocusConflict]
-  );
-
-  const resetCamera = () => {
-    targetCamPosRef.current = new THREE.Vector3(0, 12, 34);
-    targetLookAtRef.current = new THREE.Vector3(0, 0, 0);
+  const reset = () => {
+    const c = controlsRef.current;
+    if (!c) return;
+    c.object.position.set(0, 14, 42);
+    c.target.set(0, 0, 0);
+    c.update();
   };
 
   return (
-    <div
-      style={{
-        position: 'relative',
-        width: '100%',
-        height: '660px',
-        background: '#09090b',
-        border: '1px solid var(--border)',
-        borderRadius: '8px',
-        overflow: 'hidden',
-      }}
-    >
-      {/* 3D WebGL Canvas Viewport */}
+    <div className="relative overflow-hidden rounded-xl border bg-card">
+      <div className="absolute top-2 right-2 z-10 flex gap-1">
+        <Button variant="outline" size="icon-sm" onClick={() => setRotating((r) => !r)} aria-label={rotating ? 'Pause rotation' : 'Resume rotation'}>
+          {rotating ? <Pause aria-hidden /> : <Play aria-hidden />}
+        </Button>
+        <Button variant="outline" size="icon-sm" onClick={reset} aria-label="Reset camera">
+          <RotateCcw aria-hidden />
+        </Button>
+      </div>
+      <div ref={mountRef} className="h-[460px] w-full cursor-grab touch-none sm:h-[560px]" />
       <div
-        ref={containerRef}
-        onPointerMove={handlePointerMove}
-        onClick={handleClick}
-        style={{ width: '100%', height: '100%', cursor: 'grab' }}
+        ref={labelRef}
+        className="pointer-events-none absolute top-0 left-0 max-w-64 truncate rounded-md border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md transition-opacity"
+        style={{ opacity: 0 }}
+        aria-hidden
       />
-
-      {/* Floating 3D Leader Labels */}
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
-        {leaderLabels.map((lbl) => (
-          <div
-            key={lbl.id}
-            onClick={(e) => {
-              e.stopPropagation();
-              const relatedConflict = conflicts.find((c) => c.memory_a_id === lbl.id || c.memory_b_id === lbl.id);
-              if (relatedConflict) {
-                handleFocusConflict(relatedConflict);
-              } else {
-                const target = memories.find((m) => m.id === lbl.id);
-                if (target) onSelectMemory(target);
-              }
-            }}
-            style={{
-              position: 'absolute',
-              left: `${lbl.x}px`,
-              top: `${lbl.y}px`,
-              transform: 'translate(10px, -50%)',
-              pointerEvents: 'auto',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '3px 8px',
-              borderRadius: '12px',
-              background: 'rgba(20, 20, 23, 0.85)',
-              border: `1px solid ${
-                lbl.isConflicted
-                  ? 'rgba(244, 63, 94, 0.7)'
-                  : lbl.isTrap
-                  ? 'rgba(251, 191, 36, 0.5)'
-                  : 'rgba(56, 189, 248, 0.3)'
-              }`,
-              backdropFilter: 'blur(8px)',
-              fontSize: '11px',
-              fontFamily: 'var(--font-mono)',
-              color: lbl.isConflicted ? '#fb7185' : lbl.isTrap ? '#fbbf24' : 'var(--text)',
-              whiteSpace: 'nowrap',
-              maxWidth: '220px',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-              transition: 'transform 0.1s ease, border-color 0.1s ease',
-            }}
-          >
-            <div
-              style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                background: lbl.isConflicted ? '#f43f5e' : lbl.isTrap ? '#fbbf24' : 'var(--accent)',
-                boxShadow: `0 0 6px ${lbl.isConflicted ? '#f43f5e' : lbl.isTrap ? '#fbbf24' : 'var(--accent)'}`,
-              }}
-            />
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{lbl.title}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Top Precision Control Bar */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '12px',
-          left: '14px',
-          right: '14px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          pointerEvents: 'none',
-        }}
-      >
-        {/* Title & Cosmic Counts */}
-        <div
-          style={{
-            pointerEvents: 'auto',
-            background: 'rgba(20, 20, 23, 0.85)',
-            border: '1px solid var(--border)',
-            borderRadius: '6px',
-            padding: '6px 12px',
-            backdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '13px' }}>🌌</span>
-            <span style={{ fontSize: '12px', fontWeight: 700, fontFamily: 'var(--font-mono)', letterSpacing: '0.04em' }}>
-              BRAIN OBSERVATORY
-            </span>
-          </div>
-          <span style={{ fontSize: '11px', color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>
-            {filteredMemories.length} orbital nodes &bull; {status?.graphNodesCount ?? 41} knowledge entities
-          </span>
-        </div>
-
-        {/* Filter Toolbar & Camera Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'auto' }}>
-          {/* Active Conflicts Quick Launcher Pill */}
-          {conflicts && conflicts.length > 0 && (
-            <button
-              onClick={() => {
-                if (activeConflict) {
-                  setActiveConflict(null);
-                } else {
-                  handleFocusConflict(conflicts[0]);
-                }
-              }}
-              className="btn"
-              style={{
-                padding: '4px 10px',
-                fontSize: '11px',
-                background: activeConflict ? 'var(--risk)' : 'var(--risk-weak)',
-                color: activeConflict ? '#ffffff' : 'var(--risk)',
-                border: '1px solid var(--risk)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontWeight: 600,
-                boxShadow: '0 0 12px rgba(244, 63, 94, 0.3)',
-              }}
-            >
-              <ShieldAlert size={12} />
-              <span>{conflicts.length} Conflict{conflicts.length > 1 ? 's' : ''}</span>
-            </button>
-          )}
-
-          {/* Kind Filter Pills */}
-          <div
-            style={{
-              display: 'flex',
-              background: 'rgba(20, 20, 23, 0.85)',
-              border: '1px solid var(--border)',
-              borderRadius: '6px',
-              padding: '3px',
-              gap: '4px',
-              backdropFilter: 'blur(8px)',
-            }}
-          >
-            <button
-              onClick={() => setFilterKind('all')}
-              className="btn"
-              style={{
-                padding: '3px 8px',
-                fontSize: '11px',
-                background: filterKind === 'all' ? 'var(--accent-weak)' : 'transparent',
-                color: filterKind === 'all' ? 'var(--accent)' : 'var(--text-muted)',
-                border: 'none',
-              }}
-            >
-              All ({memories.length})
-            </button>
-            <button
-              onClick={() => setFilterKind('rules')}
-              className="btn"
-              style={{
-                padding: '3px 8px',
-                fontSize: '11px',
-                background: filterKind === 'rules' ? 'var(--accent-weak)' : 'transparent',
-                color: filterKind === 'rules' ? 'var(--accent)' : 'var(--text-muted)',
-                border: 'none',
-              }}
-            >
-              Rules ({memories.filter((m) => m.kind === 'rule').length})
-            </button>
-            <button
-              onClick={() => setFilterKind('traps')}
-              className="btn"
-              style={{
-                padding: '3px 8px',
-                fontSize: '11px',
-                background: filterKind === 'traps' ? 'var(--trap-weak)' : 'transparent',
-                color: filterKind === 'traps' ? 'var(--trap)' : 'var(--text-muted)',
-                border: 'none',
-              }}
-            >
-              2.0x Traps ({memories.filter((m) => m.kind === 'error_trap').length})
-            </button>
-            {conflicts.length > 0 && (
-              <button
-                onClick={() => setFilterKind('conflicts')}
-                className="btn"
-                style={{
-                  padding: '3px 8px',
-                  fontSize: '11px',
-                  background: filterKind === 'conflicts' ? 'var(--risk-weak)' : 'transparent',
-                  color: filterKind === 'conflicts' ? 'var(--risk)' : 'var(--text-muted)',
-                  border: 'none',
-                }}
-              >
-                Conflicts ({conflicts.length})
-              </button>
-            )}
-          </div>
-
-          {/* Rotation Toggle */}
-          <button
-            onClick={() => setIsRotating((r) => !r)}
-            className="btn"
-            style={{ padding: '6px 9px', background: 'rgba(20, 20, 23, 0.85)', backdropFilter: 'blur(8px)' }}
-            title={isRotating ? 'Pause rotation' : 'Resume rotation'}
-          >
-            {isRotating ? <Pause size={13} /> : <Play size={13} />}
-          </button>
-
-          {/* Reset Camera */}
-          <button
-            onClick={resetCamera}
-            className="btn"
-            style={{ padding: '6px 9px', background: 'rgba(20, 20, 23, 0.85)', backdropFilter: 'blur(8px)' }}
-            title="Reset 3D camera angle"
-          >
-            <RotateCcw size={13} />
-          </button>
-        </div>
-      </div>
-
-      {/* Embedded 3D Bi-Temporal Conflict Resolver Glass HUD */}
-      {activeConflict && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '56px',
-            right: '16px',
-            width: '590px',
-            maxWidth: 'calc(100% - 32px)',
-            maxHeight: 'calc(100% - 76px)',
-            overflowY: 'auto',
-            zIndex: 250,
-            background: 'rgba(15, 15, 18, 0.94)',
-            backdropFilter: 'blur(16px)',
-            border: '1px solid var(--risk)',
-            borderRadius: '8px',
-            boxShadow: '0 16px 40px rgba(0, 0, 0, 0.85), 0 0 24px rgba(244, 63, 94, 0.3)',
-            padding: '16px',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span className="badge-tag" style={{ background: 'var(--risk-weak)', color: 'var(--risk)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <ShieldAlert size={12} />
-                CONTRADICTION DETECTED
-              </span>
-              {conflicts.length > 1 && (
-                <span style={{ fontSize: '11px', color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>
-                  ({conflicts.findIndex((c) => c.id === activeConflict.id) + 1} of {conflicts.length})
-                </span>
-              )}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              {conflicts.length > 1 && (
-                <>
-                  <button
-                    onClick={() => {
-                      const idx = conflicts.findIndex((c) => c.id === activeConflict.id);
-                      const prev = conflicts[(idx - 1 + conflicts.length) % conflicts.length];
-                      handleFocusConflict(prev);
-                    }}
-                    className="btn"
-                    style={{ padding: '3px 6px', fontSize: '11px' }}
-                    title="Previous conflict"
-                  >
-                    <ChevronLeft size={13} />
-                  </button>
-                  <button
-                    onClick={() => {
-                      const idx = conflicts.findIndex((c) => c.id === activeConflict.id);
-                      const next = conflicts[(idx + 1) % conflicts.length];
-                      handleFocusConflict(next);
-                    }}
-                    className="btn"
-                    style={{ padding: '3px 6px', fontSize: '11px' }}
-                    title="Next conflict"
-                  >
-                    <ChevronRight size={13} />
-                  </button>
-                </>
-              )}
-              <button
-                onClick={() => setActiveConflict(null)}
-                className="btn"
-                style={{ padding: '3px 6px', fontSize: '11px' }}
-                title="Dismiss overlay"
-              >
-                <X size={13} />
-              </button>
-            </div>
-          </div>
-
-          <BiTemporalDiff
-            conflict={activeConflict}
-            memoryA={memories.find((m) => m.id === activeConflict.memory_a_id)}
-            memoryB={memories.find((m) => m.id === activeConflict.memory_b_id)}
-            onResolve={(cid, keepId, forgetLoser) => {
-              onResolveConflict?.(cid, keepId, forgetLoser);
-              // Advance to next conflict if one remains, or dismiss
-              const remaining = conflicts.filter((c) => c.id !== cid);
-              if (remaining.length > 0) {
-                handleFocusConflict(remaining[0]);
-              } else {
-                setActiveConflict(null);
-              }
-            }}
-          />
-        </div>
-      )}
-
-      {/* Hover Tooltip Card */}
-      {hoveredNode && !activeConflict && (
-        <div
-          style={{
-            position: 'absolute',
-            left: `${Math.min(hoverPos.x + 16, 1100)}px`,
-            top: `${Math.min(hoverPos.y + 16, 520)}px`,
-            pointerEvents: 'none',
-            background: 'rgba(20, 20, 23, 0.95)',
-            border: `1px solid ${hoveredNode.isConflicted ? 'var(--risk)' : hoveredNode.isTrap ? 'var(--trap)' : 'var(--accent)'}`,
-            borderRadius: '6px',
-            padding: '10px 14px',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
-            zIndex: 100,
-            maxWidth: '300px',
-            backdropFilter: 'blur(12px)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-            <span
-              className="badge-tag"
-              style={{
-                background: hoveredNode.isConflicted ? 'var(--risk-weak)' : hoveredNode.isTrap ? 'var(--trap-weak)' : 'var(--accent-weak)',
-                color: hoveredNode.isConflicted ? 'var(--risk)' : hoveredNode.isTrap ? 'var(--trap)' : 'var(--accent)',
-              }}
-            >
-              {hoveredNode.isConflicted ? '⚠️ CONTRADICTION' : hoveredNode.isTrap ? '2.0X ERROR TRAP' : 'VERIFIED RULE'}
-            </span>
-            <span style={{ fontSize: '10.5px', color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>
-              {hoveredNode.memory.module}
-            </span>
-          </div>
-          <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text)', lineHeight: '1.4' }}>
-            {hoveredNode.memory.title}
-          </div>
-          <div
-            style={{
-              marginTop: '6px',
-              paddingTop: '6px',
-              borderTop: '1px solid var(--border)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: '11px',
-              fontFamily: 'var(--font-mono)',
-              color: 'var(--text-muted)',
-            }}
-          >
-            <span>[{hoveredNode.id}]</span>
-            <span style={{ color: hoveredNode.isConflicted ? 'var(--risk)' : hoveredNode.isTrap ? 'var(--trap)' : 'var(--accent)', fontWeight: 600 }}>
-              {hoveredNode.isConflicted ? 'Click to resolve' : `${hoveredNode.memory.reward_score.toFixed(2)}x boost`}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Bottom HUD Legend & Controls */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '12px',
-          left: '14px',
-          right: '14px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          pointerEvents: 'none',
-        }}
-      >
-        {/* Galaxy Color Legend */}
-        <div
-          style={{
-            pointerEvents: 'auto',
-            background: 'rgba(20, 20, 23, 0.85)',
-            border: '1px solid var(--border)',
-            borderRadius: '6px',
-            padding: '5px 12px',
-            backdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '14px',
-            fontSize: '11px',
-            fontFamily: 'var(--font-mono)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#fbbf24', boxShadow: '0 0 6px #fbbf24' }} />
-            <span style={{ color: '#fbbf24' }}>2.0X ERROR TRAP</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#38bdf8', boxShadow: '0 0 6px #38bdf8' }} />
-            <span style={{ color: '#38bdf8' }}>VERIFIED RULE</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f43f5e', boxShadow: '0 0 6px #f43f5e' }} />
-            <span style={{ color: '#fb7185' }}>CONTRADICTION</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'rgba(244, 63, 94, 0.6)' }} />
-            <span style={{ color: '#fb7185' }}>TENSION WIRE</span>
-          </div>
-        </div>
-
-        {/* Interaction Shortcuts */}
-        <div
-          style={{
-            pointerEvents: 'auto',
-            background: 'rgba(20, 20, 23, 0.85)',
-            border: '1px solid var(--border)',
-            borderRadius: '6px',
-            padding: '5px 12px',
-            backdropFilter: 'blur(8px)',
-            fontSize: '11px',
-            color: 'var(--text-faint)',
-            fontFamily: 'var(--font-mono)',
-            display: 'flex',
-            gap: '12px',
-          }}
-        >
-          <span>Left-Drag: <b>Orbit 3D</b></span>
-          <span>Right-Drag: <b>Pan</b></span>
-          <span>Scroll: <b>Zoom</b></span>
-          <span>Click Node: <b>Inspect / Resolve</b></span>
-        </div>
-      </div>
     </div>
   );
-};
+}

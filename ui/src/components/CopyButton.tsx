@@ -1,56 +1,79 @@
-import React, { useState } from 'react';
-import { Copy, Check } from 'lucide-react';
+import * as React from 'react';
+import { Check, Copy } from 'lucide-react';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
+
+export async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+}
 
 interface CopyButtonProps {
   text: string;
+  /** Visible label. When omitted the button is icon-only and `description` becomes its accessible name. */
   label?: string;
+  description?: string;
   className?: string;
+  size?: 'xs' | 'sm' | 'icon-sm';
+  variant?: 'outline' | 'ghost' | 'secondary';
 }
 
-export const CopyButton: React.FC<CopyButtonProps> = ({ text, label, className = '' }) => {
-  const [copied, setCopied] = useState(false);
+export function CopyButton({ text, label, description, className, size, variant = 'outline' }: CopyButtonProps) {
+  const [copied, setCopied] = React.useState(false);
+  const accessible = description ?? (label ? `Copy ${label}` : 'Copy to clipboard');
 
-  const handleCopy = async (e: React.MouseEvent) => {
+  const onClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    try {
-      await navigator.clipboard.writeText(text);
+    const ok = await copyText(text);
+    if (ok) {
       setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      // Fallback for older environments
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
+      setTimeout(() => setCopied(false), 1600);
+    } else {
+      toast.error('Clipboard is not available in this browser');
     }
   };
 
-  return (
-    <button
-      onClick={handleCopy}
-      title="Copy to clipboard"
-      className={`copy-btn ${className}`}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '4px',
-        padding: label ? '3px 8px' : '4px',
-        fontSize: '11px',
-        fontFamily: 'var(--font-mono)',
-        borderRadius: '4px',
-        border: '1px solid var(--border)',
-        background: copied ? 'var(--success-weak)' : 'var(--surface)',
-        color: copied ? 'var(--success)' : 'var(--text-muted)',
-        cursor: 'pointer',
-        transition: 'all 0.15s ease',
-      }}
+  const button = (
+    <Button
+      type="button"
+      variant={variant}
+      size={size ?? (label ? 'xs' : 'icon-sm')}
+      onClick={onClick}
+      aria-label={label ? undefined : accessible}
+      className={cn(copied && 'text-success', className)}
     >
-      {copied ? <Check size={12} /> : <Copy size={12} />}
-      {label && <span>{copied ? 'Copied!' : label}</span>}
-    </button>
+      {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
+      {label && <span>{copied ? 'Copied' : label}</span>}
+      <span className="sr-only" aria-live="polite">
+        {copied ? 'Copied to clipboard' : ''}
+      </span>
+    </Button>
   );
-};
+
+  if (label) return button;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{button}</TooltipTrigger>
+      <TooltipContent>{accessible}</TooltipContent>
+    </Tooltip>
+  );
+}

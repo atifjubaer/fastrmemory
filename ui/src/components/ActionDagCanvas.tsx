@@ -1,448 +1,272 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { ZoomIn, ZoomOut, RotateCcw, Pause, Play, Sparkles } from 'lucide-react';
-import type { ActionItem } from '../types';
+import * as React from 'react';
+import { Maximize2, ZoomIn, ZoomOut } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import type { ActionEdge, ActionItem, ActionStatus } from '@/lib/api';
+import { cn } from '@/lib/utils';
 
-interface ActionDagCanvasProps {
-  actions: ActionItem[];
-  edges: Array<{ source_action_id: string; target_action_id: string; edge_type: string }>;
-  onSelectAction: (action: ActionItem) => void;
-  onSeed?: () => void;
-}
+const NODE_W = 200;
+const NODE_H = 56;
+const COL_GAP = 90;
+const ROW_GAP = 22;
+const PAD = 40;
 
-interface SimNode {
-  id: string;
+export const STATUS_STYLE: Record<ActionStatus, { label: string; stroke: string; dot: string }> = {
+  pending: { label: 'Pending', stroke: 'var(--border)', dot: 'bg-muted-foreground' },
+  active: { label: 'Active', stroke: 'var(--brand)', dot: 'bg-brand' },
+  blocked: { label: 'Blocked', stroke: 'var(--risk)', dot: 'bg-risk' },
+  done: { label: 'Done', stroke: 'var(--success)', dot: 'bg-success' },
+  cancelled: { label: 'Cancelled', stroke: 'var(--muted-foreground)', dot: 'bg-muted-foreground/50' },
+};
+
+interface Placed {
   action: ActionItem;
   x: number;
   y: number;
-  vx: number;
-  vy: number;
-  radius: number;
 }
 
-export const ActionDagCanvas: React.FC<ActionDagCanvasProps> = ({ actions, edges, onSelectAction, onSeed }) => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'frontier' | 'active' | 'blocked' | 'done'>('all');
-  const [isAwake, setIsAwake] = useState(true);
+/**
+ * Layered layout: each action sits one column right of its deepest prerequisite. Deterministic,
+ * so the graph never jitters or re-simulates when data refreshes.
+ */
+function layout(actions: ActionItem[]): { nodes: Placed[]; width: number; height: number } {
+  const byId = new Map(actions.map((a) => [a.id, a]));
+  const depth = new Map<string, number>();
+  const visiting = new Set<string>();
+  const depthOf = (id: string): number => {
+    const known = depth.get(id);
+    if (known !== undefined) return known;
+    if (visiting.has(id)) return 0; // cycle guard
+    visiting.add(id);
+    const a = byId.get(id);
+    const d = a && a.requires.length ? 1 + Math.max(...a.requires.filter((r) => byId.has(r)).map(depthOf), -1) : 0;
+    visiting.delete(id);
+    depth.set(id, d);
+    return d;
+  };
+  const columns = new Map<number, ActionItem[]>();
+  for (const a of actions) {
+    const d = depthOf(a.id);
+    const col = columns.get(d) ?? [];
+    col.push(a);
+    columns.set(d, col);
+  }
+  const nodes: Placed[] = [];
+  let maxRows = 0;
+  for (const [d, col] of columns) {
+    col.sort((a, b) => a.priority - b.priority || a.title.localeCompare(b.title));
+    maxRows = Math.max(maxRows, col.length);
+    col.forEach((action, i) => nodes.push({ action, x: PAD + d * (NODE_W + COL_GAP), y: PAD + i * (NODE_H + ROW_GAP) }));
+  }
+  const cols = Math.max(1, columns.size);
+  return {
+    nodes,
+    width: PAD * 2 + cols * NODE_W + (cols - 1) * COL_GAP,
+    height: PAD * 2 + maxRows * NODE_H + Math.max(0, maxRows - 1) * ROW_GAP,
+  };
+}
 
-  const nodesRef = useRef<SimNode[]>([]);
-  const transformRef = useRef({ x: 0, y: 0, k: 1 });
-  const dragRef = useRef<{
-    isDragging: boolean;
-    dragNode: SimNode | null;
-    startMouse: { x: number; y: number };
-    startTransform: { x: number; y: number };
-  }>({
-    isDragging: false,
-    dragNode: null,
-    startMouse: { x: 0, y: 0 },
-    startTransform: { x: 0, y: 0 },
-  });
+export function ActionDagCanvas({
+  actions,
+  edges,
+  selectedId,
+  onSelect,
+}: {
+  actions: ActionItem[];
+  edges: ActionEdge[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const { nodes, width, height } = React.useMemo(() => layout(actions), [actions]);
+  const pos = React.useMemo(() => new Map(nodes.map((n) => [n.action.id, n])), [nodes]);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [view, setView] = React.useState({ scale: 1, x: 0, y: 0 });
+  const drag = React.useRef<{ x: number; y: number; vx: number; vy: number; moved: boolean } | null>(null);
 
-  const wakePhysics = useCallback(() => {
-    setIsAwake(true);
+  const fit = React.useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const scale = Math.min(1.2, Math.max(0.3, Math.min(el.clientWidth / width, el.clientHeight / height)));
+    setView({ scale, x: (el.clientWidth - width * scale) / 2, y: Math.max(0, (el.clientHeight - height * scale) / 2) });
+  }, [width, height]);
+
+  React.useEffect(() => {
+    fit();
+    const el = containerRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => fit());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [fit]);
+
+  // Wheel zoom needs a non-passive listener; React's onWheel is passive, so preventDefault would be ignored.
+  React.useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey && Math.abs(e.deltaY) < 1) return;
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      setView((v) => {
+        const scale = Math.min(2.5, Math.max(0.25, v.scale * (e.deltaY < 0 ? 1.1 : 1 / 1.1)));
+        return { scale, x: mx - ((mx - v.x) * scale) / v.scale, y: my - ((my - v.y) * scale) / v.scale };
+      });
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
-  // Initialize node layout
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const cx = rect.width / 2;
-    const cy = rect.height / 2;
-
-    const filtered = actions.filter((a) => {
-      if (filter === 'all') return true;
-      if (filter === 'frontier') return a.isFrontier;
-      return a.status === filter;
-    });
-
-    nodesRef.current = filtered.map((a, i) => {
-      const angle = (i / Math.max(1, filtered.length)) * Math.PI * 2;
-      const radius = 120 + (i % 3) * 60;
-      return {
-        id: a.id,
-        action: a,
-        x: cx + Math.cos(angle) * radius,
-        y: cy + Math.sin(angle) * radius,
-        vx: 0,
-        vy: 0,
-        radius: a.isFrontier ? 20 : 16,
-      };
-    });
-    wakePhysics();
-  }, [actions, filter, wakePhysics]);
-
-  // High-DPI canvas loop with physics sleeping
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let animId: number;
-
-    const resize = () => {
-      const rect = canvas.parentElement?.getBoundingClientRect();
-      if (!rect) return;
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = Math.round(rect.width * dpr);
-      canvas.height = Math.round(rect.height * dpr);
-      canvas.style.width = `${rect.width}px`;
-      canvas.style.height = `${rect.height}px`;
-      wakePhysics();
-    };
-
-    resize();
-    window.addEventListener('resize', resize);
-
-    const render = () => {
-      const nodes = nodesRef.current;
-      const t = transformRef.current;
-      const dpr = window.devicePixelRatio || 1;
-      const logicalWidth = canvas.width / dpr;
-      const logicalHeight = canvas.height / dpr;
-
-      let maxVelocity = 0;
-
-      if (isPlaying && isAwake) {
-        // Node repulsion
-        for (let i = 0; i < nodes.length; i++) {
-          for (let j = i + 1; j < nodes.length; j++) {
-            const dx = nodes[j].x - nodes[i].x;
-            const dy = nodes[j].y - nodes[i].y;
-            const dist = Math.hypot(dx, dy) || 1;
-            if (dist < 200) {
-              const f = ((200 - dist) / dist) * 0.4;
-              nodes[i].vx -= dx * f * 0.05;
-              nodes[i].vy -= dy * f * 0.05;
-              nodes[j].vx += dx * f * 0.05;
-              nodes[j].vy += dy * f * 0.05;
-            }
-          }
-        }
-
-        // Edge attraction
-        for (const edge of edges) {
-          const s = nodes.find((n) => n.id === edge.source_action_id);
-          const tNode = nodes.find((n) => n.id === edge.target_action_id);
-          if (s && tNode) {
-            const dx = tNode.x - s.x;
-            const dy = tNode.y - s.y;
-            const spring = edge.edge_type === 'conflicts_with' ? 0.001 : 0.0035;
-            s.vx += dx * spring;
-            s.vy += dy * spring;
-            tNode.vx -= dx * spring;
-            tNode.vy -= dy * spring;
-          }
-        }
-
-        // Apply friction and compute max velocity
-        for (const n of nodes) {
-          if (n !== dragRef.current.dragNode) {
-            n.x += n.vx;
-            n.y += n.vy;
-            n.vx *= 0.85;
-            n.vy *= 0.85;
-            const v = Math.hypot(n.vx, n.vy);
-            if (v > maxVelocity) maxVelocity = v;
-          }
-        }
-
-        // Sleep physics when settled
-        if (maxVelocity < 0.04 && !dragRef.current.isDragging) {
-          setIsAwake(false);
-        }
-      }
-
-      ctx.save();
-      ctx.scale(dpr, dpr);
-      ctx.clearRect(0, 0, logicalWidth, logicalHeight);
-      ctx.translate(t.x, t.y);
-      ctx.scale(t.k, t.k);
-
-      // Draw edges
-      for (const edge of edges) {
-        const s = nodes.find((n) => n.id === edge.source_action_id);
-        const tNode = nodes.find((n) => n.id === edge.target_action_id);
-        if (s && tNode) {
-          ctx.beginPath();
-          if (edge.edge_type === 'conflicts_with') {
-            ctx.setLineDash([5, 4]);
-            ctx.strokeStyle = '#f43f5e';
-            ctx.lineWidth = 2;
-            ctx.moveTo(s.x, s.y);
-            ctx.lineTo(tNode.x, tNode.y);
-            ctx.stroke();
-            ctx.setLineDash([]);
-          } else {
-            ctx.setLineDash([]);
-            ctx.strokeStyle = '#38bdf8';
-            ctx.lineWidth = 1.8;
-            ctx.moveTo(s.x, s.y);
-            ctx.lineTo(tNode.x, tNode.y);
-            ctx.stroke();
-
-            // Arrow head
-            const angle = Math.atan2(s.y - tNode.y, s.x - tNode.x);
-            const arrowDist = s.radius + 3;
-            const arrowX = s.x - Math.cos(angle) * arrowDist;
-            const arrowY = s.y - Math.sin(angle) * arrowDist;
-            ctx.beginPath();
-            ctx.moveTo(arrowX, arrowY);
-            ctx.lineTo(arrowX - 8 * Math.cos(angle - Math.PI / 6), arrowY - 8 * Math.sin(angle - Math.PI / 6));
-            ctx.lineTo(arrowX - 8 * Math.cos(angle + Math.PI / 6), arrowY - 8 * Math.sin(angle + Math.PI / 6));
-            ctx.fillStyle = '#38bdf8';
-            ctx.fill();
-          }
-        }
-      }
-
-      // Draw nodes
-      for (const n of nodes) {
-        const a = n.action;
-
-        // Glowing pulsating aura for unblocked Frontier tasks
-        if (a.isFrontier) {
-          const pulse = (Math.sin(Date.now() / 240) + 1) * 4;
-          ctx.beginPath();
-          ctx.arc(n.x, n.y, n.radius + pulse + 3, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(56, 189, 248, 0.22)';
-          ctx.fill();
-          ctx.strokeStyle = '#38bdf8';
-          ctx.lineWidth = 2;
-          ctx.stroke();
-        }
-
-        // Node circle fill
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2);
-        if (a.isFrontier) {
-          ctx.fillStyle = '#0284c7';
-        } else if (a.status === 'done') {
-          ctx.fillStyle = '#10b981';
-        } else if (a.status === 'active') {
-          ctx.fillStyle = '#3b82f6';
-        } else if (a.status === 'blocked') {
-          ctx.fillStyle = '#64748b';
-        } else {
-          ctx.fillStyle = '#8b5cf6';
-        }
-        ctx.fill();
-        ctx.strokeStyle = '#090d16';
-        ctx.lineWidth = 2.5;
-        ctx.stroke();
-
-        // Node label
-        ctx.fillStyle = '#f8fafc';
-        ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        ctx.textAlign = 'center';
-        const label = `[P${a.priority}] ${a.title}`;
-        const truncated = label.length > 20 ? label.slice(0, 18) + '...' : label;
-        ctx.fillText(truncated, n.x, n.y + n.radius + 14);
-      }
-
-      ctx.restore();
-      animId = requestAnimationFrame(render);
-    };
-
-    animId = requestAnimationFrame(render);
-
-    return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener('resize', resize);
-    };
-  }, [edges, isPlaying, isAwake, wakePhysics]);
-
-  // Pointer interactions
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    wakePhysics();
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = (e.clientX - rect.left - transformRef.current.x) / transformRef.current.k;
-    const mouseY = (e.clientY - rect.top - transformRef.current.y) / transformRef.current.k;
-
-    const hit = nodesRef.current.find((n) => Math.hypot(n.x - mouseX, n.y - mouseY) < n.radius + 6);
-
-    dragRef.current = {
-      isDragging: true,
-      dragNode: hit || null,
-      startMouse: { x: e.clientX, y: e.clientY },
-      startTransform: { ...transformRef.current },
-    };
+  // Pointer capture keeps the drag alive (and ends it) even when the pointer leaves the canvas.
+  const onPointerDown = (e: React.PointerEvent) => {
+    if ((e.target as Element).closest('[data-node]')) return;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    drag.current = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y, moved: false };
   };
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const { isDragging, dragNode, startMouse, startTransform } = dragRef.current;
-    if (!isDragging) return;
-    wakePhysics();
-
-    if (dragNode) {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      dragNode.x = (e.clientX - rect.left - transformRef.current.x) / transformRef.current.k;
-      dragNode.y = (e.clientY - rect.top - transformRef.current.y) / transformRef.current.k;
-      dragNode.vx = 0;
-      dragNode.vy = 0;
-    } else {
-      transformRef.current.x = startTransform.x + (e.clientX - startMouse.x);
-      transformRef.current.y = startTransform.y + (e.clientY - startMouse.y);
-    }
+  const onPointerMove = (e: React.PointerEvent) => {
+    const d = drag.current;
+    if (!d) return;
+    const dx = e.clientX - d.x;
+    const dy = e.clientY - d.y;
+    if (Math.abs(dx) + Math.abs(dy) > 3) d.moved = true;
+    setView((v) => ({ ...v, x: d.vx + dx, y: d.vy + dy }));
   };
-
-  const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const { dragNode, startMouse } = dragRef.current;
-    const dist = Math.hypot(e.clientX - startMouse.x, e.clientY - startMouse.y);
-
-    if (dragNode && dist < 6) {
-      onSelectAction(dragNode.action);
-    }
-
-    dragRef.current.isDragging = false;
-    dragRef.current.dragNode = null;
-  };
-
-  const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    wakePhysics();
-    const factor = e.deltaY < 0 ? 1.15 : 0.88;
-    transformRef.current.k = Math.max(0.25, Math.min(3.5, transformRef.current.k * factor));
+  const endDrag = () => {
+    drag.current = null;
   };
 
   const zoom = (factor: number) => {
-    wakePhysics();
-    transformRef.current.k = Math.max(0.25, Math.min(3.5, transformRef.current.k * factor));
+    const el = containerRef.current;
+    if (!el) return;
+    const cx = el.clientWidth / 2;
+    const cy = el.clientHeight / 2;
+    setView((v) => {
+      const scale = Math.min(2.5, Math.max(0.25, v.scale * factor));
+      return { scale, x: cx - ((cx - v.x) * scale) / v.scale, y: cy - ((cy - v.y) * scale) / v.scale };
+    });
   };
 
-  const resetView = () => {
-    wakePhysics();
-    transformRef.current = { x: 0, y: 0, k: 1 };
-  };
+  const requiresEdges = edges.filter((e) => e.edge_type !== 'conflicts_with');
+  const conflictEdges = edges.filter((e) => e.edge_type === 'conflicts_with');
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '580px', background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--border)', overflow: 'hidden' }}>
-      {/* Controls Header */}
-      <div style={{ position: 'absolute', top: '16px', left: '16px', right: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10, pointerEvents: 'none' }}>
-        {/* Filter Pills */}
-        <div style={{ display: 'flex', gap: '8px', pointerEvents: 'auto' }}>
-          {(['all', 'frontier', 'active', 'blocked', 'done'] as const).map((st) => (
-            <button
-              key={st}
-              onClick={() => { setFilter(st); wakePhysics(); }}
-              className={`btn btn-pill ${filter === st ? 'btn-primary' : ''}`}
-              style={{ textTransform: 'capitalize' }}
-            >
-              {st === 'frontier' && <Sparkles size={12} />}
-              {st}
-            </button>
-          ))}
-        </div>
-
-        {/* Zoom & Physics Controls */}
-        <div style={{ display: 'flex', gap: '8px', pointerEvents: 'auto' }}>
-          <button
-            onClick={() => { setIsPlaying(!isPlaying); wakePhysics(); }}
-            className="btn"
-          >
-            {isPlaying ? <Pause size={14} /> : <Play size={14} />}
-            {isPlaying ? 'Pause' : 'Play'}
-          </button>
-          <button onClick={() => zoom(1.2)} className="btn" title="Zoom in">
-            <ZoomIn size={14} />
-          </button>
-          <button onClick={() => zoom(0.8)} className="btn" title="Zoom out">
-            <ZoomOut size={14} />
-          </button>
-          <button onClick={resetView} className="btn" title="Reset view">
-            <RotateCcw size={14} />
-          </button>
-        </div>
+    <div className="relative overflow-hidden rounded-xl border bg-card">
+      <div className="absolute top-2 right-2 z-10 flex gap-1">
+        <Button variant="outline" size="icon-sm" onClick={() => zoom(1.2)} aria-label="Zoom in"><ZoomIn aria-hidden /></Button>
+        <Button variant="outline" size="icon-sm" onClick={() => zoom(1 / 1.2)} aria-label="Zoom out"><ZoomOut aria-hidden /></Button>
+        <Button variant="outline" size="icon-sm" onClick={fit} aria-label="Fit to view"><Maximize2 aria-hidden /></Button>
       </div>
-
-      <canvas
-        ref={canvasRef}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onWheel={handleWheel}
-        style={{ width: '100%', height: '100%', cursor: 'grab' }}
-      />
-
-      {/* Empty State Overlay */}
-      {actions.length === 0 && (
-        <div style={{
-          position: 'absolute',
-          inset: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '14px',
-          zIndex: 5,
-          background: 'rgba(9, 9, 11, 0.85)',
-          backdropFilter: 'blur(6px)',
-          textAlign: 'center',
-          padding: '24px'
-        }}>
-          <div style={{
-            width: '44px',
-            height: '44px',
-            borderRadius: '10px',
-            background: 'var(--accent-weak)',
-            border: '1px solid rgba(56, 189, 248, 0.3)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--accent)',
-            fontSize: '22px'
-          }}>
-            ⚡
-          </div>
-          <div>
-            <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.2px' }}>
-              Action DAG Queue Is Currently Empty
-            </h3>
-            <p style={{ fontSize: '13px', color: 'var(--text-muted)', maxWidth: '460px', marginTop: '6px', lineHeight: '1.5' }}>
-              The Action DAG coordinates distributed autonomous multi-agent task dependencies with topological frontier scheduling. Agents claim and execute tasks via <code>fastr_claim</code> and <code>fastr_frontier</code>.
-            </p>
-          </div>
-          {onSeed && (
-            <button
-              onClick={onSeed}
-              className="btn btn-primary"
-              style={{ marginTop: '8px', padding: '7px 16px', fontSize: '12px' }}
-            >
-              <Sparkles size={14} /> Seed Example 3-Agent Workflow
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Legend Footer */}
-      <div style={{ position: 'absolute', bottom: '14px', left: '16px', display: 'flex', gap: '16px', fontSize: '11px', color: 'var(--text-muted)', zIndex: 10, background: 'rgba(0,0,0,0.5)', padding: '6px 14px', borderRadius: '8px', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.08)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#0284c7', boxShadow: '0 0 8px #38bdf8' }} />
-          <span>Frontier (Unblocked)</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#3b82f6' }} />
-          <span>Active</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#64748b' }} />
-          <span>Blocked</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981' }} />
-          <span>Done</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ color: '#f43f5e', fontWeight: 'bold' }}>- - -</span>
-          <span>Mutex Lock</span>
-        </div>
+      <div
+        ref={containerRef}
+        className="h-[420px] cursor-grab touch-none select-none active:cursor-grabbing sm:h-[520px]"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+      >
+        <svg width="100%" height="100%" role="group" aria-label="Action dependency graph">
+          <defs>
+            <marker id="dag-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--muted-foreground)" />
+            </marker>
+          </defs>
+          <g transform={`translate(${view.x},${view.y}) scale(${view.scale})`}>
+            {requiresEdges.map((e) => {
+              // edge: source requires target -> draw prerequisite (target) -> dependent (source)
+              const from = pos.get(e.target_action_id);
+              const to = pos.get(e.source_action_id);
+              if (!from || !to) return null;
+              const x1 = from.x + NODE_W;
+              const y1 = from.y + NODE_H / 2;
+              const x2 = to.x;
+              const y2 = to.y + NODE_H / 2;
+              const mid = (x1 + x2) / 2;
+              return (
+                <path
+                  key={`${e.source_action_id}-${e.target_action_id}`}
+                  d={`M${x1},${y1} C${mid},${y1} ${mid},${y2} ${x2 - 2},${y2}`}
+                  fill="none"
+                  stroke="var(--muted-foreground)"
+                  strokeOpacity={0.55}
+                  strokeWidth={1.5}
+                  markerEnd="url(#dag-arrow)"
+                />
+              );
+            })}
+            {conflictEdges.map((e) => {
+              const a = pos.get(e.source_action_id);
+              const b = pos.get(e.target_action_id);
+              if (!a || !b) return null;
+              return (
+                <line
+                  key={`c-${e.source_action_id}-${e.target_action_id}`}
+                  x1={a.x + NODE_W / 2}
+                  y1={a.y + NODE_H / 2}
+                  x2={b.x + NODE_W / 2}
+                  y2={b.y + NODE_H / 2}
+                  stroke="var(--risk)"
+                  strokeDasharray="5 4"
+                  strokeWidth={1.5}
+                />
+              );
+            })}
+            {nodes.map(({ action, x, y }) => {
+              const style = STATUS_STYLE[action.status];
+              const selected = action.id === selectedId;
+              return (
+                <g
+                  key={action.id}
+                  data-node
+                  transform={`translate(${x},${y})`}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${action.title}, ${style.label}${action.isFrontier ? ', ready' : ''}`}
+                  aria-pressed={selected}
+                  className="cursor-pointer outline-none [&:focus-visible>rect]:stroke-[3]"
+                  onClick={() => onSelect(action.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onSelect(action.id);
+                    }
+                  }}
+                >
+                  <rect
+                    width={NODE_W}
+                    height={NODE_H}
+                    rx={10}
+                    fill={action.isFrontier ? 'var(--brand-weak)' : 'var(--card)'}
+                    stroke={selected ? 'var(--ring)' : style.stroke}
+                    strokeWidth={selected ? 2.5 : 1.5}
+                  />
+                  <text x={12} y={22} fontSize={12} fontWeight={600} fill="var(--foreground)">
+                    {action.title.length > 26 ? `${action.title.slice(0, 25)}…` : action.title}
+                  </text>
+                  <text x={12} y={41} fontSize={10.5} fill="var(--muted-foreground)">
+                    {style.label} · P{action.priority}
+                    {action.assigned_to ? ` · ${action.assigned_to.slice(0, 14)}` : ''}
+                    {action.isFrontier ? ' · ready' : ''}
+                  </text>
+                </g>
+              );
+            })}
+          </g>
+        </svg>
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 border-t px-3 py-2 text-xs text-muted-foreground">
+        {(Object.keys(STATUS_STYLE) as ActionStatus[]).map((s) => (
+          <span key={s} className="inline-flex items-center gap-1.5">
+            <span className={cn('size-2 rounded-full', STATUS_STYLE[s].dot)} aria-hidden /> {STATUS_STYLE[s].label}
+          </span>
+        ))}
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-2 rounded-sm bg-brand-weak ring-1 ring-brand" aria-hidden /> Ready (frontier)
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-0 w-4 border-t border-dashed border-risk" aria-hidden /> Conflicts with
+        </span>
+        <span className="ml-auto hidden sm:inline">Drag to pan · Ctrl+scroll to zoom</span>
       </div>
     </div>
   );
-};
+}

@@ -8,6 +8,8 @@ import { initDatabase } from '../db/schema.js';
 import { FastrRepository } from '../db/repository.js';
 import { SpoolManager } from '../db/spool.js';
 import { searchMemories } from '../search/hybrid-rrf.js';
+import { diagnoseDatabase, healDatabase } from '../db/doctor.js';
+import type { Memory } from '../db/schema.js';
 import { globalBroadcaster } from './sse.js';
 
 export interface UiServerOptions {
@@ -110,6 +112,23 @@ function escapeHtmlServer(value: string): string {
     .replace(/'/g, '&#039;');
 }
 
+const MEMORY_STATUSES = new Set(['staging', 'verified', 'superseded', 'dormant']);
+const MEMORY_KINDS = new Set(['rule', 'decision', 'error_trap', 'workflow']);
+
+function clampInt(value: string | null, fallback: number, min: number, max: number): number {
+  const n = parseInt(value || '', 10);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
+/** Lexical guard used to tell real search hits apart from the search engine's "latest memories" fallback. */
+function lexicallyMatches(m: Pick<Memory, 'id' | 'title' | 'content' | 'module'>, query: string): boolean {
+  const tokens = query.toLowerCase().split(/[^\w-]+/).filter((t) => t.length > 1);
+  if (tokens.length === 0) return false;
+  const haystack = `${m.id} ${m.title} ${m.content} ${m.module}`.toLowerCase();
+  return tokens.some((t) => haystack.includes(t));
+}
+
 export function startUiServer(config: FastrConfig, options: UiServerOptions = {}): Promise<{ server: http.Server; port: number; url: string }> {
   const preferredPort = options.port !== undefined ? options.port : 4242;
   const shouldOpen = options.openBrowser ?? true;
@@ -118,6 +137,37 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
   const db = initDatabase(config.dbPath);
   const spool = new SpoolManager(config.spoolPath);
   const repo = new FastrRepository(db, spool);
+
+  /** Strips the binary embedding (huge as JSON) and attaches linked files with batched queries. */
+  const serializeMemories = (rows: Memory[]): Array<Omit<Memory, 'embedding'> & { linked_files: string[] }> => {
+    if (rows.length === 0) return [];
+    const links = new Map<string, string[]>();
+    const ids = rows.map((r) => r.id);
+    for (let i = 0; i < ids.length; i += 500) {
+      const chunk = ids.slice(i, i + 500);
+      const linkRows = db
+        .prepare(`SELECT DISTINCT memory_id, file_path FROM file_links WHERE memory_id IN (${chunk.map(() => '?').join(',')})`)
+        .all(...chunk) as Array<{ memory_id: string; file_path: string }>;
+      for (const l of linkRows) {
+        const list = links.get(l.memory_id) ?? [];
+        list.push(l.file_path);
+        links.set(l.memory_id, list);
+      }
+    }
+    return rows.map(({ embedding: _embedding, ...rest }) => ({ ...rest, linked_files: links.get(rest.id) ?? [] }));
+  };
+
+  /** Memories in a non-active status (superseded / dormant) are not returned by listActiveMemories. */
+  const listMemoriesByStatus = (status: string, module?: string): Memory[] => {
+    let sql = `SELECT * FROM memories WHERE (project_id = ? OR project_id = 'global') AND status = ?`;
+    const params: any[] = [config.projectId, status];
+    if (module) {
+      sql += ' AND module = ?';
+      params.push(module.trim().toLowerCase());
+    }
+    sql += ' ORDER BY created_at DESC LIMIT 5000';
+    return db.prepare(sql).all(...params) as unknown as Memory[];
+  };
 
   return new Promise((resolve, reject) => {
     let resolved = false;
@@ -202,16 +252,211 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
           );
         }
 
-        const enhanced = memories.map((m) => {
-          const fileLinks = db.prepare('SELECT file_path FROM file_links WHERE memory_id = ?').all(m.id) as { file_path: string }[];
-          return {
-            ...m,
-            linked_files: fileLinks.map((f) => f.file_path),
-          };
-        });
-
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(enhanced));
+        res.end(JSON.stringify(serializeMemories(memories)));
+        return;
+      }
+
+      // API: Server-side memory search with facets (hybrid RRF for a non-empty q, filtered list otherwise)
+      if (req.method === 'GET' && url.pathname === '/api/search') {
+        const q = (url.searchParams.get('q') || '').trim();
+        const targetModule = url.searchParams.get('module') || undefined;
+        const kind = url.searchParams.get('kind') || '';
+        const status = url.searchParams.get('status') || '';
+        const pinned = url.searchParams.get('pinned');
+        const limit = clampInt(url.searchParams.get('limit'), 500, 1, 5000);
+
+        if (kind && !MEMORY_KINDS.has(kind)) {
+          sendJson(res, 400, { error: `Unknown kind "${kind}"` });
+          return;
+        }
+        if (status && !MEMORY_STATUSES.has(status)) {
+          sendJson(res, 400, { error: `Unknown status "${status}"` });
+          return;
+        }
+
+        const applyFacets = (rows: Memory[]): Memory[] =>
+          rows.filter((m) =>
+            (!kind || m.kind === kind) &&
+            (!status || m.status === status) &&
+            (pinned === null || pinned === '' || Boolean(m.pinned) === (pinned === '1' || pinned === 'true'))
+          );
+
+        const t0 = performance.now();
+        if (!q) {
+          const base = status === 'superseded' || status === 'dormant'
+            ? listMemoriesByStatus(status, targetModule)
+            : repo.listActiveMemories(config.projectId, targetModule);
+          const filtered = applyFacets(base);
+          sendJson(res, 200, {
+            mode: 'list',
+            query: '',
+            total: filtered.length,
+            fallback: false,
+            tookMs: Number((performance.now() - t0).toFixed(2)),
+            results: serializeMemories(filtered.slice(0, limit)).map((m) => ({ ...m, score: null, ranks: null })),
+          });
+          return;
+        }
+
+        searchMemories(db, {
+          projectId: config.projectId,
+          query: q,
+          module: targetModule,
+          includeHistory: status === 'superseded' || status === 'dormant',
+          budgetTokens: 1_000_000,
+          maxPerSession: 100_000,
+        })
+          .then((found) => {
+            let hits = found.memories;
+            // The engine falls back to "latest memories" when no stream matched; never present that as a hit.
+            const anyStreamHit = hits.some(
+              (h) => h.vectorRank !== undefined || h.graphRank !== undefined || lexicallyMatches(h.memory, q)
+            );
+            const fallback = hits.length > 0 && !anyStreamHit;
+            if (fallback) hits = [];
+            const scoreById = new Map(hits.map((h) => [h.memory.id, h]));
+            const filtered = applyFacets(hits.map((h) => h.memory));
+            sendJson(res, 200, {
+              mode: 'search',
+              query: q,
+              total: filtered.length,
+              fallback,
+              tookMs: Number((performance.now() - t0).toFixed(2)),
+              results: serializeMemories(filtered.slice(0, limit)).map((m) => {
+                const h = scoreById.get(m.id)!;
+                return {
+                  ...m,
+                  score: Number(h.score.toFixed(4)),
+                  ranks: { bm25: h.bm25Rank ?? null, vector: h.vectorRank ?? null, graph: h.graphRank ?? null },
+                };
+              }),
+            });
+          })
+          .catch((err) => sendJson(res, 500, { error: err?.message || 'Search failed' }));
+        return;
+      }
+
+      // API: Single memory (deep links) and its supersession history chain
+      const memoryRoute = req.method === 'GET' ? url.pathname.match(/^\/api\/memories\/([^/]+)(\/history)?$/) : null;
+      if (memoryRoute) {
+        const memoryId = decodeURIComponentSafe(memoryRoute[1]);
+        const memory = repo.getMemory(memoryId);
+        if (!memory) {
+          sendJson(res, 404, { error: `Memory ${memoryId} not found` });
+          return;
+        }
+
+        if (!memoryRoute[2]) {
+          const [serialized] = serializeMemories([memory]);
+          sendJson(res, 200, { ...serialized, provenance: repo.verifyMemoryProvenance(memory.id) });
+          return;
+        }
+
+        // Walk superseded_by_id in both directions (an older version points at its replacement).
+        const seen = new Set<string>([memory.id]);
+        const older: Memory[] = [];
+        let cursor = memory.id;
+        while (older.length < 100) {
+          const prev = db
+            .prepare('SELECT * FROM memories WHERE superseded_by_id = ? ORDER BY created_at DESC LIMIT 1')
+            .get(cursor) as unknown as Memory | undefined;
+          if (!prev || seen.has(prev.id)) break;
+          seen.add(prev.id);
+          older.unshift(prev);
+          cursor = prev.id;
+        }
+        const newer: Memory[] = [];
+        let nextId = memory.superseded_by_id;
+        while (nextId && !seen.has(nextId) && newer.length < 100) {
+          const next = repo.getMemory(nextId);
+          if (!next) break;
+          seen.add(next.id);
+          newer.push(next);
+          nextId = next.superseded_by_id;
+        }
+        sendJson(res, 200, {
+          id: memory.id,
+          currentIndex: older.length,
+          chain: serializeMemories([...older, memory, ...newer]),
+        });
+        return;
+      }
+
+      // API: Error traps, optionally scoped to the files an agent is about to edit
+      if (req.method === 'GET' && url.pathname === '/api/traps') {
+        const files = (url.searchParams.get('files') || '')
+          .split(',')
+          .map((f) => f.trim())
+          .filter(Boolean)
+          .slice(0, 200);
+        if (files.length === 0) {
+          sendJson(res, 200, { files: [], traps: serializeMemories(repo.listTraps(config.projectId)).map((m) => ({ ...m, matched_files: [] })) });
+          return;
+        }
+        const byId = new Map<string, { memory: Memory; matchedFiles: string[] }>();
+        for (const file of files) {
+          for (const m of repo.getMemoriesForFile(config.projectId, file)) {
+            if (m.kind !== 'error_trap') continue;
+            const entry = byId.get(m.id) ?? { memory: m, matchedFiles: [] };
+            entry.matchedFiles.push(file);
+            byId.set(m.id, entry);
+          }
+        }
+        const entries = Array.from(byId.values());
+        const serialized = serializeMemories(entries.map((e) => e.memory));
+        sendJson(res, 200, {
+          files,
+          traps: serialized.map((m, i) => ({ ...m, matched_files: entries[i].matchedFiles })),
+        });
+        return;
+      }
+
+      // API: Database health (doctor diagnostics) and self-heal
+      if (req.method === 'GET' && url.pathname === '/api/health') {
+        const report = diagnoseDatabase(db, config.projectId);
+        sendJson(res, 200, {
+          report,
+          status: repo.getStatus(config.projectId),
+          spool: { pending: spool.hasPending(), path: config.spoolPath },
+          dbPath: config.dbPath,
+        });
+        return;
+      }
+
+      if (req.method === 'POST' && url.pathname === '/api/health/heal') {
+        handleJsonPost(req, res, 'Failed to heal database', (data) => {
+          const result = healDatabase(db, config.projectId, { dryRun: Boolean(data?.dryRun) });
+          if (!result.dryRun) globalBroadcaster.broadcast('sync_complete', { healed: result.fixedCount });
+          return { body: result };
+        });
+        return;
+      }
+
+      // API: Cheap change detector so the dashboard also sees writes made by other processes (MCP server, CLI)
+      if (req.method === 'GET' && url.pathname === '/api/version') {
+        const dataVersionRow = db.prepare('PRAGMA data_version').get() as Record<string, number> | undefined;
+        const dataVersion = Number(Object.values(dataVersionRow ?? {})[0] ?? 0);
+        const totalChanges = Number((db.prepare('SELECT total_changes() AS c').get() as { c: number }).c ?? 0);
+        const counts = db.prepare(`
+          SELECT
+            (SELECT COUNT(*) FROM memories) AS memories,
+            (SELECT COUNT(*) FROM memories WHERE valid_to IS NULL) AS active,
+            (SELECT COALESCE(SUM(pinned), 0) FROM memories) AS pinned,
+            (SELECT COALESCE(MAX(created_at), '') FROM memories) AS lastCreated,
+            (SELECT COUNT(*) FROM actions) AS actions,
+            (SELECT COUNT(*) FROM actions WHERE status = 'done') AS actionsDone,
+            (SELECT COUNT(*) FROM memory_conflicts WHERE status = 'open') AS openConflicts
+        `).get() as Record<string, number | string>;
+        const spoolPending = spool.hasPending();
+        sendJson(res, 200, {
+          version: `${dataVersion}.${totalChanges}.${Object.values(counts).join('|')}.${spoolPending ? 1 : 0}`,
+          dataVersion,
+          totalChanges,
+          counts,
+          spoolPending,
+          serverTime: new Date().toISOString(),
+        });
         return;
       }
 
@@ -382,8 +627,14 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
       // API: Memory Conflicts
       if (url.pathname === '/api/conflicts') {
         const conflicts = repo.listConflicts(config.projectId, 'open');
+        // Embed both sides so the client can diff them even when one is no longer in the active list.
+        const enriched = conflicts.map((c) => {
+          const [a] = serializeMemories([repo.getMemory(c.memory_a_id)].filter(Boolean) as Memory[]);
+          const [b] = serializeMemories([repo.getMemory(c.memory_b_id)].filter(Boolean) as Memory[]);
+          return { ...c, memory_a: a ?? null, memory_b: b ?? null };
+        });
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(conflicts));
+        res.end(JSON.stringify(enriched));
         return;
       }
 
@@ -421,8 +672,9 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
           return;
         }
 
-        // SPA fallback for non-API routes
-        if (!url.pathname.startsWith('/api')) {
+        // SPA fallback for page routes only. A missing build asset (e.g. a chunk from a previous build
+        // requested by a tab left open across an upgrade) must 404, not return HTML with status 200.
+        if (!url.pathname.startsWith('/api') && !url.pathname.startsWith('/assets/') && !path.extname(url.pathname)) {
           res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
           fs.createReadStream(path.join(distDir, 'index.html')).pipe(res);
           return;

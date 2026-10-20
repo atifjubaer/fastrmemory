@@ -1,209 +1,107 @@
-import React from 'react';
+import * as React from 'react';
 import { CopyButton } from './CopyButton';
+import { cn } from '@/lib/utils';
 
-interface MarkdownViewProps {
-  content: string;
-  className?: string;
-  style?: React.CSSProperties;
+/** Tiny, dependency-free markdown renderer for memory content (code blocks, headings, lists, quotes, inline marks). */
+function renderInline(text: string): React.ReactNode[] {
+  const tokens = text.split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^*\s][^*]*\*)/g);
+  return tokens.map((token, idx) => {
+    if (token.length > 1 && token.startsWith('`') && token.endsWith('`')) {
+      return (
+        <code key={idx} className="rounded border bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-brand">
+          {token.slice(1, -1)}
+        </code>
+      );
+    }
+    if (token.length > 3 && token.startsWith('**') && token.endsWith('**')) {
+      return (
+        <strong key={idx} className="font-semibold">
+          {token.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (token.length > 2 && token.startsWith('*') && token.endsWith('*')) {
+      return <em key={idx}>{token.slice(1, -1)}</em>;
+    }
+    return token;
+  });
 }
 
-export const MarkdownView: React.FC<MarkdownViewProps> = ({ content, className, style }) => {
-  if (!content) return null;
+export function MarkdownView({ content, className }: { content: string; className?: string }) {
+  const elements = React.useMemo(() => {
+    const out: React.ReactNode[] = [];
+    if (!content) return out;
+    const lines = content.split('\n');
+    let inCode = false;
+    let codeLang = '';
+    let buffer: string[] = [];
 
-  // Split text into blocks (paragraphs, code blocks, lists)
-  const lines = content.split('\n');
-  const elements: React.ReactNode[] = [];
-  let inCodeBlock = false;
-  let codeBuffer: string[] = [];
-  let codeLang = '';
-
-  const renderInline = (text: string): React.ReactNode[] => {
-    // Regex matches inline code `code`, bold **bold**, italic *italic*, or link [text](url)
-    const tokens = text.split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g);
-    return tokens.map((token, idx) => {
-      if (token.startsWith('`') && token.endsWith('`')) {
-        return (
-          <code
-            key={idx}
-            style={{
-              background: 'var(--bg-subtle)',
-              padding: '2px 6px',
-              borderRadius: '4px',
-              fontFamily: 'var(--font-mono)',
-              fontSize: '0.9em',
-              color: 'var(--accent)',
-              border: '1px solid var(--border)',
-            }}
-          >
-            {token.slice(1, -1)}
-          </code>
-        );
-      }
-      if (token.startsWith('**') && token.endsWith('**')) {
-        return <strong key={idx} style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{token.slice(2, -2)}</strong>;
-      }
-      if (token.startsWith('*') && token.endsWith('*')) {
-        return <em key={idx}>{token.slice(1, -1)}</em>;
-      }
-      return token;
-    });
-  };
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-
-    if (line.trim().startsWith('```')) {
-      if (inCodeBlock) {
-        // Close code block
-        const codeText = codeBuffer.join('\n');
-        elements.push(
-          <div
-            key={`code-${i}`}
-            style={{
-              position: 'relative',
-              margin: '10px 0',
-              borderRadius: '8px',
-              background: 'var(--bg-code, #0b0f19)',
-              border: '1px solid var(--border)',
-              overflow: 'hidden',
-            }}
-          >
-            {codeLang && (
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '4px 12px',
-                  background: 'rgba(255,255,255,0.03)',
-                  borderBottom: '1px solid var(--border)',
-                  fontSize: '11px',
-                  fontFamily: 'var(--font-mono)',
-                  color: 'var(--text-muted)',
-                }}
-              >
-                <span>{codeLang}</span>
-                <CopyButton text={codeText} label="Copy" />
+    lines.forEach((line, i) => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('```')) {
+        if (inCode) {
+          const code = buffer.join('\n');
+          out.push(
+            <div key={`code-${i}`} className="my-2 overflow-hidden rounded-lg border bg-muted/60">
+              <div className="flex items-center justify-between border-b px-3 py-1 font-mono text-[11px] text-muted-foreground">
+                <span>{codeLang || 'code'}</span>
+                <CopyButton text={code} label="Copy" variant="ghost" />
               </div>
-            )}
-            <pre
-              style={{
-                margin: 0,
-                padding: '12px 14px',
-                fontFamily: 'var(--font-mono)',
-                fontSize: '12px',
-                lineHeight: 1.5,
-                color: '#e2e8f0',
-                overflowX: 'auto',
-              }}
-            >
-              <code>{codeText}</code>
-            </pre>
+              <pre className="overflow-x-auto p-3 font-mono text-xs leading-relaxed">
+                <code>{code}</code>
+              </pre>
+            </div>
+          );
+          buffer = [];
+          codeLang = '';
+          inCode = false;
+        } else {
+          inCode = true;
+          codeLang = trimmed.slice(3).trim();
+        }
+        return;
+      }
+      if (inCode) {
+        buffer.push(line);
+        return;
+      }
+      if (line.startsWith('### ')) out.push(<h4 key={i} className="mt-3 mb-1 text-sm font-semibold">{renderInline(line.slice(4))}</h4>);
+      else if (line.startsWith('## ')) out.push(<h3 key={i} className="mt-3 mb-1 text-[15px] font-semibold">{renderInline(line.slice(3))}</h3>);
+      else if (line.startsWith('# ')) out.push(<h2 key={i} className="mt-3 mb-1.5 text-base font-bold">{renderInline(line.slice(2))}</h2>);
+      else if (trimmed.startsWith('- ') || trimmed.startsWith('* '))
+        out.push(
+          <div key={i} className="my-1 flex gap-2 text-sm leading-relaxed">
+            <span aria-hidden className="font-bold text-brand">•</span>
+            <div>{renderInline(trimmed.slice(2))}</div>
           </div>
         );
-        codeBuffer = [];
-        codeLang = '';
-        inCodeBlock = false;
-      } else {
-        // Open code block
-        inCodeBlock = true;
-        codeLang = line.trim().slice(3).trim();
-      }
-      continue;
-    }
+      else if (/^\d+\.\s+/.test(trimmed)) {
+        const m = trimmed.match(/^(\d+)\.\s+(.*)$/)!;
+        out.push(
+          <div key={i} className="my-1 flex gap-2 text-sm leading-relaxed">
+            <span className="font-mono font-semibold text-brand">{m[1]}.</span>
+            <div>{renderInline(m[2])}</div>
+          </div>
+        );
+      } else if (trimmed.startsWith('> '))
+        out.push(
+          <blockquote key={i} className="my-2 rounded-r-md border-l-2 border-brand bg-brand-weak px-3 py-1.5 text-sm">
+            {renderInline(trimmed.slice(2))}
+          </blockquote>
+        );
+      else if (!trimmed) out.push(<div key={i} className="h-2" />);
+      else out.push(<p key={i} className="my-1 text-sm leading-relaxed">{renderInline(line)}</p>);
+    });
 
-    if (inCodeBlock) {
-      codeBuffer.push(line);
-      continue;
-    }
-
-    // Headers
-    if (line.startsWith('### ')) {
-      elements.push(
-        <h4 key={`h4-${i}`} style={{ fontSize: '14px', fontWeight: 700, margin: '14px 0 6px 0', color: 'var(--text-strong)' }}>
-          {renderInline(line.slice(4))}
-        </h4>
+    if (inCode && buffer.length) {
+      out.push(
+        <pre key="code-unclosed" className="my-2 overflow-x-auto rounded-lg border bg-muted/60 p-3 font-mono text-xs">
+          <code>{buffer.join('\n')}</code>
+        </pre>
       );
-      continue;
     }
-    if (line.startsWith('## ')) {
-      elements.push(
-        <h3 key={`h3-${i}`} style={{ fontSize: '15px', fontWeight: 700, margin: '16px 0 8px 0', color: 'var(--text-strong)' }}>
-          {renderInline(line.slice(3))}
-        </h3>
-      );
-      continue;
-    }
-    if (line.startsWith('# ')) {
-      elements.push(
-        <h2 key={`h2-${i}`} style={{ fontSize: '17px', fontWeight: 800, margin: '18px 0 10px 0', color: 'var(--text-strong)' }}>
-          {renderInline(line.slice(2))}
-        </h2>
-      );
-      continue;
-    }
+    return out;
+  }, [content]);
 
-    // Bullet lists
-    if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
-      elements.push(
-        <div key={`li-${i}`} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', margin: '4px 0', fontSize: '13px', lineHeight: 1.5 }}>
-          <span style={{ color: 'var(--accent)', fontWeight: 700 }}>&bull;</span>
-          <div>{renderInline(line.trim().slice(2))}</div>
-        </div>
-      );
-      continue;
-    }
-
-    // Numbered lists
-    const numMatch = line.trim().match(/^(\d+)\.\s+(.*)$/);
-    if (numMatch) {
-      elements.push(
-        <div key={`ol-${i}`} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', margin: '4px 0', fontSize: '13px', lineHeight: 1.5 }}>
-          <span style={{ color: 'var(--accent)', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{numMatch[1]}.</span>
-          <div>{renderInline(numMatch[2])}</div>
-        </div>
-      );
-      continue;
-    }
-
-    // Blockquotes
-    if (line.trim().startsWith('> ')) {
-      elements.push(
-        <blockquote
-          key={`quote-${i}`}
-          style={{
-            margin: '8px 0',
-            padding: '6px 12px',
-            borderLeft: '3px solid var(--accent)',
-            background: 'var(--accent-weak)',
-            borderRadius: '0 6px 6px 0',
-            fontSize: '12px',
-            color: 'var(--text)',
-          }}
-        >
-          {renderInline(line.trim().slice(2))}
-        </blockquote>
-      );
-      continue;
-    }
-
-    // Empty lines
-    if (!line.trim()) {
-      elements.push(<div key={`sp-${i}`} style={{ height: '8px' }} />);
-      continue;
-    }
-
-    // Standard paragraph
-    elements.push(
-      <p key={`p-${i}`} style={{ margin: '4px 0', fontSize: '13px', lineHeight: 1.55, color: 'var(--text)' }}>
-        {renderInline(line)}
-      </p>
-    );
-  }
-
-  return (
-    <div className={className} style={{ ...style, wordBreak: 'break-word' }}>
-      {elements}
-    </div>
-  );
-};
+  return <div className={cn('break-words', className)}>{elements}</div>;
+}

@@ -1,0 +1,169 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * shadcn/ui CSS variables mapped from the original FastrMemory "precision instrument" tokens.
+ * Domain colours (trap / risk / success / pinned) sit next to the shadcn set.
+ */
+:root {
+  --radius: 0.5rem;
+  --background: #f3f5f8;
+  --foreground: #111827;
+  --card: #ffffff;
+  --card-foreground: #111827;
+  --popover: #ffffff;
+  --popover-foreground: #111827;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --secondary: #eaedf2;
+  --secondary-foreground: #111827;
+  --muted: #eaedf2;
+  --muted-foreground: #4b5563;
+  --accent: #eaf1fe;
+  --accent-foreground: #1d4ed8;
+  --destructive: #c2410c;
+  --destructive-foreground: #ffffff;
+  --border: #e1e5eb;
+  --input: #cbd2db;
+  --ring: #2563eb;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #111827;
+  --sidebar-accent: #eaf1fe;
+  --sidebar-accent-foreground: #1d4ed8;
+  --sidebar-border: #e1e5eb;
+
+  --brand: #2563eb;
+  --brand-weak: #eaf1fe;
+  --trap: #b45309;
+  --trap-weak: #fef3c7;
+  --risk: #be123c;
+  --risk-weak: #ffe4e6;
+  --success: #047857;
+  --success-weak: #d1fae5;
+  --pinned: #7c3aed;
+  --pinned-weak: #ede9fe;
+  --canvas: #f8fafc;
+}
+
+.dark {
+  --background: #09090b;
+  --foreground: #fafafa;
+  --card: #141417;
+  --card-foreground: #fafafa;
+  --popover: #141417;
+  --popover-foreground: #fafafa;
+  --primary: #38bdf8;
+  --primary-foreground: #04131c;
+  --secondary: #1c1c20;
+  --secondary-foreground: #fafafa;
+  --muted: #1c1c20;
+  --muted-foreground: #a1a1aa;
+  --accent: rgba(56, 189, 248, 0.12);
+  --accent-foreground: #7dd3fc;
+  --destructive: #f43f5e;
+  --destructive-foreground: #ffffff;
+  --border: #27272a;
+  --input: #3f3f46;
+  --ring: #38bdf8;
+  --sidebar: #0f0f12;
+  --sidebar-foreground: #fafafa;
+  --sidebar-accent: rgba(56, 189, 248, 0.12);
+  --sidebar-accent-foreground: #7dd3fc;
+  --sidebar-border: #27272a;
+
+  --brand: #38bdf8;
+  --brand-weak: rgba(56, 189, 248, 0.12);
+  --trap: #fbbf24;
+  --trap-weak: rgba(251, 191, 36, 0.12);
+  --risk: #fb7185;
+  --risk-weak: rgba(244, 63, 94, 0.14);
+  --success: #34d399;
+  --success-weak: rgba(52, 211, 153, 0.12);
+  --pinned: #a78bfa;
+  --pinned-weak: rgba(139, 92, 246, 0.16);
+  --canvas: #0b0b0e;
+}
+
+@theme inline {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-brand: var(--brand);
+  --color-brand-weak: var(--brand-weak);
+  --color-trap: var(--trap);
+  --color-trap-weak: var(--trap-weak);
+  --color-risk: var(--risk);
+  --color-risk-weak: var(--risk-weak);
+  --color-success: var(--success);
+  --color-success-weak: var(--success-weak);
+  --color-pinned: var(--pinned);
+  --color-pinned-weak: var(--pinned-weak);
+  --color-canvas: var(--canvas);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-variant-numeric: tabular-nums;
+    overflow-x: hidden;
+  }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--input);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
