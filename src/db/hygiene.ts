@@ -154,7 +154,7 @@ export function inspectMemoryHygiene(
       category: 'orphan',
       count: orphanCount,
       description:
-        `Found ${orphanCount} orphaned records ` +
+        `Found ${plural(orphanCount, 'orphaned record')} ` +
         `(file_links=${orphanFileLinks}, conflicts=${orphanConflicts}, feedback=${orphanFeedback}).`
     });
   }
