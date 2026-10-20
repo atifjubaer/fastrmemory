@@ -21,6 +21,7 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 | A6 | Node >= 22.16.0 | `package.json` | Supported | `node -p "require('./package.json').engines.node"` | `>=22.16.0` | Local tests run on Node 24.15.0 |
 | A7 | Three required runtime dependencies | README | Supported | `npm ls --depth=0 --omit=dev` | `@modelcontextprotocol/server`, `commander`, `zod` | MiniLM is an optional peer plus a dev dependency |
 | A8 | Clean install stays under 20 MB | README (not claimed) | Supported | `npm install <0.2.0 tarball> --ignore-scripts` in an empty temp project, then measure `node_modules` | 1.81 s install; 16,397,409 bytes; `npx fastr --version` and `npx fastrmemory --version` both `0.2.0` | Local Windows run on 2026-10-20; npm cache may affect install time; optional MiniLM model is not installed |
+| A9 | v0.2.0 GitHub Release asset is attached and installable | README | Supported | `gh release download v0.2.0 --pattern atifjubaer-fastrmemory-0.2.0.tgz`; `npm install <release asset URL> --ignore-scripts` | 571,279 bytes; SHA-256 `12B7D49546D6B904A2296724490E4D6EECE313514DA6C4BFDA6950137F309ED7`; release-URL install 3.71 s; CLI `0.2.0` | Asset URL `https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.0/atifjubaer-fastrmemory-0.2.0.tgz`; local Windows run on 2026-10-20; line-ending hash sensitivity applies |
 
 ## B. Architecture and footprint
 
