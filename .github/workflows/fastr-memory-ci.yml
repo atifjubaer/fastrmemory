@@ -1,0 +1,102 @@
+name: FastrMemory Memory CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  memory-diff:
+    name: Replayable Memory Diff
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository with Full History
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build Engine
+        run: npm run build:core
+
+      - name: Materialize Base Snapshot
+        id: base
+        run: |
+          if [ ! -f .fastr/memory.jsonl ]; then
+            echo "No .fastr/memory.jsonl in this repository; skipping Memory CI."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git show "${{ github.event.pull_request.base.sha }}:.fastr/memory.jsonl" > "$RUNNER_TEMP/base-memory.jsonl" 2>/dev/null; then
+            echo "Using base snapshot from ${{ github.event.pull_request.base.sha }}"
+          else
+            echo "Base revision has no snapshot; comparing head against itself."
+            cp .fastr/memory.jsonl "$RUNNER_TEMP/base-memory.jsonl"
+          fi
+          echo "present=true" >> "$GITHUB_OUTPUT"
+
+      - name: Run Memory CI
+        id: memory_ci
+        if: steps.base.outputs.present == 'true'
+        continue-on-error: true
+        run: |
+          node dist/bin/fastr.js memory-ci \
+            --base "$RUNNER_TEMP/base-memory.jsonl" \
+            --head .fastr/memory.jsonl \
+            --comment memory-ci.md \
+            --fail-on-new-traps
+
+      - name: Publish Job Summary
+        if: always() && steps.base.outputs.present == 'true'
+        run: |
+          if [ -f memory-ci.md ]; then
+            cat memory-ci.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # Fork PRs get a read-only token. The job summary still contains the diff.
+      - name: Post or Update PR Comment
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && steps.base.outputs.present == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (!fs.existsSync('memory-ci.md')) return;
+            const body = `<!-- fastrmemory-memory-ci -->\n${fs.readFileSync('memory-ci.md', 'utf8')}`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find((comment) => comment.body && comment.body.includes('<!-- fastrmemory-memory-ci -->'));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Fail on New Traps
+        if: steps.memory_ci.outcome == 'failure'
+        run: exit 1

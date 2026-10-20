@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "generatedFor": "Phase 3/4 evidence",
+  "projectId": "proj_evidence",
+  "replay": [
+    {
+      "at": "2026-01-01T12:00:00.000Z",
+      "active": [
+        "mem_evidence_a"
+      ],
+      "history": [],
+      "events": 1,
+      "hash": "9fe31ae106ce50d0301a14eba7cb980e4bd06daf46c56a2dee4f1a321d942b88"
+    },
+    {
+      "at": "2026-01-02T12:00:00.000Z",
+      "active": [
+        "mem_evidence_b"
+      ],
+      "history": [
+        "mem_evidence_a"
+      ],
+      "events": 1,
+      "hash": "adccf3892d3a5d3496ceb79af6277d4407f555286c573586c21ce1fe95ae40ab"
+    },
+    {
+      "at": "2026-01-03T12:00:00.000Z",
+      "active": [
+        "mem_evidence_b",
+        "mem_evidence_c"
+      ],
+      "history": [
+        "mem_evidence_a"
+      ],
+      "events": 1,
+      "hash": "cd9c598c30ba63fe1479b30b2ac26ed1044a5308ab6bcf23d3bd623b88808af1"
+    }
+  ],
+  "jsonl": {
+    "records": 4,
+    "memories": 3,
+    "events": 1,
+    "contentHash": "a3119d7915cad0401df4dda5262d9e535cb4adf17b26d9722d5214651b5f2b14",
+    "imported": {
+      "dryRun": false,
+      "memories": 3,
+      "events": 1,
+      "fileLinks": 0,
+      "conflicts": 0,
+      "skipped": 0,
+      "contentHash": "a3119d7915cad0401df4dda5262d9e535cb4adf17b26d9722d5214651b5f2b14"
+    },
+    "reExportedHash": "a3119d7915cad0401df4dda5262d9e535cb4adf17b26d9722d5214651b5f2b14",
+    "roundTrip": true
+  },
+  "diff": {
+    "fromAt": "2026-01-01T12:00:00.000Z",
+    "toAt": "2026-01-02T12:00:00.000Z",
+    "added": [
+      {
+        "id": "mem_evidence_b",
+        "title": "Use WAL plus busy timeout",
+        "module": "db",
+        "kind": "rule",
+        "status": "verified",
+        "valid_from": "2026-01-02T00:00:00.000Z",
+        "valid_to": null,
+        "superseded_by_id": null
+      }
+    ],
+    "superseded": [
+      {
+        "id": "mem_evidence_a",
+        "title": "Use WAL",
+        "module": "db",
+        "kind": "rule",
+        "status": "superseded",
+        "valid_from": "2026-01-01T00:00:00.000Z",
+        "valid_to": "2026-01-02T00:00:00.000Z",
+        "superseded_by_id": "mem_evidence_b"
+      }
+    ],
+    "stillActive": [],
+    "changed": [],
+    "conflicts": [],
+    "tokenDelta": 14,
+    "newTrapIds": []
+  },
+  "diffMarkdown": "## FastrMemory diff\n\n**From:** 2026-01-01T12:00:00.000Z\n**To:** 2026-01-02T12:00:00.000Z\n**Token delta:** +14\n\n### Added (1)\n- [mem_evidence_b] Use WAL plus busy timeout (db, rule)\n\n### Superseded (1)\n- [mem_evidence_a] Use WAL (db, rule)\n\n### Still active (0)\n_None._\n\n### Changed (0)\n_None._\n\n### Open conflicts (0)\n_None._\n\n**New error traps:** none",
+  "consolidation": {
+    "summaryKind": "workflow",
+    "summaryTitle": "Consolidated memory: payments",
+    "sourceMemoryIds": [
+      "mem_consolidate_a",
+      "mem_consolidate_b"
+    ],
+    "sourceEventIds": [
+      "evt_consolidate_a",
+      "evt_consolidate_b"
+    ],
+    "activeMemoryCountBefore": 2,
+    "activeMemoryCountAfter": 3,
+    "rawEventCountBefore": 2,
+    "rawEventCountAfter": 2
+  },
+  "memoryCi": {
+    "newTrapIds": [
+      "mem_ci_trap"
+    ],
+    "failed": true,
+    "exitCode": 1,
+    "markdown": "## FastrMemory diff\n\n**From:** 2026-01-04T00:00:00.000Z\n**To:** 2026-01-04T00:00:00.000Z\n**Token delta:** +29\n\n### Added (2)\n- [mem_ci_new] Use WAL plus busy timeout (db, rule)\n- [mem_ci_trap] Do not hold a write transaction open (db, error_trap)\n\n### Superseded (1)\n- [mem_ci_old] Use WAL (db, rule)\n\n### Still active (0)\n_None._\n\n### Changed (0)\n_None._\n\n### Open conflicts (0)\n_None._\n\n**New error traps:** mem_ci_trap"
+  }
+}

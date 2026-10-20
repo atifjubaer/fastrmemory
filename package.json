@@ -54,7 +54,8 @@
     "bench:hash": "tsx scripts/eval-bench.ts --split all --embeddings hash --out bench/results/hash.json",
     "bench:legacy": "tsx scripts/capture-bench.ts",
     "bench:verify": "node scripts/check-bench.mjs",
-    "check:ci": "npm run test && npm run test:isolation && npm run check:skills && npm run check:dist-ui && npm run check:package && npm run check:docs && npm run bench:verify",
+    "verify:replay": "tsx scripts/verify-replay.ts",
+    "check:ci": "npm run test && npm run test:isolation && npm run check:skills && npm run check:dist-ui && npm run check:package && npm run verify:replay && npm run check:docs && npm run bench:verify",
     "start": "node dist/bin/fastr.js"
   },
   "keywords": [

@@ -22,6 +22,10 @@ import { compressFile } from '../src/compress/markdown.js';
 import { diagnoseDatabase, healDatabase } from '../src/db/doctor.js';
 import { tagVisionAsset, searchVisionAssets } from '../src/vision/assets.js';
 import { runTrapGuardian } from '../src/ci/guardian.js';
+import { diffSnapshots, formatDiffMarkdown, replayAt } from '../src/replay/snapshot.js';
+import { exportSnapshotJsonl, importSnapshotFile, snapshotFromJsonl } from '../src/replay/jsonl.js';
+import { consolidateMemories } from '../src/db/consolidate.js';
+import { runMemoryCi } from '../src/ci/memory-ci.js';
 
 const BANNER = `
 \x1b[38;2;56;189;248m   ______           __        __  ___                                \x1b[0m
@@ -298,6 +302,140 @@ snapshotCmd
     const res = ctx.repo.rollbackToSnapshot(ctx.config.projectId, snapshotId);
     syncAllModulePages(ctx.db, ctx.config.projectRoot, ctx.config.projectId);
     console.log(`Rolled back to snapshot "${res.snapshotTag}". Restored ${res.restoredCount} memories.`);
+  });
+
+snapshotCmd
+  .command('export <file>')
+  .description('Export a portable, content-hashed JSONL snapshot (safe to commit; no SQLite files)')
+  .option('--at <iso>', 'Stable export timestamp used for the snapshot header')
+  .option('-f, --force', 'Overwrite an existing file', false)
+  .action((file: string, opts: any) => {
+    const ctx = createFastrServerContext();
+    const target = path.resolve(file);
+    if (fs.existsSync(target) && !opts.force) {
+      console.error(`Error: ${target} already exists. Pass --force to overwrite.`);
+      process.exit(1);
+    }
+    const result = exportSnapshotJsonl(ctx.db, ctx.config.projectId, opts.at);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, result.jsonl, 'utf8');
+    console.log(`Exported ${result.records} hashed records to ${target}`);
+    console.log(`Memories: ${result.memories} | Events: ${result.events} | File links: ${result.fileLinks} | Conflicts: ${result.conflicts}`);
+    console.log(`Content hash: ${result.contentHash}`);
+  });
+
+snapshotCmd
+  .command('import <file>')
+  .description('Import a hash-verified JSONL snapshot (idempotent; existing rows are kept)')
+  .option('--dry-run', 'Verify the file and report counts without writing', false)
+  .action((file: string, opts: any) => {
+    const ctx = createFastrServerContext();
+    const result = importSnapshotFile(ctx.db, path.resolve(file), { dryRun: opts.dryRun });
+    console.log(`${result.dryRun ? 'Verified' : 'Imported'} ${path.resolve(file)}`);
+    console.log(`Memories: ${result.memories} | Events: ${result.events} | File links: ${result.fileLinks} | Conflicts: ${result.conflicts} | Skipped: ${result.skipped}`);
+    console.log(`Content hash: ${result.contentHash}`);
+  });
+
+// 9b. Replay and memory diff commands (bi-temporal state reconstruction)
+function loadReplayState(ctx: ReturnType<typeof createFastrServerContext>, ref: string) {
+  const resolved = ref === 'now' ? new Date().toISOString() : ref;
+  if (resolved !== 'now' && fs.existsSync(resolved) && fs.statSync(resolved).isFile()) {
+    return snapshotFromJsonl(fs.readFileSync(resolved, 'utf8'));
+  }
+  return replayAt(ctx.db, ctx.config.projectId, resolved);
+}
+
+program
+  .command('replay')
+  .description('Reconstruct the exact active memory set at an ISO timestamp')
+  .option('--at <iso>', 'ISO timestamp (default: now)')
+  .option('--json', 'Print the full snapshot as JSON', false)
+  .option('-o, --out <file>', 'Write the full snapshot JSON to a file')
+  .action((opts: any) => {
+    const ctx = createFastrServerContext();
+    const snapshot = replayAt(ctx.db, ctx.config.projectId, opts.at || new Date().toISOString());
+    const json = JSON.stringify(snapshot, null, 2);
+    if (opts.out) {
+      fs.writeFileSync(path.resolve(opts.out), json, 'utf8');
+    }
+    if (opts.json || opts.out) {
+      console.log(json);
+      return;
+    }
+
+    console.log(`\n=== Replay at ${snapshot.at} ===`);
+    console.log(`Hash: ${snapshot.contentHash}`);
+    for (const memory of snapshot.memories) {
+      console.log(`- [${memory.id}] ${memory.title} (${memory.module}, ${memory.kind}, ${memory.status})`);
+    }
+    console.log(`\n${snapshot.memories.length} active | ${snapshot.history.length} history | ${snapshot.events.length} raw events | ~${snapshot.tokenCount} tokens\n`);
+  });
+
+program
+  .command('diff')
+  .description('Diff two replay timestamps or two portable JSONL snapshots')
+  .requiredOption('--from <ref>', 'ISO timestamp, "now", or a JSONL snapshot file')
+  .requiredOption('--to <ref>', 'ISO timestamp, "now", or a JSONL snapshot file')
+  .option('--json', 'Print the diff as JSON', false)
+  .option('-o, --out <file>', 'Write the Markdown diff to a file')
+  .action((opts: any) => {
+    const ctx = createFastrServerContext();
+    const from = loadReplayState(ctx, opts.from);
+    const to = loadReplayState(ctx, opts.to);
+    const diff = diffSnapshots(from, to);
+    const markdown = formatDiffMarkdown(diff);
+    if (opts.out) fs.writeFileSync(path.resolve(opts.out), markdown, 'utf8');
+    console.log(opts.json ? JSON.stringify(diff, null, 2) : markdown);
+  });
+
+// 9c. Non-lossy consolidation command (Phase 3)
+program
+  .command('consolidate')
+  .description('Write a linked summary memory without deleting or mutating any originals')
+  .option('-m, --module <module>', 'Only consolidate active memories in this module')
+  .option('-t, --title <title>', 'Summary memory title')
+  .option('--dry-run', 'Preview the summary and counts without writing', false)
+  .option('--json', 'Print the result as JSON', false)
+  .action((opts: any) => {
+    const ctx = createFastrServerContext();
+    const result = consolidateMemories(ctx.db, ctx.repo, {
+      projectId: ctx.config.projectId,
+      module: opts.module,
+      title: opts.title,
+      dryRun: opts.dryRun
+    });
+
+    if (opts.json) {
+      console.log(JSON.stringify(result, null, 2));
+      return;
+    }
+
+    console.log(`${result.dryRun ? 'Previewed' : 'Consolidated'} ${result.sourceMemoryIds.length} source memories.`);
+    console.log(`Summary: ${result.summaryId ?? '(dry run)'} ${result.summaryTitle}`);
+    console.log(`Active memories: ${result.activeMemoryCountBefore} -> ${result.activeMemoryCountAfter}`);
+    console.log(`Raw events: ${result.rawEventCountBefore} -> ${result.rawEventCountAfter}`);
+    console.log(`Source events linked: ${result.sourceEventIds.length}`);
+    if (result.dryRun) console.log('\n--- Summary preview ---\n' + result.summaryContent);
+  });
+
+// 9d. Memory CI command (Phase 4)
+program
+  .command('memory-ci')
+  .description('Compare base and head portable snapshots and emit a PR-ready memory diff')
+  .requiredOption('--base <file>', 'Base JSONL snapshot')
+  .requiredOption('--head <file>', 'Head JSONL snapshot')
+  .option('--comment <file>', 'Write the Markdown comment body to a file')
+  .option('--fail-on-new-traps', 'Exit 1 when the head adds an active error trap', false)
+  .option('--json', 'Print the result as JSON', false)
+  .action((opts: any) => {
+    const result = runMemoryCi({
+      baseJsonl: fs.readFileSync(path.resolve(opts.base), 'utf8'),
+      headJsonl: fs.readFileSync(path.resolve(opts.head), 'utf8'),
+      failOnNewTraps: opts.failOnNewTraps
+    });
+    if (opts.comment) fs.writeFileSync(path.resolve(opts.comment), result.markdown, 'utf8');
+    console.log(opts.json ? JSON.stringify(result, null, 2) : result.markdown);
+    process.exitCode = result.exitCode;
   });
 
 // 10. Hook command (Autonomous Agent Lifecycle)

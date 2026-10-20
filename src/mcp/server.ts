@@ -15,6 +15,7 @@ import { predictFileBaseRate } from './predict.js';
 import { compressFile, compressContent } from '../compress/markdown.js';
 import { diagnoseDatabase, healDatabase } from '../db/doctor.js';
 import { tagVisionAsset, searchVisionAssets } from '../vision/assets.js';
+import { diffSnapshots, formatDiffMarkdown, replayAt } from '../replay/snapshot.js';
 
 // ==========================================
 // Shared input bounds (keep tool/param names stable; skills depend on them)
@@ -1705,6 +1706,60 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
       if (!mem) return fail(`Memory not found: ${id}`);
       repo.pinMemory(id, pinned);
       return ok(`${pinned ? 'Pinned' : 'Unpinned'} memory [${id}] "${mem.title}".`);
+    }
+  );
+
+  // ==========================================
+  // TOOL 40: fastr_replay
+  // ==========================================
+  server.registerTool(
+    'fastr_replay',
+    {
+      description: 'Reconstruct the active memory set at a past ISO timestamp from bi-temporal valid_from/valid_to windows.',
+      inputSchema: z.object({
+        at: z.string().min(10).max(40).optional().describe('ISO timestamp (default: now)')
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false }
+    },
+    async ({ at }) => {
+      try {
+        const snapshot = replayAt(db, config.projectId, at || new Date().toISOString());
+        const lines = snapshot.memories.map(
+          (memory) => `- [${memory.id}] ${memory.title} (${memory.module}, ${memory.kind}, ${memory.status})`
+        );
+        return ok(
+          `### Replay at ${snapshot.at}\n` +
+          `- **Content hash**: \`${snapshot.contentHash}\`\n` +
+          `- **Active**: ${snapshot.memories.length} | **History**: ${snapshot.history.length} | **Raw events**: ${snapshot.events.length} | **Tokens**: ~${snapshot.tokenCount}\n\n` +
+          (lines.length > 0 ? lines.join('\n') : '_No active memories at this timestamp._')
+        );
+      } catch (err) {
+        return fail(`Replay failed: ${errMessage(err)}`);
+      }
+    }
+  );
+
+  // ==========================================
+  // TOOL 41: fastr_diff
+  // ==========================================
+  server.registerTool(
+    'fastr_diff',
+    {
+      description: 'Compare two memory states and report added, superseded, changed, still-active, and conflicted memories with a token delta.',
+      inputSchema: z.object({
+        fromAt: z.string().min(10).max(40).describe('Base ISO timestamp'),
+        toAt: z.string().min(10).max(40).describe('Head ISO timestamp')
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false }
+    },
+    async ({ fromAt, toAt }) => {
+      try {
+        const from = replayAt(db, config.projectId, fromAt);
+        const to = replayAt(db, config.projectId, toAt);
+        return ok(formatDiffMarkdown(diffSnapshots(from, to)));
+      } catch (err) {
+        return fail(`Diff failed: ${errMessage(err)}`);
+      }
     }
   );
 
