@@ -1,6 +1,13 @@
 import { DatabaseSync } from 'node:sqlite';
 import { Memory } from '../db/schema.js';
-import { computeEmbedding, cosineSimilarity, bufferToFloat32Array } from './embeddings.js';
+import {
+  cosineSimilarity,
+  decodeTaggedEmbedding,
+  getProviderForModel,
+  VECTOR_SIMILARITY_THRESHOLDS,
+  warmupEmbeddingModel
+} from './embeddings.js';
+import { scheduleBackfill } from './backfill.js';
 import { packMemoriesIntoBudget, ScoredMemory, TOKEN_LEVELS } from './budget.js';
 import { extractEntities } from '../learn/ner.js';
 
@@ -13,6 +20,10 @@ export interface SearchParams {
   includeHistory?: boolean;
   budgetTokens?: number;
   maxPerSession?: number;
+  /** Maximum number of memories returned (applied after scoring + diversification). */
+  limit?: number;
+  /** Opportunistically embed a small batch of un-embedded memories after recall (default true). */
+  backfill?: boolean;
 }
 
 export interface SearchResult {
@@ -32,12 +43,29 @@ export function hasGlobalDb(db: DatabaseSync): boolean {
   }
 }
 
+/**
+ * Builds a safe FTS5 MATCH expression from free text.
+ * - Unicode-aware: keeps letters/numbers/marks of any script (café, 日本語, Привет).
+ * - Every surviving term is wrapped in double quotes (quotes themselves are stripped), so
+ *   FTS5 syntax such as OR / NOT / NEAR / * / : / ^ / parentheses / leading '-' is always
+ *   treated as literal text and can never alter or break the MATCH expression.
+ */
 export function sanitizeFtsQuery(query: string): string {
+  const seen = new Set<string>();
   const words = query
-    .replace(/[^\w\s-]/g, ' ')
+    .normalize('NFKC')
+    .replace(/[^\p{L}\p{N}\p{M}\s_-]/gu, ' ')
     .split(/\s+/)
-    .map((w) => w.trim())
-    .filter((w) => w.length > 1 && !STOP_WORDS.has(w.toLowerCase()));
+    .map((w) => w.replace(/^[-_]+|[-_]+$/g, ''))
+    .filter((w) => {
+      if (!/[\p{L}\p{N}]/u.test(w)) return false;
+      // Single ASCII chars are noise; a single CJK ideograph is a real word
+      if (w.length < 2 && /^[\x00-\x7F]+$/.test(w)) return false;
+      const lower = w.toLowerCase();
+      if (STOP_WORDS.has(lower) || seen.has(lower)) return false;
+      seen.add(lower);
+      return true;
+    });
 
   if (words.length === 0) {
     return '';
@@ -58,7 +86,9 @@ export async function searchMemories(
     module: targetModule,
     includeHistory = false,
     budgetTokens = TOKEN_LEVELS.L2_TASK_RECALL,
-    maxPerSession = 3
+    maxPerSession = 3,
+    limit,
+    backfill = true
   } = params;
 
   const candidatesMap = new Map<string, { memory: Memory; rankA?: number; rankB?: number; rankC?: number }>();
@@ -118,9 +148,14 @@ export async function searchMemories(
     }
   }
 
-  // --- STREAM B: Vector Cosine Similarity Search ---
-  const queryVec = await computeEmbedding(query);
-  if (queryVec) {
+  // --- STREAM B: Vector Cosine Similarity Search (opt-in / lazy) ---
+  // Vectors are only produced by backfillEmbeddings() (scheduled after recall) and are
+  // model-tagged. Recall NEVER loads or downloads a model: a query vector is computed only
+  // if memories in scope are already embedded, and only with a provider for the SAME
+  // model id that is usable right now (offline feature-hash, or an already-loaded model).
+  // Vectors from different/unknown models are never compared.
+  warmupEmbeddingModel(); // no-op unless FASTR_EMBEDDINGS_MODEL=1; never awaited
+  if (query.trim().length > 0) {
     const isGlobalAttached = hasGlobalDb(db);
     let vecSql = `
       SELECT * FROM memories
@@ -136,16 +171,36 @@ export async function searchMemories(
           AND embedding IS NOT NULL
       `;
     }
-    const embeddedRows = db.prepare(vecSql).all(projectId) as unknown as Memory[];
+    let embeddedRows: Memory[] = [];
+    try {
+      embeddedRows = db.prepare(vecSql).all(projectId) as unknown as Memory[];
+    } catch {
+      embeddedRows = [];
+    }
 
+    // Query vectors are computed lazily, once per model id actually present in scope
+    const queryVecs = new Map<number, Float32Array | null>();
     const scoredVectors: Array<{ memory: Memory; sim: number }> = [];
     for (const row of embeddedRows) {
-      if (passesFilter(row) && row.embedding) {
-        const memVec = bufferToFloat32Array(row.embedding);
-        const sim = cosineSimilarity(queryVec, memVec);
-        if (sim > 0.25) {
-          scoredVectors.push({ memory: row, sim });
+      if (!passesFilter(row)) continue;
+      const decoded = decodeTaggedEmbedding(row.embedding);
+      if (!decoded) continue; // legacy / untagged vector: unknown model, never compared
+
+      if (!queryVecs.has(decoded.modelId)) {
+        const provider = getProviderForModel(decoded.modelId);
+        let qv: Float32Array | null = null;
+        if (provider) {
+          try { qv = await provider.embed(query); } catch { qv = null; }
         }
+        queryVecs.set(decoded.modelId, qv);
+      }
+      const queryVec = queryVecs.get(decoded.modelId);
+      if (!queryVec || queryVec.length !== decoded.vector.length) continue;
+
+      const sim = cosineSimilarity(queryVec, decoded.vector);
+      const threshold = VECTOR_SIMILARITY_THRESHOLDS[decoded.modelId] ?? 0.5;
+      if (sim >= threshold) {
+        scoredVectors.push({ memory: row, sim });
       }
     }
 
@@ -286,59 +341,27 @@ export async function searchMemories(
     }
   }
 
-  // Fallback: If no matches across streams and query is empty, return latest active memories
-  if (candidatesMap.size === 0) {
-    const fallbackRows = db.prepare(`
-      SELECT * FROM memories
-      WHERE project_id = ?
-        AND valid_to IS NULL
-        AND status != 'superseded'
-        AND status != 'dormant'
-      ORDER BY pinned DESC, (kind = 'error_trap') DESC, reward_score DESC, created_at DESC
-      LIMIT 20
-    `).all(projectId) as unknown as Memory[];
-
-    let rank = 1;
-    for (const row of fallbackRows) {
-      if (passesFilter(row)) {
-        candidatesMap.set(row.id, { memory: row, rankA: rank });
-        rank++;
-      }
-    }
-  }
+  // No "latest memories" fallback: every result must come from at least one stream with a
+  // real match (BM25 hit, vector similarity above threshold, or graph activation seeded by
+  // provided files / query entities / real stream hits). Garbage queries return nothing.
 
   // --- RRF FUSION (k = 60) & MULTIPLIERS ---
-  const scoredMemories: ScoredMemory[] = [];
-  const sessionCounts = new Map<string, number>();
-
+  const allScored: ScoredMemory[] = [];
   for (const [, item] of candidatesMap) {
     const { memory, rankA, rankB, rankC } = item;
-
-    // Session Diversification
-    let sessionId = 'unknown';
-    try {
-      const srcIds = JSON.parse(memory.source_event_ids || '[]');
-      if (srcIds.length > 0) sessionId = srcIds[0];
-    } catch {}
-
-    const curSessCount = sessionCounts.get(sessionId) || 0;
-    if (curSessCount >= maxPerSession) {
-      continue;
-    }
 
     let rrf = 0;
     if (rankA !== undefined) rrf += 1 / (60 + rankA);
     if (rankB !== undefined) rrf += 1 / (60 + rankB);
     if (rankC !== undefined) rrf += 1 / (60 + rankC);
+    if (rrf === 0) continue;
 
     // Multipliers
     const trapMultiplier = memory.kind === 'error_trap' ? 2.0 : 1.0;
     const verifiedMultiplier = memory.status === 'verified' ? 1.25 : 1.0;
     const finalScore = rrf * memory.reward_score * trapMultiplier * verifiedMultiplier;
 
-    sessionCounts.set(sessionId, curSessCount + 1);
-
-    scoredMemories.push({
+    allScored.push({
       memory,
       score: finalScore,
       bm25Rank: rankA,
@@ -347,7 +370,37 @@ export async function searchMemories(
     });
   }
 
-  const packed = packMemoriesIntoBudget(scoredMemories, budgetTokens);
+  // Sort by final score FIRST, then diversify, so per-session caps drop the weakest items.
+  allScored.sort((a, b) => b.score - a.score);
+
+  // Session Diversification: only applies to memories with a known source session;
+  // memories without provenance (empty source_event_ids) are never capped.
+  const scoredMemories: ScoredMemory[] = [];
+  const sessionCounts = new Map<string, number>();
+  for (const scored of allScored) {
+    let sessionId: string | null = null;
+    try {
+      const srcIds = JSON.parse(scored.memory.source_event_ids || '[]');
+      if (Array.isArray(srcIds) && typeof srcIds[0] === 'string' && srcIds[0] && srcIds[0] !== 'unknown') {
+        sessionId = srcIds[0];
+      }
+    } catch {}
+
+    if (sessionId !== null && maxPerSession > 0) {
+      const cur = sessionCounts.get(sessionId) || 0;
+      if (cur >= maxPerSession) continue;
+      sessionCounts.set(sessionId, cur + 1);
+    }
+    scoredMemories.push(scored);
+  }
+
+  const maxItems = limit !== undefined && limit >= 0 ? Math.floor(limit) : Number.POSITIVE_INFINITY;
+  const packed = packMemoriesIntoBudget(scoredMemories, budgetTokens, maxItems);
+
+  // Opportunistic, bounded, non-blocking embedding backfill (errors swallowed).
+  if (backfill) {
+    scheduleBackfill(db, projectId);
+  }
 
   return {
     text: packed.text,

@@ -7,9 +7,34 @@
 let featureExtractor: any = null;
 let initAttempted = false;
 
+/** Test seam: lets tests inject a mock model loader so nothing is ever downloaded. */
+let modelLoader: (() => Promise<any>) | null = null;
+export function __setModelLoaderForTests(loader: (() => Promise<any>) | null): void {
+  modelLoader = loader;
+  featureExtractor = null;
+  initAttempted = false;
+  modelLoadPromise = null;
+}
+
+let modelLoadPromise: Promise<any | null> | null = null;
+
+/** True only when the transformer model is already resident in memory (never triggers a load). */
+export function isModelLoaded(): boolean {
+  return featureExtractor !== null;
+}
+
+/**
+ * Opt-in, fire-and-forget model warmup. Only starts loading the transformer model when
+ * FASTR_EMBEDDINGS_MODEL=1 is set; recall never awaits this promise.
+ */
+export function warmupEmbeddingModel(): void {
+  if (process.env.FASTR_EMBEDDINGS_MODEL !== '1' || initAttempted || modelLoadPromise) return;
+  modelLoadPromise = getExtractor().catch(() => null);
+}
+
 export async function getExtractor(): Promise<any | null> {
   // Never hang unit tests downloading 90MB weights unless explicitly enabled
-  if (process.env.NODE_ENV === 'test' && process.env.FASTR_ENABLE_TEST_EMBEDDINGS !== '1') {
+  if (!modelLoader && process.env.NODE_ENV === 'test' && process.env.FASTR_ENABLE_TEST_EMBEDDINGS !== '1') {
     return null;
   }
 
@@ -19,10 +44,14 @@ export async function getExtractor(): Promise<any | null> {
   initAttempted = true;
 
   try {
-    const { pipeline } = await import('@huggingface/transformers');
-    featureExtractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
-      dtype: 'fp32'
-    });
+    if (modelLoader) {
+      featureExtractor = await modelLoader();
+    } else {
+      const { pipeline } = await import('@huggingface/transformers');
+      featureExtractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
+        dtype: 'fp32'
+      });
+    }
   } catch (err) {
     // Graceful fallback to keyword-only when offline or model not cached
     featureExtractor = null;
@@ -139,3 +168,91 @@ export function bufferToFloat32Array(buffer: Buffer): Float32Array {
 export function float32ArrayToBuffer(array: Float32Array): Buffer {
   return Buffer.from(array.buffer, array.byteOffset, array.byteLength);
 }
+
+// ---------------------------------------------------------------------------
+// Model-tagged embedding blobs
+//
+// Stored memory vectors carry a 4-byte header: 'F' 'V' <format version> <model id>,
+// followed by raw little-endian float32 values. The header is exactly one float32
+// wide so the payload stays 4-byte aligned and can be passed through the existing
+// `repo.updateEmbedding(Float32Array)` API unchanged. Vectors are only ever compared
+// against a query vector produced by the SAME model id; untagged (legacy) blobs are
+// treated as unknown-model and ignored by recall (and re-embedded by backfill).
+// ---------------------------------------------------------------------------
+
+export const EMBEDDING_MODEL_IDS = {
+  FEATURE_HASH_384: 1,
+  MINILM_L6_V2: 2
+} as const;
+export type EmbeddingModelId = (typeof EMBEDDING_MODEL_IDS)[keyof typeof EMBEDDING_MODEL_IDS];
+
+const HEADER_MAGIC_0 = 0x46; // 'F'
+const HEADER_MAGIC_1 = 0x56; // 'V'
+const HEADER_VERSION = 1;
+export const EMBEDDING_HEADER_BYTES = 4;
+
+export function embeddingHeader(modelId: number): Buffer {
+  return Buffer.from([HEADER_MAGIC_0, HEADER_MAGIC_1, HEADER_VERSION, modelId & 0xff]);
+}
+
+/** Encodes a vector into a model-tagged Float32Array (header packed into element 0). */
+export function encodeTaggedEmbedding(vec: Float32Array, modelId: number): Float32Array {
+  const out = new Float32Array(vec.length + 1);
+  out.set(vec, 1);
+  const bytes = new Uint8Array(out.buffer);
+  bytes.set(embeddingHeader(modelId), 0);
+  return out;
+}
+
+/** Decodes a stored blob. Returns null for legacy/untagged or malformed blobs. */
+export function decodeTaggedEmbedding(buf: Uint8Array | null | undefined): { modelId: number; vector: Float32Array } | null {
+  if (!buf || buf.byteLength <= EMBEDDING_HEADER_BYTES || buf.byteLength % 4 !== 0) return null;
+  if (buf[0] !== HEADER_MAGIC_0 || buf[1] !== HEADER_MAGIC_1 || buf[2] !== HEADER_VERSION) return null;
+  const modelId = buf[3];
+  // Copy into an aligned buffer (SQLite blobs may come back at arbitrary offsets)
+  const payload = new Uint8Array(buf.byteLength - EMBEDDING_HEADER_BYTES);
+  payload.set(buf.subarray(EMBEDDING_HEADER_BYTES));
+  return { modelId, vector: new Float32Array(payload.buffer) };
+}
+
+export interface EmbeddingProvider {
+  modelId: EmbeddingModelId;
+  embed(text: string): Promise<Float32Array>;
+}
+
+const featureHashProvider: EmbeddingProvider = {
+  modelId: EMBEDDING_MODEL_IDS.FEATURE_HASH_384,
+  embed: async (text: string) => computeFeatureHashVector(text, 384)
+};
+
+/**
+ * Returns an embedding provider WITHOUT ever triggering a model download:
+ * the transformer model is used only if it is already loaded in this process;
+ * otherwise the deterministic offline feature-hash vectorizer is used.
+ */
+export function getAvailableEmbeddingProvider(): EmbeddingProvider {
+  const extractor = featureExtractor;
+  if (extractor) {
+    return {
+      modelId: EMBEDDING_MODEL_IDS.MINILM_L6_V2,
+      embed: async (text: string) => {
+        const output = await extractor(text, { pooling: 'mean', normalize: true });
+        return new Float32Array(output.data);
+      }
+    };
+  }
+  return featureHashProvider;
+}
+
+/** Returns a provider for a specific model id if usable right now (no downloads), else null. */
+export function getProviderForModel(modelId: number): EmbeddingProvider | null {
+  if (modelId === EMBEDDING_MODEL_IDS.FEATURE_HASH_384) return featureHashProvider;
+  if (modelId === EMBEDDING_MODEL_IDS.MINILM_L6_V2 && featureExtractor) return getAvailableEmbeddingProvider();
+  return null;
+}
+
+/** Minimum cosine similarity for a vector hit to count as a real match, per model. */
+export const VECTOR_SIMILARITY_THRESHOLDS: Record<number, number> = {
+  [EMBEDDING_MODEL_IDS.FEATURE_HASH_384]: 0.35,
+  [EMBEDDING_MODEL_IDS.MINILM_L6_V2]: 0.35
+};
