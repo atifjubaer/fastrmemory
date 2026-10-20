@@ -245,6 +245,38 @@ CREATE TABLE IF NOT EXISTS memory_snapshots (
 );
 CREATE INDEX IF NOT EXISTS idx_snapshots_project ON memory_snapshots(project_id, created_at DESC);
 
+-- 6b. Memory Branches and Merge Audit Trail
+CREATE TABLE IF NOT EXISTS memory_branches (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  name TEXT NOT NULL COLLATE NOCASE,
+  base_snapshot_id TEXT NOT NULL,
+  head_snapshot_id TEXT NOT NULL,
+  description TEXT DEFAULT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  UNIQUE (project_id, name),
+  FOREIGN KEY (base_snapshot_id) REFERENCES memory_snapshots(id) ON DELETE RESTRICT,
+  FOREIGN KEY (head_snapshot_id) REFERENCES memory_snapshots(id) ON DELETE RESTRICT
+);
+CREATE INDEX IF NOT EXISTS idx_memory_branches_project ON memory_branches(project_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS memory_branch_merges (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  branch_id TEXT NOT NULL,
+  branch_name TEXT NOT NULL,
+  source_snapshot_id TEXT NOT NULL,
+  strategy TEXT NOT NULL CHECK (strategy IN ('target', 'branch')),
+  applied INTEGER NOT NULL DEFAULT 0,
+  added_count INTEGER NOT NULL DEFAULT 0,
+  conflict_count INTEGER NOT NULL DEFAULT 0,
+  report_json TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  FOREIGN KEY (branch_id) REFERENCES memory_branches(id) ON DELETE RESTRICT
+);
+CREATE INDEX IF NOT EXISTS idx_branch_merges_branch ON memory_branch_merges(branch_id, created_at DESC);
+
 -- 7. Knowledge Graph Entities
 CREATE TABLE IF NOT EXISTS entities (
   id TEXT PRIMARY KEY,

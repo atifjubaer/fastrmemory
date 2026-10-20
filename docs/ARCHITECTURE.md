@@ -26,6 +26,8 @@ FastrMemory takes a third path: keep immutable raw events, keep a bi-temporal me
 | `entities` / `graph_edges` | Lightweight entity and relationship graph for spreading activation |
 | `memory_conflicts` | Candidate contradictions detected on write |
 | `memory_snapshots` | Named coarse checkpoints; exact point-in-time replay reads the bi-temporal columns directly |
+| `memory_branches` | Immutable named branch pointers to a base and head snapshot |
+| `memory_branch_merges` | Audit log of branch merge attempts, strategy, applied state, counts, and the full report JSON |
 
 Supersession sets `valid_to` and `status='superseded'` on the old row; it does not delete it. `forget` tombstones rather than hard-deletes. Markdown mirrors in `.fastr/pages/<module>.md` put active rules on top and superseded history below for Git review.
 
@@ -85,8 +87,9 @@ Replay is derived from the existing bi-temporal columns, not from a second log:
 - `exportSnapshotJsonl()` writes one hashed JSONL header plus hashed memory, raw-event, file-link, and conflict records. It never writes a SQLite file. Import verifies every hash, is idempotent, and re-embeds imported memories lazily.
 - `consolidateMemories()` writes a new `workflow` summary that links every source memory and raw event. It does not delete, merge, or mutate the originals; project-wide before/after counts make the non-loss property visible.
 - `runMemoryCi()` compares base and head JSONL snapshots, emits Markdown, and optionally exits `1` when the head adds an active trap.
+- `createBranch()` stores an immutable branch pointer to a base and head snapshot. `mergeBranch()` is one-way into the current active set: branch-only memories are added, target-only memories are preserved, and same-identity changes become conflicts. Conflicts block writes by default; `--force` applies additions, and `--force --strategy branch` supersedes the target while keeping the old rows in history. Every non-dry-run attempt is recorded in `memory_branch_merges`.
 
-CLI: `fastr replay`, `fastr diff`, `fastr snapshot export|import`, `fastr consolidate`, and `fastr memory-ci`. MCP: `fastr_replay` and `fastr_diff`.
+CLI: `fastr replay`, `fastr diff`, `fastr snapshot export|import`, `fastr branch create|list`, `fastr merge`, `fastr consolidate`, and `fastr memory-ci`. MCP: `fastr_replay` and `fastr_diff`.
 
 ## 7. MCP surface
 
@@ -113,6 +116,7 @@ The full 41-tool surface is the default. Start the core profile with `fastrmemor
 - Prompt-cache `skipUnchanged` behavior (no byte-identical block suppression in the current hook runner).
 - A real-repository benchmark and a pinned external baseline (the 240-case synthetic held-out benchmark exists; see [`BENCHMARKS.md`](../BENCHMARKS.md)).
 - Dashboard timeline slider and diff view.
+- Branch checkout or a mutable branch working tree; branches are immutable snapshot pointers merged one-way into the current active set.
 - A live PR run of the Memory CI comment path (the workflow is committed; fork PRs are job-summary-only).
 
 These are roadmap items, not claims.

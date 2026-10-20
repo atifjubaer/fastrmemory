@@ -24,6 +24,7 @@ import { tagVisionAsset, searchVisionAssets } from '../src/vision/assets.js';
 import { runTrapGuardian } from '../src/ci/guardian.js';
 import { diffSnapshots, formatDiffMarkdown, replayAt } from '../src/replay/snapshot.js';
 import { exportSnapshotJsonl, importSnapshotFile, snapshotFromJsonl } from '../src/replay/jsonl.js';
+import { createBranch, listBranches, mergeBranch, formatBranchMergeMarkdown } from '../src/branch/manager.js';
 import { importMarkdownFile } from '../src/import/local.js';
 import type { LocalImportKind } from '../src/import/local.js';
 import { consolidateMemories } from '../src/db/consolidate.js';
@@ -454,6 +455,69 @@ snapshotCmd
     console.log(`${result.dryRun ? 'Verified' : 'Imported'} ${path.resolve(file)}`);
     console.log(`Memories: ${result.memories} | Events: ${result.events} | File links: ${result.fileLinks} | Conflicts: ${result.conflicts} | Skipped: ${result.skipped}`);
     console.log(`Content hash: ${result.contentHash}`);
+  });
+
+// 9a. Memory branches and merges (immutable snapshot-backed branches)
+const branchCmd = program.command('branch').description('Git-like memory branches backed by immutable snapshots');
+
+branchCmd
+  .command('create <name>')
+  .description('Create a named branch at the current active set or an existing snapshot')
+  .option('--from <snapshotId>', 'Base the branch on an existing snapshot instead of the current active set')
+  .option('-d, --desc <description>', 'Optional branch description')
+  .action((name: string, opts: any) => {
+    const ctx = createFastrServerContext();
+    const branch = createBranch(ctx.db, ctx.repo, ctx.config.projectId, name, {
+      fromSnapshotId: opts.from,
+      description: opts.desc
+    });
+    console.log(`Created branch "${branch.name}" at snapshot [${branch.head_snapshot_id}] (${branch.memoryCount} active memories).`);
+  });
+
+branchCmd
+  .command('list')
+  .description('List memory branches for this project')
+  .option('--json', 'Print the branch list as JSON', false)
+  .action((opts: any) => {
+    const ctx = createFastrServerContext();
+    const branches = listBranches(ctx.db, ctx.config.projectId);
+    if (opts.json) {
+      console.log(JSON.stringify(branches, null, 2));
+      return;
+    }
+    if (branches.length === 0) {
+      console.log('No memory branches found for this project.');
+      return;
+    }
+    console.log(`\n=== FastrMemory Branches (${ctx.config.projectName}) ===`);
+    for (const branch of branches) {
+      const lastMerge = branch.lastMergedAt ? ` • last merge ${branch.lastMergedAt}` : '';
+      console.log(`- ${branch.name} [${branch.id}] snapshot [${branch.head_snapshot_id}] (${branch.memoryCount} memories) • ${branch.created_at}${lastMerge}`);
+    }
+    console.log('');
+  });
+
+program
+  .command('merge <branch>')
+  .description('Merge a memory branch snapshot into the current active set with a conflict report')
+  .option('--dry-run', 'Report the merge without writing memories or a merge log', false)
+  .option('--force', 'Apply additions and the selected conflict strategy even when conflicts exist', false)
+  .option('--strategy <strategy>', 'Conflict strategy: target (keep target) or branch (supersede target)', 'target')
+  .option('--json', 'Print the merge report as JSON', false)
+  .action((branchName: string, opts: any) => {
+    const ctx = createFastrServerContext();
+    const report = mergeBranch(ctx.db, ctx.repo, ctx.config.projectId, branchName, {
+      dryRun: Boolean(opts.dryRun),
+      force: Boolean(opts.force),
+      strategy: opts.strategy
+    });
+    if (report.appliedMemories.length > 0) {
+      syncAllModulePages(ctx.db, ctx.config.projectRoot, ctx.config.projectId);
+    }
+    console.log(opts.json ? JSON.stringify(report, null, 2) : formatBranchMergeMarkdown(report));
+    if (report.conflicts.length > 0 && !report.applied) {
+      process.exitCode = 1;
+    }
   });
 
 // 9b. Replay and memory diff commands (bi-temporal state reconstruction)

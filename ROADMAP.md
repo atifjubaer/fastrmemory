@@ -12,7 +12,7 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 
 | Item | Current state | Evidence |
 |---|---|---|
-| Local test gate | **Done:** 253 tests across 45 files | `npm run check:ci` on 2026-10-21 |
+| Local test gate | **Done:** 256 tests across 46 files | `npm run check:ci` on 2026-10-21 |
 | CI matrix | **Done:** 6/6 green at `3fa2bf9` | run `39495621243` |
 | npm distribution | **Blocked:** `npm whoami` E401, `npm view` E404; suspension lifts 2026-10-21 22:42 UTC | `docs/npm-publishing.md` |
 | Package artifact | **GitHub asset attached:** v0.2.1 asset is 591,204 bytes, SHA-256 `78F1535E87A7148272824C0B0D31F21D4AD385D9EEAA2EF8A40D41DCD0ACA63B`; v0.2.0 asset is 571,279 bytes | `npm pack` vs downloaded release asset |
@@ -43,11 +43,11 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 | 3.4 | Gemini CLI hook and MCP parity | Installer writes a tested Gemini config path with idempotent merge | **Done** |
 | 3.5 | Copilot CLI hook and MCP parity | Installer writes a tested Copilot config/instruction path with idempotent merge | **Done** |
 | 3.6 | Memory envelope resource | `fastr://memory/{id}/envelope` returns metadata, provenance, links, and conflict state | **Done** |
-| 3.7 | Memory branch and merge | `fastr branch create/list` and `fastr merge` produce a conflict report and preserve history | Missing |
+| 3.7 | Memory branch and merge | `fastr branch create/list` and `fastr merge` produce a conflict report and preserve history | **Done** |
 | 3.8 | Confidence tiers and 3-bad dormancy | Per-ID confidence tiers and automatic dormancy after three bad outcomes have tests | Partial |
 | 3.9 | Memory hygiene gate | Orphan, duplicate, and stale checks run in `check:ci` with raw counts | Partial |
 
-**Phase 3 gate:** hook-parity table with one tested path per client; import round-trip; conflict-aware recall; core profile smoke still 12/12.
+**Phase 3 gate:** hook-parity table with one tested path per client; import round-trip; conflict-aware recall; branch merge conflict report preserves history; core profile smoke still 12/12.
 
 ### Phase 4 — Memory CI and UI (P1, 1.5–2 days)
 
