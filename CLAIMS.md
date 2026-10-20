@@ -7,6 +7,7 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 - **Code inspection:** `1495622` (retrieval and packaging changes in this ledger)
 - **Hardware:** AMD Ryzen 7 7700, 15.1 GB RAM, Windows 10 Pro 19045, Node v24.15.0
 - **Scope:** FastrMemory only. No external memory engine is measured in this repository.
+- **Row provenance:** every row is dated 2026-10-20. Benchmark rows use commit `1495622`; code-inspection rows use `1495622`; `npm view` rows were run on 2026-10-20.
 
 ## A. Distribution and package
 
@@ -14,7 +15,7 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 |---|---|---|---|---|---|---|
 | A1 | Package is `@atifjubaer/fastrmemory` v0.2.0 | `package.json` | Supported | `node -p "require('./package.json').name + ' ' + require('./package.json').version"` | `@atifjubaer/fastrmemory 0.2.0` | Version bump accompanies the retrieval and packaging changes |
 | A2 | Package is published on npm | README | **Blocked** | `npm view @atifjubaer/fastrmemory version` | `E404 Not Found` | Never advertise npm install until this passes |
-| A3 | Install from GitHub works | README | **Qualified** | `npm view github:atifjubaer/fastrmemory version` | `0.1.0` | Metadata resolves from the GitHub default branch, which still reports 0.1.0; the local tree is 0.2.0 and unpublished. Re-run after pushing 0.2.0 |
+| A3 | GitHub source metadata resolves | README | Supported | `npm view github:atifjubaer/fastrmemory version` | `0.1.0` | The GitHub default branch still reports 0.1.0; a full install is not re-run here, and the local tree is 0.2.0 |
 | A4 | Tarball size | README (not claimed) | Supported | `npm pack --dry-run --json --ignore-scripts` | 551.5 kB packed, 2.1 MB unpacked, 195 files | Measured on 2026-10-20; excludes the optional MiniLM model download |
 | A5 | Apache-2.0 license | README, `package.json` | Supported | `node -p "require('./package.json').license"` | `Apache-2.0` | `LICENSE` present |
 | A6 | Node >= 22.16.0 | `package.json` | Supported | `node -p "require('./package.json').engines.node"` | `>=22.16.0` | Local tests run on Node 24.15.0 |

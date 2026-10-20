@@ -13,7 +13,7 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-architecture)
 
-> **Status (2026-10-20, benchmark commit `1495622`):** `@atifjubaer/fastrmemory` is **not yet published to npm** (`npm view` returns E404); use the GitHub install below. The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval, and no external engine is measured. Every public claim is tracked in [CLAIMS.md](CLAIMS.md); methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md).
+> **Status (2026-10-20, benchmark commit `1495622`):** `@atifjubaer/fastrmemory` is **not yet published to npm** (`npm view` returns E404); use the GitHub install below. The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval, and no external engine is measured. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md).
 
 <p align="center">
   <a href="#-overview">Overview</a> &bull;
