@@ -1,3 +1,4 @@
+import * as path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { FastrRepository } from '../db/repository.js';
 import { SpoolManager } from '../db/spool.js';
@@ -9,6 +10,52 @@ export interface HookContext {
   repo: FastrRepository;
   spool: SpoolManager;
   config: FastrConfig;
+}
+
+/**
+ * Collects target file paths from either the CLI payload (`files` / `file`) or the JSON Claude Code
+ * sends hooks on stdin (`tool_input.file_path`, always absolute). Paths are made project-relative
+ * with forward slashes, matching how `file_links` stores them.
+ */
+export function extractTargetFiles(payload: Record<string, any>, projectRoot: string): string[] {
+  const raw: string[] = [];
+  if (Array.isArray(payload.files)) raw.push(...payload.files);
+  if (typeof payload.file === 'string') raw.push(payload.file);
+  const toolInput = payload.tool_input;
+  if (toolInput && typeof toolInput === 'object') {
+    if (typeof toolInput.file_path === 'string') raw.push(toolInput.file_path);
+    if (typeof toolInput.notebook_path === 'string') raw.push(toolInput.notebook_path);
+  }
+
+  const root = path.resolve(projectRoot);
+  const out = new Set<string>();
+  for (const value of raw) {
+    if (typeof value !== 'string' || !value.trim()) continue;
+    let p = value.trim();
+    if (path.isAbsolute(p)) {
+      const rel = path.relative(root, p);
+      if (rel && !rel.startsWith('..') && !path.isAbsolute(rel)) p = rel;
+    }
+    out.add(p.replace(/\\/g, '/'));
+  }
+  return [...out];
+}
+
+/**
+ * Formats a hook result for Claude Code's stdout contract. SessionStart plain text is added to the
+ * model's context; PreToolUse only reaches the model through `hookSpecificOutput.additionalContext`.
+ * Other events' stdout only lands in the debug log, so they print nothing.
+ */
+export function toClaudeHookStdout(event: string, result: { output?: string }): string | null {
+  if (!result.output) return null;
+  const normalized = event.trim().toLowerCase();
+  if (normalized === 'sessionstart') return result.output;
+  if (normalized === 'pretooluse') {
+    return JSON.stringify({
+      hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: result.output },
+    });
+  }
+  return null;
 }
 
 export function runLifecycleHook(
@@ -40,9 +87,7 @@ export function runLifecycleHook(
     }
 
     case 'pretooluse': {
-      const files: string[] = Array.isArray(payload.files)
-        ? payload.files
-        : (payload.file ? [payload.file] : []);
+      const files = extractTargetFiles(payload, ctx.config.projectRoot);
 
       if (files.length === 0) {
         return { handled: true, message: 'No target files specified in tool invocation.' };
@@ -70,9 +115,9 @@ export function runLifecycleHook(
     }
 
     case 'posttoolusefailure': {
-      const toolName = payload.tool || 'unknown_tool';
+      const toolName = payload.tool || payload.tool_name || 'unknown_tool';
       const errorMsg = payload.error || payload.message || 'Execution error';
-      const file = payload.file || null;
+      const file = extractTargetFiles(payload, ctx.config.projectRoot)[0] ?? null;
 
       // Fast async spool entry (<1ms)
       ctx.spool.append({

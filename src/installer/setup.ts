@@ -1,218 +1,22 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createFastrServerContext } from '../mcp/server.js';
+import { McpServerEntry, updateJsonConfig, upsertMcpServer } from './json-config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export interface SetupOptions {
   autoInstall?: boolean;
+  /** Overrides the home directory (tests, sandboxes). Defaults to `os.homedir()`. */
+  homeDir?: string;
+  /** Project the per-workspace configs (.cursor/, AGENTS.md) are written into. Defaults to `process.cwd()`. */
+  projectRoot?: string;
 }
 
-export function getAntigravityConfigPath(): string {
-  return path.join(os.homedir(), '.gemini', 'antigravity', 'mcp_config.json');
-}
-
-export function getClaudeDesktopConfigPath(): string {
-  if (process.platform === 'win32') {
-    const appData = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
-    return path.join(appData, 'Claude', 'claude_desktop_config.json');
-  } else if (process.platform === 'darwin') {
-    return path.join(os.homedir(), 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json');
-  } else {
-    return path.join(os.homedir(), '.config', 'Claude', 'claude_desktop_config.json');
-  }
-}
-
-export function resolveMcpCommand(): { command: string; args: string[] } {
-  try {
-    const isWindows = process.platform === 'win32';
-    const checkCmd = isWindows ? 'where fastrmemory' : 'which fastrmemory';
-    execSync(checkCmd, { stdio: 'ignore' });
-    return { command: 'fastrmemory', args: ['mcp'] };
-  } catch {
-    // Check if running from local checkout where dist/bin/fastr.js exists
-    const localBin = path.resolve(__dirname, '../../dist/bin/fastr.js');
-    if (fs.existsSync(localBin)) {
-      return { command: 'node', args: [localBin, 'mcp'] };
-    }
-    return { command: 'npx', args: ['-y', '@atifjubaer/fastrmemory', 'mcp'] };
-  }
-}
-
-export function runInteractiveSetup(options: SetupOptions = {}): void {
-  console.log('\n=================================================');
-  console.log('⚡ FastrMemory: Interactive Agent Setup Wizard');
-  console.log('   High-Performance Cognitive Agent Memory Engine');
-  console.log('=================================================\n');
-
-  // 1. Initialize local project database
-  try {
-    const ctx = createFastrServerContext();
-    console.log(`[1/8] Local project initialized:`);
-    console.log(`      - Project ID: ${ctx.config.projectId}`);
-    console.log(`      - Database:   ${ctx.config.dbPath}`);
-    console.log(`      - Pages:      ${ctx.config.pagesDir}\n`);
-  } catch (err: any) {
-    console.log(`[1/8] Project init note: ${err.message}\n`);
-  }
-
-  const mcpTarget = resolveMcpCommand();
-  const homeDir = os.homedir();
-
-  // 2. Wire Antigravity IDE (~/.gemini/antigravity/mcp_config.json)
-  const antigravityConfigPath = getAntigravityConfigPath();
-  let antigravityStatus = 'Skipped';
-  try {
-    const antigravityDir = path.dirname(antigravityConfigPath);
-    if (!fs.existsSync(antigravityDir)) {
-      fs.mkdirSync(antigravityDir, { recursive: true });
-    }
-    let agConfig: any = {};
-    if (fs.existsSync(antigravityConfigPath)) {
-      try {
-        agConfig = JSON.parse(fs.readFileSync(antigravityConfigPath, 'utf-8'));
-      } catch {
-        agConfig = {};
-      }
-    }
-    if (!agConfig.mcpServers) {
-      agConfig.mcpServers = {};
-    }
-    agConfig.mcpServers.fastrmemory = {
-      command: mcpTarget.command,
-      args: mcpTarget.args,
-    };
-    fs.writeFileSync(antigravityConfigPath, JSON.stringify(agConfig, null, 2), 'utf-8');
-    antigravityStatus = `Connected (${antigravityConfigPath})`;
-  } catch (err: any) {
-    antigravityStatus = `Failed (${err.message})`;
-  }
-  console.log(`[2/8] Antigravity IDE: ${antigravityStatus}`);
-
-  // 3. Wire Claude Desktop
-  const claudeDesktopPath = getClaudeDesktopConfigPath();
-  let claudeDesktopStatus = 'Skipped';
-  try {
-    const claudeDesktopDir = path.dirname(claudeDesktopPath);
-    if (!fs.existsSync(claudeDesktopDir)) {
-      fs.mkdirSync(claudeDesktopDir, { recursive: true });
-    }
-    let cdConfig: any = {};
-    if (fs.existsSync(claudeDesktopPath)) {
-      try {
-        cdConfig = JSON.parse(fs.readFileSync(claudeDesktopPath, 'utf-8'));
-      } catch {
-        cdConfig = {};
-      }
-    }
-    if (!cdConfig.mcpServers) {
-      cdConfig.mcpServers = {};
-    }
-    cdConfig.mcpServers.fastrmemory = {
-      command: mcpTarget.command,
-      args: mcpTarget.args,
-    };
-    fs.writeFileSync(claudeDesktopPath, JSON.stringify(cdConfig, null, 2), 'utf-8');
-    claudeDesktopStatus = `Connected (${claudeDesktopPath})`;
-  } catch (err: any) {
-    claudeDesktopStatus = `Failed (${err.message})`;
-  }
-  console.log(`[3/8] Claude Desktop:  ${claudeDesktopStatus}`);
-
-  // 4. Wire Cursor in current workspace (.cursor/mcp.json)
-  const cursorDir = path.join(process.cwd(), '.cursor');
-  const cursorConfigPath = path.join(cursorDir, 'mcp.json');
-  let cursorStatus = 'Configured';
-  try {
-    if (!fs.existsSync(cursorDir)) {
-      fs.mkdirSync(cursorDir, { recursive: true });
-    }
-    let cursorConfig: any = {};
-    if (fs.existsSync(cursorConfigPath)) {
-      try {
-        cursorConfig = JSON.parse(fs.readFileSync(cursorConfigPath, 'utf-8'));
-      } catch {
-        cursorConfig = {};
-      }
-    }
-    if (!cursorConfig.mcpServers) {
-      cursorConfig.mcpServers = {};
-    }
-    cursorConfig.mcpServers.fastrmemory = {
-      command: mcpTarget.command,
-      args: mcpTarget.args,
-    };
-    fs.writeFileSync(cursorConfigPath, JSON.stringify(cursorConfig, null, 2), 'utf-8');
-    cursorStatus = `Connected (${cursorConfigPath})`;
-  } catch (err: any) {
-    cursorStatus = `Failed (${err.message})`;
-  }
-  console.log(`[4/8] Cursor IDE:      ${cursorStatus}`);
-
-  // 5. Wire Claude Code (~/.claude.json)
-  const claudeConfigPath = path.join(homeDir, '.claude.json');
-  let claudeStatus = 'Skipped (file not found)';
-  try {
-    let claudeConfig: any = {};
-    if (fs.existsSync(claudeConfigPath)) {
-      try {
-        claudeConfig = JSON.parse(fs.readFileSync(claudeConfigPath, 'utf-8'));
-      } catch {
-        claudeConfig = {};
-      }
-    }
-    if (!claudeConfig.mcpServers) {
-      claudeConfig.mcpServers = {};
-    }
-    claudeConfig.mcpServers.fastrmemory = {
-      command: mcpTarget.command,
-      args: mcpTarget.args,
-    };
-    fs.writeFileSync(claudeConfigPath, JSON.stringify(claudeConfig, null, 2), 'utf-8');
-    claudeStatus = `Connected (${claudeConfigPath})`;
-  } catch (err: any) {
-    claudeStatus = `Failed (${err.message})`;
-  }
-  console.log(`[5/8] Claude Code:     ${claudeStatus}`);
-
-  // 6. Wire Windsurf IDE (~/.codeium/windsurf/mcp_config.json)
-  const windsurfDir = path.join(homeDir, '.codeium', 'windsurf');
-  const windsurfConfigPath = path.join(windsurfDir, 'mcp_config.json');
-  let windsurfStatus = 'Skipped (directory not present)';
-  if (fs.existsSync(windsurfDir)) {
-    try {
-      let windsurfConfig: any = {};
-      if (fs.existsSync(windsurfConfigPath)) {
-        try {
-          windsurfConfig = JSON.parse(fs.readFileSync(windsurfConfigPath, 'utf-8'));
-        } catch {
-          windsurfConfig = {};
-        }
-      }
-      if (!windsurfConfig.mcpServers) {
-        windsurfConfig.mcpServers = {};
-      }
-      windsurfConfig.mcpServers.fastrmemory = {
-        command: mcpTarget.command,
-        args: mcpTarget.args,
-      };
-      fs.writeFileSync(windsurfConfigPath, JSON.stringify(windsurfConfig, null, 2), 'utf-8');
-      windsurfStatus = `Connected (${windsurfConfigPath})`;
-    } catch (err: any) {
-      windsurfStatus = `Failed (${err.message})`;
-    }
-  }
-  console.log(`[6/8] Windsurf:        ${windsurfStatus}`);
-
-  // 7. Wire Autonomous Agent Discipline in AGENTS.md
-  let agentStatus = 'Configured';
-  try {
-    const agentsPath = path.join(process.cwd(), 'AGENTS.md');
-    const disciplineBlock = `
+export const AGENTS_DISCIPLINE_BLOCK = `
 <!-- fastrmemory:start -->
 ## ⚡ FastrMemory Autonomous Agent Discipline
 
@@ -222,25 +26,132 @@ Every AI coding agent operating in this repository MUST follow these 3 cognitive
 3. **Session Verification**: When milestones are completed, call \`fastr_handoff\` with \`verifyStaging: true\` to graduate staging memories into verified rules.
 <!-- fastrmemory:end -->
 `;
-    let currentContent = '';
-    if (fs.existsSync(agentsPath)) {
-      currentContent = fs.readFileSync(agentsPath, 'utf-8');
-    }
-    if (!currentContent.includes('<!-- fastrmemory:start -->')) {
-      fs.writeFileSync(agentsPath, (currentContent ? currentContent.trimEnd() + '\n' : '') + disciplineBlock, 'utf-8');
-      agentStatus = `Injected rules into AGENTS.md`;
-    } else {
-      agentStatus = `Discipline rules already present in AGENTS.md`;
-    }
+
+export function getAntigravityConfigPath(homeDir: string = os.homedir()): string {
+  return path.join(homeDir, '.gemini', 'antigravity', 'mcp_config.json');
+}
+
+export function getClaudeDesktopConfigPath(homeDir: string = os.homedir()): string {
+  if (process.platform === 'win32') {
+    const appData = homeDir === os.homedir() && process.env.APPDATA
+      ? process.env.APPDATA
+      : path.join(homeDir, 'AppData', 'Roaming');
+    return path.join(appData, 'Claude', 'claude_desktop_config.json');
+  } else if (process.platform === 'darwin') {
+    return path.join(homeDir, 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json');
+  } else {
+    return path.join(homeDir, '.config', 'Claude', 'claude_desktop_config.json');
+  }
+}
+
+/** Absolute path of this package's own CLI entry, whether running compiled (dist/src/installer) or from source. */
+export function findOwnCliPath(): string | null {
+  const candidates = [
+    path.resolve(__dirname, '..', '..', 'bin', 'fastr.js'),         // dist/src/installer -> dist/bin/fastr.js
+    path.resolve(__dirname, '..', '..', 'dist', 'bin', 'fastr.js'), // src/installer -> dist/bin/fastr.js
+  ];
+  return candidates.find((c) => fs.existsSync(c)) ?? null;
+}
+
+/**
+ * The command MCP clients should spawn. MCP clients launch servers without a shell, so on Windows
+ * the `fastrmemory.cmd` npm shim cannot be executed directly. Pointing `node` at the package's own
+ * CLI works on every platform; `npx` (wrapped in `cmd /c` on Windows) is the fallback when this
+ * copy lives in a throwaway npx cache.
+ */
+export function resolveMcpCommand(platform: NodeJS.Platform = process.platform): McpServerEntry {
+  const cli = findOwnCliPath();
+  const isEphemeral = cli !== null && /[\\/]_npx[\\/]/.test(cli);
+  if (cli && !isEphemeral) {
+    return { command: 'node', args: [cli, 'mcp'] };
+  }
+  const npxArgs = ['-y', '@atifjubaer/fastrmemory', 'mcp'];
+  return platform === 'win32'
+    ? { command: 'cmd', args: ['/c', 'npx', ...npxArgs] }
+    : { command: 'npx', args: npxArgs };
+}
+
+interface ClientTarget {
+  label: string;
+  filePath: string;
+  /** Only wire the client when this directory already exists (i.e. the client is installed). */
+  requireDir?: string;
+}
+
+function wireMcpClient(target: ClientTarget, entry: McpServerEntry): string {
+  if (target.requireDir && !fs.existsSync(target.requireDir)) {
+    return 'Skipped (not installed)';
+  }
+  try {
+    const res = updateJsonConfig(target.filePath, (config) => upsertMcpServer(config, 'fastrmemory', entry));
+    if (!res.changed) return `Already connected (${target.filePath})`;
+    const backup = res.backupPath ? `, backup: ${path.basename(res.backupPath)}` : '';
+    return `Connected (${target.filePath}${backup})`;
+  } catch (err: any) {
+    return `Failed (${err.message})`;
+  }
+}
+
+export function ensureAgentsDiscipline(projectRoot: string): 'added' | 'present' {
+  const agentsPath = path.join(projectRoot, 'AGENTS.md');
+  const current = fs.existsSync(agentsPath) ? fs.readFileSync(agentsPath, 'utf-8') : '';
+  if (current.includes('<!-- fastrmemory:start -->')) return 'present';
+  fs.writeFileSync(agentsPath, (current ? current.trimEnd() + '\n' : '') + AGENTS_DISCIPLINE_BLOCK, 'utf-8');
+  return 'added';
+}
+
+export function runInteractiveSetup(options: SetupOptions = {}): void {
+  const homeDir = options.homeDir ?? os.homedir();
+  const projectRoot = options.projectRoot ?? process.cwd();
+
+  console.log('\n=================================================');
+  console.log('⚡ FastrMemory: Interactive Agent Setup Wizard');
+  console.log('   High-Performance Cognitive Agent Memory Engine');
+  console.log('=================================================\n');
+
+  // 1. Initialize local project database
+  try {
+    const ctx = createFastrServerContext(projectRoot);
+    console.log(`[1/8] Local project initialized:`);
+    console.log(`      - Project ID: ${ctx.config.projectId}`);
+    console.log(`      - Database:   ${ctx.config.dbPath}`);
+    console.log(`      - Pages:      ${ctx.config.pagesDir}\n`);
+  } catch (err: any) {
+    console.log(`[1/8] Project init note: ${err.message}\n`);
+  }
+
+  const mcpTarget = resolveMcpCommand();
+  const antigravityPath = getAntigravityConfigPath(homeDir);
+  const claudeDesktopPath = getClaudeDesktopConfigPath(homeDir);
+
+  // 2-6. Wire MCP clients. Existing configs are merged (never replaced), backed up once, and written atomically.
+  const clients: Array<[string, ClientTarget]> = [
+    ['[2/8] Antigravity IDE:', { label: 'Antigravity', filePath: antigravityPath, requireDir: path.dirname(path.dirname(antigravityPath)) }],
+    ['[3/8] Claude Desktop: ', { label: 'Claude Desktop', filePath: claudeDesktopPath, requireDir: path.dirname(claudeDesktopPath) }],
+    ['[4/8] Cursor IDE:     ', { label: 'Cursor', filePath: path.join(projectRoot, '.cursor', 'mcp.json') }],
+    // Claude Code reads user-scoped MCP servers from ~/.claude.json (it ignores mcpServers in settings.json).
+    ['[5/8] Claude Code:    ', { label: 'Claude Code', filePath: path.join(homeDir, '.claude.json'), requireDir: path.join(homeDir, '.claude') }],
+    ['[6/8] Windsurf:       ', { label: 'Windsurf', filePath: path.join(homeDir, '.codeium', 'windsurf', 'mcp_config.json'), requireDir: path.join(homeDir, '.codeium', 'windsurf') }],
+  ];
+  for (const [prefix, target] of clients) {
+    console.log(`${prefix} ${wireMcpClient(target, mcpTarget)}`);
+  }
+
+  // 7. Wire Autonomous Agent Discipline in AGENTS.md
+  let agentStatus: string;
+  try {
+    agentStatus = ensureAgentsDiscipline(projectRoot) === 'added'
+      ? 'Injected rules into AGENTS.md'
+      : 'Discipline rules already present in AGENTS.md';
   } catch (err: any) {
     agentStatus = `Notice: ${err.message}`;
   }
   console.log(`[7/8] Agent Rules:     ${agentStatus}`);
 
   // 8. Auto-Install Planetary Skills Suite into IDEs & Global Agent Environments
-  let skillsStatus = 'Installed';
+  let skillsStatus: string;
   try {
-    const counts = installSkills();
+    const counts = installSkills({ homeDir, projectRoot });
     skillsStatus = `Installed (${counts.antigravityCount} to Antigravity, ${counts.claudeCount} to Claude, ${counts.cursorCount} to Cursor)`;
   } catch (err: any) {
     skillsStatus = `Notice: ${err.message}`;
@@ -249,8 +160,9 @@ Every AI coding agent operating in this repository MUST follow these 3 cognitive
 
   console.log('-------------------------------------------------');
   console.log('✅ Setup Complete! FastrMemory is connected.');
-  console.log('   All agents in this workspace now share the');
-  console.log('   exact same high-speed SQLite memory store.');
+  console.log('   Restart your agents so they pick up the new');
+  console.log('   MCP server. Run `fastrmemory hook install` in');
+  console.log('   a project to add Claude Code lifecycle hooks.');
   console.log('-------------------------------------------------\n');
   console.log('Quick verification commands:');
   console.log('  fastrmemory status    # Inspect database health');
@@ -273,11 +185,18 @@ export function findSkillsDir(): string | null {
   return null;
 }
 
-export function installSkills(): {
+export interface SkillInstallOptions {
+  homeDir?: string;
+  projectRoot?: string;
+}
+
+export function installSkills(options: SkillInstallOptions = {}): {
   antigravityCount: number;
   claudeCount: number;
   cursorCount: number;
 } {
+  const homeDir = options.homeDir ?? os.homedir();
+  const projectRoot = options.projectRoot ?? process.cwd();
   const skillsDir = findSkillsDir();
   const counts = { antigravityCount: 0, claudeCount: 0, cursorCount: 0 };
   if (!skillsDir) return counts;
@@ -286,12 +205,14 @@ export function installSkills(): {
   const skillDirs = skillEntries.filter((e) => e.isDirectory()).map((e) => e.name);
 
   const targets = [
-    { dir: path.join(os.homedir(), '.gemini', 'config', 'skills'), key: 'antigravityCount' as const },
-    { dir: path.join(os.homedir(), '.claude', 'skills'), key: 'claudeCount' as const },
-    { dir: path.join(process.cwd(), '.cursor', 'skills'), key: 'cursorCount' as const },
+    { dir: path.join(homeDir, '.gemini', 'config', 'skills'), key: 'antigravityCount' as const },
+    { dir: path.join(homeDir, '.claude', 'skills'), key: 'claudeCount' as const },
+    { dir: path.join(projectRoot, '.cursor', 'skills'), key: 'cursorCount' as const },
   ];
 
   for (const target of targets) {
+    // The skills source and destination are the same folder when running inside this repo's checkout.
+    if (path.resolve(target.dir) === path.resolve(skillsDir)) continue;
     try {
       if (!fs.existsSync(target.dir)) {
         fs.mkdirSync(target.dir, { recursive: true });

@@ -60,10 +60,17 @@ describe('Installer & MCP Multi-Client Configuration', () => {
     expect(skillsDir).not.toBeNull();
     expect(fs.existsSync(skillsDir!)).toBe(true);
 
-    const counts = installSkills();
-    expect(counts.antigravityCount).toBeGreaterThanOrEqual(12);
-    expect(counts.claudeCount).toBeGreaterThanOrEqual(12);
-    expect(counts.cursorCount).toBeGreaterThanOrEqual(12);
+    // Install into a sandbox: running the suite must never write into the developer's real ~/.claude or ~/.gemini.
+    const sandbox = fs.mkdtempSync(path.join(os.tmpdir(), 'fastr-test-skills-'));
+    try {
+      const counts = installSkills({ homeDir: path.join(sandbox, 'home'), projectRoot: path.join(sandbox, 'project') });
+      expect(counts.antigravityCount).toBeGreaterThanOrEqual(12);
+      expect(counts.claudeCount).toBeGreaterThanOrEqual(12);
+      expect(counts.cursorCount).toBeGreaterThanOrEqual(12);
+      expect(fs.existsSync(path.join(sandbox, 'home', '.claude', 'skills', 'fastr-discipline', 'SKILL.md'))).toBe(true);
+    } finally {
+      fs.rmSync(sandbox, { recursive: true, force: true });
+    }
   });
 });
 

@@ -11,7 +11,7 @@ import { startUiServer } from '../src/ui/server.js';
 import { installAgentHooks } from '../src/installer/hooks.js';
 import { learnFromGitHistory } from '../src/learn/git-learner.js';
 import { exportToObsidianVault } from '../src/export/obsidian.js';
-import { runLifecycleHook } from '../src/hooks/runner.js';
+import { runLifecycleHook, toClaudeHookStdout } from '../src/hooks/runner.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { startDaemon, stopDaemon, getDaemonStatus, getDaemonPidFile } from '../src/daemon/service.js';
@@ -40,7 +40,11 @@ program
   .description('FastrMemory: High-Performance Cognitive Agent Memory Engine')
   .version('0.1.0')
   .addHelpText('before', BANNER)
-  .action(() => {
+  .action((_opts, cmd) => {
+    // A mistyped subcommand (e.g. `fastrmemory mpc`) must not fall through to setup, which edits global agent configs.
+    if (cmd.args.length > 0) {
+      program.error(`error: unknown command '${cmd.args[0]}'. Run \`fastrmemory --help\` for the command list.`);
+    }
     console.log(BANNER);
     runInteractiveSetup();
   });
@@ -297,18 +301,24 @@ hookCmd
 hookCmd
   .command('run <event>')
   .description('Direct sub-3ms execution of agent lifecycle hooks (SessionStart, PreToolUse, PreCompact, SessionEnd)')
-  .option('-p, --payload <json>', 'JSON payload with tool or session context', '{}')
+  .option('-p, --payload <json>', 'JSON payload with tool or session context (defaults to the hook JSON on stdin)')
+  .option('--verbose', 'Print status messages (for manual runs; Claude Code hooks stay quiet)')
   .action((event, opts) => {
-    const ctx = createFastrServerContext();
-    let payload = {};
+    let payload: Record<string, any> = {};
     try {
-      payload = JSON.parse(opts.payload);
+      // Claude Code pipes the hook input as JSON on stdin; --payload is for manual runs.
+      const raw = opts.payload ?? (process.stdin.isTTY ? '' : fs.readFileSync(0, 'utf-8'));
+      if (raw && raw.trim()) payload = JSON.parse(raw);
     } catch {}
+    // Hooks run from the session's cwd; prefer the project dir Claude Code reports.
+    const projectDir = process.env.CLAUDE_PROJECT_DIR || (typeof payload.cwd === 'string' ? payload.cwd : undefined);
+    const ctx = createFastrServerContext(projectDir);
     const res = runLifecycleHook(ctx, event, payload);
-    if (res.output) {
-      console.log(res.output);
-    } else {
-      console.log(res.message);
+    const stdout = toClaudeHookStdout(event, res);
+    if (stdout) {
+      console.log(stdout);
+    } else if (opts.verbose || opts.payload !== undefined) {
+      console.log(res.output ?? res.message);
     }
   });
 
