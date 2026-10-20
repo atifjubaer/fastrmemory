@@ -3,6 +3,7 @@ import {
   Boxes,
   GitFork,
   HeartPulse,
+  History,
   Home,
   LayoutGrid,
   Library,
@@ -52,6 +53,7 @@ export const NAV: NavGroup[] = [
       { route: 'observatory', label: '3D Observatory', icon: Orbit },
       { route: 'treemap', label: 'Treemap', icon: LayoutGrid },
       { route: 'search', label: 'Search Lab', icon: Search },
+      { route: 'replay', label: 'Replay', icon: History },
     ],
   },
   {

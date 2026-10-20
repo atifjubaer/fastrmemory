@@ -93,6 +93,8 @@ Replay is derived from the existing bi-temporal columns, not from a second log:
 
 CLI: `fastr replay`, `fastr diff`, `fastr snapshot export|import`, `fastr branch create|list`, `fastr merge`, `fastr feedback`, `fastr hygiene`, `fastr consolidate`, and `fastr memory-ci`. MCP: `fastr_replay`, `fastr_diff`, and `fastr_feedback`.
 
+The dashboard `/replay` route calls `GET /api/replay?from=<iso>&to=<iso>`, which replays both timestamps and returns compact snapshot views plus the same `diffSnapshots` result used by the CLI. The route is read-only: it does not insert memories, events, or conflicts. Memory CI workflow details are in [`docs/MEMORY_CI.md`](MEMORY_CI.md).
+
 ## 7. MCP surface
 
 - **Server name:** `fastrmemory` (registry ID: `io.github.atifjubaer/fastrmemory`).
@@ -118,7 +120,6 @@ The full 41-tool surface is the default. Start the core profile with `fastrmemor
 
 - Prompt-cache `skipUnchanged` behavior (no byte-identical block suppression in the current hook runner).
 - A real-repository benchmark and a pinned external baseline (the 240-case synthetic held-out benchmark exists; see [`BENCHMARKS.md`](../BENCHMARKS.md)).
-- Dashboard timeline slider and diff view.
 - Branch checkout or a mutable branch working tree; branches are immutable snapshot pointers merged one-way into the current active set.
 - A live PR run of the Memory CI comment path (the workflow is committed; fork PRs are job-summary-only).
 

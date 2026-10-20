@@ -20,6 +20,8 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 - Per-ID confidence tiers: active memories report `high`, `medium`, or `low` from `reward_score`; inactive rows report `dormant` or `superseded`. `fastr feedback <memory-id> <good|bad>` exposes the same update from the CLI.
 - Three consecutive bad outcomes automatically move a memory to `dormant`; good outcomes reset the streak. Feedback events are stored in the append-only `memory_feedback` audit table.
 - `fastr hygiene` reports orphaned file link, conflict, and feedback rows; duplicate active memories by normalized title or exact content; and stale unpinned active memories (default 90 days). `npm run check:hygiene` seeds a deterministic fixture inside `check:ci` and asserts the raw counts.
+- Dashboard Replay & Diff workspace at `/replay`: pick two timestamps, inspect both replay snapshots, and review added, superseded, changed, still-active, and open-conflict sections from the new `/api/replay` endpoint.
+- `docs/MEMORY_CI.md` documents the PR workflow inputs, outputs, permissions, fork behavior, sample comment, local reproduction, and troubleshooting.
 
 ### Changed
 

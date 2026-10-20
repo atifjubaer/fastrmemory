@@ -12,7 +12,7 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 
 | Item | Current state | Evidence |
 |---|---|---|
-| Local test gate | **Done:** 262 tests across 48 files | `npm run check:ci` on 2026-10-21 |
+| Local test gate | **Done:** 266 tests across 49 files | `npm run check:ci` on 2026-10-21 |
 | CI matrix | **Done:** 6/6 green at `3fa2bf9` | run `39495621243` |
 | npm distribution | **Blocked:** `npm whoami` E401, `npm view` E404; suspension lifts 2026-10-21 22:42 UTC | `docs/npm-publishing.md` |
 | Package artifact | **GitHub asset attached:** v0.2.1 asset is 591,204 bytes, SHA-256 `78F1535E87A7148272824C0B0D31F21D4AD385D9EEAA2EF8A40D41DCD0ACA63B`; v0.2.0 asset is 571,279 bytes | `npm pack` vs downloaded release asset |
@@ -53,9 +53,9 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 
 | ID | Task | Acceptance gate | Status |
 |---|---|---|---|
-| 4.1 | Dashboard timeline and diff workspace | UI route renders replay snapshots and a diff view; component test covers empty and populated states | Missing |
+| 4.1 | Dashboard timeline and diff workspace | UI route renders replay snapshots and a diff view; component test covers empty and populated states | Done |
 | 4.2 | Live PR Memory CI comment | A test PR receives one comment; re-run updates the same comment | Partial |
-| 4.3 | `docs/MEMORY_CI.md` | Workflow inputs, outputs, permissions, and fork behavior documented with a sample comment | Missing |
+| 4.3 | `docs/MEMORY_CI.md` | Workflow inputs, outputs, permissions, and fork behavior documented with a sample comment | Done |
 
 ### Phase 2 — Public benchmarks (P2, 1.5–2 days)
 
@@ -161,9 +161,9 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 | Diff of two states | **Done** | `fastr diff`; replay evidence `tokenDelta=+14` |
 | Hashed JSONL export/import | **Done** | `fastr snapshot export/import`; round-trip hash `a3119d...` |
 | MCP replay/diff tools | **Done** | `fastr_replay`, `fastr_diff`; 41-tool catalog |
-| UI timeline slider and diff view | **Missing** | Dashboard has no timeline/diff workspace. |
+| UI replay timeline and diff view | **Done** | `/replay` route, `/api/replay`, empty/populated component tests, and rebuilt `dist-ui` bundle. |
 | Memory CI workflow | **Partial** | `.github/workflows/fastr-memory-ci.yml` exists; no live PR comment has been observed. |
-| `docs/MEMORY_CI.md` | **Missing** | Not present. |
+| `docs/MEMORY_CI.md` | **Done** | Inputs, outputs, permissions, fork behavior, sample comment, local reproduction, and troubleshooting are documented. |
 | Exact replay/CI tests | **Done** | `npm run verify:replay`; `tests/memory-ci.test.ts` |
 
 **Gate:** replay exact at three timestamps; export/import round-trips; a test PR receives a memory diff comment. Current result: **Partial**.
@@ -206,7 +206,7 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 | Benchmark | 240+ cases; held-out; raw JSON committed | **Done** |
 | Retrieval | Hit@1 ≥90%; Hit@5 ≥98%; external baseline +5pp Hit@5; tokens ≤0.5× | **Partial** — synthetic targets pass; external gate missing |
 | Integrity | 0 lost/0 duplicates in 10k crash test; replay exact | **Done (process crash)** — 10/10 runs, 0 lost, 0 duplicates; replay exact; power loss not tested |
-| Moat | Replay + Memory CI demo works end to end | **Partial** — core done; UI and live PR missing |
+| Moat | Replay + Memory CI demo works end to end | **Partial** — core and dashboard replay UI done; live PR comment missing |
 | Score | ≥9.2 / 10 | **Not computed** |
 
 ## Immediate release path (npm)
@@ -226,7 +226,7 @@ Do not publish current HEAD as `0.2.0`: current HEAD is now `0.2.1`, its tarball
 2. **P0:** run the 10k crash test and commit the report. **Done.**
 3. **P1:** add the 12-tool core profile and its smoke test. **Done.**
 4. **P1:** add OpenCode/Gemini/Copilot hook parity, local import, and conflict-aware recall. **Done.**
-5. **P1:** add the dashboard timeline/diff view and observe a live Memory CI PR comment. **Next.**
+5. **P1:** add the dashboard timeline/diff view. **Done.** Observe a live Memory CI PR comment. **Next.**
 6. **P2:** add public benchmark harnesses and a pinned external baseline.
 7. **P2:** finish README, migration, security, scorecard, changelog, and launch evidence.
 

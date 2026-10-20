@@ -126,6 +126,33 @@ describe('FastrMemory Web UI Server v2 endpoints', () => {
     }
   });
 
+  it('replays two snapshots and returns a memory diff', async () => {
+    const res = await fetch(
+      `${base}/api/replay?from=2000-01-01T00%3A00%3A00.000Z&to=2100-01-01T00%3A00%3A00.000Z`
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    expect(body.from.at).toBe('2000-01-01T00:00:00.000Z');
+    expect(body.to.at).toBe('2100-01-01T00:00:00.000Z');
+    expect(body.from.active).toHaveLength(0);
+    expect(body.to.active.length).toBeGreaterThanOrEqual(2);
+    expect(body.to.historyCount).toBeGreaterThanOrEqual(1);
+    expect(body.diff.added.map((entry: any) => entry.id)).toEqual(expect.arrayContaining([newId, trapId]));
+    expect(body.diff.superseded).toHaveLength(0);
+    expect(body.diff.tokenDelta).toBeGreaterThan(0);
+    expect(body.markdown).toContain('## FastrMemory diff');
+
+    const invalid = await fetch(`${base}/api/replay?from=not-a-date`);
+    expect(invalid.status).toBe(400);
+    expect((await invalid.json()).error).toContain('Invalid "from" timestamp');
+
+    const backwards = await fetch(
+      `${base}/api/replay?from=2026-01-02T00%3A00%3A00.000Z&to=2026-01-01T00%3A00%3A00.000Z`
+    );
+    expect(backwards.status).toBe(400);
+  });
+
   it('scopes traps to files', async () => {
     const all = await (await fetch(`${base}/api/traps`)).json();
     expect(all.traps.map((t: any) => t.id)).toContain(trapId);
@@ -193,6 +220,7 @@ describe('FastrMemory Web UI Server v2 endpoints', () => {
       `/api/memories/${newId}`,
       `/api/memories/${newId}/history`,
       '/api/traps?files=src/db/schema.ts',
+      '/api/replay?from=2026-01-01T00%3A00%3A00.000Z&to=2026-01-02T00%3A00%3A00.000Z',
       '/api/health',
       '/api/version',
     ];
