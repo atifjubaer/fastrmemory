@@ -1,4 +1,37 @@
 declare module 'vscode' {
+  export interface Disposable {
+    dispose(): any;
+  }
+
+  export type Event<T> = (listener: (e: T) => any, thisArgs?: any, disposables?: Disposable[]) => Disposable;
+
+  export class MarkdownString {
+    value: string;
+    isTrusted?: boolean;
+    constructor(value?: string, supportThemeIcons?: boolean);
+    appendMarkdown(value: string): MarkdownString;
+  }
+
+  export interface FileSystemWatcher extends Disposable {
+    readonly onDidCreate: Event<Uri>;
+    readonly onDidChange: Event<Uri>;
+    readonly onDidDelete: Event<Uri>;
+  }
+
+  export interface ConfigurationChangeEvent {
+    affectsConfiguration(section: string): boolean;
+  }
+
+  export interface WorkspaceFoldersChangeEvent {
+    readonly added: readonly WorkspaceFolder[];
+    readonly removed: readonly WorkspaceFolder[];
+  }
+
+  export interface TextDocumentShowOptions {
+    preserveFocus?: boolean;
+    preview?: boolean;
+  }
+
   export interface ExtensionContext {
     subscriptions: { dispose(): any }[];
     extensionPath: string;
@@ -47,7 +80,7 @@ declare module 'vscode' {
 
   export interface DecorationOptions {
     range: Range;
-    hoverMessage?: string | string[];
+    hoverMessage?: MarkdownString | string | Array<MarkdownString | string>;
   }
 
   export class Position {
@@ -128,6 +161,7 @@ declare module 'vscode' {
     export function showQuickPick<T extends string | QuickPickItem>(items: T[] | Thenable<T[]>, options?: QuickPickOptions): Thenable<T | undefined>;
     export function onDidChangeActiveTextEditor(listener: (editor: TextEditor | undefined) => any): { dispose(): any };
     export function createOutputChannel(name: string): OutputChannel;
+    export function showTextDocument(document: TextDocument, options?: TextDocumentShowOptions): Thenable<TextEditor>;
   }
 
   export interface QuickPickItem {
@@ -159,6 +193,9 @@ declare module 'vscode' {
     export function getConfiguration(section?: string): WorkspaceConfiguration;
     export function onDidSaveTextDocument(listener: (document: TextDocument) => any): { dispose(): any };
     export function openTextDocument(uri: Uri): Thenable<TextDocument>;
+    export function createFileSystemWatcher(globPattern: string, ignoreCreateEvents?: boolean, ignoreChangeEvents?: boolean, ignoreDeleteEvents?: boolean): FileSystemWatcher;
+    export const onDidChangeConfiguration: Event<ConfigurationChangeEvent>;
+    export const onDidChangeWorkspaceFolders: Event<WorkspaceFoldersChangeEvent>;
   }
 
   export namespace languages {

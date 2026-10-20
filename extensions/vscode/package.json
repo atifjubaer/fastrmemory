@@ -58,6 +58,16 @@
           "type": "number",
           "default": 4242,
           "description": "Port for FastrMemory 3D Observatory UI server"
+        },
+        "fastrmemory.cliPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the fastrmemory CLI (a binary, or its dist/bin/fastr.js entry point, run with the system `node`). Empty = auto-detect: workspace node_modules, then a global npm install on PATH."
+        },
+        "fastrmemory.guardBaseBranch": {
+          "type": "string",
+          "default": "origin/main",
+          "description": "Base branch passed to `fastrmemory guard --base` by the Pre-Merge Trap Guardian command"
         }
       }
     }
