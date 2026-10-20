@@ -37,3 +37,32 @@ describe('FastrMemory Benchmark Suite', () => {
     expect(md).toContain('Triple-Stream RRF');
   });
 });
+
+describe('Benchmark honesty & isolation', () => {
+  it('runs on its own in-memory DB and labels competitor rows as simulated baselines', async () => {
+    const { runIsolatedBenchmarks, BENCHMARK_CASES } = await import('../src/bench/benchmark.js');
+    const report = await runIsolatedBenchmarks();
+    const others = report.engines.filter((e) => !e.name.includes('FastrMemory'));
+    expect(others.length).toBe(3);
+    for (const e of others) expect(e.name).toContain('simulated baseline (not the real project)');
+
+    // Hippo-style baseline now really uses BM25 MATCH, so it finds keyword cases
+    const hippo = report.engines.find((e) => e.name.includes('Hippo'))!;
+    expect(hippo.hitAt5).toBeGreaterThan(0);
+
+    const md = formatBenchmarkMarkdown(report);
+    expect(md).not.toMatch(/real-world/i);
+    expect(md).toContain('NOT SWE-bench or LongMemEval data');
+    for (const c of BENCHMARK_CASES) {
+      expect(c.query).not.toMatch(/SWE-bench|LongMemEval/);
+    }
+  });
+
+  it('bench CLI does not pass the user database to the benchmark', async () => {
+    const fs = await import('node:fs');
+    const src = fs.readFileSync(new URL('../bin/fastr.ts', import.meta.url), 'utf-8');
+    const block = src.slice(src.indexOf(".command('bench')"), src.indexOf(".command('bench')") + 1200);
+    expect(block).not.toContain('ctx.db');
+    expect(block).toContain('runIsolatedBenchmarks');
+  });
+});
