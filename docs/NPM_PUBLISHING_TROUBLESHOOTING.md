@@ -103,9 +103,9 @@ npm publish --access public
 
 Before publishing, this pipeline automatically runs and verifies:
 1. `npm run build` (`tsc` compile with 0 errors)
-2. `npm test` (221 tests across 37 files as of 2026-10-20)
+2. `npm test` (226 tests across 38 files as of 2026-10-20)
 3. Whitelisted distribution payload:
    - `dist/` (compiled runtime & CLI)
-   - `skills/` (7 agent memory skills)
+   - `skills/` (10 agent memory skills)
    - `.claude-plugin/` & `.cursor/` (IDE manifests)
    - `README.md` & `LICENSE` (Apache-2.0)

@@ -20,9 +20,9 @@
 
 - Removed the claim that FastrMemory was the "world's first" agent memory architecture; no evidence supports a first-ever claim.
 - The original notes reported **56/56 tests**. That number was accurate only for the v0.1.0 snapshot and is not re-verified here. The current suite count is reported in [`CLAIMS.md`](CLAIMS.md).
-- The original comparison said Hippo Memory was "BM25 only." Hippo's default is BM25 with optional local MiniLM embeddings; that row is vendor-reported.
-- The original comparison said AgentMemory "fails without WSL2/Docker." Its documented runtime is a compiled daemon on four local ports; Windows setup is manual, but "fails" is not a verified claim and has been removed.
-- The original benchmark table was generated from 12 synthetic cases with simulated baselines. It is superseded by [`docs/benchmark-report.md`](docs/benchmark-report.md) and [`bench/results/latest.json`](bench/results/latest.json).
+- Earlier release notes included unverified external-engine comparisons. They have been removed.
+- Earlier release notes also included unverified platform claims about external engines. They have been removed.
+- The original benchmark table was generated from 12 synthetic cases with simulated baselines. It is superseded by [`docs/benchmark-report.md`](docs/benchmark-report.md) and the raw 240-case results in [`bench/results/minilm.json`](bench/results/minilm.json) and [`bench/results/hash.json`](bench/results/hash.json).
 
 ---
 

@@ -11,7 +11,7 @@ Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://gi
 
 ### Table Entry for `README.md`
 ```markdown
-| [FastrMemory](https://github.com/atifjubaer/fastrmemory) | High-Performance Cognitive Agent Memory Engine with native `node:sqlite` WAL storage (Node >= 22.16), Bi-Temporal Git Sync, Triple-Stream RRF ($k=60$), 2.0x Error Trap Shield, and High-DPI React 19 Dashboard. Zero background daemons, zero open ports. | `npx -y github:atifjubaer/fastrmemory mcp` |
+| [FastrMemory](https://github.com/atifjubaer/fastrmemory) | High-Performance Cognitive Agent Memory Engine with native `node:sqlite` WAL storage (Node >= 22.16), Bi-Temporal Git Sync, Triple-Stream RRF ($k=20$), Conditional 2.0x Error Trap Shield, and High-DPI React 19 Dashboard. Zero background daemons, zero open ports. | `npx -y github:atifjubaer/fastrmemory mcp` |
 ```
 
 ### Full Server Description & Metadata
@@ -21,10 +21,10 @@ Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://gi
 - **Transport**: `stdio` (Zero network daemon, in-process WAL SQLite)
 - **Runtime**: Node.js >= 22.16 (uses built-in `node:sqlite`)
 - **Primary Tool Interfaces** (39 tools total; see `src/mcp/server.ts`):
-  - `fastr_recall`: Search memories using triple-stream RRF (k=60) over FTS5 BM25, optional local embeddings, and 2-hop file graph spreading.
+  - `fastr_recall`: Search memories using triple-stream RRF (k=20) over FTS5 BM25, optional local embeddings, and 2-hop file graph spreading.
   - `fastr_remember`: Ingest architectural decisions, rules, and workflows with verbatim event attribution.
-  - `fastr_trap_recall`: Active pre-edit error check with 2.0x recall boost multiplier.
-  - `fastr_trap_log`: Logs a diagnosed failure as a verified error trap linked to the affected files, with a 2.0x recall boost.
+  - `fastr_trap_recall`: Active pre-edit error check with a conditional 2.0x recall multiplier for trap-intent or file-scoped queries.
+  - `fastr_trap_log`: Logs a diagnosed failure as a verified error trap linked to the affected files, with a conditional 2.0x recall boost.
   - `fastr_action_create` / `fastr_action_update` / `fastr_frontier` / `fastr_next`: Multi-agent action DAG with dependencies, conflicts, frontier discovery, and atomic claiming.
   - `fastr_handoff`: Structured agent handoff packets and staging rule verification.
   - `fastr_conflicts` / `fastr_resolve`: Contradiction detection between opposing rules and structured resolution.

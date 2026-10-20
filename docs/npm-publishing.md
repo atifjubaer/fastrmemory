@@ -30,12 +30,12 @@ NPM (Node Package Manager) serves 5 critical roles for FastrMemory:
 3. **Standard Model Context Protocol (MCP) Runtime**:
    - FastrMemory implements the official Model Context Protocol v2 using `@modelcontextprotocol/server`. NPM manages this dependency and ensures version compatibility.
 
-4. **In-Process AI Dependencies**:
-   - FastrMemory computes 384-dimensional semantic embeddings locally using `@huggingface/transformers` without external APIs. NPM installs and bundles the ONNX runtime dependencies.
+4. **Optional In-Process AI Dependency**:
+   - FastrMemory can compute 384-dimensional semantic embeddings locally using `@huggingface/transformers` without external APIs. The model and its ONNX runtime are an **optional peer**, not part of the default install; install them explicitly when semantic vectors are wanted.
 
 5. **Build & Test Automation**:
    - `npm run build`: Bundles the React 19 UI via Vite and compiles TypeScript via `tsc`.
-   - `npm test`: runs the Vitest suite (221 tests across 37 files as of 2026-10-20); it does not enforce a coverage threshold.
+   - `npm test`: runs the Vitest suite (226 tests across 38 files as of 2026-10-20); it does not enforce a coverage threshold.
 
 ---
 

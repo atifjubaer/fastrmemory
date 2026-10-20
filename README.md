@@ -9,16 +9,16 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.16.0-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Protocol](https://img.shields.io/badge/Protocol-MCP%20v2-7C3AED?style=flat-square)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/Tests-221%20Passed-brightgreen?style=flat-square)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-226%20Passed-brightgreen?style=flat-square)](tests/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-architecture)
 
-> **Status (2026-10-20, commit `d9446e1`):** `@atifjubaer/fastrmemory` is **not yet published to npm** (`npm view` returns E404); use the GitHub install below. The benchmark in this README is **12 hand-written synthetic cases against simulated baselines**, not SWE-bench/LongMemEval and not the real competitor projects. Every public claim is tracked in [CLAIMS.md](CLAIMS.md); methodology and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md). The CI matrix is being repaired (see [Actions](https://github.com/atifjubaer/fastrmemory/actions)).
+> **Status (2026-10-20, benchmark commit `1495622`):** `@atifjubaer/fastrmemory` is **not yet published to npm** (`npm view` returns E404); use the GitHub install below. The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval, and no external engine is measured. Every public claim is tracked in [CLAIMS.md](CLAIMS.md); methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md).
 
 <p align="center">
   <a href="#-overview">Overview</a> &bull;
-  <a href="#-why-fastrmemory-vs-competitors">vs Competitors</a> &bull;
-  <a href="#-retrieval-benchmark-12-synthetic-cases">Benchmarks</a> &bull;
+  <a href="#-design-principles">Design Principles</a> &bull;
+  <a href="#-retrieval-benchmark-240-synthetic-cases">Benchmarks</a> &bull;
   <a href="#-local-web-dashboard">Web UI</a> &bull;
   <a href="#-works-with-mcp--and-http-compatible-agents">Supported Agents</a> &bull;
   <a href="#-quick-start">Quick Start</a> &bull;
@@ -34,19 +34,19 @@
 
 ## 💡 Overview
 
-AI coding agents (Claude Code, Cursor, Windsurf, Codex, Antigravity) degrade on long-running codebases because existing memory systems suffer from fatal trade-offs:
-- **Hippo Memory's sleep consolidation** lowered Hit@5 by **3.6 points** in Hippo's own audit (PR #232); originals decay and merge rather than being immediately deleted. FastrMemory keeps raw events and bi-temporal history, so nothing is lost.
-- **AgentMemory** requires a compiled Rust daemon (`iii-engine`) listening on 4 local ports (`3111`, `3112`, `3113`, `49134`); setup on Windows is manual and is not verified in this repository.
-- **Mem0, Letta, and Memoria** typically add external infrastructure (a vector database, Postgres, MatrixOne/Docker, or a cloud API), which adds operational weight and makes local version control harder.
+AI coding agents (Claude Code, Cursor, Windsurf, Codex, Antigravity) degrade on long-running codebases when project memory is lossy or operationally heavy. Common designs make one of three trade-offs:
+- **Decay and merge** old episodes to keep the store small, which can lose exact file paths, stack traces, and edge cases.
+- **Run a daemon or external database**, which adds ports, containers, and setup failure modes.
+- **Dump a static context file**, which grows without bound and is not queryable.
 
-**FastrMemory** is a **single zero-daemon TypeScript engine** (4 runtime dependencies; local embeddings are optional):
+**FastrMemory** keeps a verbatim event log, bi-temporal memory history, and a replayable Git mirror in a **single zero-daemon TypeScript engine** (3 runtime dependencies; local embeddings are optional):
 
 <table>
 <tr>
 <td width="33%" align="center">
 
 ### ⚡ Zero Daemon Overhead
-Pure Node 22+ built-in `node:sqlite` in WAL mode. Engine-level recall averaged 0.67 ms on the 12-case synthetic suite (CLI process startup is measured separately). Zero background daemons, zero open ports; native on Windows, macOS, and Linux — CI matrix status is reported in [Actions](https://github.com/atifjubaer/fastrmemory/actions).
+Pure Node 22+ built-in `node:sqlite` in WAL mode. On the 240-case suite, engine-level recall is **0.99 ms p50 / 1.80 ms p95** with hash embeddings and **4.04 ms p50 / 5.99 ms p95** with MiniLM on the train split (CLI startup measured separately). Zero background daemons, zero open ports; native on Windows, macOS, and Linux - CI matrix status is reported in [Actions](https://github.com/atifjubaer/fastrmemory/actions).
 
 </td>
 <td width="33%" align="center">
@@ -57,8 +57,8 @@ Never deletes facts during consolidation (there is no destructive sleep step). R
 </td>
 <td width="33%" align="center">
 
-### 🎯 Triple-Stream RRF ($k=60$)
-Fuses FTS5 BM25 + optional local embeddings + file-graph links. Error traps receive an automatic **2.0x boost** with per-ID outcome feedback (+0.2 / -0.5).
+### 🎯 Triple-Stream RRF ($k=20$)
+Fuses FTS5 BM25 + optional local embeddings + file-graph links. Error traps receive a **conditional 2.0x boost** only for trap-intent or file-scoped queries, with per-ID outcome feedback (+0.2 / -0.5).
 
 </td>
 </tr>
@@ -66,21 +66,16 @@ Fuses FTS5 BM25 + optional local embeddings + file-graph links. Error traps rece
 
 ---
 
-## 📊 Why FastrMemory vs. Competitors
+## 🧭 Design Principles
 
-Architecture comparison as of **2026-10-20**. Competitor rows are **vendor-reported** and were **not re-tested in this repository**; verify them against each project's current docs before relying on them.
+| Principle | Implementation |
+| :--- | :--- |
+| **Lossless by default** | Raw events, bi-temporal `valid_from` / `valid_to`, and supersession chains are retained. Nothing is destroyed by consolidation. |
+| **Zero daemon** | One Node 22+ process uses built-in `node:sqlite` in WAL mode. No open ports, containers, or background services. |
+| **Replayable** | Git-diffable Markdown mirrors plus snapshots and rollback keep history inspectable. |
+| **Measured, not asserted** | Public claims are tied to committed benchmark JSON with a 20% holdout; simulated baselines are labeled as simulations. |
 
-| Capability | FastrMemory (`@atifjubaer`) | agentmemory | Memoria (MatrixOrigin) | mem0 | Letta / MemGPT | Hippo Memory | Built-in (`CLAUDE.md`) |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Runtime** | One Node process, zero daemon | Rust daemon, 4 local ports | MatrixOne DB / Docker or cloud | Managed platform; OSS differs | Server runtime + database | Zero daemon (Node) | Static file |
-| **Storage** | SQLite WAL + Markdown mirrors | Engine KV store | MatrixOne | Vector store + optional graph | Postgres / vector store | SQLite + Markdown mirrors | Plain text |
-| **Retention** | Verbatim `raw_events` + `valid_from`/`valid_to` | Raw transcript capture | Git-like DB snapshots | Extracted facts | Agent-managed blocks | Sleep consolidation (vendor audit: −3.6pp Hit@5) | Manual editing |
-| **Retrieval** | FTS5 BM25 + optional local vectors + file graph (RRF k=60) | BM25 + vector + graph RRF | Vector + fulltext | Vector + graph | Vector / archival | BM25 default + optional MiniLM | Linear grep |
-| **Git & PR review** | Two-zone Git-diffable Markdown | Web dashboard | Web / CLI | Cloud dashboard | Web dashboard | Markdown mirrors | Static text |
-| **Per-ID feedback** | Yes (`fastr_feedback`) | Not verified | Not verified | Not verified | Not verified | Yes (vendor) | None |
-| **External dependencies** | 4 npm packages; optional local model | Compiled Rust binary | MatrixOne / Docker | Vector DB or managed service | PostgreSQL | Node.js only | None |
-
-**Where competitors win:** Hippo ships as a Node package with no runtime dependencies and a mature hook ecosystem; agentmemory has broader live-capture hooks; mem0 has a managed platform and a larger user base; Memoria has branch/merge workflows; Letta has a mature agent runtime. FastrMemory's bet is narrower: **lossless retention, replayable history, and an honest benchmark**.
+---
 
 ---
 
@@ -142,7 +137,7 @@ fastrmemory remember "Never Use Date.now() Milliseconds for JWT Expiration" \
   -c "JWT exp claims expect integer seconds. Always use Math.floor(Date.now() / 1000)." \
   -m auth -k error_trap -f "src/auth/jwt.ts" --verified
 
-# Recall with 2.0x trap boost & file-graph matching:
+# Recall with conditional 2.0x trap boost & file-graph matching:
 fastrmemory recall "JWT expiration" -f "src/auth/jwt.ts"
 ```
 
@@ -157,7 +152,7 @@ JWT exp claims expect integer seconds. Always use Math.floor(Date.now() / 1000).
 ### 4. Cognitive Git Blame & Memory-Aware Commit
 
 ```bash
-# Cognitive Git Blame linking lines directly to commit, author, and governing 2.0x error traps:
+# Cognitive Git Blame linking lines directly to commit, author, and governing error traps (conditional 2.0x boost):
 fastrmemory blame src/auth/jwt.ts:42
 
 # Pre-commit error trap validation & conventional commit synthesis:
@@ -264,7 +259,7 @@ Built using the official **v2 `@modelcontextprotocol/server`** SDK:
 #### Versioning & Error Traps
 15. `fastr_snapshot`: Creates named point-in-time memory snapshots for branch tracking and experiment safety.
 16. `fastr_rollback`: Instant Git-like rollback to any previous memory snapshot.
-17. `fastr_trap_log`: One-line rapid logging of error traps and bug solutions with 2.0x recall boost.
+17. `fastr_trap_log`: One-line rapid logging of error traps and bug solutions with a conditional 2.0x recall boost.
 18. `fastr_trap_recall`: Targeted lookup of high-priority error traps protecting specific target files before editing.
 
 #### Proactive Contradiction Detection & Resolution
@@ -391,7 +386,7 @@ flowchart TD
         Query["Recall / File Query"] --> FTS["Stream A: FTS5 BM25\n(Sub-millisecond)"]
         Query --> Vec["Stream B: Xenova Vectors\n(all-MiniLM-L6-v2)"]
         Query --> Graph["Stream C: file_links Graph\n(1-2 Hop Structural Match)"]
-        FTS & Vec & Graph --> RRF["RRF Fusion (k=60)\n+ 2.0x Error Trap Multiplier\n+ 1.25x Verified Multiplier"]
+        FTS & Vec & Graph --> RRF["RRF Fusion (k=20)\n+ Conditional 2.0x Error Trap Multiplier\n+ 1.25x Verified Multiplier"]
         RRF --> Budget["Progressive Token Packer\nL0 (150t) | L1 (500t) | L2 (1500t) | L3 (4000t)"]
     end
 
@@ -412,28 +407,28 @@ Run the comprehensive unit test suite:
 npm test
 ```
 
-All **221 tests pass** across **37 test suites** in ~4.2s covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, UI loopback security boundaries, and atomic installer configuration safety.
+All **226 tests pass** across **38 test suites** covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, UI loopback security boundaries, and atomic installer configuration safety.
 
 ---
 
-## 📊 Retrieval Benchmark (12 synthetic cases)
+## Retrieval Benchmark (240 synthetic cases)
 
-Generated from [`bench/results/latest.json`](bench/results/latest.json) on **2026-10-20** at commit `d9446e1`. Reproduce with:
+Generated from [`bench/results/minilm.json`](bench/results/minilm.json) on **2026-10-20** at benchmark commit `1495622`. The corpus is deterministic: 120 memories and 240 queries, split into **192 train / 48 holdout (20%)**. The holdout was fixed before tuning and is reported separately. Reproduce with:
 
 ```bash
-npx tsx scripts/capture-bench.ts
+npx tsx scripts/eval-bench.ts --split all --embeddings minilm --out bench/results/minilm.json
+npx tsx scripts/eval-bench.ts --split all --embeddings hash   --out bench/results/hash.json
 ```
 
-| Engine | Hit@1 | Hit@3 | Hit@5 | MRR | Latency | Trap Recall | Avg Tokens |
-| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| FastrMemory (triple-stream RRF) | 75% | 92% | 100% | 0.850 | 0.67 ms | 100% | 124 t |
-| BM25 — simulated baseline (not the real project) | 92% | 92% | 100% | 0.933 | 0.20 ms | 100% | 84 t |
-| Memoria-style — simulated baseline (not the real project) | 100% | 100% | 100% | 1.000 | 0.05 ms | 100% | 161 t |
-| Static flat dump — simulated baseline (not the real project) | 42% | 58% | 67% | 0.507 | 0.03 ms | 75% | 274 t |
+| Configuration | Split | Cases | Hit@1 | Hit@3 | Hit@5 | MRR | nDCG@10 | Context tokens | p50 |
+| :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| FastrMemory + MiniLM | Train | 192 | 94.8% | 99.0% | 100% | 0.968 | 0.976 | 206 | 4.04 ms |
+| FastrMemory + MiniLM | **Holdout** | 48 | **89.6%** | **95.8%** | **100%** | **0.932** | **0.949** | 206 | 3.65 ms |
+| FastrMemory BM25-only | Train | 192 | 79.7% | 90.6% | 100% | 0.868 | 0.900 | 203 | 0.49 ms |
+| FastrMemory BM25-only | Holdout | 48 | 77.1% | 77.1% | 93.8% | 0.804 | 0.835 | 204 | 0.70 ms |
+| Static dump - simulated baseline | Train | 192 | 2.1% | 6.3% | 8.3% | 0.055 | 0.081 | 3652 | 0.00 ms |
 
-> **Honesty note:** these are **12 hand-written synthetic cases**, not SWE-bench or LongMemEval, and the BM25/Memoria-style rows are approximations implemented in `src/bench/benchmark.ts` — **not the real projects**. The simulated BM25 baseline currently scores **higher Hit@1 (92%) than FastrMemory (75%)**, so this table is not evidence of retrieval superiority. Methodology, caveats, and the raw JSON are in [BENCHMARKS.md](BENCHMARKS.md). Retrieval tuning is tracked in [ROADMAP.md](ROADMAP.md) and has not started yet.
-
----
+> **Caveats:** this is a deterministic synthetic corpus, not SWE-bench or LongMemEval. No external memory engine is measured. The static-dump row is a simulation implemented in this repository, not an external project. Context tokens are the compact prompt text under a 250-token budget; the ranked result objects retain full memory content. Methodology, per-category breakdowns, ablations, and confidence intervals are in [BENCHMARKS.md](BENCHMARKS.md) and [docs/benchmark-report.md](docs/benchmark-report.md).
 
 ## 🖥️ Local Web Dashboard v2 & 3D Brain Observatory
 
@@ -448,7 +443,7 @@ fastrmemory ui
 - **11 Focused Route Workspaces**:
   - `/`: Real-time system vitals, active trap alerts, recent memory feed, and quick-action shortcuts.
   - `/memories`: Search, filter, and inspect memories with the slide-out **Memory Detail Sheet**, status toggles, pin, and 1-click forget.
-  - `/traps`: Dedicated **2.0x Error Trap Quarantine** displaying governing files, trap weight boosts, and verified mitigation lessons.
+  - `/traps`: Dedicated **Error Trap Quarantine** displaying governing files, conditional boost conditions, and verified mitigation lessons.
   - `/conflicts`: Proactive bi-temporal contradiction detection with side-by-side **Word Diff** and 1-click resolution (`Keep A`, `Keep B`, `Keep Both`).
   - `/actions`: Real-time interactive **Action DAG Canvas** tracking task dependencies, worker assignments, and glowing unblocked frontier aura.
   - `/graph`: Interactive file and entity relationship graph with 1-hop/2-hop inspection and memory drill-down.
@@ -478,7 +473,7 @@ cursor --install-extension fastrmemory-vscode-0.1.0.vsix
 ```
 
 - **⚡ Status Bar Pill**: Displays active trap count in the status bar (`⚡ 3 Traps Active` or `⚡ 1 Trap on File`). Clicking opens an interactive QuickPick listing all active traps.
-- **Amber Underlines**: Trapped files are underlined in amber with full hover mitigation instructions and 2.0x boost weights.
+- **Amber Underlines**: Trapped files are underlined in amber with full hover mitigation instructions and conditional 2.0x boost conditions.
 - **Problems Tab Integration**: Active error traps populate the IDE Problems panel as non-blocking warning diagnostics.
 - **Zero Daemons**: Reads directly from `.fastr/fastr.db` via `node:sqlite`.
 
@@ -525,7 +520,7 @@ Special thanks to **[@the-arizul](https://github.com/the-arizul)** for architect
    cd fastrmemory
    ```
 
-2. **Install Dependencies & Verify Test Suite (221 Tests Passing)**:
+2. **Install Dependencies & Verify Test Suite (226 Tests Passing)**:
    ```bash
    npm install
    npm test
@@ -558,7 +553,7 @@ Special thanks to **[@the-arizul](https://github.com/the-arizul)** for architect
 Before submitting your PR, verify:
 - [ ] **Strict TypeScript**: `npm run build:all` passes without type errors.
 - [ ] **Zero External Daemons**: Engine runs in-process via Node.js WAL SQLite.
-- [ ] **100% Test Green**: `npm test` passes all 221 unit tests across 37 suites.
+- [ ] **100% Test Green**: `npm test` passes all 226 unit tests across 38 suites.
 - [ ] **DCO Sign-off**: All commits signed off using `git commit -s` ([Developer Certificate of Origin](https://developercertificate.org/)).
 - [ ] **Pre-Merge Trap Guardian**: Run `fastrmemory guard --strict` to verify no active error traps are violated.
 

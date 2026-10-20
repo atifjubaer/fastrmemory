@@ -2,7 +2,7 @@
 
 This roadmap is evidence-gated. A milestone is done only when its gate passes **on a committed artifact** (a test, a raw JSON result, or a published package), not when the code is written. Estimates assume one focused maintainer and include measurement and documentation time.
 
-Current state (2026-10-20, commit `d9446e1`): 221 tests green locally, npm unpublished (E404), CI matrix partially red, 12 synthetic benchmark cases, and a simulated BM25 baseline that currently beats FastrMemory on Hit@1. See [`CLAIMS.md`](CLAIMS.md) for the full ledger.
+Current state (2026-10-20, code commit `1495622`): 226 tests green locally, npm unpublished (E404), CI matrix partially red, a 240-case synthetic benchmark with a 48-case holdout, and a holdout Hit@1 of 89.6% (0.4 points below the 90% target). The offline hash path is weaker than MiniLM. See [`CLAIMS.md`](CLAIMS.md) for the full ledger.
 
 ---
 
@@ -10,7 +10,7 @@ Current state (2026-10-20, commit `d9446e1`): 221 tests green locally, npm unpub
 
 **Goal:** no public claim without a command that reproduces it.
 
-- Replace the stale README benchmark table with a table generated from `bench/results/latest.json`.
+- Replace the stale README benchmark table with a table generated from the committed raw JSON (`bench/results/minilm.json` and `hash.json`).
 - Correct counts, competitor labels, and npm status in README, SPECIFICATION, release notes, and publishing docs.
 - Add `CLAIMS.md` with one row per public claim (status, command, raw output, date, commit, caveat).
 - Add `FASTR_HOME` isolation and an isolation test that fails if the suite writes to the real home store.
@@ -38,6 +38,8 @@ Current state (2026-10-20, commit `d9446e1`): 221 tests green locally, npm unpub
 ## Milestone 3 — Retrieval correctness and a real harness (2 weeks)
 
 **Goal:** fix known ranking bugs, then measure on a corpus large enough to mean something.
+
+**Status: partial.** The 240-case corpus, raw JSON, and 48-case holdout are committed. No external engine is measured, and holdout Hit@1 is 89.6% against the 90% target; the gap is concentrated in semantic paraphrase.
 
 - Use `bm25(memories_fts, 10.0, 5.0, 1.0)` (and the `global_db.memories_fts` qualifier) instead of the default `f.rank`; wrap each stream with `ORDER BY rank LIMIT 50` before `UNION ALL`.
 - Make RRF configurable (`rrfK`, per-stream weights, enabled streams); choose defaults by ablation.
