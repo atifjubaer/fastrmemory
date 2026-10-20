@@ -291,6 +291,69 @@ describe('MCP server hardening (errors, bounds, annotations, new tools, prompts)
     expect(missing.error).toBeDefined();
   });
 
+  it('serves fastr://memory/{id}/envelope with metadata, provenance, links, and conflict state', async () => {
+    const event = ctx.repo.insertRawEvent({
+      id: 'evt_envelope',
+      project_id: ctx.config.projectId,
+      session_id: 'sess_envelope',
+      agent_id: 'default',
+      event_type: 'tool_use',
+      tool_name: 'edit',
+      file_path: 'src/auth/jwt.ts',
+      raw_payload: '{"source":"test"}'
+    });
+    const mem = ctx.repo.insertMemory({
+      projectId: ctx.config.projectId,
+      module: 'auth',
+      kind: 'rule',
+      title: 'Use RS256',
+      content: 'Always sign tokens with RS256.',
+      files: ['src/auth/jwt.ts'],
+      verified: true,
+      sourceEventIds: [event.id]
+    });
+    const other = ctx.repo.insertMemory({
+      projectId: ctx.config.projectId,
+      module: 'auth',
+      kind: 'rule',
+      title: 'Use HS256',
+      content: 'Always sign tokens with HS256.',
+      verified: true
+    });
+    ctx.db.prepare(`
+      INSERT INTO memory_conflicts (project_id, memory_a_id, memory_b_id, reason, score)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(ctx.config.projectId, mem.id, other.id, 'Conflicting signing algorithms', 0.93);
+    ctx.db.prepare(`
+      INSERT INTO graph_edges (id, project_id, source_id, target_id, edge_type, weight)
+      VALUES (?, ?, ?, ?, 'association', ?)
+    `).run('edge_envelope', ctx.config.projectId, mem.id, 'ent_envelope', 0.8);
+
+    const templates = (await rpc('resources/templates/list')).result.resourceTemplates;
+    expect(templates.map((t: any) => t.uriTemplate)).toContain('fastr://memory/{id}/envelope');
+
+    const msg = await rpc('resources/read', { uri: `fastr://memory/${mem.id}/envelope` });
+    expect(msg.error).toBeUndefined();
+    const envelope = JSON.parse(msg.result.contents[0].text);
+    expect(envelope.metadata.title).toBe('Use RS256');
+    expect(envelope.metadata.content).toContain('RS256');
+    expect(envelope.metadata.is_active).toBe(true);
+    expect(envelope.provenance.verified).toBe(true);
+    expect(envelope.provenance.source_event_ids).toEqual([event.id]);
+    expect(envelope.provenance.source_events[0].id).toBe(event.id);
+    expect(envelope.links.files).toContain('src/auth/jwt.ts');
+    expect(envelope.links.graph.find((edge: any) => edge.id === 'edge_envelope')).toMatchObject({
+      direction: 'outgoing',
+      edge_type: 'association'
+    });
+    expect(envelope.conflicts.open_count).toBeGreaterThanOrEqual(1);
+    const conflict = envelope.conflicts.open.find((entry: any) => entry.other_memory_id === other.id);
+    expect(conflict?.reason).toBe('Conflicting signing algorithms');
+
+    const missing = await rpc('resources/read', { uri: 'fastr://memory/mem_missing/envelope' });
+    expect(missing.error).toBeDefined();
+  });
+
   it('registers pre-edit-check and session-wrap-up prompts', async () => {
     const list = (await rpc('prompts/list')).result.prompts;
     const names = list.map((p: any) => p.name);

@@ -9,7 +9,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.16.0-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Protocol](https://img.shields.io/badge/Protocol-MCP%20v2-7C3AED?style=flat-square)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/Tests-252%20Passed-brightgreen?style=flat-square)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-253%20Passed-brightgreen?style=flat-square)](tests/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-architecture)
 
@@ -407,12 +407,13 @@ The default **full profile** exposes all 41 tools. For a smaller schema, start t
 - `pre-edit-check`: Given file paths, instructs the agent to check traps and relevant rules before editing.
 - `session-wrap-up`: End-of-session checklist for logging traps, superseding stale rules, scoring memories, and saving a handoff.
 
-### 4 MCP Resources
+### 5 MCP Resources
 
 - `fastr://project/overview`: L0 project summary containing active counts and storage location.
 - `fastr://project/traps`: All active `[TRAP]` warnings for immediate bug avoidance.
 - `fastr://session/handoff`: Latest cross-agent handoff milestone.
 - `fastr://memory/{id}` (resource template): Full JSON for a single memory, including linked files and its validity window.
+- `fastr://memory/{id}/envelope` (resource template): Metadata, cryptographic provenance, file/graph links, and open/resolved conflict state for one memory.
 
 ---
 
@@ -497,7 +498,7 @@ flowchart TD
 
     subgraph Protocol["4. Official MCP Protocol"]
         Budget --> MCPServer["Official MCP v2 Server\n(@modelcontextprotocol/server)"]
-        MCPServer --> Tools["41 tools • 2 prompts • 4 resources"]
+        MCPServer --> Tools["41 tools • 2 prompts • 5 resources"]
         Tools --> Agent
     end
 ```
@@ -512,7 +513,7 @@ Run the comprehensive unit test suite:
 npm test
 ```
 
-All **252 tests pass** across **45 test files** covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, replay/diff, Memory CI, conflict-aware recall, local rule import, OpenCode V2, Gemini CLI, and Copilot CLI wiring, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, UI loopback security boundaries, and atomic installer configuration safety.
+All **253 tests pass** across **45 test files** covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, replay/diff, memory envelopes, Memory CI, conflict-aware recall, local rule import, OpenCode V2, Gemini CLI, and Copilot CLI wiring, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, UI loopback security boundaries, and atomic installer configuration safety.
 
 **Crash-safety evidence:** `npm run test:crash` kills the writer at randomized points across 10 runs, then reopens the WAL database. The committed report at [`bench/results/crash-test.json`](bench/results/crash-test.json) records **10,718 acknowledged writes**, **10,727 committed rows**, **0 lost**, **0 duplicate ids/titles**, and `PRAGMA integrity_check = ok`; methodology is in [`docs/audit/2026-10-21-crash-test.md`](docs/audit/2026-10-21-crash-test.md). `npm run check:crash` validates the report during `check:ci`. This is a process-crash test (`taskkill /F`), not a power-loss test; SQLite runs with `synchronous=NORMAL` in WAL mode.
 
@@ -628,7 +629,7 @@ Special thanks to **[@the-arizul](https://github.com/the-arizul)** for architect
    cd fastrmemory
    ```
 
-2. **Install Dependencies & Verify Test Suite (252 Tests Passing)**:
+2. **Install Dependencies & Verify Test Suite (253 Tests Passing)**:
    ```bash
    npm install
    npm test
@@ -661,7 +662,7 @@ Special thanks to **[@the-arizul](https://github.com/the-arizul)** for architect
 Before submitting your PR, verify:
 - [ ] **Strict TypeScript**: `npm run build:all` passes without type errors.
 - [ ] **Zero External Daemons**: Engine runs in-process via Node.js WAL SQLite.
-- [ ] **100% Test Green**: `npm test` passes all 252 unit tests across 45 files.
+- [ ] **100% Test Green**: `npm test` passes all 253 unit tests across 45 files.
 - [ ] **DCO Sign-off**: All commits signed off using `git commit -s` ([Developer Certificate of Origin](https://developercertificate.org/)).
 - [ ] **Pre-Merge Trap Guardian**: Run `fastrmemory guard --strict` to verify no active error traps are violated.
 

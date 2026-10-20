@@ -43,7 +43,7 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 |---|---|---|---|---|---|---|
 | C1 | 41 MCP tools in the full profile | README, current HEAD | Supported | `Select-String -Path src/mcp/server.ts -Pattern '^  registerTool[(]' \| Measure-Object` | `41` | Full surface is the default; the opt-in core profile is 12 tools (H8); adds `fastr_replay` and `fastr_diff` |
 | C2 | 2 MCP prompts | README | Supported | same, `registerPrompt` | `2` (`pre-edit-check`, `session-wrap-up`) | - |
-| C3 | 4 MCP resources | README | Supported | same, `registerResource` | `4` (3 static + 1 template) | Template is `fastr://memory/{id}` |
+| C3 | 5 MCP resources | README | Supported | same, `registerResource` | `5` (3 static + 2 templates) | Templates are `fastr://memory/{id}` and `fastr://memory/{id}/envelope` |
 | C4 | 10 Agent Skills | README | Supported | `(Get-ChildItem skills -Directory).Count` | `10` | Mirrored to `.cursor/skills/` |
 | C5 | Skills reference valid tools | README | Supported | `npm run check:skills` | Passes | - |
 
@@ -52,7 +52,7 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 | ID | Claim | Where | Status | Evidence command | Raw output | Caveat |
 |---|---|---|---|---|---|---|
 | D1 | Historical v0.2.0 count: 226 tests, 38 files | v0.2.0 release notes | Historical | `npm test` | `226 passed`, `38 passed` | Historical v0.2.0 result; current suite is D1b |
-| D1b | 252 tests pass across 45 files | Current HEAD | Supported | `npm test` | `252 passed`, `45 passed` | Run on 2026-10-21 after the Copilot CLI installer tests; local Windows run; CI is separate |
+| D1b | 253 tests pass across 45 files | Current HEAD | Supported | `npm test` | `253 passed`, `45 passed` | Run on 2026-10-21 after the memory envelope resource test; local Windows run; CI is separate |
 | D2 | Test suite writes nothing to the real home store | README | Supported | `npm test` then count rows | 60 before, 60 after | The 60 pre-existing rows are documented legacy data |
 | D3 | 6/6 CI matrix green | ROADMAP | Supported | `gh run view 39495621243 --json conclusion,jobs` | 6/6 jobs succeeded: Ubuntu, Windows, and Intel macOS on Node 22.x and 24.x | Run on `3fa2bf9`; `fail-fast` disabled; macOS jobs use `macos-15-intel`; Apple Silicon is not covered |
 | D4 | Zero data loss in a 10k crash test | README, Roadmap | Supported | `npm run test:crash`; `npm run check:crash` | 10/10 runs; 10,718 acknowledged writes; 10,727 committed rows; 0 missing; 0 duplicate ids; 0 duplicate titles; `PRAGMA integrity_check` = `ok` | Local Windows run on 2026-10-21; kill is `taskkill /F`, not a power-loss test; `synchronous=NORMAL` in WAL mode; report at `bench/results/crash-test.json` |

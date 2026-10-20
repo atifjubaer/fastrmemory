@@ -14,6 +14,7 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 - `npm run smoke:gemini` installs the Gemini config in a temporary project, starts the configured MCP server, and asserts the 41-tool surface.
 - GitHub Copilot CLI integration: `fastrmemory hook install` merges `.github/mcp.json` `mcpServers.fastrmemory` and `.github/hooks/fastrmemory.json` `sessionStart`, `preToolUse`, `preCompact`, and `sessionEnd` hooks; `fastr hook run --format copilot` emits Copilot's JSON contract.
 - `npm run smoke:copilot` installs the Copilot config in a temporary project, starts the configured MCP server, and asserts the 41-tool surface.
+- Memory envelope resource: `fastr://memory/{id}/envelope` returns metadata, cryptographic provenance, file/graph links, and open/resolved/ignored conflict state for one memory.
 
 ### Fixed
 

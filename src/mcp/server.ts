@@ -1590,6 +1590,127 @@ export function createFastrMcpServer(
     };
   }
 
+  function parseSourceEventIds(raw: string): string[] {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === 'string') : [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Builds the stable envelope for one memory: metadata, cryptographic provenance, file/graph
+   * links, and every conflict that names the memory. Conflict state is grouped so callers can
+   * check `conflicts.open_count` without scanning the full list.
+   */
+  function memoryEnvelope(id: string) {
+    const mem = repo.getMemory(id);
+    if (!mem) return null;
+
+    const provenance = repo.verifyMemoryProvenance(mem.id);
+    const sourceEventIds = parseSourceEventIds(mem.source_event_ids);
+    const sourceEvents = repo.getRawEventsForMemory(mem.id).map((event) => ({
+      id: event.id,
+      session_id: event.session_id,
+      agent_id: event.agent_id,
+      event_type: event.event_type,
+      tool_name: event.tool_name,
+      file_path: event.file_path,
+      content_hash: event.content_hash,
+      created_at: event.created_at
+    }));
+
+    const graphTable = mem.project_id === 'global' && repo.hasGlobalDb()
+      ? 'global_db.graph_edges'
+      : 'graph_edges';
+    const graphEdges = db.prepare(`
+      SELECT id, source_id, target_id, edge_type, weight, created_at
+      FROM ${graphTable}
+      WHERE project_id = ? AND (source_id = ? OR target_id = ?)
+      ORDER BY created_at ASC
+    `).all(mem.project_id, mem.id, mem.id) as Array<{
+      id: string;
+      source_id: string;
+      target_id: string;
+      edge_type: string;
+      weight: number;
+      created_at: string;
+    }>;
+
+    const conflictRows = db.prepare(`
+      SELECT *
+      FROM memory_conflicts
+      WHERE project_id = ? AND (memory_a_id = ? OR memory_b_id = ?)
+      ORDER BY CASE status WHEN 'open' THEN 0 ELSE 1 END, id DESC
+    `).all(mem.project_id, mem.id, mem.id) as any[];
+
+    const conflicts = conflictRows.map((conflict) => {
+      const otherId = conflict.memory_a_id === mem.id ? conflict.memory_b_id : conflict.memory_a_id;
+      const other = repo.getMemory(otherId);
+      return {
+        id: conflict.id,
+        status: conflict.status,
+        reason: conflict.reason,
+        score: conflict.score,
+        memory_a_id: conflict.memory_a_id,
+        memory_b_id: conflict.memory_b_id,
+        other_memory_id: otherId,
+        other_memory_title: other?.title ?? null,
+        other_memory_status: other?.status ?? null,
+        resolved_winner_id: conflict.resolved_winner_id,
+        created_at: conflict.created_at,
+        resolved_at: conflict.resolved_at
+      };
+    });
+    const openConflicts = conflicts.filter((conflict) => conflict.status === 'open');
+
+    return {
+      id: mem.id,
+      metadata: {
+        project_id: mem.project_id,
+        scope: mem.project_id === 'global' ? 'global' : 'project',
+        agent_id: mem.agent_id,
+        module: mem.module,
+        kind: mem.kind,
+        title: mem.title,
+        content: mem.content,
+        status: mem.status,
+        pinned: Boolean(mem.pinned),
+        reward_score: mem.reward_score,
+        retrieval_count: mem.retrieval_count,
+        valid_from: mem.valid_from,
+        valid_to: mem.valid_to,
+        superseded_by: mem.superseded_by_id,
+        superseded_reason: mem.superseded_reason,
+        created_at: mem.created_at,
+        last_recalled_at: mem.last_recalled_at,
+        is_active: mem.valid_to === null && (mem.status === 'staging' || mem.status === 'verified')
+      },
+      provenance: {
+        algorithm: 'sha256',
+        signature: provenance.signature,
+        verified: provenance.verified,
+        reason: provenance.reason,
+        source_event_ids: sourceEventIds,
+        source_events: sourceEvents
+      },
+      links: {
+        files: repo.getFilesForMemory(mem.id),
+        graph: graphEdges.map((edge) => ({
+          ...edge,
+          direction: edge.source_id === mem.id ? 'outgoing' : 'incoming'
+        }))
+      },
+      conflicts: {
+        open_count: openConflicts.length,
+        open: openConflicts,
+        resolved: conflicts.filter((conflict) => conflict.status === 'resolved'),
+        ignored: conflicts.filter((conflict) => conflict.status === 'ignored')
+      }
+    };
+  }
+
   // ==========================================
   // TOOL 36: fastr_get
   // ==========================================
@@ -1847,6 +1968,26 @@ export function createFastrMcpServer(
         }
       }]
     })
+  );
+
+  // ==========================================
+  // RESOURCE TEMPLATE: fastr://memory/{id}/envelope
+  // ==========================================
+  server.registerResource(
+    'memory-envelope',
+    new ResourceTemplate('fastr://memory/{id}/envelope', { list: undefined }),
+    { description: 'A memory envelope: metadata, provenance, links, and conflict state (JSON)', mimeType: 'application/json' },
+    async (uri, variables) => {
+      const raw = variables.id;
+      const id = decodeURIComponent(Array.isArray(raw) ? raw[0] ?? '' : String(raw ?? ''));
+      const envelope = memoryEnvelope(id);
+      if (!envelope) {
+        throw new Error(`Memory not found: ${id}`);
+      }
+      return {
+        contents: [{ uri: uri.href, text: JSON.stringify(envelope, null, 2), mimeType: 'application/json' }]
+      };
+    }
   );
 
   // ==========================================

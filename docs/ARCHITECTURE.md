@@ -94,7 +94,7 @@ CLI: `fastr replay`, `fastr diff`, `fastr snapshot export|import`, `fastr consol
 - **41 tools** in the full profile (memory CRUD, recall/drill, traps, conflicts, DAG actions, planning, slots, federation, snapshot/rollback, replay/diff, compression, doctor, vision).
 - **12 tools** in the optional core profile: `fastr_recall`, `fastr_remember`, `fastr_handoff`, `fastr_trap_recall`, `fastr_trap_log`, `fastr_status`, `fastr_get`, `fastr_timeline`, `fastr_diff`, `fastr_replay`, `fastr_compress`, and `fastr_diagnose`.
 - **2 prompts**: `pre-edit-check`, `session-wrap-up`.
-- **4 resources**: `fastr://project/overview`, `fastr://project/traps`, `fastr://session/handoff`, and the `fastr://memory/{id}` template.
+- **5 resources**: `fastr://project/overview`, `fastr://project/traps`, `fastr://session/handoff`, the `fastr://memory/{id}` template, and the `fastr://memory/{id}/envelope` template (metadata, provenance, file/graph links, and conflict state).
 
 The full 41-tool surface is the default. Start the core profile with `fastrmemory mcp --profile core` or `FASTR_MCP_PROFILE=core`; resources and prompts are identical in both profiles. Verify both surfaces against a built CLI with `node scripts/smoke-mcp-profile.mjs`.
 
