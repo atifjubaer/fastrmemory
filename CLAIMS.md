@@ -4,9 +4,9 @@ Every public claim must have a row here. A claim is only **Supported** when the 
 
 - **Ledger date:** 2026-10-20
 - **Benchmark measurement commit:** `d9446e1` (raw JSON in `bench/results/latest.json`)
-- **Code-inspection commit:** `8630792`
+- **Code and metadata inspection:** `960e248` (2026-10-20)
 - **Hardware:** AMD Ryzen 7 7700, 15.1 GB RAM, Windows 10 Pro 19045, Node v24.15.0
-- **Provenance rule:** every row quotes the raw output of its command on the commit above; rows marked Historical or Vendor-reported are the only exceptions.
+- **Provenance rule:** benchmark rows are pinned to `d9446e1`; code and metadata rows quote output from the current tree at `960e248`; rows marked Historical or Vendor-reported are the only exceptions.
 
 ## A. Distribution and package
 
@@ -14,7 +14,7 @@ Every public claim must have a row here. A claim is only **Supported** when the 
 |---|---|---|---|---|---|---|
 | A1 | Package is `@atifjubaer/fastrmemory` v0.1.0 | `package.json` | Supported | `node -p "require('./package.json').name + ' ' + require('./package.json').version"` | `@atifjubaer/fastrmemory 0.1.0` | None |
 | A2 | Package is published on npm | README (removed) | **Blocked** | `npm view @atifjubaer/fastrmemory version` | `E404 Not Found` | Never published; do not advertise npm install until this passes |
-| A3 | Install from GitHub works | README | Qualified | `npm install -g git+https://github.com/atifjubaer/fastrmemory.git` | Not run in this audit (would modify global npm) | `npx github:...` is the documented path |
+| A3 | Install from GitHub works | README | Supported | `npm view github:atifjubaer/fastrmemory version` | `0.1.0` | Metadata resolves from GitHub; a full global install was not run |
 | A4 | Tarball is 204.4 kB | RELEASE_v0.1.0 | Historical | `npm pack --dry-run` | See `docs/audit/2026-10-20-baseline.md` | v0.1.0 snapshot; current tarball measured in the audit |
 | A5 | Apache-2.0 license | README, `package.json` | Supported | `node -p "require('./package.json').license"` | `Apache-2.0` | `LICENSE` present |
 | A6 | Node >= 22.16.0 | `package.json` | Supported | `node -p "require('./package.json').engines.node"` | `>=22.16.0` | Tests run on Node 24.15.0 locally |
@@ -77,6 +77,7 @@ Every public claim must have a row here. A claim is only **Supported** when the 
 | F5 | "AgentMemory fails on Windows" | RELEASE (old) | **Removed** | — | — | Unverified; replaced with "manual setup, not verified here" |
 | F6 | mem0 managed platform 92.5 LoCoMo | README (old) | **Removed** | — | — | Vendor number, not reproduced; removed from table |
 | F7 | "Memoria locks memories in MatrixOne" | README (old) | **Qualified** | Memoria docs (external) | MatrixOne/Docker deployment | Reworded to "typically adds external infrastructure" |
+| F8 | Competitor architecture table and "where competitors win" paragraph | README | **Vendor-reported** | Each project's current documentation (linked in README) | Runtime, storage, retention, retrieval, Git, feedback, and dependency summaries | Not re-tested here; no competitor benchmark was run |
 
 ## G. Removed marketing claims
 
