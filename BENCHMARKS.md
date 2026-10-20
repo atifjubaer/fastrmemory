@@ -1,10 +1,12 @@
 # Benchmark Methodology
 
-**Last run:** 2026-10-20
-**Benchmark commit:** `1495622`
+**Last run:** 2026-10-21 local; raw JSON generated 2026-10-20T18:25Z
+**Benchmark commit:** `562f461` (module-scope backfill fix)
 **Command:** `npx tsx scripts/eval-bench.ts --split all --embeddings minilm --out bench/results/minilm.json`
 **Raw JSON:** [`bench/results/minilm.json`](bench/results/minilm.json), [`bench/results/hash.json`](bench/results/hash.json)
 **Corpus size:** 240 deterministic synthetic cases (192 train / 48 holdout)
+
+The README table is the frozen v0.2.0 release snapshot at commit `1495622`; its raw artifact is preserved as [`bench/results/minilm-1495622.json`](bench/results/minilm-1495622.json). The numbers below are the current post-fix run at `562f461`.
 
 ## Corpus
 
@@ -43,21 +45,21 @@ Each case calls `searchMemories()` with `limit: 5`, a **250-token context budget
 
 | Engine | Split | Cases | Hit@1 | Hit@3 | Hit@5 | MRR | nDCG@10 | Context tokens | p50 | p95 |
 | :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| FastrMemory triple-stream | Train | 192 | 94.8% | 99.0% | 100% | 0.968 | 0.976 | 206 | 4.04 ms | 5.99 ms |
-| FastrMemory triple-stream | **Holdout** | 48 | **89.6%** | **95.8%** | **100%** | **0.932** | **0.949** | 206 | 3.65 ms | 5.80 ms |
-| BM25-only | Train | 192 | 79.7% | 90.6% | 100% | 0.868 | 0.900 | 203 | 0.49 ms | 0.98 ms |
-| BM25-only | **Holdout** | 48 | 77.1% | 77.1% | 93.8% | 0.804 | 0.835 | 204 | 0.70 ms | 1.31 ms |
+| FastrMemory triple-stream | Train | 192 | 96.4% | 99.0% | 100% | 0.976 | 0.982 | 208 | 3.30 ms | 5.11 ms |
+| FastrMemory triple-stream | **Holdout** | 48 | **95.8%** | **97.9%** | **100%** | **0.969** | **0.977** | 209 | 3.41 ms | 5.14 ms |
+| BM25-only | Train | 192 | 79.7% | 90.6% | 100% | 0.868 | 0.900 | 203 | 0.48 ms | 0.95 ms |
+| BM25-only | **Holdout** | 48 | 77.1% | 77.1% | 93.8% | 0.804 | 0.835 | 204 | 0.60 ms | 1.00 ms |
 | Static dump - simulated | Train | 192 | 2.1% | 6.3% | 8.3% | 0.055 | 0.081 | 3652 | 0.00 ms | 0.00 ms |
 | Static dump - simulated | **Holdout** | 48 | 0.0% | 0.0% | 8.3% | 0.025 | 0.056 | 3652 | 0.00 ms | 0.00 ms |
 
-Bootstrap 95% CI for triple-stream Hit@1: train **91.1-97.9%**, holdout **79.2-97.9%**. Hit@5 CI is 100% on both splits.
+The raw JSON stores bootstrap 95% CIs for triple-stream Hit@1: train **93.8-98.4%**, holdout **89.6-100%**. The Wilson 95% CI for the 46/48 holdout result is **86.0-98.9%**; with only 48 cases the interval is wide and the point estimate is directional. Hit@5 is 100% on both splits.
 
 ### Offline hash embeddings
 
 | Engine | Split | Hit@1 | Hit@3 | Hit@5 | MRR | Context tokens | p50 |
 | :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: |
-| FastrMemory hash | Train | 79.7% | 90.6% | 99.5% | 0.867 | 205 | 0.99 ms |
-| FastrMemory hash | **Holdout** | 77.1% | 77.1% | 93.8% | 0.804 | 206 | 1.06 ms |
+| FastrMemory hash | Train | 81.8% | 88.0% | 96.4% | 0.865 | 205 | 0.95 ms |
+| FastrMemory hash | **Holdout** | 77.1% | 85.4% | 93.8% | 0.829 | 206 | 0.97 ms |
 
 Hash vectors are lexical n-grams and largely duplicate BM25, so the offline path is intentionally a fallback rather than the headline. Semantic embeddings are optional and are not downloaded automatically.
 
@@ -66,7 +68,7 @@ Hash vectors are lexical n-grams and largely duplicate BM25, so the offline path
 | Category | Train Hit@1 | Train Hit@5 | Holdout Hit@1 | Holdout Hit@5 |
 | :--- | ---: | ---: | ---: | ---: |
 | Exact keyword | 100% | 100% | 100% | 100% |
-| Semantic paraphrase | 79.2% | 100% | 58.3% | 100% |
+| Semantic paraphrase | 85.4% | 100% | 83.3% | 100% |
 | File-scoped trap | 100% | 100% | 100% | 100% |
 | Bi-temporal superseded | 100% | 100% | 100% | 100% |
 | Multi-hop | 100% | 100% | 100% | 100% |
@@ -81,10 +83,10 @@ All ablations use the same corpus, split, and 250-token budget.
 | Configuration | Train Hit@1 | Holdout Hit@1 | What changed |
 | :--- | ---: | ---: | :--- |
 | BM25-only | 79.7% | 77.1% | No vector or graph stream |
-| BM25 + MiniLM | 94.8% | 89.6% | Title-level semantic vectors |
+| BM25 + MiniLM | 96.4% | 95.8% | Title + module semantic vectors |
 | BM25 + file graph | 79.7% | 77.1% | Graph stream, no vectors |
-| Triple-stream + conditional trap boost | 94.8% | 89.6% | Production defaults |
-| Hash triple-stream, no trap boost | 79.7% | 77.1% | Trap multiplier disabled (hash run) |
+| Triple-stream + conditional trap boost | 96.4% | 95.8% | Production defaults |
+| Hash triple-stream, no trap boost | 81.8% | 77.1% | Trap multiplier disabled (hash run) |
 
 The graph stream does not improve Hit@1 on this corpus because every file-scoped case already retrieves its target. It is retained for real repositories where file links connect memories that share no query terms. The conditional trap boost is neutral on hash vectors; it is scoped so the multiplier applies only in trap-relevant context.
 
@@ -100,7 +102,7 @@ The graph stream does not improve Hit@1 on this corpus because every file-scoped
 
 1. **Synthetic corpus.** These cases are generated for this repository, not SWE-bench, LongMemEval, or LoCoMo. They test defined retrieval behaviors, not general coding-agent competence.
 2. **No external engine is measured.** The static-dump row is a simulation implemented in `src/bench/harness.ts`. It is labeled as a simulation and must never be cited as an external project's result.
-3. **Small holdout.** Forty-eight holdout cases give a wide Hit@1 interval (79.2-97.9%). Treat the point estimate as directional, not precise.
+3. **Small holdout.** Forty-eight holdout cases give a wide Wilson Hit@1 interval (86.0-98.9%). Treat the point estimate as directional, not precise.
 4. **Token counts are estimates** from `estimateTokens()`, not a tokenizer-exact count.
 5. **Latency is in-process.** CLI cold start is measured separately in `docs/audit/2026-10-20-baseline.md`.
 6. **MiniLM is optional.** The package works offline with hash vectors; semantic results require the optional model.

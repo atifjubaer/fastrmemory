@@ -1,6 +1,6 @@
 # FastrMemory Technical Specification
 
-> **Status (2026-10-20): historical design reference, partially stale.** Schema details below describe the v0.1.0 design. The current server registers **39 tools, 2 prompts, and 4 resources** (3 static resources plus the `fastr://memory/{id}` template). Verify counts against `src/mcp/server.ts` before citing them.
+> **Status (2026-10-21): historical design reference, partially stale.** Schema details below describe the v0.1.0 design. The current server registers **41 tools, 2 prompts, and 4 resources** (3 static resources plus the `fastr://memory/{id}` template). Verify counts against `src/mcp/server.ts` before citing them.
 >
 > **Package**: `@atifjubaer/fastrmemory`
 > **Schema Version**: `1.0.0`
@@ -117,7 +117,7 @@ CREATE TABLE IF NOT EXISTS handoffs (
 
 ## 2. Historical Core MCP Tools (`src/mcp/server.ts`)
 
-> **Stale section:** this table documents the original 8-tool surface. The current server registers 39 tools; run `node dist/bin/fastr.js mcp` and list tools, or read `src/mcp/server.ts`, for the live catalog.
+> **Stale section:** this table documents the original 8-tool surface. The current server registers 41 tools; run `node dist/bin/fastr.js mcp` and list tools, or read `src/mcp/server.ts`, for the live catalog.
 
 Registered via `server.registerTool(...)` using `@modelcontextprotocol/server` v2:
 

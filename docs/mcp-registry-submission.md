@@ -1,6 +1,6 @@
 # Official Model Context Protocol Registry Submission
 
-> **Status (2026-10-20): draft only.** The npm package is unpublished (`npm view` returns E404), so the `npx @atifjubaer/fastrmemory` form is not available. Use the GitHub form below until an npm release exists.
+> **Status (2026-10-21): draft only.** The npm package is unpublished (`npm view` returns E404), so the `npx @atifjubaer/fastrmemory` form is not available. Use the GitHub form below until an npm release exists.
 
 Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers) under the **Memory & Cognitive Engines** section.
 
@@ -20,7 +20,7 @@ Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://gi
 - **Author**: Atif Jubaer / Fastrsoft
 - **Transport**: `stdio` (Zero network daemon, in-process WAL SQLite)
 - **Runtime**: Node.js >= 22.16 (uses built-in `node:sqlite`)
-- **Primary Tool Interfaces** (39 tools total; see `src/mcp/server.ts`):
+- **Primary Tool Interfaces** (41 tools total; see `src/mcp/server.ts`):
   - `fastr_recall`: Search memories using triple-stream RRF (k=20) over FTS5 BM25, optional local embeddings, and 2-hop file graph spreading.
   - `fastr_remember`: Ingest architectural decisions, rules, and workflows with verbatim event attribution.
   - `fastr_trap_recall`: Active pre-edit error check with a conditional 2.0x recall multiplier for trap-intent or file-scoped queries.
@@ -28,6 +28,7 @@ Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://gi
   - `fastr_action_create` / `fastr_action_update` / `fastr_frontier` / `fastr_next`: Multi-agent action DAG with dependencies, conflicts, frontier discovery, and atomic claiming.
   - `fastr_handoff`: Structured agent handoff packets and staging rule verification.
   - `fastr_conflicts` / `fastr_resolve`: Contradiction detection between opposing rules and structured resolution.
+  - `fastr_replay` / `fastr_diff`: Reconstruct the active memory set at an ISO timestamp and diff two states with supersession links and token deltas.
 
 ### Quick Start
 ```bash

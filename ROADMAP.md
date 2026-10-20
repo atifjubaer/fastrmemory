@@ -2,7 +2,7 @@
 
 This roadmap is evidence-gated. A milestone is done only when its gate passes **on a committed artifact** (a test, a raw JSON result, or a published package), not when the code is written. Estimates assume one focused maintainer and include measurement and documentation time.
 
-Current state (2026-10-20, code HEAD `de4fde3`): 226 tests green locally and **6/6 CI jobs green** (run `39467306362`), a verified v0.2.0 tarball (571,279 bytes; SHA-256 `12B7D49546D6B904A2296724490E4D6EECE313514DA6C4BFDA6950137F309ED7`), npm publication blocked (`npm whoami` E401, `npm view` E404), a 240-case synthetic benchmark with a 48-case holdout, and a holdout Hit@1 of 89.6% (0.4 points below the 90% target). The offline hash path is weaker than MiniLM. See [`CLAIMS.md`](CLAIMS.md) for the full ledger.
+Current state (2026-10-21, code HEAD `a91ad6d`): 234 tests green locally across 42 files; the last full CI matrix was **6/6 green** at `de4fde3` (run `39467306362`) and has not yet run for `a91ad6d`. The v0.2.0 GitHub Release tarball remains 571,279 bytes (SHA-256 `12B7D49546D6B904A2296724490E4D6EECE313514DA6C4BFDA6950137F309ED7`); npm publication is still blocked (`npm whoami` E401, `npm view` E404). The 240-case benchmark holdout now reports 95.8% Hit@1 and 100% Hit@5; semantic paraphrase is 83.3% Hit@1. Replay, hashed JSONL snapshots, non-lossy consolidation, and Memory CI are implemented and evidenced. See [`CLAIMS.md`](CLAIMS.md) for the full ledger.
 
 ---
 
@@ -41,7 +41,7 @@ Current state (2026-10-20, code HEAD `de4fde3`): 226 tests green locally and **6
 
 **Goal:** fix known ranking bugs, then measure on a corpus large enough to mean something.
 
-**Status: partial.** The 240-case corpus, raw JSON, and 48-case holdout are committed. No external engine is measured, and holdout Hit@1 is 89.6% against the 90% target; the gap is concentrated in semantic paraphrase.
+**Status: complete for the measured gate.** The 240-case corpus, raw JSON, and 48-case holdout are committed at `562f461`. Holdout Hit@1 is 95.8% (bootstrap 95% CI 89.6-100%; Wilson 95% CI 86.0-98.9%), Hit@5 is 100%, and semantic paraphrase is 83.3% Hit@1 / 91.7% Hit@3. No external engine is measured; the 48-case holdout remains the main uncertainty.
 
 - Use `bm25(memories_fts, 10.0, 5.0, 1.0)` (and the `global_db.memories_fts` qualifier) instead of the default `f.rank`; wrap each stream with `ORDER BY rank LIMIT 50` before `UNION ALL`.
 - Make RRF configurable (`rrfK`, per-stream weights, enabled streams); choose defaults by ablation.
@@ -51,7 +51,7 @@ Current state (2026-10-20, code HEAD `de4fde3`): 226 tests green locally and **6
 - Add baselines: BM25, BM25+hash, BM25+MiniLM, full, no-graph, no-trap, static dump, and a pinned real competitor CLI.
 - Output JSON with Hit@1/3/5, MRR, nDCG@10, tokens, p50/p95, per-category, and bootstrap 95% CIs.
 
-**Evidence gate:** 240+ cases committed; raw JSON committed; held-out results reported; no simulated baseline labeled as a real project. Retrieval targets: Hit@1 ≥90%, Hit@5 ≥98%, MRR ≥0.93, tokens ≤250/query.
+**Evidence gate:** 240+ cases committed; raw JSON committed; held-out results reported; no simulated baseline labeled as a real project. Retrieval targets: Hit@1 >=90%, Hit@5 >=98%, MRR >=0.93, tokens <=250/query. Holdout `full_minilm` meets them: 95.8/100, MRR 0.969, 209 tokens.
 
 ---
 
@@ -59,11 +59,13 @@ Current state (2026-10-20, code HEAD `de4fde3`): 226 tests green locally and **6
 
 **Goal:** meet agents where they already work, without adding a daemon.
 
+**Status: partial.** Non-lossy consolidation is implemented (`fastr consolidate`, `src/db/consolidate.ts`) and covered by tests; hook parity, local-format import, conflict-aware recall, and the 12-tool core profile remain open.
+
 - Add hooks for OpenCode, Gemini CLI, and Copilot CLI; publish a hook-parity table.
 - Add `fastr import` for the common local formats (read-only, idempotent, dry-run by default).
 - Add conflict-aware recall and a CLI/UI resolve path; add per-ID confidence tiers and 3-bad dormancy.
 - Add a non-lossy consolidation command that writes a summary memory and **keeps** the raw events.
-- Default the MCP server to a **core profile of 12 tools**; keep the full 39 behind an opt-in flag.
+- Default the MCP server to a **core profile of 12 tools**; keep the full 41 behind an opt-in flag.
 
 **Evidence gate:** hook-parity table with at least one tested path per client; import round-trip test; core profile starts and passes the MCP smoke test.
 
@@ -71,7 +73,9 @@ Current state (2026-10-20, code HEAD `de4fde3`): 226 tests green locally and **6
 
 ## Milestone 5 — Memory Replay and Memory CI (2 weeks)
 
-**Goal:** the differentiator no competitor offers: exact state reconstruction and PR-level memory review.
+**Goal:** a differentiator: exact state reconstruction and PR-level memory review.
+
+**Status: core complete; qualified.** `fastr replay`, `fastr diff`, hashed JSONL export/import, `fastr memory-ci`, the MCP tools `fastr_replay`/`fastr_diff`, and a PR workflow are implemented at `a91ad6d`. The replay fixture is exact at three timestamps and JSONL round-trips with identical hashes. The live PR-comment path has not been observed in this session, and the dashboard timeline slider/diff view is not implemented.
 
 - `fastr replay --at <ISO>` reconstructs the active set from `valid_from`, `valid_to`, `superseded_by_id`, `source_event_ids`, and `raw_events`.
 - `fastr diff --from … --to …` reports added, superseded, still-active, conflicted, and token delta.
@@ -79,7 +83,7 @@ Current state (2026-10-20, code HEAD `de4fde3`): 226 tests green locally and **6
 - MCP tools `fastr_replay` and `fastr_diff`; dashboard timeline slider and diff view.
 - `fastr memory-ci --base --head` plus a GitHub Action that comments on a PR and optionally fails on new trap violations.
 
-**Evidence gate:** replay is exact at three timestamps; export/import round-trips; a test PR receives a memory diff comment.
+**Evidence gate:** replay is exact at three timestamps; export/import round-trips; a test PR receives a memory diff comment. First two are evidenced by `npm run verify:replay`; the third is wired but not yet observed on a live PR.
 
 ---
 

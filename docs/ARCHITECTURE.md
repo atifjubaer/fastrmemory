@@ -3,7 +3,7 @@
 > **Package:** `@atifjubaer/fastrmemory` (CLI: `fastr` / `fastrmemory`)
 > **Runtime:** Node.js >= 22.16.0, ESM, built-in `node:sqlite` in WAL mode
 > **Protocol:** MCP v2 via `@modelcontextprotocol/server`
-> **Status:** current `main` as of 2026-10-20. Known gaps are listed at the end and are not hidden.
+> **Status:** current `main` as of 2026-10-21 (`a91ad6d`). Known gaps are listed at the end and are not hidden.
 
 ## 1. What problem it solves
 
@@ -25,7 +25,7 @@ FastrMemory takes a third path: keep immutable raw events, keep a bi-temporal me
 | `handoffs` | Cross-agent session milestones |
 | `entities` / `graph_edges` | Lightweight entity and relationship graph for spreading activation |
 | `memory_conflicts` | Candidate contradictions detected on write |
-| `memory_snapshots` | Named point-in-time snapshots (coarse; not per-event replay yet) |
+| `memory_snapshots` | Named coarse checkpoints; exact point-in-time replay reads the bi-temporal columns directly |
 
 Supersession sets `valid_to` and `status='superseded'` on the old row; it does not delete it. `forget` tombstones rather than hard-deletes. Markdown mirrors in `.fastr/pages/<module>.md` put active rules on top and superseded history below for Git review.
 
@@ -76,15 +76,27 @@ Known retrieval gaps (tracked in `ROADMAP.md`):
 | L2 | ~1,500 t | multi-turn task context (default) |
 | L3 | ~4,000 t | deep history / drill-down |
 
-## 6. MCP surface
+## 6. Replay, snapshots, and consolidation
 
-- **39 tools** (memory CRUD, recall/drill, traps, conflicts, DAG actions, planning, slots, federation, snapshot/rollback, compression, doctor, vision).
+Replay is derived from the existing bi-temporal columns, not from a second log:
+
+- `replayAt(db, projectId, at)` selects rows whose `valid_from <= at` and whose `valid_to` is null or after `at`. Rows that started before `at` but are inactive are returned in `history`, so supersession links stay visible.
+- `diffSnapshots(from, to)` reports added, superseded, still-active, changed, and open-conflict rows plus a token delta. New active `error_trap` rows are listed separately for CI gating.
+- `exportSnapshotJsonl()` writes one hashed JSONL header plus hashed memory, raw-event, file-link, and conflict records. It never writes a SQLite file. Import verifies every hash, is idempotent, and re-embeds imported memories lazily.
+- `consolidateMemories()` writes a new `workflow` summary that links every source memory and raw event. It does not delete, merge, or mutate the originals; project-wide before/after counts make the non-loss property visible.
+- `runMemoryCi()` compares base and head JSONL snapshots, emits Markdown, and optionally exits `1` when the head adds an active trap.
+
+CLI: `fastr replay`, `fastr diff`, `fastr snapshot export|import`, `fastr consolidate`, and `fastr memory-ci`. MCP: `fastr_replay` and `fastr_diff`.
+
+## 7. MCP surface
+
+- **41 tools** (memory CRUD, recall/drill, traps, conflicts, DAG actions, planning, slots, federation, snapshot/rollback, replay/diff, compression, doctor, vision).
 - **2 prompts**: `pre-edit-check`, `session-wrap-up`.
 - **4 resources**: `fastr://project/overview`, `fastr://project/traps`, `fastr://session/handoff`, and the `fastr://memory/{id}` template.
 
-The default server currently exposes all 39 tools; a 12-tool core profile is planned to reduce schema overhead.
+The default server currently exposes all 41 tools; a 12-tool core profile is planned to reduce schema overhead. The README diagram is the frozen v0.2.0 release snapshot and still shows 39; current `main` adds `fastr_replay` and `fastr_diff`.
 
-## 7. Design rules
+## 8. Design rules
 
 1. **Never delete facts.** Supersede and tombstone; raw events stay immutable.
 2. **Bi-temporal validity, not time decay.** Active queries require `valid_to IS NULL` and exclude superseded/dormant rows.
@@ -92,14 +104,15 @@ The default server currently exposes all 39 tools; a 12-tool core profile is pla
 4. **Per-ID feedback.** `fastr_feedback` changes one memory's score (+0.2 / −0.5). It becomes `dormant` when the score reaches 0.2 or below — not after a fixed strike count.
 5. **Two-zone Markdown.** Compiled Truth on top, append-only timeline below, both Git-diffable.
 6. **Local-first.** No network call is required for the default path; embeddings are opt-in.
+7. **Additive consolidation.** A summary is a new linked memory; originals remain queryable and replayable.
 
-## 8. Not implemented yet
+## 9. Not implemented yet
 
 - Prompt-cache `skipUnchanged` behavior (no byte-identical block suppression in the current hook runner).
-- Exact per-event replay (`fastr replay`) and memory-state diff (`fastr diff`).
-- Portable JSONL snapshot export/import with hash verification.
 - A real-repository benchmark and a pinned external baseline (the 240-case synthetic held-out benchmark exists; see [`BENCHMARKS.md`](../BENCHMARKS.md)).
-- A core MCP profile and non-lossy consolidation.
+- A 12-tool core MCP profile.
+- Dashboard timeline slider and diff view.
+- A live PR run of the Memory CI comment path (the workflow is committed; fork PRs are job-summary-only).
 - Crash-test evidence for 10k writes.
 
 These are roadmap items, not claims.

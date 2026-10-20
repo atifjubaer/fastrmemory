@@ -121,15 +121,35 @@ const readme = readText('README.md');
 const claims = readText('CLAIMS.md');
 const report = readText('docs/benchmark-report.md');
 
+// README is the release-era snapshot. It may cite an older committed run than
+// the current bench/results/minilm.json; compare it against the frozen artifact
+// for the commit it names instead of silently rewriting release evidence.
+const readmeCommit = /benchmark commit `([0-9a-f]{7,40})`/.exec(readme)?.[1];
+let readmeMinilm = minilm;
+if (readmeCommit && minilm && !String(minilm.commit ?? '').startsWith(readmeCommit)) {
+  const historicalRel = `bench/results/minilm-${readmeCommit.slice(0, 7)}.json`;
+  const historical = readJson(historicalRel);
+  if (historical) {
+    check(historical.schemaVersion === 2, `${historicalRel} schemaVersion must be 2`);
+    check(String(historical.commit ?? '').startsWith(readmeCommit), `${historicalRel} commit does not match README`);
+    check(historical.corpus?.cases === 240, `${historicalRel} corpus count must be 240`);
+    readmeMinilm = historical;
+  }
+}
+const readmeMiniTrain = engine(readmeMinilm, 'train', 'full_minilm')?.overall;
+const readmeMiniHoldout = engine(readmeMinilm, 'holdout', 'full_minilm')?.overall;
+const readmeBm25Holdout = engine(readmeMinilm, 'holdout', 'bm25_only')?.overall;
+
 for (const [rel, doc] of [
   ['BENCHMARKS.md', benchmarks],
-  ['README.md', readme],
   ['CLAIMS.md', claims],
   ['docs/benchmark-report.md', report]
 ]) {
   expectNumber(doc, 'full_minilm train Hit@1', fullMiniTrain?.hitAt1, rel);
   expectNumber(doc, 'full_minilm holdout Hit@1', fullMiniHoldout?.hitAt1, rel);
 }
+expectNumber(readme, 'full_minilm train Hit@1', readmeMiniTrain?.hitAt1, 'README.md');
+expectNumber(readme, 'full_minilm holdout Hit@1', readmeMiniHoldout?.hitAt1, 'README.md');
 
 expectNumber(benchmarks, 'full_minilm train Hit@3', fullMiniTrain?.hitAt3, 'BENCHMARKS.md');
 expectNumber(benchmarks, 'full_minilm holdout Hit@3', fullMiniHoldout?.hitAt3, 'BENCHMARKS.md');
@@ -140,7 +160,7 @@ expectNumber(benchmarks, 'bm25 holdout Hit@1', bm25Holdout?.hitAt1, 'BENCHMARKS.
 expectNumber(benchmarks, 'full_hash train Hit@5', fullHashTrain?.hitAt5, 'BENCHMARKS.md');
 expectNumber(benchmarks, 'full_hash train MRR', fullHashTrain?.mrr, 'BENCHMARKS.md');
 expectNumber(benchmarks, 'full_hash holdout Hit@1', fullHashHoldout?.hitAt1, 'BENCHMARKS.md');
-expectNumber(readme, 'bm25 holdout Hit@1', bm25Holdout?.hitAt1, 'README.md');
+expectNumber(readme, 'bm25 holdout Hit@1', readmeBm25Holdout?.hitAt1, 'README.md');
 expectNumber(claims, 'full_minilm holdout Hit@3', fullMiniHoldout?.hitAt3, 'CLAIMS.md');
 expectNumber(claims, 'full_minilm holdout MRR', fullMiniHoldout?.mrr, 'CLAIMS.md');
 
