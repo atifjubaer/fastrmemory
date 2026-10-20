@@ -84,7 +84,16 @@ function topLevelEntries(objText) {
   return entries;
 }
 
-/** Parses `server.registerTool('name', { ..., inputSchema: { ... } }, handler)` blocks. */
+/** Returns the `{ ... }` shape of an inputSchema written as a raw shape or as `z.object({ ... })`. */
+function schemaShapeText(value) {
+  if (value.startsWith('{')) return value.slice(0, matchBracket(value, 0));
+  const m = value.match(/^z\.(?:strictObject|object|looseObject)\(\s*\{/);
+  if (!m) return null;
+  const start = m[0].length - 1;
+  return value.slice(start, matchBracket(value, start));
+}
+
+/** Parses `server.registerTool('name', { ..., inputSchema: { ... } | z.object({ ... }) }, handler)` blocks. */
 export function parseServerTools(serverSrc) {
   const tools = new Map();
   const re = /registerTool\(\s*(['"])(\w+)\1\s*,\s*\{/g;
@@ -96,8 +105,12 @@ export function parseServerTools(serverSrc) {
     const cfg = serverSrc.slice(cfgStart, cfgEnd);
     const params = new Map();
     const schemaEntry = topLevelEntries(cfg).find((e) => e.key === 'inputSchema');
-    if (schemaEntry && schemaEntry.value.startsWith('{')) {
-      for (const { key, value } of topLevelEntries(schemaEntry.value)) {
+    const shape = schemaEntry ? schemaShapeText(schemaEntry.value) : null;
+    if (schemaEntry && !shape) {
+      throw new Error(`Cannot parse inputSchema of ${name} (expected { ... } or z.object({ ... }))`);
+    }
+    if (shape) {
+      for (const { key, value } of topLevelEntries(shape)) {
         if (!key) continue;
         const required = !/\.optional\(\)|\.default\(/.test(value);
         const enumMatch = value.match(/z\.enum\(\s*\[([^\]]*)\]/);

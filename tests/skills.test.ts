@@ -84,3 +84,26 @@ describe('installSkills upgrade cleanup', () => {
     }
   });
 });
+
+describe('check-skills schema parser', () => {
+  it('reads params from both raw shapes and z.object({...}) schemas', () => {
+    const src = `
+      server.registerTool('fastr_a', { description: 'a', inputSchema: { query: z.string(), limit: z.number().optional() } }, async () => ({}));
+      server.registerTool('fastr_b', {
+        description: 'b, with a comma',
+        inputSchema: z.object({
+          id: ID.describe('x'),
+          status: z.enum(['open', 'done']).default('open'),
+        }),
+        annotations: { readOnlyHint: true },
+      }, async () => ({}));
+    `;
+    const tools = parseServerTools(src);
+    expect([...tools.get('fastr_a')!.keys()]).toEqual(['query', 'limit']);
+    expect(tools.get('fastr_a')!.get('limit')!.required).toBe(false);
+    const b = tools.get('fastr_b')!;
+    expect([...b.keys()]).toEqual(['id', 'status']);
+    expect(b.get('id')!.required).toBe(true);
+    expect(b.get('status')!.enumValues).toEqual(['open', 'done']);
+  });
+});
