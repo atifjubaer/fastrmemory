@@ -286,7 +286,7 @@ Built using the official **v2 `@modelcontextprotocol/server`** SDK:
 31. `fastr_federate`: Manages cross-repository organization-wide shared rules and error traps via SQLite native `ATTACH DATABASE` (`~/.fastr/global.db`).
 32. `fastr_assemble`: Dynamically formats and packs high-density structured prompt context (`<fastr_context>`) with token budgeting.
 33. `fastr_risk_predict`: Computes historical failure probability and active trap hazard score for target codebase files.
-34. `fastr_verify_provenance`: Cryptographically verifies SHA-256 provenance hashes to guarantee agent attribution authenticity.
+34. `fastr_verify_provenance`: Cryptographically verifies SHA-256 provenance hashes for recorded agent attribution.
 
 #### Token Compression & Autonomous Doctor
 35. `fastr_compress`: Compresses markdown files or prompt context while strictly preserving headings, URLs, and code blocks with `.original.md` backup.

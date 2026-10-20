@@ -30,8 +30,9 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 | B2 | Local embeddings are optional | README | Supported | `src/search/embeddings.ts` | No model load unless opted in | Default hash vectors are lexical, not semantic |
 | B3 | Bi-temporal retention; supersession keeps history | README | Supported | `npm test -- tests/repository.test.ts tests/search.test.ts` | Supersession tests pass | `forget` is a tombstone, not a hard delete |
 | B4 | Two-zone Git-diffable Markdown mirrors | README | Supported | `npm test -- tests/mirror.test.ts` | Mirror tests pass | Format is covered by snapshots, not byte-for-byte goldens |
-| B5 | Engine-level recall p50 | README | Supported | `npx tsx scripts/eval-bench.ts --split all --embeddings minilm --out bench/results/minilm.json` | Train 4.04 ms, holdout 3.65 ms | In-process, 240 synthetic cases, excludes Node startup and model load |
-| B6 | Offline recall p50 | README | Supported | `npx tsx scripts/eval-bench.ts --split all --embeddings hash --out bench/results/hash.json` | Train 0.99 ms, holdout 1.06 ms | Same caveat; hash vectors are lexical |
+| B5 | Engine-level recall p50 and p95 | README | Supported | `npx tsx scripts/eval-bench.ts --split all --embeddings minilm --out bench/results/minilm.json` | Train 4.04 ms p50 / 5.99 ms p95; holdout 3.65 ms p50 / 5.80 ms p95 | In-process, 240 synthetic cases, excludes Node startup and model load |
+| B6 | Offline recall p50 and p95 | README | Supported | `npx tsx scripts/eval-bench.ts --split all --embeddings hash --out bench/results/hash.json` | Train 0.99 ms p50 / 1.80 ms p95; holdout 1.06 ms p50 / 1.99 ms p95 | Same caveat; hash vectors are lexical |
+| B7 | Runs natively on Windows, macOS, and Linux | README | **Qualified** | Local Windows run; GitHub Actions matrix | Windows local green; CI partially red | macOS Node 24 is red and Windows Node 24 was cancelled; do not claim 6/6 |
 
 ## C. MCP surface
 
@@ -79,6 +80,7 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 | F7 | Dashboard exposes 11 route workspaces | README | Supported | count `ui/src/routes/*Page.tsx` | `11` | Counts page components |
 | F8 | Conflict detection uses Jaccard 0.35 and 50-word polarity | README | Supported | `Select-String -Path src/learn/conflicts.ts -Pattern 'jaccard < 0.35','slice\\(0, 50\\)'` | Matches | A second path flags Jaccard >=0.65 |
 | F9 | Embeddings are 384-dimensional | README | Supported | `Select-String -Path src/search/embeddings.ts -Pattern 'dimensions: number = 384'` | Matches | Hash vectors are lexical |
+| F10 | Dashboard uses React 19 | README | Supported | `node -p "require('./ui/package.json').dependencies.react"` | `^19.0.0` | Dependency declaration, not a visual test |
 
 ## G. Removed or corrected marketing claims
 
