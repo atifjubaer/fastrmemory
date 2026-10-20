@@ -1,4 +1,4 @@
-import { McpServer } from '@modelcontextprotocol/server';
+import { McpServer, ResourceTemplate } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { DatabaseSync } from 'node:sqlite';
 import { FastrRepository } from '../db/repository.js';
@@ -14,6 +14,55 @@ import { predictFileBaseRate } from './predict.js';
 import { compressFile, compressContent } from '../compress/markdown.js';
 import { diagnoseDatabase, healDatabase } from '../db/doctor.js';
 import { tagVisionAsset, searchVisionAssets } from '../vision/assets.js';
+
+// ==========================================
+// Shared input bounds (keep tool/param names stable; skills depend on them)
+// ==========================================
+const ID = z.string().min(1).max(100);
+const IDS = z.array(ID).max(100);
+const PATH = z.string().min(1).max(1024);
+const PATHS = z.array(PATH).max(200);
+const MODULE = z.string().min(1).max(100);
+const TAG = z.string().min(1).max(100);
+const AGENT = z.string().min(1).max(200);
+const TITLE = z.string().min(1).max(300);
+const CONTENT = z.string().min(1).max(20_000);
+const NOTE = z.string().max(2000);
+const SLOT_KEY = z.string().min(1).max(100);
+const LIMIT = z.number().int().min(1).max(200);
+const BUDGET = z.number().int().min(50).max(16_000);
+const PRIORITY = z.number().int().min(1).max(10);
+const MAX_SLOT_CHARS = 8000;
+
+type TextResult = { content: Array<{ type: 'text'; text: string }>; isError?: boolean };
+
+function ok(text: string): TextResult {
+  return { content: [{ type: 'text', text }] };
+}
+
+function fail(text: string): TextResult {
+  return { isError: true, content: [{ type: 'text', text }] };
+}
+
+function errMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/** Opaque pagination cursor for fastr_list: base64url("<created_at>|<id>"). */
+export function encodeListCursor(createdAt: string, id: string): string {
+  return Buffer.from(`${createdAt}|${id}`, 'utf8').toString('base64url');
+}
+
+export function decodeListCursor(cursor: string): { createdAt: string; id: string } | null {
+  try {
+    const raw = Buffer.from(cursor, 'base64url').toString('utf8');
+    const sep = raw.lastIndexOf('|');
+    if (sep <= 0 || sep === raw.length - 1) return null;
+    return { createdAt: raw.slice(0, sep), id: raw.slice(sep + 1) };
+  } catch {
+    return null;
+  }
+}
 
 export interface ServerContext {
   db: DatabaseSync;
@@ -63,13 +112,14 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_recall',
     {
       description: 'Triple-Stream hybrid search (BM25 + Vector + Graph) with progressive token budgeting and trap weighting.',
-      inputSchema: {
-        query: z.string().describe('Search query or task description'),
-        files: z.array(z.string()).default([]).describe('Target file paths being inspected or edited'),
-        module: z.string().optional().describe('Filter by module (e.g. auth, db, api)'),
-        budgetTokens: z.number().default(2000).describe('Token ceiling (e.g. 500, 1500, 4000)'),
+      inputSchema: z.object({
+        query: z.string().min(1).max(4000).describe('Search query or task description'),
+        files: PATHS.default([]).describe('Target file paths being inspected or edited'),
+        module: MODULE.optional().describe('Filter by module (e.g. auth, db, api)'),
+        budgetTokens: BUDGET.default(2000).describe('Token ceiling (e.g. 500, 1500, 4000)'),
         includeHistory: z.boolean().default(false).describe('Include historical superseded rules')
-      }
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false }
     },
     async ({ query, files, module, budgetTokens, includeHistory }) => {
       const results = await searchMemories(db, {
@@ -102,12 +152,16 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_drill',
     {
       description: 'Inspects verbatim raw observations (untruncated stack traces, diffs, tool outputs) for a memory or event.',
-      inputSchema: {
-        memoryId: z.string().optional().describe('Memory ID to retrieve verbatim source events for'),
-        eventId: z.string().optional().describe('Raw event ID to look up directly')
-      }
+      inputSchema: z.object({
+        memoryId: ID.optional().describe('Memory ID to retrieve verbatim source events for'),
+        eventId: ID.optional().describe('Raw event ID to look up directly')
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false }
     },
     async ({ memoryId, eventId }) => {
+      if (!memoryId && !eventId) {
+        return fail('Either `memoryId` or `eventId` must be provided.');
+      }
       let events: any[] = [];
       if (eventId) {
         const ev = repo.getRawEvent(eventId);
@@ -142,9 +196,10 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_file_history',
     {
       description: 'Returns active rules, [TRAP] warnings, and historical decisions linked to a specific file path.',
-      inputSchema: {
-        filePath: z.string().describe('File path to inspect (e.g. src/auth/jwt.ts)')
-      }
+      inputSchema: z.object({
+        filePath: PATH.describe('File path to inspect (e.g. src/auth/jwt.ts)')
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false }
     },
     async ({ filePath }) => {
       const memories = repo.getMemoriesForFile(config.projectId, filePath);
@@ -176,17 +231,18 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_remember',
     {
       description: 'Records a new rule, architectural decision, error trap, or workflow. Automatically scrubs credentials.',
-      inputSchema: {
-        module: z.string().default('general').describe('Module name (e.g. auth, db, api, ui)'),
+      inputSchema: z.object({
+        module: MODULE.default('general').describe('Module name (e.g. auth, db, api, ui)'),
         kind: z.enum(['rule', 'decision', 'error_trap', 'workflow']).describe('Kind of memory'),
-        title: z.string().describe('Concise headline title'),
-        content: z.string().describe('Detailed actionable lesson or trap warning'),
-        files: z.array(z.string()).default([]).describe('Related file paths'),
-        symbols: z.array(z.string()).default([]).describe('Related symbol or function names'),
+        title: TITLE.describe('Concise headline title'),
+        content: CONTENT.describe('Detailed actionable lesson or trap warning'),
+        files: PATHS.default([]).describe('Related file paths'),
+        symbols: z.array(z.string().min(1).max(300)).max(200).default([]).describe('Related symbol or function names'),
         verified: z.boolean().default(false).describe('Set true if already verified by passing tests'),
         pinned: z.boolean().default(false).describe('Pin to always surface during recall'),
         scope: z.enum(['project', 'global']).default('project').describe('Storage scope: project-local or organization-wide global')
-      }
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false }
     },
     async ({ module, kind, title, content, files, symbols, verified, pinned, scope }) => {
       // 1. Scrub secrets
@@ -234,13 +290,14 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_supersede',
     {
       description: 'Retires an old memory rule and replaces it with a new verified rule, recording the reason for Git diffs.',
-      inputSchema: {
-        oldMemoryId: z.string().describe('ID of memory to supersede (e.g. mem_8f2a1c)'),
-        newTitle: z.string().describe('Updated title'),
-        newContent: z.string().describe('Updated rule/lesson content'),
-        reason: z.string().describe('Reason for replacing old rule'),
-        files: z.array(z.string()).optional().describe('Updated file paths')
-      }
+      inputSchema: z.object({
+        oldMemoryId: ID.describe('ID of memory to supersede (e.g. mem_8f2a1c)'),
+        newTitle: TITLE.describe('Updated title'),
+        newContent: CONTENT.describe('Updated rule/lesson content'),
+        reason: NOTE.min(1).describe('Reason for replacing old rule'),
+        files: PATHS.optional().describe('Updated file paths')
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false }
     },
     async ({ oldMemoryId, newTitle, newContent, reason, files }) => {
       const scrubbedTitle = scrubSecrets(newTitle);
@@ -275,20 +332,22 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_feedback',
     {
       description: 'Scores outcome on a specific recalled memory (+0.2 good, -0.5 bad). Never penalizes the whole batch.',
-      inputSchema: {
-        memoryId: z.string().describe('Memory ID (e.g. mem_8f2a1c)'),
+      inputSchema: z.object({
+        memoryId: ID.describe('Memory ID (e.g. mem_8f2a1c)'),
         outcome: z.enum(['good', 'bad']).describe('Good (+0.2) or Bad (-0.5) outcome'),
-        note: z.string().optional().describe('Optional explanation of why the advice was good or bad')
-      }
+        note: NOTE.optional().describe('Optional explanation of why the advice was good or bad')
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false }
     },
     async ({ memoryId, outcome, note }) => {
+      if (!repo.getMemory(memoryId)) {
+        return fail(`Memory not found: ${memoryId}`);
+      }
       const res = repo.updateFeedback(memoryId, outcome, note);
-      return {
-        content: [{
-          type: 'text',
-          text: `Updated feedback for [${memoryId}]: new reward_score = ${res.reward_score}, status = "${res.status}".`
-        }]
-      };
+      const noteText = note ? ` Note: "${note}".` : '';
+      return ok(
+        `Updated feedback for [${memoryId}] (${outcome}): new reward_score = ${res.reward_score}, status = "${res.status}".${noteText}`
+      );
     }
   );
 
@@ -299,14 +358,15 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_handoff',
     {
       description: 'Saves or retrieves cross-agent session milestones. Promotes staging memories when verifyStaging=true.',
-      inputSchema: {
+      inputSchema: z.object({
         action: z.enum(['save', 'latest']).describe('Action: "save" new milestone or "latest" to retrieve'),
-        taskTitle: z.string().optional().describe('Current task title (required for save)'),
-        summary: z.string().optional().describe('Summary of progress completed (required for save)'),
-        nextStep: z.string().optional().describe('Immediate next action for the next agent session'),
-        activeFiles: z.array(z.string()).default([]).describe('Active files modified during session'),
+        taskTitle: TITLE.optional().describe('Current task title (required for save)'),
+        summary: CONTENT.optional().describe('Summary of progress completed (required for save)'),
+        nextStep: NOTE.optional().describe('Immediate next action for the next agent session'),
+        activeFiles: PATHS.default([]).describe('Active files modified during session'),
         verifyStaging: z.boolean().default(false).describe('Set true to promote session staging memories to verified')
-      }
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false }
     },
     async ({ action, taskTitle, summary, nextStep, activeFiles, verifyStaging }) => {
       if (action === 'save') {
@@ -369,9 +429,10 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_status',
     {
       description: 'Returns health, memory counts, raw event counts, pending spool count, and embedding coverage %.',
-      inputSchema: {
-        projectId: z.string().optional().describe('Project ID override')
-      }
+      inputSchema: z.object({
+        projectId: z.string().min(1).max(200).optional().describe('Project ID override')
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false }
     },
     async ({ projectId }) => {
       const pid = projectId || config.projectId;
@@ -402,10 +463,11 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_graph_query',
     {
       description: 'Query the code file-dependency graph to discover linked memories, error traps, and neighboring files (up to 2-hop structural links).',
-      inputSchema: {
-        filePath: z.string().optional().describe('Center graph on specific file path to discover 1-hop & 2-hop connected rules and files'),
-        depth: z.number().default(2).describe('Graph traversal depth (1 or 2 hops)')
-      }
+      inputSchema: z.object({
+        filePath: PATH.optional().describe('Center graph on specific file path to discover 1-hop & 2-hop connected rules and files'),
+        depth: z.number().int().min(1).max(3).default(2).describe('Graph traversal depth (1 or 2 hops)')
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false }
     },
     async ({ filePath, depth }) => {
       const graph = repo.queryGraph(config.projectId, { startFilePath: filePath, depth });
@@ -445,10 +507,11 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_timeline',
     {
       description: 'Returns chronological audit trail of memories, verified rules, error traps, and historical supersessions.',
-      inputSchema: {
-        module: z.string().optional().describe('Filter timeline by module (e.g. auth, db)'),
-        limit: z.number().default(25).describe('Max chronological entries to return')
-      }
+      inputSchema: z.object({
+        module: MODULE.optional().describe('Filter timeline by module (e.g. auth, db)'),
+        limit: LIMIT.default(25).describe('Max chronological entries to return')
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false }
     },
     async ({ module: targetModule, limit }) => {
       const timeline = repo.getTimeline(config.projectId, { module: targetModule, limit });
@@ -459,7 +522,11 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
       } else {
         for (const item of timeline) {
           const kindBadge = item.kind === 'error_trap' ? '⚠️ [TRAP]' : `[${item.kind.toUpperCase()}]`;
-          const statusBadge = item.status === 'superseded' ? '🔴 SUPERSEDED' : item.status === 'verified' ? '🟢 VERIFIED' : '🟡 STAGING';
+          const statusBadge =
+            item.status === 'superseded' ? '🔴 SUPERSEDED'
+              : item.status === 'verified' ? '🟢 VERIFIED'
+                : item.status === 'dormant' ? '⚪ DORMANT'
+                  : '🟡 STAGING';
           text += `#### ${item.createdAt} — ${kindBadge} ${item.title} (${statusBadge})\n`;
           text += `- **ID**: \`${item.id}\` | **Module**: \`${item.module}\` | **Score**: ${item.rewardScore}\n`;
           if (item.linkedFiles.length > 0) {
@@ -487,10 +554,11 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_snapshot',
     {
       description: 'Create an immutable point-in-time snapshot of all active memories and file links.',
-      inputSchema: {
-        tag: z.string().describe('Descriptive version tag (e.g. v1.0, pre-auth-refactor)'),
-        description: z.string().optional().describe('Context or rationale for this snapshot')
-      }
+      inputSchema: z.object({
+        tag: z.string().min(1).max(100).describe('Descriptive version tag (e.g. v1.0, pre-auth-refactor)'),
+        description: NOTE.optional().describe('Context or rationale for this snapshot')
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false }
     },
     async ({ tag, description }) => {
       const snap = repo.createSnapshot(config.projectId, tag, description);
@@ -516,13 +584,19 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_rollback',
     {
       description: 'Revert project memory state to a previous snapshot, superseding newer erroneous rules.',
-      inputSchema: {
-        snapshotId: z.string().describe('The snapshot ID to restore (e.g. snap_xxxx)')
-      }
+      inputSchema: z.object({
+        snapshotId: ID.describe('The snapshot ID to restore (e.g. snap_xxxx)')
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false }
     },
     async ({ snapshotId }) => {
       const res = repo.rollbackToSnapshot(config.projectId, snapshotId);
-      syncAllModulePages(db, config.projectRoot, config.projectId);
+      let mirrorNote = '- Two-Zone Markdown mirrors synchronized.';
+      try {
+        syncAllModulePages(db, config.projectRoot, config.projectId);
+      } catch (err) {
+        mirrorNote = `- Warning: rollback applied, but Markdown mirror sync failed (${errMessage(err)}).`;
+      }
       return {
         content: [{
           type: 'text',
@@ -531,7 +605,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
             `- **Restored Snapshot Tag**: \`${res.snapshotTag}\`\n` +
             `- **Active Memories Restored**: ${res.restoredCount}\n` +
             `- Newer conflicting memories have been marked \`superseded\`.\n` +
-            `- Two-Zone Markdown mirrors synchronized.`
+            mirrorNote
           )
         }]
       };
@@ -545,12 +619,13 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_trap_log',
     {
       description: 'Immediately logs an error trap diagnosed during a build failure or test error. Receives a 2.0x recall boost.',
-      inputSchema: {
-        title: z.string().describe('Clear, imperative rule title (e.g. Never Use Date.now() for JWT Exp)'),
-        content: z.string().describe('Exact explanation of the error trap and the concrete workaround/fix'),
-        files: z.array(z.string()).describe('Code files affected by this error trap'),
-        module: z.string().default('general').describe('Module name (e.g. auth, db, api)')
-      }
+      inputSchema: z.object({
+        title: TITLE.describe('Clear, imperative rule title (e.g. Never Use Date.now() for JWT Exp)'),
+        content: CONTENT.describe('Exact explanation of the error trap and the concrete workaround/fix'),
+        files: PATHS.describe('Code files affected by this error trap'),
+        module: MODULE.default('general').describe('Module name (e.g. auth, db, api)')
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false }
     },
     async ({ title, content, files, module: trapModule }) => {
       const scrubbedTitle = scrubSecrets(title);
@@ -566,13 +641,17 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
         verified: true
       });
 
-      syncAllModulePages(db, config.projectRoot, config.projectId);
-      return {
-        content: [{
-          type: 'text',
-          text: `⚠️ **Logged Error Trap [${mem.id}]**: "${mem.title}" linked to ${files.length} file(s) with 2.0x recall boost.`
-        }]
-      };
+      // The trap is already persisted; a mirror failure must not surface as a tool
+      // error, or agents retry and create duplicate traps.
+      let mirrorWarning = '';
+      try {
+        syncAllModulePages(db, config.projectRoot, config.projectId);
+      } catch (err) {
+        mirrorWarning = `\n\nWarning: trap saved, but Markdown mirror sync failed (${errMessage(err)}). Do not retry the log call.`;
+      }
+      return ok(
+        `⚠️ **Logged Error Trap [${mem.id}]**: "${mem.title}" linked to ${files.length} file(s) with 2.0x recall boost.${mirrorWarning}`
+      );
     }
   );
 
@@ -583,9 +662,10 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_trap_recall',
     {
       description: 'Fetch all active [TRAP] warnings protecting specific files before beginning an edit.',
-      inputSchema: {
-        files: z.array(z.string()).describe('Target files about to be edited or inspected')
-      }
+      inputSchema: z.object({
+        files: PATHS.describe('Target files about to be edited or inspected')
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false }
     },
     async ({ files }) => {
       const traps: any[] = [];
@@ -623,9 +703,10 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_conflicts',
     {
       description: 'List detected contradictory memories and policy conflicts requiring resolution.',
-      inputSchema: {
+      inputSchema: z.object({
         status: z.enum(['open', 'resolved', 'ignored']).default('open').describe('Filter conflicts by status')
-      }
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false }
     },
     async ({ status }) => {
       const conflicts = repo.listConflicts(config.projectId, status);
@@ -665,12 +746,13 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_resolve',
     {
       description: 'Resolve a memory contradiction by picking the winning rule and superseding or weakening the loser.',
-      inputSchema: {
-        conflictId: z.number().describe('Conflict ID from fastr_conflicts'),
-        keepId: z.string().describe('ID of the winning memory to preserve'),
+      inputSchema: z.object({
+        conflictId: z.number().int().min(1).describe('Conflict ID from fastr_conflicts'),
+        keepId: ID.describe('ID of the winning memory to preserve'),
         forgetLoser: z.boolean().default(false).describe('Set true to supersede the loser immediately; false weakens loser score by -0.4'),
-        reason: z.string().optional().describe('Resolution rationale')
-      }
+        reason: NOTE.optional().describe('Resolution rationale')
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false }
     },
     async ({ conflictId, keepId, forgetLoser, reason }) => {
       try {
@@ -684,7 +766,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
         };
       } catch (err: any) {
         return {
-          content: [{ type: 'text', text: `❌ **Failed to resolve conflict #${conflictId}**: ${err.message}` }]
+          isError: true, content: [{ type: 'text', text: `❌ **Failed to resolve conflict #${conflictId}**: ${err.message}` }]
         };
       }
     }
@@ -697,21 +779,22 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_predict',
     {
       description: 'Record an effort/time/risk prediction or close an existing prediction with actual results.',
-      inputSchema: {
+      inputSchema: z.object({
         action: z.enum(['create', 'close', 'list']).default('create').describe('Action: create a new prediction, close with actual value, or list'),
-        classTag: z.string().optional().describe('Reference class category (e.g. migration, refactor, bugfix)'),
-        claimText: z.string().optional().describe('Forward-looking claim or task description'),
-        estimateValue: z.number().optional().describe('Numerical estimate (e.g. 2.5)'),
-        estimateUnit: z.string().optional().describe('Unit (e.g. hours, days, points)'),
-        predictionId: z.number().optional().describe('Prediction ID to close (required when action=close)'),
-        actualValue: z.number().optional().describe('Actual numerical outcome (required when action=close)')
-      }
+        classTag: TAG.optional().describe('Reference class category (e.g. migration, refactor, bugfix)'),
+        claimText: NOTE.optional().describe('Forward-looking claim or task description'),
+        estimateValue: z.number().min(0).max(1_000_000).optional().describe('Numerical estimate (e.g. 2.5)'),
+        estimateUnit: z.string().max(50).optional().describe('Unit (e.g. hours, days, points)'),
+        predictionId: z.number().int().min(1).optional().describe('Prediction ID to close (required when action=close)'),
+        actualValue: z.number().min(0).max(1_000_000).optional().describe('Actual numerical outcome (required when action=close)')
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false }
     },
     async ({ action, classTag, claimText, estimateValue, estimateUnit, predictionId, actualValue }) => {
       if (action === 'close') {
         if (!predictionId || actualValue === undefined) {
           return {
-            content: [{ type: 'text', text: `❌ **Error**: \`predictionId\` and \`actualValue\` are required to close a prediction.` }]
+            isError: true, content: [{ type: 'text', text: `❌ **Error**: \`predictionId\` and \`actualValue\` are required to close a prediction.` }]
           };
         }
         try {
@@ -726,7 +809,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
             }]
           };
         } catch (err: any) {
-          return { content: [{ type: 'text', text: `❌ **Error**: ${err.message}` }] };
+          return { isError: true, content: [{ type: 'text', text: `❌ **Error**: ${err.message}` }] };
         }
       }
 
@@ -748,7 +831,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
       // Default: create
       if (!classTag || !claimText) {
         return {
-          content: [{ type: 'text', text: `❌ **Error**: \`classTag\` and \`claimText\` are required to record a prediction.` }]
+          isError: true, content: [{ type: 'text', text: `❌ **Error**: \`classTag\` and \`claimText\` are required to record a prediction.` }]
         };
       }
 
@@ -780,9 +863,10 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_predict_baserate',
     {
       description: 'Get historical reference-class base-rate calibration statistics (Mean, Median p50 ratio, MAE) to debias agent planning.',
-      inputSchema: {
-        classTag: z.string().describe('Reference class category (e.g. migration, refactor, bugfix)')
-      }
+      inputSchema: z.object({
+        classTag: TAG.describe('Reference class category (e.g. migration, refactor, bugfix)')
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false }
     },
     async ({ classTag }) => {
       const baserate = repo.getPredictionBaserate(config.projectId, classTag);
@@ -817,14 +901,15 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_action_create',
     {
       description: 'Create a new work item action in the Multi-Agent Action DAG with dependencies and conflict constraints.',
-      inputSchema: {
-        title: z.string().describe('Clear imperative title of the action'),
-        description: z.string().optional().describe('Detailed action instructions or acceptance criteria'),
-        priority: z.number().default(5).describe('Priority from 1 (lowest) to 10 (highest)'),
-        requires: z.array(z.string()).optional().describe('Action IDs that must complete before this action is unblocked'),
-        conflictsWith: z.array(z.string()).optional().describe('Action IDs that cannot run concurrently with this action'),
-        assignedTo: z.string().optional().describe('Agent ID assigned to this action')
-      }
+      inputSchema: z.object({
+        title: TITLE.describe('Clear imperative title of the action'),
+        description: CONTENT.optional().describe('Detailed action instructions or acceptance criteria'),
+        priority: PRIORITY.default(5).describe('Priority from 1 (lowest) to 10 (highest)'),
+        requires: IDS.optional().describe('Action IDs that must complete before this action is unblocked'),
+        conflictsWith: IDS.optional().describe('Action IDs that cannot run concurrently with this action'),
+        assignedTo: AGENT.optional().describe('Agent ID assigned to this action')
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false }
     },
     async ({ title, description, priority, requires, conflictsWith, assignedTo }) => {
       const action = repo.createAction({
@@ -853,13 +938,14 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_action_update',
     {
       description: 'Update the lifecycle status, assignment, or crystallization of an action in the Action DAG.',
-      inputSchema: {
-        id: z.string().describe('Action ID to update'),
+      inputSchema: z.object({
+        id: ID.describe('Action ID to update'),
         status: z.enum(['pending', 'active', 'done', 'blocked', 'cancelled']).optional().describe('New lifecycle status'),
-        assignedTo: z.string().optional().describe('Assign or reassign to an agent ID'),
-        crystallizedInto: z.string().optional().describe('Memory ID crystallized upon completion of this action'),
-        priority: z.number().optional().describe('Updated priority')
-      }
+        assignedTo: AGENT.optional().describe('Assign or reassign to an agent ID'),
+        crystallizedInto: ID.optional().describe('Memory ID crystallized upon completion of this action'),
+        priority: PRIORITY.optional().describe('Updated priority')
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false }
     },
     async ({ id, status, assignedTo, crystallizedInto, priority }) => {
       const updated = repo.updateAction(id, {
@@ -870,7 +956,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
       });
 
       if (!updated) {
-        return { content: [{ type: 'text', text: `❌ **Error**: Action \`${id}\` not found.` }] };
+        return { isError: true, content: [{ type: 'text', text: `❌ **Error**: Action \`${id}\` not found.` }] };
       }
 
       return {
@@ -889,16 +975,17 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_frontier',
     {
       description: 'Get all unblocked, executable work item actions in the DAG whose prerequisites are satisfied and have no active conflicts.',
-      inputSchema: {
+      inputSchema: z.object({
         status: z.enum(['pending', 'active']).optional().describe('Optional status filter')
-      }
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false }
     },
     async ({ status }) => {
-      const frontier = repo.getFrontier(config.projectId);
+      const frontier = repo.getFrontier(config.projectId).filter((a) => !status || a.status === status);
       if (frontier.length === 0) {
-        return {
-          content: [{ type: 'text', text: `_Frontier is empty. No unblocked actions currently pending._` }]
-        };
+        return ok(status
+          ? `_Frontier has no unblocked actions with status \`${status}\`._`
+          : `_Frontier is empty. No unblocked actions currently pending._`);
       }
 
       let text = `### 🚀 Action DAG Frontier (${frontier.length} unblocked actions):\n\n`;
@@ -918,9 +1005,10 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_next',
     {
       description: 'Atomically claim and return the highest-priority unblocked action ready for execution by an agent.',
-      inputSchema: {
-        agentId: z.string().optional().describe('Agent ID claiming this task (marks status as active)')
-      }
+      inputSchema: z.object({
+        agentId: AGENT.optional().describe('Agent ID claiming this task (marks status as active)')
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false }
     },
     async ({ agentId }) => {
       const next = repo.getNextAction(config.projectId, agentId);
@@ -948,9 +1036,10 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_slot_get',
     {
       description: 'Retrieve a bounded working memory slot (e.g. current_goal, user_preferences, active_hypothesis).',
-      inputSchema: {
-        slotKey: z.string().describe('Key identifying the working memory slot')
-      }
+      inputSchema: z.object({
+        slotKey: SLOT_KEY.describe('Key identifying the working memory slot')
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false }
     },
     async ({ slotKey }) => {
       const slot = repo.getSlot(config.projectId, slotKey);
@@ -976,11 +1065,12 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_slot_set',
     {
       description: 'Store or update a bounded working memory slot. Enforces hard size bounds to avoid context bloat.',
-      inputSchema: {
-        slotKey: z.string().describe('Key identifying the working memory slot (e.g. current_goal)'),
-        content: z.string().describe('Text content to store in the slot'),
-        sizeLimit: z.number().default(4000).describe('Hard maximum character limit (default 4000)')
-      }
+      inputSchema: z.object({
+        slotKey: SLOT_KEY.describe('Key identifying the working memory slot (e.g. current_goal)'),
+        content: z.string().max(MAX_SLOT_CHARS).describe('Text content to store in the slot'),
+        sizeLimit: z.number().int().min(1).max(MAX_SLOT_CHARS).default(4000).describe('Hard maximum character limit (default 4000)')
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false }
     },
     async ({ slotKey, content, sizeLimit }) => {
       try {
@@ -994,7 +1084,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
         };
       } catch (err: any) {
         return {
-          content: [{ type: 'text', text: `❌ **Failed to set slot**: ${err.message}` }]
+          isError: true, content: [{ type: 'text', text: `❌ **Failed to set slot**: ${err.message}` }]
         };
       }
     }
@@ -1007,9 +1097,10 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_slot_list',
     {
       description: 'List all active bounded working memory slots and their size usages.',
-      inputSchema: {
-        filter: z.string().optional().describe('Optional slot key substring filter')
-      }
+      inputSchema: z.object({
+        filter: z.string().max(100).optional().describe('Optional slot key substring filter')
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false }
     },
     async ({ filter }) => {
       let slots = repo.listSlots(config.projectId);
@@ -1037,9 +1128,10 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_obsidian_export',
     {
       description: 'Export all project memories, entities, and links into an Obsidian-compatible markdown vault with YAML frontmatter, [[wikilinks]], and MOC.md.',
-      inputSchema: {
-        exportDir: z.string().describe('Target directory to output the Obsidian markdown vault')
-      }
+      inputSchema: z.object({
+        exportDir: PATH.describe('Target directory to output the Obsidian markdown vault')
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false }
     },
     async ({ exportDir }) => {
       try {
@@ -1052,7 +1144,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
         };
       } catch (err: any) {
         return {
-          content: [{ type: 'text', text: `❌ **Failed to export Obsidian vault**: ${err.message}` }]
+          isError: true, content: [{ type: 'text', text: `❌ **Failed to export Obsidian vault**: ${err.message}` }]
         };
       }
     }
@@ -1065,25 +1157,22 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_federate',
     {
       description: 'Manage cross-repository organization federation. Inspect attached global memory databases or list shared rules.',
-      inputSchema: {
+      inputSchema: z.object({
         action: z.enum(['status', 'list_global', 'attach']).default('status').describe('Action: status, list_global, or attach custom global DB'),
-        globalDbPath: z.string().optional().describe('Path to global database (required if action=attach)')
-      }
+        globalDbPath: PATH.optional().describe('Path to global database (required if action=attach)')
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false }
     },
     async ({ action, globalDbPath }) => {
       if (action === 'attach') {
         if (!globalDbPath) {
-          return { content: [{ type: 'text', text: '❌ **Error**: `globalDbPath` is required for attach action.' }] };
+          return { isError: true, content: [{ type: 'text', text: '❌ **Error**: `globalDbPath` is required for attach action.' }] };
         }
-        const ok = repo.attachGlobalDatabase(globalDbPath);
-        return {
-          content: [{
-            type: 'text',
-            text: ok
-              ? `🌐 **Attached Global Federation DB**: Successfully attached \`${globalDbPath}\` as \`global_db\`.`
-              : `❌ **Failed to attach**: Could not open or attach database at \`${globalDbPath}\`.`
-          }]
-        };
+        const attached = repo.attachGlobalDatabase(globalDbPath);
+        if (!attached) {
+          return fail(`❌ **Failed to attach**: Could not open or attach database at \`${globalDbPath}\`.`);
+        }
+        return ok(`🌐 **Attached Global Federation DB**: Successfully attached \`${globalDbPath}\` as \`global_db\`.`);
       }
 
       if (action === 'list_global') {
@@ -1123,13 +1212,14 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_assemble',
     {
       description: 'Dynamically assembles an optimized, token-budgeted prompt context block (<fastr_context>) combining relevant rules, active 2.0x error traps for target files, frontier tasks, and session handoffs.',
-      inputSchema: {
-        taskDescription: z.string().describe('The task or objective the agent is about to execute'),
-        targetFiles: z.array(z.string()).default([]).describe('Target file paths being inspected, created, or modified'),
-        module: z.string().optional().describe('Filter domain or module (e.g. auth, db, api, ui)'),
-        budgetTokens: z.number().default(2000).describe('Max token allocation for the assembled context block'),
-        agentId: z.string().default('default').describe('Identifier of calling agent (e.g. claude-code, cursor-agent)')
-      }
+      inputSchema: z.object({
+        taskDescription: z.string().min(1).max(4000).describe('The task or objective the agent is about to execute'),
+        targetFiles: PATHS.default([]).describe('Target file paths being inspected, created, or modified'),
+        module: MODULE.optional().describe('Filter domain or module (e.g. auth, db, api, ui)'),
+        budgetTokens: BUDGET.default(2000).describe('Max token allocation for the assembled context block'),
+        agentId: AGENT.default('default').describe('Identifier of calling agent (e.g. claude-code, cursor-agent)')
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false }
     },
     async ({ taskDescription, targetFiles, module, budgetTokens, agentId }) => {
       const res = await assemblePromptContext(db, repo, config.projectId, {
@@ -1160,10 +1250,11 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_risk_predict',
     {
       description: 'Estimates pre-edit failure risk probability (0.0 to 1.0) and planning track record based on active error traps and historical bug churn for target files.',
-      inputSchema: {
-        targetFiles: z.array(z.string()).describe('Target files being modified or planned'),
-        module: z.string().optional().describe('Target module name')
-      }
+      inputSchema: z.object({
+        targetFiles: PATHS.describe('Target files being modified or planned'),
+        module: MODULE.optional().describe('Target module name')
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false }
     },
     async ({ targetFiles, module }) => {
       const res = predictFileBaseRate(db, repo, config.projectId, {
@@ -1194,11 +1285,15 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_verify_provenance',
     {
       description: 'Verifies the cryptographic SHA-256 provenance signature of a memory to ensure authentic agent authoring and tamper-free storage.',
-      inputSchema: {
-        memoryId: z.string().describe('Memory ID to cryptographically verify (e.g. mem_8f2a1c)')
-      }
+      inputSchema: z.object({
+        memoryId: ID.describe('Memory ID to cryptographically verify (e.g. mem_8f2a1c)')
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false }
     },
     async ({ memoryId }) => {
+      if (!repo.getMemory(memoryId)) {
+        return fail(`Memory not found: ${memoryId}`);
+      }
       const res = repo.verifyMemoryProvenance(memoryId);
       let text = `### 🔒 Cryptographic Provenance Verification: \`${res.id}\`\n\n`;
       text += `- **Authenticity Status**: ${res.verified ? '✅ **AUTHENTIC & VERIFIED**' : '❌ **UNVERIFIED / TAMPERED**'}\n`;
@@ -1220,16 +1315,17 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_compress',
     {
       description: 'Compresses markdown files or text to reduce token usage while strictly preserving headings, URLs, and code blocks. Creates .original.md backup if filePath is provided.',
-      inputSchema: {
-        filePath: z.string().optional().describe('Path to markdown or text file to compress on disk'),
-        content: z.string().optional().describe('Direct text or markdown content to compress in-memory'),
+      inputSchema: z.object({
+        filePath: PATH.optional().describe('Path to markdown or text file to compress on disk'),
+        content: z.string().min(1).max(200_000).optional().describe('Direct text or markdown content to compress in-memory'),
         dryRun: z.boolean().default(false).describe('Preview compression savings without modifying file on disk')
-      }
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false }
     },
     async ({ filePath, content, dryRun }) => {
       if (!filePath && !content) {
         return {
-          content: [{ type: 'text', text: '❌ Error: Either `filePath` or `content` must be provided.' }]
+          isError: true, content: [{ type: 'text', text: '❌ Error: Either `filePath` or `content` must be provided.' }]
         };
       }
 
@@ -1242,7 +1338,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
 
       if (!res.success) {
         return {
-          content: [{ type: 'text', text: `❌ Compression failed: ${res.error || 'Unknown error'}` }]
+          isError: true, content: [{ type: 'text', text: `❌ Compression failed: ${res.error || 'Unknown error'}` }]
         };
       }
 
@@ -1276,13 +1372,22 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_diagnose',
     {
       description: 'Performs comprehensive health checks across SQLite B-Trees, FTS5 BM25 search index consistency, orphaned file links, and multi-agent DAG frontiers.',
-      inputSchema: {
-        category: z.string().optional().describe('Optional diagnostic category filter')
-      }
+      inputSchema: z.object({
+        category: z.enum(['integrity', 'fts5', 'file_links', 'actions', 'storage']).optional().describe('Optional diagnostic category filter')
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false }
     },
     async ({ category }) => {
-      const report = diagnoseDatabase(db, config.projectId);
-      let out = `### 🩺 FastrMemory Database Health Diagnostic\n\n`;
+      const fullReport = diagnoseDatabase(db, config.projectId);
+      const issues = category ? fullReport.issues.filter((iss) => iss.category === category) : fullReport.issues;
+      const report = {
+        ...fullReport,
+        issues,
+        totalIssues: category ? issues.length : fullReport.totalIssues,
+        fixableIssues: category ? issues.filter((iss) => iss.fixable).length : fullReport.fixableIssues,
+        healthy: category ? issues.length === 0 : fullReport.healthy,
+      };
+      let out = `### 🩺 FastrMemory Database Health Diagnostic${category ? ` (category: ${category})` : ''}\n\n`;
       out += `- **Overall Status**: ${report.healthy ? '✅ **HEALTHY**' : '⚠️ **ISSUES DETECTED**'}\n`;
       out += `- **Total Issues**: ${report.totalIssues} (${report.fixableIssues} fixable)\n`;
       out += `- **Active Memories**: ${report.metrics.memoryCount}\n`;
@@ -1315,9 +1420,10 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_heal',
     {
       description: 'Auto-repairs all fixable database issues found by fastr_diagnose: rebuilds FTS5 BM25 indices, prunes orphaned file links, unblocks action DAGs, and runs WAL page truncation.',
-      inputSchema: {
+      inputSchema: z.object({
         dryRun: z.boolean().default(false).describe('Preview actions to be taken without executing any writes')
-      }
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false }
     },
     async ({ dryRun }) => {
       const result = healDatabase(db, config.projectId, { dryRun });
@@ -1348,13 +1454,14 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_vision_tag',
     {
       description: 'Attaches a screenshot image, architecture diagram, or wireframe to long-term memory with OCR and semantic description for multimodal coding agents.',
-      inputSchema: {
-        filePath: z.string().describe('Absolute or relative path to image file (PNG, JPG, WebP)'),
-        description: z.string().describe('Detailed description of visual elements, UI components, layout, or diagram flow'),
-        ocrText: z.string().optional().describe('Any visible text, error messages, or code labels inside the image'),
-        memoryId: z.string().optional().describe('Optional ID of governing rule or error trap ([mem_xxxx])'),
-        taskId: z.string().optional().describe('Optional ID of associated action task ([act_xxxx])')
-      }
+      inputSchema: z.object({
+        filePath: PATH.describe('Absolute or relative path to image file (PNG, JPG, WebP)'),
+        description: CONTENT.describe('Detailed description of visual elements, UI components, layout, or diagram flow'),
+        ocrText: CONTENT.optional().describe('Any visible text, error messages, or code labels inside the image'),
+        memoryId: ID.optional().describe('Optional ID of governing rule or error trap ([mem_xxxx])'),
+        taskId: ID.optional().describe('Optional ID of associated action task ([act_xxxx])')
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false }
     },
     async ({ filePath, description, ocrText, memoryId, taskId }) => {
       const asset = await tagVisionAsset(db, {
@@ -1393,11 +1500,12 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     'fastr_vision_search',
     {
       description: 'Searches stored visual assets (screenshots, diagrams, error screens) via hybrid vector + keyword matching across descriptions and OCR text.',
-      inputSchema: {
-        query: z.string().describe('Search query (e.g. "login modal error banner", "architecture flow", "settings sidebar")'),
-        limit: z.number().default(10).describe('Max results to return (default 10)'),
-        memoryId: z.string().optional().describe('Filter results to a specific memory ID')
-      }
+      inputSchema: z.object({
+        query: z.string().min(1).max(4000).describe('Search query (e.g. "login modal error banner", "architecture flow", "settings sidebar")'),
+        limit: z.number().int().min(1).max(100).default(10).describe('Max results to return (default 10)'),
+        memoryId: ID.optional().describe('Filter results to a specific memory ID')
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false }
     },
     async ({ query, limit, memoryId }) => {
       const results = await searchVisionAssets(db, config.projectId, query, { limit, memoryId });
@@ -1430,6 +1538,260 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   );
 
   // ==========================================
+  // Memory detail helper (shared by fastr_get and fastr://memory/{id})
+  // ==========================================
+  function memoryDetail(id: string) {
+    const mem = repo.getMemory(id);
+    if (!mem) return null;
+    return {
+      id: mem.id,
+      project_id: mem.project_id,
+      agent_id: mem.agent_id,
+      module: mem.module,
+      kind: mem.kind,
+      title: mem.title,
+      content: mem.content,
+      status: mem.status,
+      pinned: Boolean(mem.pinned),
+      reward_score: mem.reward_score,
+      retrieval_count: mem.retrieval_count,
+      valid_from: mem.valid_from,
+      valid_to: mem.valid_to,
+      superseded_by: mem.superseded_by_id,
+      superseded_reason: mem.superseded_reason,
+      created_at: mem.created_at,
+      last_recalled_at: mem.last_recalled_at,
+      provenance_hash: mem.provenance_hash,
+      files: repo.getFilesForMemory(mem.id),
+    };
+  }
+
+  // ==========================================
+  // TOOL 36: fastr_get
+  // ==========================================
+  server.registerTool(
+    'fastr_get',
+    {
+      description: 'Fetch one memory by ID with full content, linked files, status, bi-temporal validity (valid_from/valid_to), and superseded_by.',
+      inputSchema: z.object({
+        id: ID.describe('Memory ID (e.g. mem_8f2a1c)')
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false }
+    },
+    async ({ id }) => {
+      const detail = memoryDetail(id);
+      if (!detail) return fail(`Memory not found: ${id}`);
+      return {
+        content: [{ type: 'text', text: JSON.stringify(detail, null, 2) }],
+        structuredContent: detail
+      };
+    }
+  );
+
+  // ==========================================
+  // TOOL 37: fastr_list
+  // ==========================================
+  server.registerTool(
+    'fastr_list',
+    {
+      description: 'Page through memories (newest first) filtered by module, kind, and status. Returns {items, nextCursor}; pass nextCursor back as `cursor` for the next page.',
+      inputSchema: z.object({
+        module: MODULE.optional().describe('Filter by module (e.g. auth, db, api)'),
+        kind: z.enum(['rule', 'decision', 'error_trap', 'workflow']).optional().describe('Filter by memory kind'),
+        status: z.enum(['active', 'staging', 'verified', 'superseded', 'all']).default('active')
+          .describe('Status filter: active = staging+verified and currently valid (default); all = no filter'),
+        limit: LIMIT.default(50).describe('Page size (1-200, default 50)'),
+        cursor: z.string().max(512).optional().describe('Opaque cursor from a previous fastr_list call')
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false }
+    },
+    async ({ module: mod, kind, status, limit, cursor }) => {
+      const where: string[] = [`(project_id = ? OR project_id = 'global')`];
+      const params: Array<string | number> = [config.projectId];
+
+      if (mod) {
+        where.push('module = ?');
+        params.push(mod.trim().toLowerCase());
+      }
+      if (kind) {
+        where.push('kind = ?');
+        params.push(kind);
+      }
+      if (status === 'active') {
+        where.push(`valid_to IS NULL AND status IN ('staging', 'verified')`);
+      } else if (status !== 'all') {
+        where.push('status = ?');
+        params.push(status);
+      }
+      if (cursor) {
+        const c = decodeListCursor(cursor);
+        if (!c) return fail(`Invalid cursor: ${cursor}`);
+        where.push('(created_at < ? OR (created_at = ? AND id < ?))');
+        params.push(c.createdAt, c.createdAt, c.id);
+      }
+
+      const rows = db.prepare(`
+        SELECT id, title, kind, module, status, reward_score, created_at
+        FROM memories
+        WHERE ${where.join(' AND ')}
+        ORDER BY created_at DESC, id DESC
+        LIMIT ?
+      `).all(...params, limit + 1) as Array<{
+        id: string; title: string; kind: string; module: string; status: string; reward_score: number; created_at: string;
+      }>;
+
+      const page = rows.slice(0, limit);
+      const last = page[page.length - 1];
+      const nextCursor = rows.length > limit && last ? encodeListCursor(last.created_at, last.id) : null;
+      const items = page.map(({ id, title, kind: k, module: m, status: s, reward_score }) => ({
+        id, title, kind: k, module: m, status: s, reward_score
+      }));
+      const payload = { items, nextCursor };
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }],
+        structuredContent: payload
+      };
+    }
+  );
+
+  // ==========================================
+  // TOOL 38: fastr_forget
+  // ==========================================
+  server.registerTool(
+    'fastr_forget',
+    {
+      description: 'Retire a memory without a replacement (marks it superseded with valid_to = now and records the reason). Use fastr_supersede instead when a corrected rule exists.',
+      inputSchema: z.object({
+        id: ID.describe('Memory ID to forget (e.g. mem_8f2a1c)'),
+        reason: NOTE.min(1).optional().describe('Why this memory is being retired')
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false }
+    },
+    async ({ id, reason }) => {
+      const mem = repo.getMemory(id);
+      if (!mem) return fail(`Memory not found: ${id}`);
+
+      repo.forgetMemory(id, reason ? scrubSecrets(reason) : 'Forgotten via fastr_forget');
+
+      let mirrorWarning = '';
+      if (mem.project_id !== 'global') {
+        try {
+          syncModulePage(db, config.projectRoot, config.projectId, mem.module);
+        } catch (err) {
+          mirrorWarning = ` Warning: Markdown mirror sync failed (${errMessage(err)}).`;
+        }
+      }
+      return ok(`Forgot memory [${id}] "${mem.title}" (status now "superseded").${mirrorWarning}`);
+    }
+  );
+
+  // ==========================================
+  // TOOL 39: fastr_pin
+  // ==========================================
+  server.registerTool(
+    'fastr_pin',
+    {
+      description: 'Pin or unpin a memory. Pinned memories always surface first during recall.',
+      inputSchema: z.object({
+        id: ID.describe('Memory ID (e.g. mem_8f2a1c)'),
+        pinned: z.boolean().describe('true to pin, false to unpin')
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+    },
+    async ({ id, pinned }) => {
+      const mem = repo.getMemory(id);
+      if (!mem) return fail(`Memory not found: ${id}`);
+      repo.pinMemory(id, pinned);
+      return ok(`${pinned ? 'Pinned' : 'Unpinned'} memory [${id}] "${mem.title}".`);
+    }
+  );
+
+  // ==========================================
+  // PROMPT 1: pre-edit-check
+  // ==========================================
+  server.registerPrompt(
+    'pre-edit-check',
+    {
+      title: 'Pre-Edit Memory Check',
+      description: 'Check active error traps and relevant rules for files before editing them.',
+      argsSchema: z.object({
+        files: z.string().min(1).max(8000).describe('Comma-separated file paths about to be edited')
+      })
+    },
+    ({ files }) => {
+      const list = files.split(',').map((f) => f.trim()).filter(Boolean);
+      const json = JSON.stringify(list);
+      return {
+        messages: [{
+          role: 'user',
+          content: {
+            type: 'text',
+            text: (
+              `Before editing these files, check FastrMemory:\n` +
+              list.map((f) => `- ${f}`).join('\n') + '\n\n' +
+              `1. Call \`fastr_trap_recall\` with \`{ "files": ${json} }\` and treat every [TRAP] returned as a hard constraint.\n` +
+              `2. Call \`fastr_recall\` with \`{ "query": "<one-line description of the planned change>", "files": ${json} }\` to load the active rules and decisions for these files.\n` +
+              `3. Summarize the traps and rules that apply, then plan the edit so it does not violate any of them. ` +
+              `If a recalled rule looks wrong for this task, say so instead of silently ignoring it.`
+            )
+          }
+        }]
+      };
+    }
+  );
+
+  // ==========================================
+  // PROMPT 2: session-wrap-up
+  // ==========================================
+  server.registerPrompt(
+    'session-wrap-up',
+    {
+      title: 'Session Wrap-Up',
+      description: 'End-of-session checklist: log traps, supersede outdated rules, score recalled memories, save a handoff.'
+    },
+    () => ({
+      messages: [{
+        role: 'user',
+        content: {
+          type: 'text',
+          text: (
+            `Wrap up this session in FastrMemory. Do each step that applies:\n\n` +
+            `1. **Traps**: for every build error, test failure, or runtime bug you diagnosed and fixed this session, ` +
+            `call \`fastr_trap_log\` once (title, content with the cause and fix, files, module). Do not log duplicates.\n` +
+            `2. **Supersede**: if a recalled rule or decision turned out to be wrong or outdated, call \`fastr_supersede\` ` +
+            `with \`oldMemoryId\`, the corrected \`newTitle\`/\`newContent\`, and a \`reason\`.\n` +
+            `3. **Feedback**: for each memory ID you actually relied on, call \`fastr_feedback\` with \`outcome: "good"\` ` +
+            `if it helped or \`"bad"\` if it misled you (add a short \`note\`). Score individual IDs, never the whole batch.\n` +
+            `4. **Handoff**: call \`fastr_handoff\` with \`action: "save"\`, \`taskTitle\`, \`summary\`, \`nextStep\`, \`activeFiles\`, ` +
+            `and \`verifyStaging: true\` only if the automated tests pass, so staging memories graduate to verified.`
+          )
+        }
+      }]
+    })
+  );
+
+  // ==========================================
+  // RESOURCE TEMPLATE: fastr://memory/{id}
+  // ==========================================
+  server.registerResource(
+    'memory',
+    new ResourceTemplate('fastr://memory/{id}', { list: undefined }),
+    { description: 'A single memory by ID (JSON, including linked files and validity window)', mimeType: 'application/json' },
+    async (uri, variables) => {
+      const raw = variables.id;
+      const id = decodeURIComponent(Array.isArray(raw) ? raw[0] ?? '' : String(raw ?? ''));
+      const detail = memoryDetail(id);
+      if (!detail) {
+        throw new Error(`Memory not found: ${id}`);
+      }
+      return {
+        contents: [{ uri: uri.href, text: JSON.stringify(detail, null, 2), mimeType: 'application/json' }]
+      };
+    }
+  );
+
+  // ==========================================
   // RESOURCE 1: fastr://project/overview
   // ==========================================
   server.registerResource(
@@ -1438,9 +1800,10 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
     { description: 'L0 Project Overview (~150 tokens)', mimeType: 'text/markdown' },
     async (uri) => {
       const status = repo.getStatus(config.projectId);
+      const trapCount = repo.listTraps(config.projectId).length;
       const text = (
         `# Project Memory: ${config.projectName}\n` +
-        `Active rules: ${status.activeCount} | Traps: ${status.activeCount} | Events: ${status.rawEventCount}\n` +
+        `Active rules: ${status.activeCount} | Traps: ${trapCount} | Events: ${status.rawEventCount}\n` +
         `Memory is maintained locally in WAL SQLite and mirrored into \`.fastr/pages/*.md\` for Git diffs.`
       );
       return {

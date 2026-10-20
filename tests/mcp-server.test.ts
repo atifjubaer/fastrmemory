@@ -75,7 +75,7 @@ describe('MCP v2 Server (Tools & Resources)', () => {
     });
   }
 
-  it('exposes all 8 core MCP tools', async () => {
+  it('exposes the full registered MCP tool set', async () => {
     const id = 999;
     const res: any = await new Promise((resolve) => {
       clientTransport.onmessage = (msg: any) => {
@@ -89,15 +89,22 @@ describe('MCP v2 Server (Tools & Resources)', () => {
       });
     });
 
-    const toolNames = res.tools.map((t: any) => t.name);
-    expect(toolNames).toContain('fastr_recall');
-    expect(toolNames).toContain('fastr_drill');
-    expect(toolNames).toContain('fastr_file_history');
-    expect(toolNames).toContain('fastr_remember');
-    expect(toolNames).toContain('fastr_supersede');
-    expect(toolNames).toContain('fastr_feedback');
-    expect(toolNames).toContain('fastr_handoff');
-    expect(toolNames).toContain('fastr_status');
+    const toolNames = res.tools.map((t: any) => t.name).sort();
+    expect(toolNames).toEqual([
+      'fastr_action_create', 'fastr_action_update', 'fastr_assemble', 'fastr_compress',
+      'fastr_conflicts', 'fastr_diagnose', 'fastr_drill', 'fastr_federate', 'fastr_feedback',
+      'fastr_file_history', 'fastr_forget', 'fastr_frontier', 'fastr_get', 'fastr_graph_query',
+      'fastr_handoff', 'fastr_heal', 'fastr_list', 'fastr_next', 'fastr_obsidian_export',
+      'fastr_pin', 'fastr_predict', 'fastr_predict_baserate', 'fastr_recall', 'fastr_remember',
+      'fastr_resolve', 'fastr_risk_predict', 'fastr_rollback', 'fastr_slot_get', 'fastr_slot_list',
+      'fastr_slot_set', 'fastr_snapshot', 'fastr_status', 'fastr_supersede', 'fastr_timeline',
+      'fastr_trap_log', 'fastr_trap_recall', 'fastr_verify_provenance', 'fastr_vision_search',
+      'fastr_vision_tag'
+    ]);
+    // Every tool advertises annotations.
+    for (const t of res.tools) {
+      expect(t.annotations, t.name).toBeDefined();
+    }
   });
 
   it('records, recalls, rates, supersedes, and checks file history via MCP', async () => {
