@@ -12,7 +12,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # Intel macOS avoids the arm64 hosted-runner capacity queue; arm64 is
+        # not part of this six-job matrix.
+        os: [ubuntu-latest, windows-latest, macos-15-intel]
         node-version: [22.x, 24.x]
 
     steps:
