@@ -1,6 +1,6 @@
 # FastrMemory NPM Publishing & Architecture Guide
 
-> **Status (2026-10-20): npm publication is blocked.** `npm whoami` returns **E401 Unauthorized** and `npm view @atifjubaer/fastrmemory version` returns **E404**, so the npm registry package has never been published. The npm account has an unresolved security suspension/2FA issue. **Do not bypass npm security checks, 2FA, or the suspension.** Use the GitHub Release tarball or the GitHub source install until the account is restored.
+> **Status (2026-10-21): npm publication is blocked until the temporary suspension lifts.** npm Support states the account will return to normal on **2026-10-21 22:42 UTC** (**2026-10-22 04:42 Asia/Dhaka**) after a recovery-code login triggered a 72-hour security suspension. `npm whoami` returns **E401 Unauthorized** and `npm view @atifjubaer/fastrmemory version` returns **E404**, so the npm registry package has never been published. If the recovery-code login was legitimate, no action is required; wait for the automatic return. **Do not bypass npm security checks, 2FA, or the suspension.** Use the GitHub Release tarball or the GitHub source install until the account is restored.
 
 This document explains why npm matters for FastrMemory, how the package is verified, and the exact resume protocol. It is a resume plan, not a workaround.
 

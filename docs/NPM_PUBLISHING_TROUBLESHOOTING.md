@@ -10,11 +10,11 @@
 
 Follow these 3 steps once you're ready to publish:
 
-### Step 1: Unlock Your NPM Account (1 min)
-1. Open your email inbox registered with npm.
-2. Find the email from `support@npmjs.com` ("Security alert" / "Verify security action").
-3. Click the unlock link inside.
-4. Refresh [https://www.npmjs.com](https://www.npmjs.com) to confirm the red suspension banner is gone.
+### Step 1: Confirm the suspension and wait for automatic return
+1. Open the email inbox registered with npm and find the notice from `support@npmjs.com`.
+2. Current notice: a recovery-code login on 2026-10-19 triggered a 72-hour suspension. The account returns to normal on **2026-10-21 22:42 UTC** (**2026-10-22 04:42 Asia/Dhaka**).
+3. If the recovery-code login was yours, no action is required. If it was not, contact npm Support immediately and treat the account as compromised.
+4. Do not retry `npm login` or `npm publish` repeatedly while suspended. Wait for the return time, then refresh [https://www.npmjs.com](https://www.npmjs.com) and confirm the red banner is gone.
 
 ### Step 2: Restore 2FA / publish access (1 min)
 1. Navigate to: **https://www.npmjs.com/settings/tokens**
@@ -98,7 +98,7 @@ npm publish --access public
 ## 📦 Distribution Health Verification
 
 Before publishing, this pipeline automatically runs and verifies:
-1. `npm run check:ci` (226 tests across 38 files, isolation, skills, UI freshness, package surface, docs, and benchmarks)
+1. `npm run check:ci` (234 tests across 42 files, isolation, skills, UI freshness, package surface, docs, and benchmarks)
 2. `npm run build:core` (`tsc` with 0 errors)
 3. Whitelisted distribution payload:
    - `dist/` (compiled runtime & CLI)
