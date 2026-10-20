@@ -4,7 +4,7 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ## [0.2.1] - 2026-10-21
 
-Release candidate prepared from the post-0.2.0 fixes. npm publication remains blocked by the account suspension documented in [docs/npm-publishing.md](docs/npm-publishing.md).
+GitHub release attached from the post-0.2.0 fixes. npm publication remains blocked by the account suspension documented in [docs/npm-publishing.md](docs/npm-publishing.md).
 
 ### Added
 

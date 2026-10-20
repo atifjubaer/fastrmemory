@@ -13,7 +13,7 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-architecture)
 
-> **Status (2026-10-21, v0.2.1):** Registry availability is verified with `npm view @atifjubaer/fastrmemory version`. If it returns `0.2.1`, install from npm. If it returns E404, use the **v0.2.0 GitHub Release tarball** or the GitHub source below. The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval, and no external engine is measured. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md). Release notes: [CHANGELOG.md](CHANGELOG.md).
+> **Status (2026-10-21, v0.2.1):** Registry availability is verified with `npm view @atifjubaer/fastrmemory version`. If it returns `0.2.1`, install from npm. If it returns E404, use the **v0.2.1 GitHub Release tarball** or the GitHub source below. The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval, and no external engine is measured. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md). Release notes: [CHANGELOG.md](CHANGELOG.md).
 
 <p align="center">
   <a href="#-overview">Overview</a> &bull;
@@ -116,18 +116,18 @@ fastr --version
 
 If `npm view` returns E404, use one of the GitHub install paths below.
 
-### Install the v0.2.0 GitHub Release Tarball
+### Install the v0.2.1 GitHub Release Tarball
 
 ```bash
-# Local project install from the release asset (verified with the 0.2.0 tarball):
-npm install https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.0/atifjubaer-fastrmemory-0.2.0.tgz
+# Local project install from the release asset (verified with the 0.2.1 tarball):
+npm install https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.1/atifjubaer-fastrmemory-0.2.1.tgz
 npx fastr --version
 ```
 
 For a global CLI:
 
 ```bash
-npm install -g https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.0/atifjubaer-fastrmemory-0.2.0.tgz
+npm install -g https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.1/atifjubaer-fastrmemory-0.2.1.tgz
 fastr --version
 ```
 

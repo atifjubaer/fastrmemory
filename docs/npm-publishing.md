@@ -1,6 +1,6 @@
 # FastrMemory NPM Publishing & Architecture Guide
 
-> **Status (2026-10-21): the 0.2.1 release candidate is prepared locally; npm publication is blocked until the temporary suspension lifts.** npm Support states the account will return to normal on **2026-10-21 22:42 UTC** (**2026-10-22 04:42 Asia/Dhaka**) after a recovery-code login triggered a 72-hour security suspension. `npm whoami` returns **E401 Unauthorized** and `npm view @atifjubaer/fastrmemory version` returns **E404**, so the npm registry package has never been published. If the recovery-code login was legitimate, no action is required; wait for the automatic return. **Do not bypass npm security checks, 2FA, or the suspension.** Use the GitHub Release tarball or the GitHub source install until the account is restored.
+> **Status (2026-10-21): the 0.2.1 GitHub release is attached and its tarball is verified; npm publication is blocked until the temporary suspension lifts.** npm Support states the account will return to normal on **2026-10-21 22:42 UTC** (**2026-10-22 04:42 Asia/Dhaka**) after a recovery-code login triggered a 72-hour security suspension. `npm whoami` returns **E401 Unauthorized** and `npm view @atifjubaer/fastrmemory version` returns **E404**, so the npm registry package has never been published. If the recovery-code login was legitimate, no action is required; wait for the automatic return. **Do not bypass npm security checks, 2FA, or the suspension.** Use the GitHub Release tarball or the GitHub source install until the account is restored.
 
 This document explains why npm matters for FastrMemory, how the package is verified, and the exact resume protocol. It is a resume plan, not a workaround.
 
@@ -35,30 +35,42 @@ This document explains why npm matters for FastrMemory, how the package is verif
 
 ---
 
-## Release candidate 0.2.1
+## Release 0.2.1
 
-The 0.2.1 release candidate is prepared and verified locally:
+The 0.2.1 GitHub release is attached and the tarball is verified:
 
-- `npm pack` produced `atifjubaer-fastrmemory-0.2.1.tgz` at **591,205 bytes**.
-- SHA-256: `5129074F99DD5E7D0D3121EE3F12691CACF2C3B7FA63F9A777CE608D1DBD2F0A`.
-- Clean install in an empty temp project: **3.85 s**, **16,493,074 bytes** in `node_modules`; `fastr --version` and `fastrmemory --version` both report `0.2.1`; `fastr mcp --help` lists `--profile`.
+- `npm pack` produced `atifjubaer-fastrmemory-0.2.1.tgz` at **591,204 bytes**.
+- SHA-256: `78F1535E87A7148272824C0B0D31F21D4AD385D9EEAA2EF8A40D41DCD0ACA63B`.
+- Clean install in an empty temp project: **1.93 s**, **16,493,075 bytes** in `node_modules`; `fastr --version` and `fastrmemory --version` both report `0.2.1`; `fastr mcp --help` lists `--profile`.
 - `npm whoami` remains E401 and `npm view` remains E404, so the package is not published.
 
-The candidate has no GitHub Release asset yet. Do not link to a 0.2.1 asset until it is attached.
+The v0.2.1 GitHub Release asset is attached at
+`https://github.com/atifjubaer/fastrmemory/releases/tag/v0.2.1` (created
+2026-10-21 from `3fa2bf9`; CI 6/6 green on that commit).
 
 ## Current interim distribution
 
-The verified v0.2.0 tarball is published as a GitHub Release asset:
+The verified v0.2.1 tarball is published as a GitHub Release asset:
 
 ```bash
 # Local project install:
-npm install https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.0/atifjubaer-fastrmemory-0.2.0.tgz
+npm install https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.1/atifjubaer-fastrmemory-0.2.1.tgz
 npx fastr --version
 
 # Global CLI:
-npm install -g https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.0/atifjubaer-fastrmemory-0.2.0.tgz
+npm install -g https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.1/atifjubaer-fastrmemory-0.2.1.tgz
 fastr --version
 ```
+
+The v0.2.1 asset is 591,204 bytes with SHA-256
+`78F1535E87A7148272824C0B0D31F21D4AD385D9EEAA2EF8A40D41DCD0ACA63B`.
+The release-URL clean-install check reported `npx fastr --version` = `0.2.1`
+and 16,493,121 bytes in `node_modules` in 8.35 s.
+
+The older v0.2.0 asset remains available at
+`https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.0/atifjubaer-fastrmemory-0.2.0.tgz`
+(571,279 bytes, SHA-256
+`12B7D49546D6B904A2296724490E4D6EECE313514DA6C4BFDA6950137F309ED7`).
 
 Source install remains available:
 
@@ -68,10 +80,6 @@ npx github:atifjubaer/fastrmemory ui
 npm install -g git+https://github.com/atifjubaer/fastrmemory.git
 ```
 
-The v0.2.0 release tarball is 571,279 bytes with SHA-256
-`12B7D49546D6B904A2296724490E4D6EECE313514DA6C4BFDA6950137F309ED7`.
-The v0.2.0 clean-install check reported `npx fastr --version` = `0.2.0`,
-`npx fastrmemory --version` = `0.2.0`, and 16,397,409 bytes in `node_modules`.
 See [CLAIMS.md](../CLAIMS.md) for the evidence rows.
 
 ---

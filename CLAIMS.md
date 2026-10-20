@@ -5,25 +5,25 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 - **Ledger date:** 2026-10-21
 - **Benchmark commit:** `562f461` (raw JSON in `bench/results/minilm.json` and `bench/results/hash.json`)
 - **Phase 3/4 evidence commit:** `a91ad6d` (replay, JSONL, consolidation, Memory CI)
-- **Packaging/CI inspection:** `de4fde3` (package, version, and CI changes in this ledger)
+- **Packaging/CI inspection:** `3fa2bf9` (v0.2.1 release commit; package and CI rows in this ledger)
 - **Hardware:** AMD Ryzen 7 7700, 15.1 GB RAM, Windows 10 Pro 19045, Node v24.15.0
 - **Scope:** FastrMemory only. No external memory engine is measured in this repository.
-- **Row provenance:** benchmark rows use commit `562f461`; Phase 3/4 rows use `a91ad6d`; package rows use `2aa4e20`; CI rows use `de4fde3`; `npm view` rows were run on 2026-10-20. The README table is the current `562f461` run; the earlier v0.2.0 snapshot at `1495622` is preserved as `bench/results/minilm-1495622.json` for comparison.
+- **Row provenance:** benchmark rows use commit `562f461`; Phase 3/4 rows use `a91ad6d`; package and CI rows use `3fa2bf9`; `npm view` rows were run on 2026-10-21. The README table is the current `562f461` run; the earlier v0.2.0 snapshot at `1495622` is preserved as `bench/results/minilm-1495622.json` for comparison.
 
 ## A. Distribution and package
 
 | ID | Claim | Where | Status | Evidence command | Raw output | Caveat |
 |---|---|---|---|---|---|---|
-| A1 | Package is `@atifjubaer/fastrmemory` v0.2.1 | `package.json` | Supported | `node -p "require('./package.json').name + ' ' + require('./package.json').version"` | `@atifjubaer/fastrmemory 0.2.1` | 0.2.1 release candidate; npm publication remains blocked until the suspension lifts |
+| A1 | Package is `@atifjubaer/fastrmemory` v0.2.1 | `package.json` | Supported | `node -p "require('./package.json').name + ' ' + require('./package.json').version"` | `@atifjubaer/fastrmemory 0.2.1` | v0.2.1 is attached as a GitHub release; npm publication remains blocked until the suspension lifts |
 | A2 | Package is published on npm | README | **Blocked** | `npm view @atifjubaer/fastrmemory version` | `E404 Not Found` | Never advertise npm install until this passes |
-| A3 | GitHub source metadata resolves | README | Supported | `npm view github:atifjubaer/fastrmemory version` | `0.2.0` | GitHub default branch was at `de4fde3` when inspected; the 0.2.1 release candidate is local until pushed; the npm registry package is still E404 |
-| A4 | Tarball size | README (not claimed) | Supported | `npm pack --ignore-scripts`; `scripts/check-package.mjs` | 591,205 bytes; 2,334,126 bytes unpacked; 220 files; SHA-256 `5129074F99DD5E7D0D3121EE3F12691CACF2C3B7FA63F9A777CE608D1DBD2F0A` | Local pack on 2026-10-21 for v0.2.1 after the offline-vectorizer hot-path fix; `check:package` reports 577.3 kB using 1024-byte units, which equals 591,205 bytes, so the gate and the actual tarball agree; registry tarballs can differ because archive timestamps and the publish-time pack are not byte-stable; excludes the optional MiniLM model; verify the registry hash after publish |
+| A3 | GitHub source metadata resolves | README | Supported | `npm view github:atifjubaer/fastrmemory version` | `0.2.1` | GitHub default branch was at `3fa2bf9` when inspected on 2026-10-21; the npm registry package is still E404 |
+| A4 | Tarball size | README (not claimed) | Supported | `npm pack --ignore-scripts`; `scripts/check-package.mjs` | 591,204 bytes; 2,334,126 bytes unpacked; 220 files; SHA-256 `78F1535E87A7148272824C0B0D31F21D4AD385D9EEAA2EF8A40D41DCD0ACA63B` | Local pack on 2026-10-21 for v0.2.1 after the offline-vectorizer hot-path fix; `check:package` reports 577.3 kB using 1024-byte units, which equals 591,204 bytes, so the gate and the actual tarball agree; registry tarballs can differ because archive timestamps and the publish-time pack are not byte-stable; excludes the optional MiniLM model; verify the registry hash after publish |
 | A5 | Apache-2.0 license | README, `package.json` | Supported | `node -p "require('./package.json').license"` | `Apache-2.0` | `LICENSE` present |
 | A6 | Node >= 22.16.0 | `package.json` | Supported | `node -p "require('./package.json').engines.node"` | `>=22.16.0` | Local tests run on Node 24.15.0 |
 | A7 | Three required runtime dependencies | README | Supported | `npm ls --depth=0 --omit=dev` | `@modelcontextprotocol/server`, `commander`, `zod` | MiniLM is an optional peer plus a dev dependency |
-| A8 | Clean install stays under 20 MB | README (not claimed) | Supported | `npm install <0.2.1 tarball> --ignore-scripts` in an empty temp project, then measure `node_modules` | 3.85 s install; 16,493,074 bytes; `fastr --version` and `fastrmemory --version` both `0.2.1`; `fastr mcp --help` lists `--profile` | Local Windows run on 2026-10-21; npm cache may affect install time; optional MiniLM model is not installed |
+| A8 | Clean install stays under 20 MB | README (not claimed) | Supported | `npm install <0.2.1 tarball> --ignore-scripts` in an empty temp project, then measure `node_modules` | 1.93 s install; 16,493,075 bytes; `fastr --version` and `fastrmemory --version` both `0.2.1`; `fastr mcp --help` lists `--profile` | Local Windows run on 2026-10-21; warm npm cache affects install time; optional MiniLM model is not installed |
 | A9 | v0.2.0 GitHub Release asset is attached and installable | README | Supported | `gh release download v0.2.0 --pattern atifjubaer-fastrmemory-0.2.0.tgz`; `npm install <release asset URL> --ignore-scripts` | 571,279 bytes; SHA-256 `12B7D49546D6B904A2296724490E4D6EECE313514DA6C4BFDA6950137F309ED7`; release-URL install 3.71 s; CLI `0.2.0` | Asset URL `https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.0/atifjubaer-fastrmemory-0.2.0.tgz`; local Windows run on 2026-10-20; line-ending hash sensitivity applies; the asset predates the Phase 2 module-scope fix |
-| A10 | v0.2.1 GitHub Release asset is attached | README fallback path | **Not measured** | `gh release view v0.2.1` | Not attached | The 0.2.1 candidate is local only; do not link to a v0.2.1 asset until the release is created |
+| A10 | v0.2.1 GitHub Release asset is attached | README fallback path | Supported | `gh release view v0.2.1`; `gh release download v0.2.1`; `npm install https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.1/atifjubaer-fastrmemory-0.2.1.tgz --ignore-scripts` | Asset `atifjubaer-fastrmemory-0.2.1.tgz`, 591,204 bytes; downloaded SHA-256 `78F1535E87A7148272824C0B0D31F21D4AD385D9EEAA2EF8A40D41DCD0ACA63B`; release-URL install 8.35 s, 16,493,121 bytes, `fastr --version` = `0.2.1` | Release created 2026-10-21 from `3fa2bf9`; CI 6/6 green on that commit; asset re-uploaded after the README fallback correction; npm remains E401/E404 until the suspension lifts, so the GitHub asset is the current install path |
 
 ## B. Architecture and footprint
 
@@ -35,13 +35,13 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 | B4 | Two-zone Git-diffable Markdown mirrors | README | Supported | `npm test -- tests/mirror.test.ts` | Mirror tests pass | Format is covered by snapshots, not byte-for-byte goldens |
 | B5 | Engine-level recall p50 and p95 | README | Supported | `npx tsx scripts/eval-bench.ts --split all --embeddings minilm --out bench/results/minilm.json` | Train 3.30 ms p50 / 5.11 ms p95; holdout 3.41 ms p50 / 5.14 ms p95 | In-process, 240 synthetic cases, excludes Node startup and model load |
 | B6 | Offline recall p50 and p95 | README | Supported | `npx tsx scripts/eval-bench.ts --split all --embeddings hash --out bench/results/hash.json` | Train 0.95 ms p50 / 1.60 ms p95; holdout 0.97 ms p50 / 2.05 ms p95 | Same caveat; hash vectors are lexical |
-| B7 | Runs natively on Windows, macOS, and Linux | README | Supported | `gh run view 39467306362 --json conclusion,jobs` | 6/6 jobs succeeded: Ubuntu, Windows, and Intel macOS on Node 22.x and 24.x | macOS jobs used `macos-15-intel`; Apple Silicon is not covered by this matrix |
+| B7 | Runs natively on Windows, macOS, and Linux | README | Supported | `gh run view 39495621243 --json conclusion,jobs` | 6/6 jobs succeeded: Ubuntu, Windows, and Intel macOS on Node 22.x and 24.x | Run on `3fa2bf9`; macOS jobs used `macos-15-intel`; Apple Silicon is not covered by this matrix |
 
 ## C. MCP surface
 
 | ID | Claim | Where | Status | Evidence command | Raw output | Caveat |
 |---|---|---|---|---|---|---|
-| C1 | 41 MCP tools | README, current HEAD | Supported | `Select-String -Path src/mcp/server.ts -Pattern 'server.registerTool\\(' \| Measure-Object` | `41` | Adds `fastr_replay` and `fastr_diff`; README now states 41 |
+| C1 | 41 MCP tools in the full profile | README, current HEAD | Supported | `Select-String -Path src/mcp/server.ts -Pattern '^  registerTool[(]' \| Measure-Object` | `41` | Full surface is the default; the opt-in core profile is 12 tools (H8); adds `fastr_replay` and `fastr_diff` |
 | C2 | 2 MCP prompts | README | Supported | same, `registerPrompt` | `2` (`pre-edit-check`, `session-wrap-up`) | - |
 | C3 | 4 MCP resources | README | Supported | same, `registerResource` | `4` (3 static + 1 template) | Template is `fastr://memory/{id}` |
 | C4 | 10 Agent Skills | README | Supported | `(Get-ChildItem skills -Directory).Count` | `10` | Mirrored to `.cursor/skills/` |
@@ -54,7 +54,7 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 | D1 | Historical v0.2.0 count: 226 tests, 38 files | v0.2.0 release notes | Historical | `npm test` | `226 passed`, `38 passed` | Historical v0.2.0 result; current suite is D1b |
 | D1b | 235 tests pass across 43 files | Current HEAD | Supported | `npm test` | `235 passed`, `43 passed` | Run on 2026-10-21 after the core-profile test; local Windows run; CI is separate |
 | D2 | Test suite writes nothing to the real home store | README | Supported | `npm test` then count rows | 60 before, 60 after | The 60 pre-existing rows are documented legacy data |
-| D3 | 6/6 CI matrix green | ROADMAP | Supported | `gh run view 39467306362 --json conclusion,jobs` | 6/6 jobs succeeded: Ubuntu, Windows, and Intel macOS on Node 22.x and 24.x | Run on `de4fde3`; `fail-fast` disabled; macOS jobs use `macos-15-intel`; Apple Silicon is not covered |
+| D3 | 6/6 CI matrix green | ROADMAP | Supported | `gh run view 39495621243 --json conclusion,jobs` | 6/6 jobs succeeded: Ubuntu, Windows, and Intel macOS on Node 22.x and 24.x | Run on `3fa2bf9`; `fail-fast` disabled; macOS jobs use `macos-15-intel`; Apple Silicon is not covered |
 | D4 | Zero data loss in a 10k crash test | README, Roadmap | Supported | `npm run test:crash`; `npm run check:crash` | 10/10 runs; 10,718 acknowledged writes; 10,727 committed rows; 0 missing; 0 duplicate ids; 0 duplicate titles; `PRAGMA integrity_check` = `ok` | Local Windows run on 2026-10-21; kill is `taskkill /F`, not a power-loss test; `synchronous=NORMAL` in WAL mode; report at `bench/results/crash-test.json` |
 
 ## E. Benchmark
