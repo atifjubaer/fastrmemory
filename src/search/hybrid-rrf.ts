@@ -3,6 +3,7 @@ import { Memory } from '../db/schema.js';
 import {
   cosineSimilarity,
   decodeTaggedEmbedding,
+  EMBEDDING_MODEL_IDS,
   getProviderForModel,
   VECTOR_SIMILARITY_THRESHOLDS,
   warmupEmbeddingModel
@@ -10,6 +11,40 @@ import {
 import { scheduleBackfill } from './backfill.js';
 import { packMemoriesIntoBudget, ScoredMemory, TOKEN_LEVELS } from './budget.js';
 import { extractEntities } from '../learn/ner.js';
+
+export interface StreamWeights {
+  bm25?: number;
+  vector?: number;
+  graph?: number;
+}
+
+/**
+ * Retrieval ablation controls. The defaults are the production behavior; the benchmark
+ * overrides them to measure one stream or multiplier at a time.
+ */
+export interface RetrievalConfig {
+  /** Reciprocal Rank Fusion smoothing constant (default 20). */
+  rrfK?: number;
+  /** Per-stream RRF weights (default 1.0; semantic vectors default to 3.0 when present). */
+  streamWeights?: StreamWeights;
+  enableBm25?: boolean;
+  enableVector?: boolean;
+  enableGraph?: boolean;
+  /** Seed graph activation from the first BM25/vector candidates (default false). */
+  graphSeedFromCandidates?: boolean;
+  /** Error-trap ranking multiplier (default 2.0; use 1.0 to disable). */
+  trapBoost?: number;
+  /**
+   * When the trap multiplier applies. `conditional` (default) boosts a trap only
+   * for trap-intent queries or queries scoped to a file the trap is linked to.
+   * `always` restores the legacy blanket boost; `off` disables it.
+   */
+  trapBoostMode?: 'conditional' | 'always' | 'off';
+  /** Verified-memory ranking multiplier (default 1.25; use 1.0 to disable). */
+  verifiedBoost?: number;
+  /** Optional cosine-similarity floor for the vector stream (default is model-specific). */
+  vectorThreshold?: number;
+}
 
 export interface SearchParams {
   projectId: string;
@@ -22,8 +57,11 @@ export interface SearchParams {
   maxPerSession?: number;
   /** Maximum number of memories returned (applied after scoring + diversification). */
   limit?: number;
-  /** Opportunistically embed a small batch of un-embedded memories after recall (default true). */
+  /** Opportunistically embed a small batch of un-embedded memories after recall.
+   * Defaults to true only when the local embedding model is explicitly enabled. */
   backfill?: boolean;
+  /** Optional retrieval configuration for ablations and offline benchmarks. */
+  retrieval?: RetrievalConfig;
 }
 
 export interface SearchResult {
@@ -88,10 +126,29 @@ export async function searchMemories(
     budgetTokens = TOKEN_LEVELS.L2_TASK_RECALL,
     maxPerSession = 3,
     limit,
-    backfill = true
+    backfill = process.env.FASTR_EMBEDDINGS_MODEL === '1'
   } = params;
 
+  const retrieval = params.retrieval ?? {};
+  const rrfK = Math.max(1, retrieval.rrfK ?? 20);
+  const streamWeights = {
+    bm25: retrieval.streamWeights?.bm25 ?? 1,
+    vector: retrieval.streamWeights?.vector ?? 1,
+    graph: retrieval.streamWeights?.graph ?? 1
+  };
+  const enableBm25 = retrieval.enableBm25 ?? true;
+  const enableVector = retrieval.enableVector ?? true;
+  const enableGraph = retrieval.enableGraph ?? true;
+  const graphSeedFromCandidates = retrieval.graphSeedFromCandidates ?? false;
+  const trapBoost = retrieval.trapBoost ?? 2.0;
+  const trapBoostMode = retrieval.trapBoostMode ?? 'conditional';
+  const verifiedBoost = retrieval.verifiedBoost ?? 1.25;
+  const queryHasTrapIntent = /\b(trap|avoid|mistake|error|fail(?:ed|ure)?|bug|regression|before editing|warning|guard)\b/i.test(query);
+
   const candidatesMap = new Map<string, { memory: Memory; rankA?: number; rankB?: number; rankC?: number }>();
+  // Semantic vectors and feature-hash vectors need different fusion weights:
+  // hash vectors are lexical duplicates of BM25, while MiniLM adds independent signal.
+  let semanticVectorSeen = false;
 
   // Helper to test if a memory passes filters
   const passesFilter = (m: Memory): boolean => {
@@ -105,31 +162,47 @@ export async function searchMemories(
   };
 
   // --- STREAM A: BM25 FTS5 Keyword Search ---
-  const ftsQuery = sanitizeFtsQuery(query);
+  const ftsQuery = enableBm25 ? sanitizeFtsQuery(query) : '';
   if (ftsQuery) {
     try {
       const isGlobalAttached = hasGlobalDb(db);
+      // Column order is id (UNINDEXED), title, module, content. The leading 0.0 weight
+      // keeps the unindexed id column out of the score while boosting title and module.
+      const bm25Expr = 'bm25(memories_fts, 0.0, 10.0, 5.0, 1.0)';
       let querySql = `
-        SELECT m.*, f.rank
-        FROM memories_fts f
-        JOIN memories m ON m.id = f.id
-        WHERE (m.project_id = ? OR m.project_id = 'global')
-          AND memories_fts MATCH ?
+        SELECT * FROM (
+          SELECT m.*, ${bm25Expr} AS rank
+          FROM memories_fts f
+          JOIN memories m ON m.id = f.id
+          WHERE (m.project_id = ? OR m.project_id = 'global')
+            AND memories_fts MATCH ?
+          ORDER BY rank ASC
+          LIMIT 50
+        )
       `;
       const ftsParams: any[] = [projectId, ftsQuery];
 
       if (isGlobalAttached) {
+        // FTS5's bm25() and MATCH both take the table name, not a schema-qualified
+        // name or an alias. Keeping the FTS table unaliased makes the unqualified
+        // `memories_fts` resolve to the attached table in this subquery.
+        const globalBm25Expr = 'bm25(memories_fts, 0.0, 10.0, 5.0, 1.0)';
         querySql += `
           UNION ALL
-          SELECT gm.*, gf.rank
-          FROM global_db.memories_fts gf
-          JOIN global_db.memories gm ON gm.id = gf.id
-          WHERE memories_fts MATCH ?
+          SELECT * FROM (
+            SELECT gm.*, ${globalBm25Expr} AS rank
+            FROM global_db.memories_fts
+            JOIN global_db.memories gm ON gm.id = memories_fts.id
+            WHERE memories_fts MATCH ?
+            ORDER BY rank ASC
+            LIMIT 50
+          )
         `;
         ftsParams.push(ftsQuery);
       }
 
-      querySql += ` ORDER BY rank ASC LIMIT 50`;
+      // Merge the two locally-limited streams and cap the combined candidate set.
+      querySql = `SELECT * FROM (${querySql}) ORDER BY rank ASC LIMIT 50`;
       const rows = db.prepare(querySql).all(...ftsParams) as unknown as (Memory & { rank: number })[];
 
       let rank = 1;
@@ -154,8 +227,10 @@ export async function searchMemories(
   // if memories in scope are already embedded, and only with a provider for the SAME
   // model id that is usable right now (offline feature-hash, or an already-loaded model).
   // Vectors from different/unknown models are never compared.
-  warmupEmbeddingModel(); // no-op unless FASTR_EMBEDDINGS_MODEL=1; never awaited
-  if (query.trim().length > 0) {
+  if (enableVector) {
+    warmupEmbeddingModel(); // no-op unless FASTR_EMBEDDINGS_MODEL=1; never awaited
+  }
+  if (enableVector && query.trim().length > 0) {
     const isGlobalAttached = hasGlobalDb(db);
     let vecSql = `
       SELECT * FROM memories
@@ -185,6 +260,7 @@ export async function searchMemories(
       if (!passesFilter(row)) continue;
       const decoded = decodeTaggedEmbedding(row.embedding);
       if (!decoded) continue; // legacy / untagged vector: unknown model, never compared
+      if (decoded.modelId === EMBEDDING_MODEL_IDS.MINILM_L6_V2) semanticVectorSeen = true;
 
       if (!queryVecs.has(decoded.modelId)) {
         const provider = getProviderForModel(decoded.modelId);
@@ -198,7 +274,7 @@ export async function searchMemories(
       if (!queryVec || queryVec.length !== decoded.vector.length) continue;
 
       const sim = cosineSimilarity(queryVec, decoded.vector);
-      const threshold = VECTOR_SIMILARITY_THRESHOLDS[decoded.modelId] ?? 0.5;
+      const threshold = retrieval.vectorThreshold ?? VECTOR_SIMILARITY_THRESHOLDS[decoded.modelId] ?? 0.5;
       if (sim >= threshold) {
         scoredVectors.push({ memory: row, sim });
       }
@@ -217,7 +293,9 @@ export async function searchMemories(
   }
 
   // --- STREAM C: Spreading Activation Graph Retrieval ---
-  // Seed activation using explicitly passed files + entities extracted from query
+  // Seed activation using explicitly passed files + entities extracted from query.
+  // Disabled streams are skipped entirely so ablations do not pay for them.
+  if (enableGraph) {
   const seedFiles = new Set(files);
   const queryEntities = extractEntities(query);
   const seedEntityNames = queryEntities.map((e) => e.name.toLowerCase());
@@ -256,10 +334,13 @@ export async function searchMemories(
     }
   }
 
-  // Round 1.5: Seed from top Stream A & B candidate matches
-  for (const candId of Array.from(candidatesMap.keys()).slice(0, 5)) {
-    if (!activationScores.has(candId)) {
-      activationScores.set(candId, 1.0);
+  // Round 1.5: optional seed from top Stream A & B candidate matches.
+  // Off by default: it can turn a weak lexical hit into an unearned graph hit.
+  if (graphSeedFromCandidates) {
+    for (const candId of Array.from(candidatesMap.keys()).slice(0, 5)) {
+      if (!activationScores.has(candId)) {
+        activationScores.set(candId, 1.0);
+      }
     }
   }
 
@@ -340,25 +421,52 @@ export async function searchMemories(
       }
     }
   }
+  }
 
   // No "latest memories" fallback: every result must come from at least one stream with a
   // real match (BM25 hit, vector similarity above threshold, or graph activation seeded by
   // provided files / query entities / real stream hits). Garbage queries return nothing.
 
-  // --- RRF FUSION (k = 60) & MULTIPLIERS ---
+  // File-scoped trap boosts must only affect traps linked to one of the queried files.
+  // A blanket boost on every trap in the database promotes unrelated warnings.
+  const fileLinkedMemoryIds = new Set<string>();
+  if (files.length > 0) {
+    const placeholders = files.map(() => '?').join(',');
+    try {
+      const rows = db.prepare(`
+        SELECT DISTINCT memory_id FROM file_links WHERE file_path IN (${placeholders})
+      `).all(...files) as unknown as Array<{ memory_id: string }>;
+      for (const row of rows) fileLinkedMemoryIds.add(row.memory_id);
+      if (hasGlobalDb(db)) {
+        const globalRows = db.prepare(`
+          SELECT DISTINCT memory_id FROM global_db.file_links WHERE file_path IN (${placeholders})
+        `).all(...files) as unknown as Array<{ memory_id: string }>;
+        for (const row of globalRows) fileLinkedMemoryIds.add(row.memory_id);
+      }
+    } catch {
+      // Missing/legacy link table: fall back to query-intent-only boosts.
+    }
+  }
+
+  // --- RRF FUSION & MULTIPLIERS ---
+  const effectiveVectorWeight = retrieval.streamWeights?.vector ?? (semanticVectorSeen ? 3 : 1);
   const allScored: ScoredMemory[] = [];
   for (const [, item] of candidatesMap) {
     const { memory, rankA, rankB, rankC } = item;
 
     let rrf = 0;
-    if (rankA !== undefined) rrf += 1 / (60 + rankA);
-    if (rankB !== undefined) rrf += 1 / (60 + rankB);
-    if (rankC !== undefined) rrf += 1 / (60 + rankC);
+    if (rankA !== undefined) rrf += streamWeights.bm25 / (rrfK + rankA);
+    if (rankB !== undefined) rrf += effectiveVectorWeight / (rrfK + rankB);
+    if (rankC !== undefined) rrf += streamWeights.graph / (rrfK + rankC);
     if (rrf === 0) continue;
 
-    // Multipliers
-    const trapMultiplier = memory.kind === 'error_trap' ? 2.0 : 1.0;
-    const verifiedMultiplier = memory.status === 'verified' ? 1.25 : 1.0;
+    // Multipliers (both are configurable so ablations can disable them cleanly).
+    // A trap is boosted only when the query asks for a trap/guard, or when the
+    // caller supplied a file and this trap is linked to that exact file.
+    const trapBoostApplies = trapBoostMode === 'always'
+      || (trapBoostMode === 'conditional' && (queryHasTrapIntent || fileLinkedMemoryIds.has(memory.id)));
+    const trapMultiplier = memory.kind === 'error_trap' && trapBoostApplies ? trapBoost : 1.0;
+    const verifiedMultiplier = memory.status === 'verified' ? verifiedBoost : 1.0;
     const finalScore = rrf * memory.reward_score * trapMultiplier * verifiedMultiplier;
 
     allScored.push({
@@ -395,16 +503,23 @@ export async function searchMemories(
   }
 
   const maxItems = limit !== undefined && limit >= 0 ? Math.floor(limit) : Number.POSITIVE_INFINITY;
-  const packed = packMemoriesIntoBudget(scoredMemories, budgetTokens, maxItems);
+  // `memories` is the ranked result set (metadata + full content). `text` is the
+  // compact prompt context and is the only part constrained by budgetTokens.
+  // Keeping the two separate means a small context never hides the full ranked
+  // list from callers that need to fetch a specific memory by id.
+  const ranked = Number.isFinite(maxItems) ? scoredMemories.slice(0, maxItems) : scoredMemories;
+  const packed = packMemoriesIntoBudget(ranked, budgetTokens);
 
-  // Opportunistic, bounded, non-blocking embedding backfill (errors swallowed).
+  // Bounded, non-blocking embedding backfill. Enabled by default only when the
+  // local semantic model is explicitly enabled; hash vectors duplicate lexical BM25
+  // and should not be generated implicitly.
   if (backfill) {
     scheduleBackfill(db, projectId);
   }
 
   return {
     text: packed.text,
-    memories: packed.packed,
+    memories: ranked,
     totalTokens: packed.totalTokens
   };
 }

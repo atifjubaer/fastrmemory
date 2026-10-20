@@ -56,7 +56,12 @@ describe('Recall correctness fixes', () => {
     // Trap inserted last (last in stream order), weaker keyword match
     repo.insertMemory({ projectId: P, module: 'ops', kind: 'error_trap', title: 'Rollback trap', content: 'Deploy without a rollback plan broke prod.', verified: true });
 
-    const res = await searchMemories(db, { projectId: P, query: 'deploy pipeline', backfill: false });
+    const res = await searchMemories(db, {
+      projectId: P,
+      query: 'deploy pipeline',
+      backfill: false,
+      retrieval: { trapBoostMode: 'always' }
+    });
     expect(res.memories.length).toBe(8);
     for (let i = 1; i < res.memories.length; i++) {
       expect(res.memories[i - 1].score).toBeGreaterThanOrEqual(res.memories[i].score);
@@ -66,11 +71,22 @@ describe('Recall correctness fixes', () => {
     const trapIdx = res.memories.findIndex((m) => m.memory.kind === 'error_trap');
     expect(trapIdx).toBeGreaterThanOrEqual(0);
     const trap = res.memories[trapIdx];
-    expect(trap.score).toBeCloseTo((2.0 * 1.25) / (60 + trap.bm25Rank!), 6);
+    expect(trap.score).toBeCloseTo((2.0 * 1.25) / (20 + trap.bm25Rank!), 6);
     for (const m of res.memories.slice(trapIdx + 1)) {
       expect(m.graphRank).toBeUndefined();
       expect(m.bm25Rank!).toBeLessThan(trap.bm25Rank!);
     }
+  });
+
+  it('only boosts traps for trap-intent or file-scoped queries in conditional mode', async () => {
+    repo.insertMemory({ projectId: P, module: 'ops', kind: 'rule', title: 'Deploy pipeline rule', content: 'The deploy pipeline must run lint.', verified: true });
+    repo.insertMemory({ projectId: P, module: 'ops', kind: 'error_trap', title: 'Rollback trap', content: 'Deploy without a rollback plan broke prod.', verified: true });
+
+    const plain = await searchMemories(db, { projectId: P, query: 'deploy pipeline', backfill: false });
+    expect(plain.memories[0].memory.kind).toBe('rule');
+
+    const trapIntent = await searchMemories(db, { projectId: P, query: 'deploy pipeline trap', backfill: false });
+    expect(trapIntent.memories[0].memory.kind).toBe('error_trap');
   });
 
   it('respects the requested limit', async () => {
@@ -194,13 +210,22 @@ describe('Recall correctness fixes', () => {
     expect(res.memories[0].vectorRank).toBe(1);
   });
 
-  it('opportunistically backfills after a search without blocking it', async () => {
+  it('opportunistically backfills after a search when explicitly enabled', async () => {
+    repo.insertMemory({ projectId: P, module: 'ops', kind: 'rule', title: 'Logs', content: 'rotate logs daily', verified: true });
+    await searchMemories(db, { projectId: P, query: 'rotate logs', backfill: true });
+    await flush();
+    await flush();
+    const row = db.prepare('SELECT embedded FROM memories').get() as any;
+    expect(row.embedded).toBe(1);
+  });
+
+  it('does not backfill hash vectors by default', async () => {
     repo.insertMemory({ projectId: P, module: 'ops', kind: 'rule', title: 'Logs', content: 'rotate logs daily', verified: true });
     await searchMemories(db, { projectId: P, query: 'rotate logs' });
     await flush();
     await flush();
     const row = db.prepare('SELECT embedded FROM memories').get() as any;
-    expect(row.embedded).toBe(1);
+    expect(row.embedded).toBe(0);
   });
 });
 

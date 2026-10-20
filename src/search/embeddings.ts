@@ -32,6 +32,16 @@ export function warmupEmbeddingModel(): void {
   modelLoadPromise = getExtractor().catch(() => null);
 }
 
+/**
+ * Explicitly loads the local MiniLM model. Used by `fastr embed install` and the
+ * offline benchmark runner; normal recall never calls this and never downloads.
+ */
+export async function ensureEmbeddingModel(): Promise<boolean> {
+  process.env.FASTR_EMBEDDINGS_MODEL = '1';
+  const extractor = await getExtractor();
+  return extractor !== null;
+}
+
 export async function getExtractor(): Promise<any | null> {
   // Never hang unit tests downloading 90MB weights unless explicitly enabled
   if (!modelLoader && process.env.NODE_ENV === 'test' && process.env.FASTR_ENABLE_TEST_EMBEDDINGS !== '1') {

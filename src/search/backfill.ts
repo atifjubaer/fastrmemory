@@ -36,7 +36,10 @@ export async function backfillEmbeddings(
 
   let count = 0;
   for (const row of rows) {
-    const vec = await provider.embed(`${row.title}\n${row.content}`);
+    // Titles are the curated semantic summary of a memory. Embedding the title
+    // alone keeps the vector stream complementary to BM25, which already covers
+    // the full content, and avoids long bodies diluting the concept signal.
+    const vec = await provider.embed(row.title);
     repo.updateEmbedding(row.id, encodeTaggedEmbedding(vec, provider.modelId));
     count++;
   }

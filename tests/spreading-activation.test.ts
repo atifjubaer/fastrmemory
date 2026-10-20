@@ -44,7 +44,8 @@ describe('Spreading Activation Graph Search', () => {
     const results = await searchMemories(db, {
       projectId,
       query: 'Ed25519',
-      includeHistory: false
+      includeHistory: false,
+      retrieval: { graphSeedFromCandidates: true }
     });
 
     const returnedIds = results.memories.map((m) => m.memory.id);
