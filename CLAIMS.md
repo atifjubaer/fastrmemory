@@ -50,7 +50,7 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 |---|---|---|---|---|---|---|
 | D1 | 226 tests pass across 38 files | README | Supported | `npm test` | `226 passed`, `38 passed` | Local Windows run; CI is separate |
 | D2 | Test suite writes nothing to the real home store | README | Supported | `npm test` then count rows | 60 before, 60 after | The 60 pre-existing rows are documented legacy data |
-| D3 | 6/6 CI matrix green | README (not claimed) | **Not verified** | GitHub Actions | Matrix updated in this change; rerun required | Do not claim until 6/6 |
+| D3 | 6/6 CI matrix green | ROADMAP | Supported | `gh run view 39461756204 --json conclusion,jobs` | 6/6 jobs succeeded: Ubuntu, Windows, and macOS on Node 22.x and 24.x | Run on `ab88fc9`; `fail-fast` disabled; macOS path canonicalization fixed in `9e125e8` |
 | D4 | Zero data loss in a 10k crash test | Roadmap target | **Not measured** | - | - | Do not claim yet |
 
 ## E. Benchmark

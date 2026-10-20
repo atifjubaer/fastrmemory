@@ -2,7 +2,7 @@
 
 This roadmap is evidence-gated. A milestone is done only when its gate passes **on a committed artifact** (a test, a raw JSON result, or a published package), not when the code is written. Estimates assume one focused maintainer and include measurement and documentation time.
 
-Current state (2026-10-20, code commit `1495622`): 226 tests green locally, npm unpublished (E404), CI matrix partially red, a 240-case synthetic benchmark with a 48-case holdout, and a holdout Hit@1 of 89.6% (0.4 points below the 90% target). The offline hash path is weaker than MiniLM. See [`CLAIMS.md`](CLAIMS.md) for the full ledger.
+Current state (2026-10-20, HEAD `ab88fc9`): 226 tests green locally and **6/6 CI jobs green** (run `39461756204`), npm unpublished (E404), a 240-case synthetic benchmark with a 48-case holdout, and a holdout Hit@1 of 89.6% (0.4 points below the 90% target). The offline hash path is weaker than MiniLM. See [`CLAIMS.md`](CLAIMS.md) for the full ledger.
 
 ---
 
