@@ -39,9 +39,9 @@ This document explains why npm matters for FastrMemory, how the package is verif
 
 The 0.2.1 release candidate is prepared and verified locally:
 
-- `npm pack` produced `atifjubaer-fastrmemory-0.2.1.tgz` at **588,890 bytes**.
-- SHA-256: `57A14F9E4615DC468469E6A27471DAA5CDD4810DE1732FFB55B8A2AA36A7CF1D`.
-- Clean install in an empty temp project: **2.12 s**, **16,486,853 bytes** in `node_modules`; `fastr --version` and `fastrmemory --version` both report `0.2.1`.
+- `npm pack` produced `atifjubaer-fastrmemory-0.2.1.tgz` at **589,173 bytes**.
+- SHA-256: `5648DA84F43A7865803B75AE76FF2D106354A252819FE22CFDB9BEC91242A48A`.
+- Clean install in an empty temp project: **3.90 s**, **16,487,632 bytes** in `node_modules`; `fastr --version` and `fastrmemory --version` both report `0.2.1`.
 - `npm whoami` remains E401 and `npm view` remains E404, so the package is not published.
 
 The candidate has no GitHub Release asset yet. Do not link to a 0.2.1 asset until it is attached.

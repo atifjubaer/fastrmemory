@@ -37,7 +37,8 @@ const expectedDocs = new Set([
   'docs/npm-publishing.md',
   'docs/SPECIFICATION.md',
   'docs/audit/2026-10-20-baseline.md',
-  'docs/audit/2026-10-20-recall-latency.json'
+  'docs/audit/2026-10-20-recall-latency.json',
+  'docs/audit/2026-10-21-crash-test.md'
 ]);
 
 function walk(relDir) {
