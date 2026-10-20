@@ -6,11 +6,11 @@ import { TOKEN_LEVELS, estimateTokens } from '../search/budget.js';
 
 /**
  * NOTE ON HONESTY: the benchmark cases below are small, hand-written synthetic cases
- * (NOT SWE-bench or LongMemEval data). The competitor rows ("Hippo-style", "Memoria-style",
- * "Static dump") are simulated baselines implemented in this file — they are NOT the real
- * projects and their numbers say nothing about those projects' actual performance.
+ * (NOT SWE-bench or LongMemEval data). The baseline rows ("lexical", "episodic-overlap",
+ * "Static dump") are simulations implemented in this file - they are NOT measurements
+ * of any external project and say nothing about external performance.
  */
-export const SIMULATED_BASELINE_LABEL = 'simulated baseline (not the real project)';
+export const SIMULATED_BASELINE_LABEL = 'simulated baseline';
 
 /** Runs the benchmark on an isolated in-memory database (never touches a user DB). */
 export async function runIsolatedBenchmarks(projectId: string = 'bench_proj'): Promise<BenchmarkReport> {
@@ -106,7 +106,7 @@ export const BENCHMARK_CASES: BenchmarkCase[] = [
     category: 'exact_keyword',
     query: 'Reciprocal Rank Fusion k constant parameter value',
     file: 'src/search/hybrid-rrf.ts',
-    expectedMemoryId: 'mem_rrf_k60',
+    expectedMemoryId: 'mem_rrf_k20',
   },
   {
     id: 'case_09',
@@ -249,11 +249,11 @@ export function setupBenchmarkDatabase(db: DatabaseSync, projectId: string = 'be
 
   // 7. RRF Rule
   insertHelper(
-    'mem_rrf_k60',
+    'mem_rrf_k20',
     'search',
     'rule',
-    'RRF Smoothing Constant K Equals 60',
-    'Reciprocal Rank Fusion must use smoothing constant k=60 to balance BM25 full-text and vector ranking.',
+    'RRF Smoothing Constant K Equals 20',
+    'Reciprocal Rank Fusion must use smoothing constant k=20 to balance BM25 full-text and vector ranking.',
     ['src/search/hybrid-rrf.ts'],
     'verified',
     1.0
@@ -320,15 +320,15 @@ export async function runBenchmarks(db: DatabaseSync, projectId: string = 'bench
   let fastrTrapHits = 0, fastrTotalTraps = 0;
   let fastrLatencySum = 0, fastrTokensSum = 0;
 
-  // Trackers for Hippo-style simulated baseline (pure BM25, no vector, no trap multiplier)
-  let hippoHits1 = 0, hippoHits3 = 0, hippoHits5 = 0, hippoReciprocalSum = 0;
-  let hippoTrapHits = 0;
-  let hippoLatencySum = 0, hippoTokensSum = 0;
+  // Trackers for the lexical baseline (pure BM25, no vector, no trap multiplier)
+  let lexicalHits1 = 0, lexicalHits3 = 0, lexicalHits5 = 0, lexicalReciprocalSum = 0;
+  let lexicalTrapHits = 0;
+  let lexicalLatencySum = 0, lexicalTokensSum = 0;
 
-  // Trackers for Memoria-style simulated baseline (no trap multiplier)
-  let memoriaHits1 = 0, memoriaHits3 = 0, memoriaHits5 = 0, memoriaReciprocalSum = 0;
-  let memoriaTrapHits = 0;
-  let memoriaLatencySum = 0, memoriaTokensSum = 0;
+  // Trackers for the episodic-overlap baseline (no trap multiplier)
+  let episodicOverlapHits1 = 0, episodicOverlapHits3 = 0, episodicOverlapHits5 = 0, episodicOverlapReciprocalSum = 0;
+  let episodicOverlapTrapHits = 0;
+  let episodicOverlapLatencySum = 0, episodicOverlapTokensSum = 0;
 
   // Trackers for Static Flat Dump Baseline (CLAUDE.md / .cursorrules full context dump)
   let staticHits1 = 0, staticHits3 = 0, staticHits5 = 0, staticReciprocalSum = 0;
@@ -360,10 +360,10 @@ export async function runBenchmarks(db: DatabaseSync, projectId: string = 'bench
     }
     if (fastrRank > 0) fastrReciprocalSum += 1 / fastrRank;
 
-    // 2. Evaluate Hippo-style simulated baseline (pure BM25 FTS5 MATCH, no vector, no trap boost)
+    // 2. Evaluate the lexical baseline (pure BM25 FTS5 MATCH, no vector, no trap boost)
     const t2 = performance.now();
-    const hippoFts = sanitizeFtsQuery(c.query);
-    const ftsRows = hippoFts
+    const lexicalFts = sanitizeFtsQuery(c.query);
+    const ftsRows = lexicalFts
       ? db.prepare(`
           SELECT m.id, m.title, m.content, f.rank
           FROM memories_fts f
@@ -372,30 +372,30 @@ export async function runBenchmarks(db: DatabaseSync, projectId: string = 'bench
             AND memories_fts MATCH ?
           ORDER BY f.rank ASC
           LIMIT 5
-        `).all(projectId, hippoFts) as unknown as { id: string; title: string; content: string; rank: number }[]
+        `).all(projectId, lexicalFts) as unknown as { id: string; title: string; content: string; rank: number }[]
       : [];
     const t3 = performance.now();
-    hippoLatencySum += (t3 - t2);
-    hippoTokensSum += ftsRows.reduce((sum, r) => sum + estimateTokens(`${r.title}\n${r.content}\n`), 0);
+    lexicalLatencySum += (t3 - t2);
+    lexicalTokensSum += ftsRows.reduce((sum, r) => sum + estimateTokens(`${r.title}\n${r.content}\n`), 0);
 
-    const hippoIds = ftsRows.map((r) => r.id);
-    const hippoRank = hippoIds.indexOf(c.expectedMemoryId) + 1;
-    if (hippoRank === 1) hippoHits1++;
-    if (hippoRank > 0 && hippoRank <= 3) hippoHits3++;
-    if (hippoRank > 0 && hippoRank <= 5) {
-      hippoHits5++;
-      if (c.isTrap) hippoTrapHits++;
+    const lexicalIds = ftsRows.map((r) => r.id);
+    const lexicalRank = lexicalIds.indexOf(c.expectedMemoryId) + 1;
+    if (lexicalRank === 1) lexicalHits1++;
+    if (lexicalRank > 0 && lexicalRank <= 3) lexicalHits3++;
+    if (lexicalRank > 0 && lexicalRank <= 5) {
+      lexicalHits5++;
+      if (c.isTrap) lexicalTrapHits++;
     }
-    if (hippoRank > 0) hippoReciprocalSum += 1 / hippoRank;
+    if (lexicalRank > 0) lexicalReciprocalSum += 1 / lexicalRank;
 
-    // 3. Evaluate Memoria-style simulated baseline (keyword overlap, no trap multiplier)
+    // 3. Evaluate the episodic-overlap baseline (keyword overlap, no trap multiplier)
     const t4 = performance.now();
     const memRows = db.prepare(`
       SELECT id, title, content, kind FROM memories WHERE project_id = ? AND valid_to IS NULL
     `).all(projectId) as unknown as { id: string; title: string; content: string; kind: string }[];
-    // Simulated keyword-overlap scoring standing in for an episodic graph engine (not the real Memoria)
+    // Simulated keyword-overlap scoring for an episodic-overlap baseline
     const queryTokens = c.query.toLowerCase().split(/\s+/);
-    const scoredMemoria = memRows.map((r) => {
+    const scoredEpisodicOverlap = memRows.map((r) => {
       let score = 0;
       queryTokens.forEach((tk) => {
         if (r.title.toLowerCase().includes(tk)) score += 1.5;
@@ -405,18 +405,18 @@ export async function runBenchmarks(db: DatabaseSync, projectId: string = 'bench
       return { id: r.id, score, tokens: estimateTokens(`${r.title}\n${r.content}\n`) };
     }).filter((r) => r.score > 0).sort((a, b) => b.score - a.score).slice(0, 5);
     const t5 = performance.now();
-    memoriaLatencySum += (t5 - t4); // measured only; no synthetic latency penalty
-    memoriaTokensSum += scoredMemoria.reduce((sum, r) => sum + r.tokens, 0);
+    episodicOverlapLatencySum += (t5 - t4); // measured only; no synthetic latency penalty
+    episodicOverlapTokensSum += scoredEpisodicOverlap.reduce((sum, r) => sum + r.tokens, 0);
 
-    const memoriaIds = scoredMemoria.map((r) => r.id);
-    const memoriaRank = memoriaIds.indexOf(c.expectedMemoryId) + 1;
-    if (memoriaRank === 1) memoriaHits1++;
-    if (memoriaRank > 0 && memoriaRank <= 3) memoriaHits3++;
-    if (memoriaRank > 0 && memoriaRank <= 5) {
-      memoriaHits5++;
-      if (c.isTrap) memoriaTrapHits++;
+    const episodicOverlapIds = scoredEpisodicOverlap.map((r) => r.id);
+    const episodicOverlapRank = episodicOverlapIds.indexOf(c.expectedMemoryId) + 1;
+    if (episodicOverlapRank === 1) episodicOverlapHits1++;
+    if (episodicOverlapRank > 0 && episodicOverlapRank <= 3) episodicOverlapHits3++;
+    if (episodicOverlapRank > 0 && episodicOverlapRank <= 5) {
+      episodicOverlapHits5++;
+      if (c.isTrap) episodicOverlapTrapHits++;
     }
-    if (memoriaRank > 0) memoriaReciprocalSum += 1 / memoriaRank;
+    if (episodicOverlapRank > 0) episodicOverlapReciprocalSum += 1 / episodicOverlapRank;
 
     // 4. Evaluate Static Flat Dump Baseline (CLAUDE.md / .cursorrules full dump)
     const t6 = performance.now();
@@ -453,24 +453,24 @@ export async function runBenchmarks(db: DatabaseSync, projectId: string = 'bench
       avgTokens: Math.round(fastrTokensSum / n),
     },
     {
-      name: `Hippo-style BM25 (${SIMULATED_BASELINE_LABEL})`,
-      hitAt1: Math.round((hippoHits1 / n) * 100),
-      hitAt3: Math.round((hippoHits3 / n) * 100),
-      hitAt5: Math.round((hippoHits5 / n) * 100),
-      mrr: Number((hippoReciprocalSum / n).toFixed(3)),
-      avgLatencyMs: Number((hippoLatencySum / n).toFixed(2)),
-      trapRecallRate: Math.round((hippoTrapHits / fastrTotalTraps) * 100),
-      avgTokens: Math.round(hippoTokensSum / n),
+      name: `Lexical BM25 baseline (${SIMULATED_BASELINE_LABEL})`,
+      hitAt1: Math.round((lexicalHits1 / n) * 100),
+      hitAt3: Math.round((lexicalHits3 / n) * 100),
+      hitAt5: Math.round((lexicalHits5 / n) * 100),
+      mrr: Number((lexicalReciprocalSum / n).toFixed(3)),
+      avgLatencyMs: Number((lexicalLatencySum / n).toFixed(2)),
+      trapRecallRate: Math.round((lexicalTrapHits / fastrTotalTraps) * 100),
+      avgTokens: Math.round(lexicalTokensSum / n),
     },
     {
-      name: `Memoria-style episodic (${SIMULATED_BASELINE_LABEL})`,
-      hitAt1: Math.round((memoriaHits1 / n) * 100),
-      hitAt3: Math.round((memoriaHits3 / n) * 100),
-      hitAt5: Math.round((memoriaHits5 / n) * 100),
-      mrr: Number((memoriaReciprocalSum / n).toFixed(3)),
-      avgLatencyMs: Number((memoriaLatencySum / n).toFixed(2)),
-      trapRecallRate: Math.round((memoriaTrapHits / fastrTotalTraps) * 100),
-      avgTokens: Math.round(memoriaTokensSum / n),
+      name: `Episodic-overlap baseline (${SIMULATED_BASELINE_LABEL})`,
+      hitAt1: Math.round((episodicOverlapHits1 / n) * 100),
+      hitAt3: Math.round((episodicOverlapHits3 / n) * 100),
+      hitAt5: Math.round((episodicOverlapHits5 / n) * 100),
+      mrr: Number((episodicOverlapReciprocalSum / n).toFixed(3)),
+      avgLatencyMs: Number((episodicOverlapLatencySum / n).toFixed(2)),
+      trapRecallRate: Math.round((episodicOverlapTrapHits / fastrTotalTraps) * 100),
+      avgTokens: Math.round(episodicOverlapTokensSum / n),
     },
     {
       name: `Static flat dump (${SIMULATED_BASELINE_LABEL})`,
@@ -530,3 +530,4 @@ export function formatBenchmarkMarkdown(report: BenchmarkReport): string {
 
   return md;
 }
+

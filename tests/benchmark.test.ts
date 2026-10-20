@@ -21,11 +21,11 @@ describe('FastrMemory Benchmark Suite', () => {
 
     const fastr = report.engines.find((e) => e.name.includes('FastrMemory'))!;
     const bm25 = report.engines.find((e) => e.name.includes('BM25'))!;
-    const memoria = report.engines.find((e) => e.name.includes('Memoria'))!;
+    const episodic = report.engines.find((e) => e.name.includes('Episodic-overlap'))!;
 
     expect(fastr).toBeDefined();
     expect(bm25).toBeDefined();
-    expect(memoria).toBeDefined();
+    expect(episodic).toBeDefined();
 
     // FastrMemory should achieve high Hit@5 and Trap recall
     expect(fastr.hitAt5).toBeGreaterThanOrEqual(75);
@@ -39,16 +39,16 @@ describe('FastrMemory Benchmark Suite', () => {
 });
 
 describe('Benchmark honesty & isolation', () => {
-  it('runs on its own in-memory DB and labels competitor rows as simulated baselines', async () => {
+  it('runs on its own in-memory DB and labels baseline rows as simulated', async () => {
     const { runIsolatedBenchmarks, BENCHMARK_CASES } = await import('../src/bench/benchmark.js');
     const report = await runIsolatedBenchmarks();
     const others = report.engines.filter((e) => !e.name.includes('FastrMemory'));
     expect(others.length).toBe(3);
-    for (const e of others) expect(e.name).toContain('simulated baseline (not the real project)');
+    for (const e of others) expect(e.name).toContain('simulated baseline');
 
-    // Hippo-style baseline now really uses BM25 MATCH, so it finds keyword cases
-    const hippo = report.engines.find((e) => e.name.includes('Hippo'))!;
-    expect(hippo.hitAt5).toBeGreaterThan(0);
+    // The lexical baseline now really uses BM25 MATCH, so it finds keyword cases.
+    const lexical = report.engines.find((e) => e.name.includes('Lexical'))!;
+    expect(lexical.hitAt5).toBeGreaterThan(0);
 
     const md = formatBenchmarkMarkdown(report);
     expect(md).not.toMatch(/real-world/i);
@@ -66,3 +66,4 @@ describe('Benchmark honesty & isolation', () => {
     expect(block).toContain('runIsolatedBenchmarks');
   });
 });
+

@@ -23,7 +23,7 @@ async function main() {
 
   const outDir = path.resolve('bench', 'results');
   fs.mkdirSync(outDir, { recursive: true });
-  const outFile = path.join(outDir, 'latest.json');
+  const outFile = path.join(outDir, 'legacy-12.json');
   fs.writeFileSync(outFile, `${JSON.stringify(payload, null, 2)}\n`, 'utf-8');
   console.log(`Wrote ${outFile} (${report.totalCases} synthetic cases, commit ${commit.slice(0, 7)})`);
 }
@@ -32,3 +32,4 @@ main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
+
