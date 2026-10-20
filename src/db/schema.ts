@@ -205,7 +205,8 @@ CREATE TRIGGER IF NOT EXISTS memories_ad AFTER DELETE ON memories BEGIN
   DELETE FROM memories_fts WHERE id = old.id;
 END;
 
-CREATE TRIGGER IF NOT EXISTS memories_au AFTER UPDATE ON memories BEGIN
+-- Only re-index when searchable columns change (not on retrieval counters / scores)
+CREATE TRIGGER IF NOT EXISTS memories_au AFTER UPDATE OF title, module, content ON memories BEGIN
   DELETE FROM memories_fts WHERE id = old.id;
   INSERT INTO memories_fts(id, title, module, content) VALUES (new.id, new.title, new.module, new.content);
 END;
@@ -366,6 +367,36 @@ export function applySchema(db: DatabaseSync): void {
   try {
     db.exec('ALTER TABLE memories ADD COLUMN provenance_hash TEXT DEFAULT NULL;');
   } catch {}
+
+  migrateMemoriesUpdateTrigger(db);
+}
+
+const MEMORIES_AU_TRIGGER_SQL = `
+CREATE TRIGGER memories_au AFTER UPDATE OF title, module, content ON memories BEGIN
+  DELETE FROM memories_fts WHERE id = old.id;
+  INSERT INTO memories_fts(id, title, module, content) VALUES (new.id, new.title, new.module, new.content);
+END;
+`;
+
+/**
+ * Older databases carry an unconditional AFTER UPDATE trigger that re-indexes FTS on every
+ * counter bump. CREATE TRIGGER IF NOT EXISTS never replaces it, so swap it explicitly.
+ */
+function migrateMemoriesUpdateTrigger(db: DatabaseSync): void {
+  const row = db.prepare(
+    "SELECT sql FROM sqlite_master WHERE type = 'trigger' AND name = 'memories_au'"
+  ).get() as { sql?: string } | undefined;
+  if (row?.sql && /UPDATE\s+OF\s+title/i.test(row.sql)) return;
+
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    db.exec('DROP TRIGGER IF EXISTS memories_au;');
+    db.exec(MEMORIES_AU_TRIGGER_SQL);
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
 }
 
 export function initDatabase(dbPath: string): DatabaseSync {

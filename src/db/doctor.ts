@@ -61,32 +61,46 @@ export function diagnoseDatabase(db: DatabaseSync, projectId: string): Diagnosti
     });
   }
 
-  // 2. FTS5 Index Consistency
+  // 2. FTS5 Index Consistency (the triggers index every memories row, so compare whole tables)
   let memoryCount = 0;
   let ftsRowCount = 0;
   try {
     const memRow = db.prepare('SELECT COUNT(*) as c FROM memories WHERE project_id = ?').get(projectId) as any;
     memoryCount = Number(memRow?.c || 0);
 
-    const ftsRow = db.prepare('SELECT COUNT(*) as c FROM memories_fts').get() as any;
+    const totalRow = db.prepare('SELECT COUNT(*) as c FROM main.memories').get() as any;
+    const totalMemories = Number(totalRow?.c || 0);
+
+    const ftsRow = db.prepare('SELECT COUNT(*) as c FROM main.memories_fts').get() as any;
     ftsRowCount = Number(ftsRow?.c || 0);
 
-    // If FTS row count differs by more than 10% or is missing active memories
-    if (memoryCount > 0 && ftsRowCount === 0) {
+    const missingRow = db.prepare(`
+      SELECT COUNT(*) as c FROM main.memories m
+      WHERE NOT EXISTS (SELECT 1 FROM main.memories_fts f WHERE f.id = m.id)
+    `).get() as any;
+    const missing = Number(missingRow?.c || 0);
+    const staleRow = db.prepare(`
+      SELECT COUNT(*) as c FROM main.memories_fts f
+      WHERE NOT EXISTS (SELECT 1 FROM main.memories m WHERE m.id = f.id)
+    `).get() as any;
+    const stale = Number(staleRow?.c || 0);
+    const duplicates = Math.max(0, ftsRowCount - stale - (totalMemories - missing));
+
+    if (totalMemories > 0 && ftsRowCount === 0) {
       issues.push({
         category: 'fts5',
         severity: 'error',
-        description: `FTS5 fulltext search index is empty (${ftsRowCount} rows) but memories table has ${memoryCount} records.`,
+        description: `FTS5 fulltext search index is empty (${ftsRowCount} rows) but memories table has ${totalMemories} records.`,
         fixable: true,
-        affectedCount: memoryCount
+        affectedCount: totalMemories
       });
-    } else if (Math.abs(memoryCount - ftsRowCount) > 0) {
+    } else if (missing > 0 || stale > 0 || duplicates > 0) {
       issues.push({
         category: 'fts5',
         severity: 'warning',
-        description: `FTS5 index count (${ftsRowCount}) differs from memories table count (${memoryCount}).`,
+        description: `FTS5 index out of sync with memories table (${ftsRowCount} index rows vs ${totalMemories} memories: ${missing} missing, ${stale} stale, ${duplicates} duplicate).`,
         fixable: true,
-        affectedCount: Math.abs(memoryCount - ftsRowCount)
+        affectedCount: missing + stale + duplicates
       });
     }
   } catch (err: any) {
@@ -216,8 +230,8 @@ export function healDatabase(
   const ftsIssue = reportBefore.issues.find(i => i.category === 'fts5');
   if (ftsIssue) {
     try {
-      db.prepare("INSERT INTO memories_fts(memories_fts) VALUES('rebuild')").run();
-      actionsTaken.push('Rebuilt FTS5 BM25 search index from active memories.');
+      const indexed = rebuildMemoriesFts(db);
+      actionsTaken.push(`Rebuilt FTS5 BM25 search index from ${indexed} memories.`);
       fixedCount += ftsIssue.affectedCount;
     } catch (err: any) {
       actionsTaken.push(`Failed to rebuild FTS5 index: ${err.message}`);
@@ -283,4 +297,24 @@ export function healDatabase(
     reportBefore,
     reportAfter
   };
+}
+
+/**
+ * memories_fts is a regular (content-storing) FTS5 table, so the 'rebuild' command is a no-op
+ * for it. Repopulate it from the memories table instead.
+ */
+export function rebuildMemoriesFts(db: DatabaseSync): number {
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    db.exec('DELETE FROM main.memories_fts');
+    const res = db.prepare(`
+      INSERT INTO main.memories_fts (id, title, module, content)
+      SELECT id, title, module, content FROM main.memories
+    `).run();
+    db.exec('COMMIT');
+    return Number(res.changes);
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
 }
