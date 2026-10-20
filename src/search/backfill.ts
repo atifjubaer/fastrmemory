@@ -27,19 +27,20 @@ export async function backfillEmbeddings(
   const header = embeddingHeader(provider.modelId);
 
   const rows = db.prepare(`
-    SELECT id, title, content FROM memories
+    SELECT id, title, content, module FROM memories
     WHERE project_id IN (?, 'global')
       AND (embedded = 0 OR embedding IS NULL OR substr(embedding, 1, 4) != ?)
     ORDER BY embedded ASC, created_at DESC
     LIMIT ?
-  `).all(projectId, header, limit) as unknown as Array<{ id: string; title: string; content: string }>;
+  `).all(projectId, header, limit) as unknown as Array<{ id: string; title: string; content: string; module: string }>;
 
   let count = 0;
   for (const row of rows) {
-    // Titles are the curated semantic summary of a memory. Embedding the title
-    // alone keeps the vector stream complementary to BM25, which already covers
-    // the full content, and avoids long bodies diluting the concept signal.
-    const vec = await provider.embed(row.title);
+    // Titles are the curated semantic summary of a memory. Include the module
+    // as explicit scope text: titles often omit or abbreviate it, while queries
+    // frequently name the module. Keep the full body out so long templates do
+    // not dilute the concept signal that BM25 already covers.
+    const vec = await provider.embed(`${row.title}. module: ${row.module}`);
     repo.updateEmbedding(row.id, encodeTaggedEmbedding(vec, provider.modelId));
     count++;
   }

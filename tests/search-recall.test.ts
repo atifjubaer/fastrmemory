@@ -227,6 +227,27 @@ describe('Recall correctness fixes', () => {
     const row = db.prepare('SELECT embedded FROM memories').get() as any;
     expect(row.embedded).toBe(0);
   });
+
+  it('embeds the title plus the module scope, never the body', async () => {
+    const embeddedTexts: string[] = [];
+    __setModelLoaderForTests(async () => async (text: string) => {
+      embeddedTexts.push(text);
+      return { data: new Float32Array(384).fill(0.1) };
+    });
+    await getExtractor(); // opt in so the provider is MiniLM, not the hash fallback
+
+    repo.insertMemory({
+      projectId: P,
+      module: 'payments',
+      kind: 'rule',
+      title: 'Retry refunds once',
+      content: 'A long body that would dilute the concept vector if it were embedded.',
+      verified: true
+    });
+
+    expect(await backfillEmbeddings(db, repo, P)).toBe(1);
+    expect(embeddedTexts).toEqual(['Retry refunds once. module: payments']);
+  });
 });
 
 // --- Task 5: budget packing ---
