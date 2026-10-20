@@ -12,7 +12,7 @@ import { startUiServer } from '../src/ui/server.js';
 import { installAgentHooks } from '../src/installer/hooks.js';
 import { learnFromGitHistory } from '../src/learn/git-learner.js';
 import { exportToObsidianVault } from '../src/export/obsidian.js';
-import { runLifecycleHook, toClaudeHookStdout } from '../src/hooks/runner.js';
+import { runLifecycleHook, toClaudeHookStdout, toGeminiHookStdout } from '../src/hooks/runner.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { startDaemon, stopDaemon, getDaemonStatus, getDaemonPidFile } from '../src/daemon/service.js';
@@ -563,7 +563,7 @@ const hookCmd = program.command('hook').description('Autonomous agent lifecycle 
 
 hookCmd
   .command('install')
-  .description('Install FastrMemory MCP and hooks into Claude Code, Cursor, OpenCode, and AGENTS.md')
+  .description('Install FastrMemory MCP and hooks into Claude Code, Cursor, Gemini CLI, OpenCode, and AGENTS.md')
   .action(() => {
     const ctx = createFastrServerContext();
     const res = installAgentHooks(ctx.config.projectRoot);
@@ -578,19 +578,25 @@ hookCmd
   .command('run <event>')
   .description('Direct sub-3ms execution of agent lifecycle hooks (SessionStart, PreToolUse, PreCompact, SessionEnd)')
   .option('-p, --payload <json>', 'JSON payload with tool or session context (defaults to the hook JSON on stdin)')
-  .option('--verbose', 'Print status messages (for manual runs; Claude Code hooks stay quiet)')
+  .option('--format <format>', 'Output contract: claude or gemini', 'claude')
+  .option('--verbose', 'Print status messages (for manual runs; agent hooks stay quiet)')
   .action((event, opts) => {
     let payload: Record<string, any> = {};
     try {
-      // Claude Code pipes the hook input as JSON on stdin; --payload is for manual runs.
+      // Agent CLIs pipe the hook input as JSON on stdin; --payload is for manual runs.
       const raw = opts.payload ?? (process.stdin.isTTY ? '' : fs.readFileSync(0, 'utf-8'));
       if (raw && raw.trim()) payload = JSON.parse(raw);
     } catch {}
-    // Hooks run from the session's cwd; prefer the project dir Claude Code reports.
-    const projectDir = process.env.CLAUDE_PROJECT_DIR || (typeof payload.cwd === 'string' ? payload.cwd : undefined);
+    // Hooks run from the session's cwd; prefer the project dir the agent reports.
+    const projectDir = process.env.CLAUDE_PROJECT_DIR
+      || process.env.GEMINI_PROJECT_DIR
+      || process.env.GEMINI_CWD
+      || (typeof payload.cwd === 'string' ? payload.cwd : undefined);
     const ctx = createFastrServerContext(projectDir);
     const res = runLifecycleHook(ctx, event, payload);
-    const stdout = toClaudeHookStdout(event, res);
+    const stdout = opts.format === 'gemini'
+      ? toGeminiHookStdout(event, res)
+      : toClaudeHookStdout(event, res);
     if (stdout) {
       console.log(stdout);
     } else if (opts.verbose || opts.payload !== undefined) {

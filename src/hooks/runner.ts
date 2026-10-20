@@ -58,6 +58,40 @@ export function toClaudeHookStdout(event: string, result: { output?: string }): 
   return null;
 }
 
+/**
+ * Formats a hook result for Gemini CLI, which requires exactly one JSON object on stdout.
+ * SessionStart injects context; BeforeTool shows trap warnings to the user (Gemini has no
+ * documented model-facing additionalContext for BeforeTool); compaction and session-end are
+ * advisory messages.
+ */
+export function toGeminiHookStdout(
+  event: string,
+  result: { output?: string; message?: string }
+): string | null {
+  const normalized = event.trim().toLowerCase();
+  const context = result.output?.trim();
+  switch (normalized) {
+    case 'sessionstart':
+      return context
+        ? JSON.stringify({
+            hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: context },
+          })
+        : JSON.stringify({});
+    case 'pretooluse':
+      return context
+        ? JSON.stringify({
+            systemMessage: context,
+            hookSpecificOutput: { hookEventName: 'BeforeTool', additionalContext: context },
+          })
+        : JSON.stringify({});
+    case 'precompact':
+    case 'sessionend':
+      return JSON.stringify(result.message ? { systemMessage: result.message } : {});
+    default:
+      return null;
+  }
+}
+
 export function runLifecycleHook(
   ctx: HookContext,
   event: string,

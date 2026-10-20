@@ -10,9 +10,10 @@ import {
   upsertMcpServer,
 } from '../src/installer/json-config.js';
 import { buildHookCommand, claudeHookSpecs, installAgentHooks } from '../src/installer/hooks.js';
+import { installGemini } from '../src/installer/gemini.js';
 import { installOpenCode } from '../src/installer/opencode.js';
 import { resolveMcpCommand } from '../src/installer/setup.js';
-import { extractTargetFiles, toClaudeHookStdout } from '../src/hooks/runner.js';
+import { extractTargetFiles, toClaudeHookStdout, toGeminiHookStdout } from '../src/hooks/runner.js';
 
 describe('Installer config safety', () => {
   let dir: string;
@@ -95,6 +96,11 @@ describe('Installer config safety', () => {
     expect(cmd).toMatch(/hook run SessionStart$/);
     expect(cmd).not.toContain('\\'); // backslashes would be eaten by Git Bash on Windows
     expect(isFastrHookCommand(cmd)).toBe(true);
+
+    const gemini = buildHookCommand('SessionStart', 'linux', 'gemini');
+    expect(gemini).toMatch(/hook run SessionStart --format gemini$/);
+    expect(gemini).not.toContain(' mcp ');
+    expect(isFastrHookCommand(gemini)).toBe(true);
   });
 
   it('never points MCP clients at the bare .cmd shim on Windows', () => {
@@ -110,6 +116,7 @@ describe('Installer config safety', () => {
 
     const res = installAgentHooks(dir);
     expect(res.claudeCodeUpdated).toBe(true);
+    expect(res.geminiUpdated).toBe(true);
     expect(res.openCodeUpdated).toBe(true);
 
     const mcp = JSON.parse(fs.readFileSync(path.join(dir, '.mcp.json'), 'utf-8'));
@@ -120,12 +127,59 @@ describe('Installer config safety', () => {
     expect(settings.mcpServers).toBeUndefined();
     expect(Array.isArray(settings.hooks.SessionStart)).toBe(true);
 
+    const gemini = JSON.parse(fs.readFileSync(path.join(dir, '.gemini', 'settings.json'), 'utf-8'));
+    expect(gemini.mcpServers.fastrmemory.args).toContain('mcp');
+    expect(gemini.hooks.BeforeTool[0].matcher).toBe('write_file|replace');
+    expect(gemini.hooks.SessionStart.flatMap((group: any) => group.hooks)
+      .some((hook: any) => hook.command.includes('--format gemini'))).toBe(true);
+
     const openCode = JSON.parse(fs.readFileSync(path.join(dir, 'opencode.json'), 'utf-8'));
     expect(openCode.mcp.servers.fastrmemory.command).toContain('mcp');
     expect(fs.existsSync(path.join(dir, '.opencode', 'plugins', 'fastrmemory', 'index.ts'))).toBe(true);
 
     const again = installAgentHooks(dir);
+    expect(again.geminiUpdated).toBe(false);
     expect(again.openCodeUpdated).toBe(false);
+  });
+
+  it('writes Gemini CLI settings idempotently and preserves user hooks', () => {
+    const settingsPath = path.join(dir, '.gemini', 'settings.json');
+    fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
+    fs.writeFileSync(settingsPath, JSON.stringify({
+      theme: 'dark',
+      mcpServers: { other: { command: 'other', args: ['serve'] } },
+      hooks: {
+        BeforeTool: [{
+          matcher: 'write_file',
+          hooks: [
+            { name: 'user-check', type: 'command', command: 'node user-check.js' },
+            { name: 'old-fastr', type: 'command', command: 'fastrmemory hook run PreToolUse' }
+          ]
+        }],
+        SessionStart: 'fastrmemory hook run SessionStart'
+      }
+    }));
+
+    const first = installGemini(dir, { command: 'node', args: ['cli.js', 'mcp'] });
+    expect(first.changed).toBe(true);
+    const second = installGemini(dir, { command: 'node', args: ['cli.js', 'mcp'] });
+    expect(second.changed).toBe(false);
+
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+    expect(config.theme).toBe('dark');
+    expect(config.mcpServers.other).toEqual({ command: 'other', args: ['serve'] });
+    expect(config.mcpServers.fastrmemory).toEqual({ command: 'node', args: ['cli.js', 'mcp'] });
+
+    const beforeToolHooks = config.hooks.BeforeTool.flatMap((group: any) => group.hooks);
+    expect(beforeToolHooks.filter((hook: any) => isFastrHookCommand(hook.command))).toHaveLength(1);
+    expect(beforeToolHooks.some((hook: any) => hook.name === 'user-check')).toBe(true);
+    expect(beforeToolHooks.filter((hook: any) => isFastrHookCommand(hook.command))[0].command)
+      .toContain('--format gemini');
+    expect(config.hooks.BeforeTool[0].matcher).toBe('write_file');
+
+    const sessionStartHooks = config.hooks.SessionStart.flatMap((group: any) => group.hooks);
+    expect(sessionStartHooks.filter((hook: any) => isFastrHookCommand(hook.command))).toHaveLength(1);
+    expect(sessionStartHooks[0].name).toBe('fastrmemory-session-start');
   });
 
   it('writes an OpenCode V2 MCP server and managed plugin without touching other settings', () => {
@@ -202,6 +256,27 @@ describe('Claude Code hook I/O', () => {
     expect(toClaudeHookStdout('SessionStart', { output: 'hello' })).toBe('hello');
     expect(toClaudeHookStdout('SessionEnd', { output: 'x' })).toBeNull();
     expect(toClaudeHookStdout('PreToolUse', {})).toBeNull();
+  });
+
+  it('formats Gemini hook output as strict JSON', () => {
+    const session = JSON.parse(toGeminiHookStdout('SessionStart', { output: 'context' })!);
+    expect(session).toEqual({
+      hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: 'context' }
+    });
+
+    const pre = JSON.parse(toGeminiHookStdout('PreToolUse', { output: 'TRAP!' })!);
+    expect(pre.systemMessage).toBe('TRAP!');
+    expect(pre.hookSpecificOutput).toEqual({
+      hookEventName: 'BeforeTool',
+      additionalContext: 'TRAP!'
+    });
+
+    expect(JSON.parse(toGeminiHookStdout('PreToolUse', { message: 'safe' })!)).toEqual({});
+    expect(JSON.parse(toGeminiHookStdout('PreCompact', { message: 'snapshot' })!))
+      .toEqual({ systemMessage: 'snapshot' });
+    expect(JSON.parse(toGeminiHookStdout('SessionEnd', { message: 'done' })!))
+      .toEqual({ systemMessage: 'done' });
+    expect(toGeminiHookStdout('UnknownEvent', { output: 'x' })).toBeNull();
   });
 });
 

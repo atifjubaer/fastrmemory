@@ -10,6 +10,8 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 - `fastr conflict list` and `fastr conflict resolve <id> --keep <memory-id> [--forget] [--reason]`.
 - `fastr import --from markdown|agents-md|cursor-rules|claude-md|jsonl` imports local Markdown rules and snapshots with dry-run and exact-duplicate skipping.
 - OpenCode V2 integration: `fastrmemory hook install` writes `opencode.json` `mcp.servers.fastrmemory` and an auto-loaded plugin that injects session-start context and captures pre-compaction snapshots.
+- Gemini CLI integration: `fastrmemory hook install` merges `.gemini/settings.json` `mcpServers.fastrmemory` and `SessionStart`, `BeforeTool`, `PreCompress`, and `SessionEnd` hooks; `fastr hook run --format gemini` emits Gemini's strict JSON hook contract.
+- `npm run smoke:gemini` installs the Gemini config in a temporary project, starts the configured MCP server, and asserts the 41-tool surface.
 
 ### Fixed
 

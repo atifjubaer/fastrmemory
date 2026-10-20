@@ -2,29 +2,18 @@ import * as path from 'node:path';
 import { ClaudeHookSpec, mergeClaudeHooks, updateJsonConfig, upsertMcpServer } from './json-config.js';
 import { ensureAgentsDiscipline, resolveMcpCommand } from './setup.js';
 import { installOpenCode } from './opencode.js';
+import { installGemini } from './gemini.js';
+import { buildHookCommand } from './commands.js';
+
+export { buildHookCommand } from './commands.js';
 
 export interface HookInstallResult {
   claudeCodeUpdated: boolean;
   cursorUpdated: boolean;
+  geminiUpdated: boolean;
   openCodeUpdated: boolean;
   agentsMdUpdated: boolean;
   details: string[];
-}
-
-function quoteArg(arg: string): string {
-  // Hooks may run under Git Bash on Windows, where unquoted backslashes are eaten. Node accepts
-  // forward slashes on every platform, so normalise paths and always quote them.
-  if (/[\\/]/.test(arg)) return `"${arg.replace(/\\/g, '/').replace(/"/g, '\\"')}"`;
-  return /[\s"]/.test(arg) ? `"${arg.replace(/"/g, '\\"')}"` : arg;
-}
-
-/** Shell command Claude Code runs for a lifecycle event, using the same entry point as the MCP server. */
-export function buildHookCommand(event: string, platform: NodeJS.Platform = process.platform): string {
-  const target = resolveMcpCommand(platform);
-  // Hook commands run through a shell, so npx needs no `cmd /c` wrapper here.
-  const base = target.command === 'cmd' ? target.args.slice(1) : [target.command, ...target.args];
-  const withoutMcp = base[base.length - 1] === 'mcp' ? base.slice(0, -1) : base;
-  return [...withoutMcp, 'hook', 'run', event].map(quoteArg).join(' ');
 }
 
 export function claudeHookSpecs(platform: NodeJS.Platform = process.platform): ClaudeHookSpec[] {
@@ -40,16 +29,18 @@ export function claudeHookSpecs(platform: NodeJS.Platform = process.platform): C
 }
 
 /**
- * Wires FastrMemory into the current project for Claude Code and Cursor.
+ * Wires FastrMemory into the current project for Claude Code, Cursor, Gemini CLI, and OpenCode.
  *
- * Claude Code reads project MCP servers from `.mcp.json` and hooks from `.claude/settings.json`
- * (both shareable with the team). Existing servers and hooks are preserved; files are backed up
- * once and written atomically; unparseable files are left untouched and reported.
+ * Claude Code reads project MCP servers from `.mcp.json` and hooks from `.claude/settings.json`;
+ * Gemini CLI reads both from `.gemini/settings.json` (all shareable with the team). Existing
+ * servers and hooks are preserved; files are backed up once and written atomically; unparseable
+ * files are left untouched and reported.
  */
 export function installAgentHooks(projectRoot: string = process.cwd()): HookInstallResult {
   const details: string[] = [];
   let claudeCodeUpdated = false;
   let cursorUpdated = false;
+  let geminiUpdated = false;
   let openCodeUpdated = false;
   let agentsMdUpdated = false;
   const mcpEntry = resolveMcpCommand();
@@ -80,7 +71,16 @@ export function installAgentHooks(projectRoot: string = process.cwd()): HookInst
     details.push(`Failed to update Cursor MCP: ${err.message}`);
   }
 
-  // 3. OpenCode V2: project MCP server + auto-loaded context plugin
+  // 3. Gemini CLI: project MCP server + lifecycle hooks
+  try {
+    const gemini = installGemini(projectRoot, mcpEntry);
+    details.push(describe('Gemini CLI MCP + hooks', gemini));
+    geminiUpdated = gemini.changed;
+  } catch (err: any) {
+    details.push(`Failed to update Gemini CLI: ${err.message}`);
+  }
+
+  // 4. OpenCode V2: project MCP server + auto-loaded context plugin
   try {
     const openCode = installOpenCode(projectRoot, mcpEntry);
     details.push(...openCode.details);
@@ -89,7 +89,7 @@ export function installAgentHooks(projectRoot: string = process.cwd()): HookInst
     details.push(`Failed to update OpenCode: ${err.message}`);
   }
 
-  // 4. Autonomous Memory Discipline in AGENTS.md
+  // 5. Autonomous Memory Discipline in AGENTS.md
   try {
     agentsMdUpdated = ensureAgentsDiscipline(projectRoot) === 'added';
     details.push(agentsMdUpdated
@@ -102,6 +102,7 @@ export function installAgentHooks(projectRoot: string = process.cwd()): HookInst
   return {
     claudeCodeUpdated,
     cursorUpdated,
+    geminiUpdated,
     openCodeUpdated,
     agentsMdUpdated,
     details,
