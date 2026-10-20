@@ -38,7 +38,7 @@ describe('Agent Skills validation', () => {
         '```js',
         'fastr_trap_log({ file: "a.ts", error: "boom" })',
         'fastr_handoff({ action: "finish", taskTitle: "t" })',
-        'fastr_get({ id: "mem_1" })',
+        'fastr_not_a_real_tool({ id: "mem_1" })',
         '```',
       ].join('\n');
       fs.mkdirSync(path.join(sandbox, 'skills', 'bad-skill'), { recursive: true });
@@ -50,7 +50,7 @@ describe('Agent Skills validation', () => {
       expect(text).toContain('fastr_trap_log has no parameter "file"');
       expect(text).toContain('fastr_trap_log is missing required parameter "title"');
       expect(text).toContain('fastr_handoff.action = "finish" is not one of save|latest');
-      expect(text).toContain('unknown tool "fastr_get"');
+      expect(text).toContain('unknown tool "fastr_not_a_real_tool"');
       expect(text).toContain('.cursor/skills/bad-skill/SKILL.md: missing');
     } finally {
       fs.rmSync(sandbox, { recursive: true, force: true });

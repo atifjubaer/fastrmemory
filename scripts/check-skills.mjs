@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 // Validates the Agent Skills in skills/ against the MCP tools registered in src/mcp/server.ts.
 //
 // - Every `fastr_*` name mentioned in a SKILL.md must be a registered tool.
