@@ -30,34 +30,44 @@ export function formatMemoryForContext(scored: ScoredMemory): string {
   return `${header}\n${memory.content}\n`;
 }
 
+export const MEMORY_SEPARATOR = '\n---\n\n';
+
+/**
+ * Greedy budget packing: walk candidates by score (desc) and include every item that
+ * still fits. Oversized items are skipped (not a hard stop), so smaller lower-ranked
+ * items can still be packed. Separator tokens are counted and the reported total is
+ * the estimate of the final joined text, which never exceeds `budgetTokens`.
+ */
 export function packMemoriesIntoBudget(
   candidates: ScoredMemory[],
-  budgetTokens: number = TOKEN_LEVELS.L2_TASK_RECALL
+  budgetTokens: number = TOKEN_LEVELS.L2_TASK_RECALL,
+  maxItems: number = Number.POSITIVE_INFINITY
 ): { text: string; packed: ScoredMemory[]; totalTokens: number } {
   // Sort candidates by final score descending
   const sorted = [...candidates].sort((a, b) => b.score - a.score);
 
   const packed: ScoredMemory[] = [];
   const blocks: string[] = [];
-  let currentTokens = 0;
+  let currentText = '';
 
   for (const candidate of sorted) {
+    if (packed.length >= maxItems) break;
     const formatted = formatMemoryForContext(candidate);
-    const itemTokens = estimateTokens(formatted);
+    const nextText = blocks.length === 0 ? formatted : currentText + MEMORY_SEPARATOR + formatted;
 
-    if (currentTokens + itemTokens > budgetTokens && packed.length > 0) {
-      // Budget reached
-      break;
+    if (estimateTokens(nextText) > budgetTokens) {
+      // Does not fit: skip it, a smaller later item may still fit
+      continue;
     }
 
     packed.push(candidate);
     blocks.push(formatted);
-    currentTokens += itemTokens;
+    currentText = nextText;
   }
 
   return {
-    text: blocks.join('\n---\n\n'),
+    text: currentText,
     packed,
-    totalTokens: currentTokens
+    totalTokens: estimateTokens(currentText)
   };
 }
