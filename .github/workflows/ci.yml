@@ -38,6 +38,9 @@ jobs:
       - name: Typecheck & Build core
         run: npm run build:core
 
+      - name: Verify MCP profile surfaces
+        run: node scripts/smoke-mcp-profile.mjs
+
       - name: Build UI and verify tracked bundle
         if: matrix.os == 'ubuntu-latest' && matrix.node-version == '24.x'
         run: |

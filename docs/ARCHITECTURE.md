@@ -96,7 +96,7 @@ CLI: `fastr replay`, `fastr diff`, `fastr snapshot export|import`, `fastr consol
 - **2 prompts**: `pre-edit-check`, `session-wrap-up`.
 - **4 resources**: `fastr://project/overview`, `fastr://project/traps`, `fastr://session/handoff`, and the `fastr://memory/{id}` template.
 
-The full 41-tool surface is the default. Start the core profile with `fastrmemory mcp --profile core` or `FASTR_MCP_PROFILE=core`; resources and prompts are identical in both profiles.
+The full 41-tool surface is the default. Start the core profile with `fastrmemory mcp --profile core` or `FASTR_MCP_PROFILE=core`; resources and prompts are identical in both profiles. Verify both surfaces against a built CLI with `node scripts/smoke-mcp-profile.mjs`.
 
 ## 8. Design rules
 

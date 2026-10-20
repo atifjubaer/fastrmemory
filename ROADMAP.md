@@ -72,7 +72,7 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 | Conflict detection and structured resolve | **Partial** | DB and MCP tools exist; CLI/UI resolve path and conflict-aware recall are missing. |
 | Cross-tool import | **Missing** | No `fastr import` for local memory formats. |
 | OpenCode, Gemini CLI, and Copilot CLI hooks | **Missing** | Installers cover Claude Code and Cursor only. |
-| 12-tool core MCP profile | **Done** | `fastrmemory mcp --profile core` or `FASTR_MCP_PROFILE=core`; `tests/mcp-core-profile.test.ts` asserts 12 tools and the 41-tool full default. |
+| 12-tool core MCP profile | **Done** | `fastrmemory mcp --profile core` or `FASTR_MCP_PROFILE=core`; `tests/mcp-core-profile.test.ts` and `scripts/smoke-mcp-profile.mjs` assert 12 core tools and the 41-tool full default. |
 | Memory envelope resource | **Missing** | Four resources exist; envelope resource is not implemented. |
 | Branch / merge | **Missing** | Snapshots, replay, and diff exist; branch and merge do not. |
 | Memory hygiene | **Partial** | `fastr diagnose` / `fastr heal` exist; orphan/duplicate/stale coverage needs a dedicated gate. |
