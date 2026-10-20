@@ -24,6 +24,8 @@ import { tagVisionAsset, searchVisionAssets } from '../src/vision/assets.js';
 import { runTrapGuardian } from '../src/ci/guardian.js';
 import { diffSnapshots, formatDiffMarkdown, replayAt } from '../src/replay/snapshot.js';
 import { exportSnapshotJsonl, importSnapshotFile, snapshotFromJsonl } from '../src/replay/jsonl.js';
+import { importMarkdownFile } from '../src/import/local.js';
+import type { LocalImportKind } from '../src/import/local.js';
 import { consolidateMemories } from '../src/db/consolidate.js';
 import { runMemoryCi } from '../src/ci/memory-ci.js';
 
@@ -291,7 +293,59 @@ program
     console.log(`Synced ${files.length} module markdown pages in .fastr/pages/`);
   });
 
-// 7. Benchmark command
+// 7. Local memory import (JSONL snapshot or Markdown rules)
+program
+  .command('import <file>')
+  .description('Import local memory sources (JSONL snapshot or Markdown rules)')
+  .option('--from <format>', 'jsonl | markdown | agents-md | cursor-rules | claude-md', 'jsonl')
+  .option('-m, --module <module>', 'Module for Markdown imports', 'imported')
+  .option('-k, --kind <kind>', 'rule | decision | error_trap | workflow', 'rule')
+  .option('--verified', 'Mark imported Markdown memories verified', false)
+  .option('--dry-run', 'Report counts without writing', false)
+  .action((file: string, opts: any) => {
+    const ctx = createFastrServerContext();
+    const target = path.resolve(file);
+    const format = String(opts.from || 'jsonl').toLowerCase();
+
+    if (format === 'jsonl') {
+      const result = importSnapshotFile(ctx.db, target, { dryRun: opts.dryRun });
+      console.log(`${result.dryRun ? 'Verified' : 'Imported'} ${target}`);
+      console.log(`Memories: ${result.memories} | Events: ${result.events} | File links: ${result.fileLinks} | Conflicts: ${result.conflicts} | Skipped: ${result.skipped}`);
+      console.log(`Content hash: ${result.contentHash}`);
+      return;
+    }
+
+    const markdownFormats = new Set(['markdown', 'agents-md', 'cursor-rules', 'claude-md']);
+    if (!markdownFormats.has(format)) {
+      console.error('Error: --from must be one of: jsonl, markdown, agents-md, cursor-rules, claude-md.');
+      process.exit(1);
+    }
+    const kinds: LocalImportKind[] = ['rule', 'decision', 'error_trap', 'workflow'];
+    if (!kinds.includes(opts.kind)) {
+      console.error('Error: --kind must be one of: rule, decision, error_trap, workflow.');
+      process.exit(1);
+    }
+
+    try {
+      const result = importMarkdownFile(ctx.repo, ctx.db, target, {
+        projectId: ctx.config.projectId,
+        module: opts.module,
+        kind: opts.kind,
+        verified: Boolean(opts.verified),
+        dryRun: Boolean(opts.dryRun)
+      });
+      if (!result.dryRun && result.imported > 0) {
+        syncAllModulePages(ctx.db, ctx.config.projectRoot, ctx.config.projectId);
+      }
+      console.log(`${result.dryRun ? 'Would import' : 'Imported'} ${result.imported} of ${result.total} sections from ${target}`);
+      console.log(`Skipped duplicates: ${result.skipped}${result.dryRun ? ' (dry run)' : ''}`);
+    } catch (err: any) {
+      console.error(`Error: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+// 8. Benchmark command
 program
   .command('bench')
   .description('Run automated retrieval accuracy & latency benchmarks')

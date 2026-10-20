@@ -12,7 +12,7 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 
 | Item | Current state | Evidence |
 |---|---|---|
-| Local test gate | **Done:** 239 tests across 44 files | `npm run check:ci` on 2026-10-21 |
+| Local test gate | **Done:** 245 tests across 45 files | `npm run check:ci` on 2026-10-21 |
 | CI matrix | **Done:** 6/6 green at `3fa2bf9` | run `39495621243` |
 | npm distribution | **Blocked:** `npm whoami` E401, `npm view` E404; suspension lifts 2026-10-21 22:42 UTC | `docs/npm-publishing.md` |
 | Package artifact | **GitHub asset attached:** v0.2.1 asset is 591,204 bytes, SHA-256 `78F1535E87A7148272824C0B0D31F21D4AD385D9EEAA2EF8A40D41DCD0ACA63B`; v0.2.0 asset is 571,279 bytes | `npm pack` vs downloaded release asset |
@@ -38,7 +38,7 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 | ID | Task | Acceptance gate | Status |
 |---|---|---|---|
 | 3.1 | Conflict-aware recall plus CLI conflict list/resolve | Recall marks both sides of an open conflict; `fastr conflict list` and `fastr conflict resolve` work; tests and docs updated | **Done** |
-| 3.2 | Local memory import | `fastr import --from <format>` imports Markdown rules and JSONL with dry-run, dedupe, and round-trip test | Missing |
+| 3.2 | Local memory import | `fastr import --from <format>` imports Markdown rules and JSONL with dry-run, dedupe, and round-trip test | **Done** |
 | 3.3 | OpenCode hook and MCP parity | Installer writes a tested OpenCode config/plugin path and a smoke check starts the MCP server | Missing |
 | 3.4 | Gemini CLI hook and MCP parity | Installer writes a tested Gemini config path with idempotent merge | Missing |
 | 3.5 | Copilot CLI hook and MCP parity | Installer writes a tested Copilot config/instruction path with idempotent merge | Missing |
