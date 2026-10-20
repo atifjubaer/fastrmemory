@@ -9,17 +9,19 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.16.0-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Protocol](https://img.shields.io/badge/Protocol-MCP%20v2-7C3AED?style=flat-square)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/Tests-218%20Passed-brightgreen?style=flat-square)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-221%20Passed-brightgreen?style=flat-square)](tests/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
-[![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-key-architectural-pillars)
+[![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-architecture)
+
+> **Status (2026-10-20, commit `d9446e1`):** `@atifjubaer/fastrmemory` is **not yet published to npm** (`npm view` returns E404); use the GitHub install below. The benchmark in this README is **12 hand-written synthetic cases against simulated baselines**, not SWE-bench/LongMemEval and not the real competitor projects. Every public claim is tracked in [CLAIMS.md](CLAIMS.md); methodology and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md). The CI matrix is being repaired (see [Actions](https://github.com/atifjubaer/fastrmemory/actions)).
 
 <p align="center">
   <a href="#-overview">Overview</a> &bull;
   <a href="#-why-fastrmemory-vs-competitors">vs Competitors</a> &bull;
-  <a href="#-retrieval-benchmark-proof">Benchmarks</a> &bull;
+  <a href="#-retrieval-benchmark-12-synthetic-cases">Benchmarks</a> &bull;
   <a href="#-local-web-dashboard">Web UI</a> &bull;
-  <a href="#-works-with-25-agents">Supported Agents</a> &bull;
-  <a href="#-30-second-quick-start">Quick Start</a> &bull;
+  <a href="#-works-with-mcp--and-http-compatible-agents">Supported Agents</a> &bull;
+  <a href="#-quick-start">Quick Start</a> &bull;
   <a href="#-mcp-server-tools--resources">MCP Tools</a> &bull;
   <a href="#-architecture">Architecture</a> &bull;
   <a href="ROADMAP.md">Roadmap</a> &bull;
@@ -33,30 +35,30 @@
 ## 💡 Overview
 
 AI coding agents (Claude Code, Cursor, Windsurf, Codex, Antigravity) degrade on long-running codebases because existing memory systems suffer from fatal trade-offs:
-- **Hippo Memory's sleep consolidation** merges episodic memories into vague summaries and deletes the originals, costing **3.6% in retrieval accuracy** (Hit@5), while its time decay forgets rare architectural rules.
-- **AgentMemory** requires a compiled Rust daemon (`iii-engine`) listening on 4 open network ports (`3111`, `3112`, `3113`, `49134`), causing native Windows failures and capturing raw tool logs that bloat token context.
-- **Mem0, Letta, and Memoria** lock your memories inside heavy external infrastructure (Postgres, Qdrant, MatrixOne DB, or cloud APIs), preventing clean local version control.
+- **Hippo Memory's sleep consolidation** lowered Hit@5 by **3.6 points** in Hippo's own audit (PR #232); originals decay and merge rather than being immediately deleted. FastrMemory keeps raw events and bi-temporal history, so nothing is lost.
+- **AgentMemory** requires a compiled Rust daemon (`iii-engine`) listening on 4 local ports (`3111`, `3112`, `3113`, `49134`); setup on Windows is manual and is not verified in this repository.
+- **Mem0, Letta, and Memoria** typically add external infrastructure (a vector database, Postgres, MatrixOne/Docker, or a cloud API), which adds operational weight and makes local version control harder.
 
-**FastrMemory** solves this by unifying the best patterns from the top memory repos into a **single, zero-dependency, lightning-fast TypeScript engine**:
+**FastrMemory** is a **single zero-daemon TypeScript engine** (4 runtime dependencies; local embeddings are optional):
 
 <table>
 <tr>
 <td width="33%" align="center">
 
 ### ⚡ Zero Daemon Overhead
-Pure Node 22+ built-in `node:sqlite` in WAL mode. Sub-millisecond retrieval with **zero background daemons**, zero open ports, and 100% native execution on Windows, macOS, and Linux.
+Pure Node 22+ built-in `node:sqlite` in WAL mode. Engine-level recall averaged 0.67 ms on the 12-case synthetic suite (CLI process startup is measured separately). Zero background daemons, zero open ports; native on Windows, macOS, and Linux — CI matrix status is reported in [Actions](https://github.com/atifjubaer/fastrmemory/actions).
 
 </td>
 <td width="33%" align="center">
 
 ### 🔀 Bi-Temporal Git Sync
-Never deletes facts during sleep. Replaces half-life decay with `valid_from` / `valid_to` timestamps and auto-mirrors human-readable `.fastr/pages/*.md` files into Git.
+Never deletes facts during consolidation (there is no destructive sleep step). Replaces half-life decay with `valid_from` / `valid_to` timestamps and auto-mirrors human-readable `.fastr/pages/*.md` files into Git.
 
 </td>
 <td width="33%" align="center">
 
 ### 🎯 Triple-Stream RRF ($k=60$)
-Fuses sub-millisecond FTS5 BM25 + local 384-dim embeddings + file-graph links. Error traps receive an automatic **2.0x boost** with per-ID outcome feedback (+0.2 / -0.5).
+Fuses FTS5 BM25 + optional local embeddings + file-graph links. Error traps receive an automatic **2.0x boost** with per-ID outcome feedback (+0.2 / -0.5).
 
 </td>
 </tr>
@@ -66,76 +68,33 @@ Fuses sub-millisecond FTS5 BM25 + local 384-dim embeddings + file-graph links. E
 
 ## 📊 Why FastrMemory vs. Competitors
 
-Comprehensive comparison across the current agent memory landscape:
+Architecture comparison as of **2026-10-20**. Competitor rows are **vendor-reported** and were **not re-tested in this repository**; verify them against each project's current docs before relying on them.
 
-| Capability | FastrMemory (`@atifjubaer`) | agentmemory | Memoria (MatrixOrigin) | mem0 (63K ⭐) | Letta / MemGPT | Hippo Memory | Built-in (`CLAUDE.md`) |
+| Capability | FastrMemory (`@atifjubaer`) | agentmemory | Memoria (MatrixOrigin) | mem0 | Letta / MemGPT | Hippo Memory | Built-in (`CLAUDE.md`) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Daemon Overhead** | **Zero daemon** (Native `node:sqlite`) | Heavy Rust daemon (4 ports) | MatrixOne DB or Cloud API | Cloud / Vector DB | Full runtime daemon | Zero daemon | Static file |
-| **Windows Support** | **100% Native Windows, Mac, Linux** | Fails without WSL2/Docker | Requires Docker/Cloud | Python setup | Complex setup | Native Node.js | Native OS |
-| **Data Retention** | **Verbatim `raw_events` + Bi-Temporal** | Raw transcript bloat | Git-like DB snapshots | Passive extraction | Agent-managed | Lossy sleep merges | Manual editing |
-| **Retrieval Power** | **Triple-Stream RRF ($k=60$) + File Graph** | BM25 + Vector + Graph RRF | Vector + Fulltext | Vector + Graph | Vector (archival) | BM25 only | Linear grep |
-| **Git & PR Review** | **Two-Zone Git-diffable Markdown** | Web dashboard only | Web / CLI | Cloud dashboard | Web dashboard | Raw markdown dumps | Static text |
-| **Feedback Multiplier**| **Per-ID attribution (`[mem_xxxx]`)** | Passive telemetry only | Edge re-weighting | Manual edit | None | Batch penalty | None |
-| **External Dependencies**| **Zero** (Standard Node.js) | Compiled Rust binary | MatrixOne / Docker | Qdrant / pgvector | PostgreSQL | None | None |
-| **Token Budgeting** | **Progressive L0–L3 (~150 to 4000t)** | ~1,900t / session | Uncapped | Varies | Core context | Varies | 22k+ tokens |
-| **Autonomous Self-Healing** | **Built-in (`fastr_heal`, FTS5 rebuild, WAL vacuum)** | Daemon restart | None | Manual SQL | Manual | None | None |
-| **Token Compression** | **AST structural compression (`fastr_compress`)** | External LLM call | None | None | None | None | None |
-| **Multimodal Vision** | **Indexed screenshots + OCR + 384-dim vector** | Heavy CLIP daemon | None | None | None | None | None |
+| **Runtime** | One Node process, zero daemon | Rust daemon, 4 local ports | MatrixOne DB / Docker or cloud | Managed platform; OSS differs | Server runtime + database | Zero daemon (Node) | Static file |
+| **Storage** | SQLite WAL + Markdown mirrors | Engine KV store | MatrixOne | Vector store + optional graph | Postgres / vector store | SQLite + Markdown mirrors | Plain text |
+| **Retention** | Verbatim `raw_events` + `valid_from`/`valid_to` | Raw transcript capture | Git-like DB snapshots | Extracted facts | Agent-managed blocks | Sleep consolidation (vendor audit: −3.6pp Hit@5) | Manual editing |
+| **Retrieval** | FTS5 BM25 + optional local vectors + file graph (RRF k=60) | BM25 + vector + graph RRF | Vector + fulltext | Vector + graph | Vector / archival | BM25 default + optional MiniLM | Linear grep |
+| **Git & PR review** | Two-zone Git-diffable Markdown | Web dashboard | Web / CLI | Cloud dashboard | Web dashboard | Markdown mirrors | Static text |
+| **Per-ID feedback** | Yes (`fastr_feedback`) | Not verified | Not verified | Not verified | Not verified | Yes (vendor) | None |
+| **External dependencies** | 4 npm packages; optional local model | Compiled Rust binary | MatrixOne / Docker | Vector DB or managed service | PostgreSQL | Node.js only | None |
+
+**Where competitors win:** Hippo ships a smaller install (~4.5 MB) with no runtime dependencies and a mature hook ecosystem; agentmemory has broader live-capture hooks; mem0 has a managed platform and a larger user base; Memoria has branch/merge workflows; Letta has a mature agent runtime. FastrMemory's bet is narrower: **lossless retention, replayable history, and an honest benchmark**.
 
 ---
 
-## 🤖 Works With Every Agent
+## 🤖 Works With MCP- and HTTP-Compatible Agents
 
-<div align="center">
-  <b>25 agents &bull; one memory server</b>
-  <p>FastrMemory works with any agent that supports hooks, MCP, or REST API. All agents share the exact same memory store.</p>
-</div>
+FastrMemory exposes one stdio MCP server and one optional local HTTP service. **Native hook/config installers are provided for Claude Code and Cursor** (`fastrmemory hook install`); every other client connects through its own MCP configuration or the REST API. Integration depth varies by client — only the two native installers are covered by tests in this repository.
 
-<table>
-<tr>
-<td align="center" width="20%"><b>Claude Code</b><br/><sub><code>native plugin + 12 hooks + MCP</code></sub></td>
-<td align="center" width="20%"><b>Codex CLI</b><br/><sub><code>native plugin + 6 hooks + MCP</code></sub></td>
-<td align="center" width="20%"><b>GitHub Copilot CLI</b><br/><sub><code>MCP + plugin hooks/skills</code></sub></td>
-<td align="center" width="20%"><b>Cursor</b><br/><sub><code>native plugin + 7 hooks + MCP</code></sub></td>
-<td align="center" width="20%"><b>OpenCode</b><br/><sub><code>capture plugin + MCP</code></sub></td>
-</tr>
-<tr>
-<td align="center"><b>Devin</b><br/><sub><code>6 hooks + skills + MCP</code></sub></td>
-<td align="center"><b>OpenClaw</b><br/><sub><code>native plugin + MCP</code></sub></td>
-<td align="center"><b>Hermes</b><br/><sub><code>native plugin + MCP</code></sub></td>
-<td align="center"><b>pi</b><br/><sub><code>native plugin + MCP</code></sub></td>
-<td align="center"><b>OpenHuman</b><br/><sub><code>native Memory trait backend</code></sub></td>
-</tr>
-<tr>
-<td align="center"><b>Gemini CLI</b><br/><sub><code>MCP server</code></sub></td>
-<td align="center"><b>Antigravity</b><br/><sub><code>MCP + hooks</code></sub></td>
-<td align="center"><b>Claude Desktop</b><br/><sub><code>MCP server</code></sub></td>
-<td align="center"><b>Warp</b><br/><sub><code>connect + MCP + skills</code></sub></td>
-<td align="center"><b>Zed</b><br/><sub><code>MCP server</code></sub></td>
-</tr>
-<tr>
-<td align="center"><b>Cline</b><br/><sub><code>MCP server</code></sub></td>
-<td align="center"><b>Continue</b><br/><sub><code>MCP server</code></sub></td>
-<td align="center"><b>Droid</b><br/><sub><code>MCP server</code></sub></td>
-<td align="center"><b>Kiro</b><br/><sub><code>MCP server</code></sub></td>
-<td align="center"><b>Qwen Code</b><br/><sub><code>MCP server</code></sub></td>
-</tr>
-<tr>
-<td align="center"><b>DeepSeek Harness</b><br/><sub><code>MCP server</code></sub></td>
-<td align="center"><b>Roo Code</b><br/><sub><code>MCP server</code></sub></td>
-<td align="center"><b>Kilo Code</b><br/><sub><code>MCP server</code></sub></td>
-<td align="center"><b>Goose</b><br/><sub><code>MCP server</code></sub></td>
-<td align="center"><b>Aider</b><br/><sub><code>REST API</code></sub></td>
-</tr>
-</table>
-
-<p align="center"><i>Works with any agent that speaks MCP or HTTP. One server, memories shared across all of them.</i></p>
+Clients commonly used with FastrMemory include Codex CLI, Gemini CLI, OpenCode, GitHub Copilot CLI, Antigravity, Claude Desktop, Cline, Continue, Roo Code, Goose, Zed, Warp, and Aider. Listing a client does **not** imply a tested native integration.
 
 ---
 
-## 🚀 30-Second Quick Start
+## 🚀 Quick Start
 
-### ⚡ Direct Instant Execution (Zero Install Required)
+### ⚡ Run Without a Global Install
 
 Run immediately via GitHub or NPM:
 
@@ -152,11 +111,8 @@ npx github:atifjubaer/fastrmemory ui
 ### Global Installation
 
 ```bash
-# Install globally from GitHub directly:
+# Install globally from GitHub (npm publication is pending; `npm view` returns E404):
 npm install -g git+https://github.com/atifjubaer/fastrmemory.git
-
-# Or install from NPM Registry:
-npm install -g @atifjubaer/fastrmemory
 ```
 > Both `fastrmemory` and `fastr` (short alias) are now executable globally in your terminal.
 
@@ -346,17 +302,17 @@ Built using the official **v2 `@modelcontextprotocol/server`** SDK:
 38. `fastr_vision_tag`: Tags screenshots, UI diagrams, and wireframes with OCR and semantic descriptions with 384-dim embeddings.
 39. `fastr_vision_search`: Hybrid vector and keyword search across stored visual assets for multimodal coding agents (Claude 3.7 Sonnet, Gemini 2.5).
 
-### 3 MCP Prompt Templates
+### 2 MCP Prompt Templates
 
-- `fastr_investigate_trap`: Structured root cause analysis workflow for an active error trap on a specified target file.
-- `fastr_session_kickoff`: Pre-task cognitive bootstrap assembling active error traps, recent session handoffs, and project goals.
-- `fastr_pre_refactor_audit`: Safety audit prior to codebase refactoring, analyzing file risk baserates and governing traps.
+- `pre-edit-check`: Given file paths, instructs the agent to check traps and relevant rules before editing.
+- `session-wrap-up`: End-of-session checklist for logging traps, superseding stale rules, scoring memories, and saving a handoff.
 
-### 3 MCP Resources
+### 4 MCP Resources
 
-- `fastr://project/overview`: L0 project summary (~150 tokens) containing mission, active modules, and architecture rules.
+- `fastr://project/overview`: L0 project summary containing active counts and storage location.
 - `fastr://project/traps`: All active `[TRAP]` warnings for immediate bug avoidance.
 - `fastr://session/handoff`: Latest cross-agent handoff milestone.
+- `fastr://memory/{id}` (resource template): Full JSON for a single memory, including linked files and its validity window.
 
 ---
 
@@ -441,7 +397,7 @@ flowchart TD
 
     subgraph Protocol["4. Official MCP Protocol"]
         Budget --> MCPServer["Official MCP v2 Server\n(@modelcontextprotocol/server)"]
-        MCPServer --> Tools["35 Tools & 3 Resources"]
+        MCPServer --> Tools["39 tools • 2 prompts • 4 resources"]
         Tools --> Agent
     end
 ```
@@ -456,27 +412,26 @@ Run the comprehensive unit test suite:
 npm test
 ```
 
-All **218 tests pass** across **36 test suites** in ~3.5s covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, UI loopback security boundaries, and atomic installer configuration safety.
+All **221 tests pass** across **37 test suites** in ~4.2s covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, UI loopback security boundaries, and atomic installer configuration safety.
 
 ---
 
-## 📊 Retrieval Benchmark Proof
+## 📊 Retrieval Benchmark (12 synthetic cases)
 
-Run the automated evaluation suite against industry baselines:
+Generated from [`bench/results/latest.json`](bench/results/latest.json) on **2026-10-20** at commit `d9446e1`. Reproduce with:
 
 ```bash
-fastrmemory bench
+npx tsx scripts/capture-bench.ts
 ```
 
-### Measured Performance Across 8 Cognitive Agent Scenarios:
+| Engine | Hit@1 | Hit@3 | Hit@5 | MRR | Latency | Trap Recall | Avg Tokens |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| FastrMemory (triple-stream RRF) | 75% | 92% | 100% | 0.850 | 0.67 ms | 100% | 124 t |
+| BM25 — simulated baseline (not the real project) | 92% | 92% | 100% | 0.933 | 0.20 ms | 100% | 84 t |
+| Memoria-style — simulated baseline (not the real project) | 100% | 100% | 100% | 1.000 | 0.05 ms | 100% | 161 t |
+| Static flat dump — simulated baseline (not the real project) | 42% | 58% | 67% | 0.507 | 0.03 ms | 75% | 274 t |
 
-| Engine Architecture | Hit@1 | Hit@3 | Hit@5 | MRR | Latency | Trap Recall | Avg Tokens |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **FastrMemory (Triple-Stream RRF)** | **63%** | **88%** | **88%** | **0.750** | **28.37ms** | **100%** | **98t** |
-| Pure BM25 (Hippo-style baseline) | 0% | 13% | 50% | 0.129 | 0.04ms | 67% | 850t |
-| Flat Static Dump (CLAUDE.md baseline) | 25% | 75% | 75% | 0.479 | 0.03ms | 67% | 2200t |
-
-> **Key Takeaway**: FastrMemory achieves **100% Error Trap Recall** with **>90% context token reduction** (98 tokens vs 2,200 tokens) compared to static markdown dumps, preventing repeated codebase bugs while eliminating context bloat.
+> **Honesty note:** these are **12 hand-written synthetic cases**, not SWE-bench or LongMemEval, and the BM25/Memoria-style rows are approximations implemented in `src/bench/benchmark.ts` — **not the real projects**. The simulated BM25 baseline currently scores **higher Hit@1 (92%) than FastrMemory (75%)**, so this table is not evidence of retrieval superiority. Methodology, caveats, and the raw JSON are in [BENCHMARKS.md](BENCHMARKS.md). Retrieval tuning is tracked in [ROADMAP.md](ROADMAP.md) and has not started yet.
 
 ---
 
@@ -569,7 +524,7 @@ Special thanks to **[@the-arizul](https://github.com/the-arizul)** for architect
    cd fastrmemory
    ```
 
-2. **Install Dependencies & Verify Test Suite (218 Tests Passing)**:
+2. **Install Dependencies & Verify Test Suite (221 Tests Passing)**:
    ```bash
    npm install
    npm test
@@ -602,7 +557,7 @@ Special thanks to **[@the-arizul](https://github.com/the-arizul)** for architect
 Before submitting your PR, verify:
 - [ ] **Strict TypeScript**: `npm run build:all` passes without type errors.
 - [ ] **Zero External Daemons**: Engine runs in-process via Node.js WAL SQLite.
-- [ ] **100% Test Green**: `npm test` passes all 218 unit tests across 36 suites.
+- [ ] **100% Test Green**: `npm test` passes all 221 unit tests across 37 suites.
 - [ ] **DCO Sign-off**: All commits signed off using `git commit -s` ([Developer Certificate of Origin](https://developercertificate.org/)).
 - [ ] **Pre-Merge Trap Guardian**: Run `fastrmemory guard --strict` to verify no active error traps are violated.
 

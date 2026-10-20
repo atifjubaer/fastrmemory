@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-20T14:21:41.539Z",
+  "commit": "d9446e1167540320164de1b107ed678fd127bbec",
+  "command": "npx tsx scripts/capture-bench.ts",
+  "kind": "synthetic",
+  "caseCount": 12,
+  "simulatedBaselineLabel": "simulated baseline (not the real project)",
+  "engines": [
+    {
+      "name": "FastrMemory (Triple-Stream RRF)",
+      "hitAt1": 75,
+      "hitAt3": 92,
+      "hitAt5": 100,
+      "mrr": 0.85,
+      "avgLatencyMs": 0.67,
+      "trapRecallRate": 100,
+      "avgTokens": 124
+    },
+    {
+      "name": "Hippo-style BM25 (simulated baseline (not the real project))",
+      "hitAt1": 92,
+      "hitAt3": 92,
+      "hitAt5": 100,
+      "mrr": 0.933,
+      "avgLatencyMs": 0.2,
+      "trapRecallRate": 100,
+      "avgTokens": 84
+    },
+    {
+      "name": "Memoria-style episodic (simulated baseline (not the real project))",
+      "hitAt1": 100,
+      "hitAt3": 100,
+      "hitAt5": 100,
+      "mrr": 1,
+      "avgLatencyMs": 0.05,
+      "trapRecallRate": 100,
+      "avgTokens": 161
+    },
+    {
+      "name": "Static flat dump (simulated baseline (not the real project))",
+      "hitAt1": 42,
+      "hitAt3": 58,
+      "hitAt5": 67,
+      "mrr": 0.507,
+      "avgLatencyMs": 0.02,
+      "trapRecallRate": 75,
+      "avgTokens": 274
+    }
+  ]
+}
