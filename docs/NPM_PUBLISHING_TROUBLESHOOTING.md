@@ -1,5 +1,7 @@
 # FastrMemory NPM Publishing & Troubleshooting Guide
 
+> **Status (2026-10-20): publication is blocked.** `npm view @atifjubaer/fastrmemory version` returns **E404**. The account suspension/2FA issue is unresolved. **Do not bypass npm security, 2FA, or the suspension.** The steps below are a historical incident log and a resume plan; they are not a workaround.
+
 > Reference guide documenting all publishing errors, root causes, fixes applied, and the exact resume protocol for `@atifjubaer/fastrmemory`.
 
 ---
@@ -14,16 +16,16 @@ Follow these 3 steps once you're ready to publish:
 3. Click the unlock link inside.
 4. Refresh [https://www.npmjs.com](https://www.npmjs.com) to confirm the red suspension banner is gone.
 
-### Step 2: Generate an Automation Token (1 min)
+### Step 2: Restore 2FA / publish access (1 min)
 1. Navigate to: **https://www.npmjs.com/settings/tokens**
-2. Click **Generate New Token** → **Classic Token** (or Granular Token with `Read and write` → `All packages`).
-3. Set Name to `fastrmemory` and Type to **Automation** (bypasses 2FA during publish).
-4. Copy the generated `npm_...` token.
+2. Complete the security challenge npm asks for. **Do not create an automation token to bypass 2FA.**
+3. If npm requires a token, use a short-lived granular token scoped to this package and revoke it after publishing.
 
 ### Step 3: Publish from Terminal (30 sec)
 ```powershell
-# Set token in PowerShell
-npm config set //registry.npmjs.org/:_authToken npm_YOUR_TOKEN_HERE
+# Authenticate interactively; complete the 2FA prompt when npm asks.
+npm login
+npm whoami
 
 # Publish with public access
 npm publish --access public
@@ -101,7 +103,7 @@ npm publish --access public
 
 Before publishing, this pipeline automatically runs and verifies:
 1. `npm run build` (`tsc` compile with 0 errors)
-2. `npm test` (all 21 unit tests passing in ~500ms)
+2. `npm test` (221 tests across 37 files as of 2026-10-20)
 3. Whitelisted distribution payload:
    - `dist/` (compiled runtime & CLI)
    - `skills/` (7 agent memory skills)

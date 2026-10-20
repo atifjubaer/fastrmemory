@@ -1,5 +1,7 @@
 # Master Build Prompt: @fastrsoft/fastrmemory
 
+> **Historical artifact (v0.1.0).** This prompt was used to build the first version. It contains stale counts (8 tools / 3 resources), the old package scope, and competitor claims that are **not** current evidence. Do not cite it as documentation. The current package is `@atifjubaer/fastrmemory`; see [`CLAIMS.md`](../CLAIMS.md) for the verified surface.
+
 # Master Build Prompt for Claude Code: @fastrsoft/fastrmemory
 
 Copy and paste the prompt below directly into Claude Code (or Cursor / Codex) inside an empty directory named fastrmemory to build the complete, production-ready codebase.

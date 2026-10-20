@@ -1,115 +1,106 @@
-# FastrMemory Architecture Design
+# FastrMemory Architecture
 
-> **Package**: `@fastrsoft/fastrmemory`  
-> **Company**: Fastrsoft  
-> **Target Runtime**: Node.js >= 22.16.0 (ESM, Native `node:sqlite`, WAL mode)  
-> **Protocol**: Model Context Protocol (MCP) Official v2 SDK (`@modelcontextprotocol/server`)
+> **Package:** `@atifjubaer/fastrmemory` (CLI: `fastr` / `fastrmemory`)
+> **Runtime:** Node.js >= 22.16.0, ESM, built-in `node:sqlite` in WAL mode
+> **Protocol:** MCP v2 via `@modelcontextprotocol/server`
+> **Status:** current `main` as of 2026-10-20. Known gaps are listed at the end and are not hidden.
 
----
+## 1. What problem it solves
 
-## 1. Executive Summary & The Problem
+AI coding agents lose context across sessions. Two common approaches have costs:
 
-AI coding agents (Claude Code, Cursor, Windsurf, Codex) degrade over long-running projects because existing memory engines suffer from critical architectural trade-offs:
+- **Decay/consolidation systems** summarize old episodes and let the originals weaken. That keeps the store small, but exact file paths, stack traces, and edge cases can be lost. Hippo's own audit reports a 3.6-point Hit@5 drop after sleep consolidation (vendor-reported, not reproduced here).
+- **Always-on capture systems** keep raw transcripts, but often need a daemon and can flood the prompt with noisy tool output.
 
-1. **Hippo Memory Flaws**:
-   - **Lossy Sleep Consolidation**: `hippo sleep` merges multiple detailed episodic memories into a single vague summary, deleting original diffs/traces and causing a **3.6 percentage point drop in Hit@5**.
-   - **Disappearing Ink (Time Decay)**: Time-based decay half-lives (7 or 365 days) cause foundational architecture decisions and rare bug fixes to fade if a module isn't touched frequently.
-   - **Lexical BM25 Collapses on Paraphrasing**: Default BM25 achieves only **20.0% R@5** on preference queries and **36.3%** on LoCoMo conversational recall.
-   - **Classroom Punishment**: Batch `hippo outcome --bad` penalizes every recalled memory in a session, even if only one was erroneous.
+FastrMemory takes a third path: keep immutable raw events, keep a bi-temporal memory table, and retrieve a small packed context on demand. No background daemon is required for the default CLI/MCP path.
 
-2. **AgentMemory Trade-offs**:
-   - **Heavyweight Daemon**: Relies on a compiled Rust daemon (`iii-engine`) running on 4 network ports (`3111`, `3112`, `3113`, `49134`), causing native Windows failures and silent memory loss if the process halts.
-   - **Context Bloat**: Captures raw keystrokes and voluminous CLI logs indiscriminately, polluting LLM token context with noisy transcripts.
+## 2. Storage model
 
-### The FastrMemory Solution
+| Table | Purpose |
+|---|---|
+| `raw_events` | Immutable event payloads (tool output, errors, commits, prompts) with SHA-256 content hashes |
+| `memories` | Rules/decisions/traps with `valid_from`, `valid_to`, `superseded_by_id`, `status`, `reward_score`, optional embedding |
+| `memories_fts` | FTS5 index over title/module/content (porter + unicode61) |
+| `file_links` | Memory ↔ file/symbol links used by the graph stream |
+| `handoffs` | Cross-agent session milestones |
+| `entities` / `graph_edges` | Lightweight entity and relationship graph for spreading activation |
+| `memory_conflicts` | Candidate contradictions detected on write |
+| `memory_snapshots` | Named point-in-time snapshots (coarse; not per-event replay yet) |
 
-**FastrMemory** synthesizes the best mechanisms from top 2026 memory engines into a zero-daemon, high-performance TypeScript engine:
-- **From AgentMemory**: Passive lifecycle hooks, offline `.jsonl` spooling, and 3-way Reciprocal Rank Fusion (RRF, $k=60$).
-- **From Graphiti**: Bi-temporal validity timestamps (`valid_from` / `valid_to`) replacing lossy time-decay.
-- **From GBrain**: Two-Zone human-readable Markdown pages (`## Compiled Truth` + `## Append-Only Timeline`).
-- **From Hippo Memory**: Per-ID outcome feedback, sticky error traps (2.0x boost), and stdio MCP transport.
-- **From MemPalace / Letta**: Progressive L0–L3 context token budgeting (~150 token wake-up cost).
+Supersession sets `valid_to` and `status='superseded'` on the old row; it does not delete it. `forget` tombstones rather than hard-deletes. Markdown mirrors in `.fastr/pages/<module>.md` put active rules on top and superseded history below for Git review.
 
----
+## 3. Ingestion
 
-## 2. Competitive Landscape Comparison
-
-| Feature | kitfunso/hippo-memory | rohitg00/agentmemory | getzep/graphiti | **fastrmemory** |
-| :--- | :--- | :--- | :--- | :--- |
-| **Daemon Overhead** | Zero daemon (CLI / stdio) | Pinned Rust daemon (4 ports) | Python / Neo4j daemon | **Zero daemon** (Native `node:sqlite`) |
-| **Windows Support** | Native Node.js | Requires WSL2 / Docker | Docker / Python | **100% Native Windows & POSIX** |
-| **Observation Storage** | Lossy merge deletes originals | Immutable transcripts | Graph edges | **Lossless raw_events + drill** |
-| **Validity Model** | Half-life decay | None (Static / Recency) | Bi-temporal intervals | **Bi-temporal (`valid_from`/`valid_to`)** |
-| **Search Engine** | BM25 (vectors optional) | BM25 + Vector + Graph RRF | Knowledge Graph search | **BM25 (FTS5) + Vector + Graph RRF** |
-| **Markdown Mirror** | Monolithic Markdown dump | Web UI dashboard | Web visualizer | **Two-Zone (Compiled Truth + Timeline)** |
-| **Feedback Granularity** | Batch penalty | Passive telemetry only | Edge re-weighting | **Per-ID attribution (`[mem_xxxx]`)** |
-
----
-
-## 3. The 4-Layer Architecture
-
-```mermaid
-flowchart TD
-    subgraph Layer1["Layer 1: Passive Ingestion & Spool"]
-        Hooks["Lifecycle Hooks\n(Claude, Cursor, Codex)"] --> Scrubber["Secret Scrubber\n(API Keys, Bearer, PEM)"]
-        Scrubber --> Spool{"SQLite Busy?"}
-        Spool -- Yes --> SpoolFile[".fastr/spool/pending.jsonl"]
-        Spool -- No --> DB
-    end
-
-    subgraph Layer2["Layer 2: Bi-Temporal Storage & Markdown Mirror"]
-        DB[("Node 22 node:sqlite (WAL)\nraw_events | memories\nfile_links | handoffs")]
-        DB --> Mirror["Markdown Mirror Engine"]
-        Mirror --> Pages[".fastr/pages/<module>.md\nTop: ## Compiled Truth\nBottom: ## Append-Only Timeline"]
-    end
-
-    subgraph Layer3["Layer 3: Triple-Stream Hybrid Retrieval"]
-        Query["Search / Hook Query"] --> FTS["Stream A: FTS5 BM25\n(Title x10, Module x5, Content x1)"]
-        Query --> Vec["Stream B: Xenova Embeddings\n(all-MiniLM-L6-v2 Cosine)"]
-        Query --> Graph["Stream C: file_links Graph\n(1-2 Hop Structural Match)"]
-        FTS & Vec & Graph --> RRF["Reciprocal Rank Fusion (k=60)\n+ Per-ID Reward Multiplier\n+ 2.0x Error Trap Boost\n+ 1.25x Verified Boost"]
-        RRF --> Budget["Progressive Token Packer\nL0 (150t) | L1 (500t) | L2 (1500t) | L3 (4000t)"]
-    end
-
-    subgraph Layer4["Layer 4: MCP Protocol & Bundled Agent Skills"]
-        Budget --> MCPServer["Official v2 MCP Server\n(@modelcontextprotocol/server)"]
-        MCPServer --> Tools["8 Core Tools & 3 Resources"]
-        Tools --> Skills["3 Bundled Skills\n(fastr-before-coding, fastr-trap-logger, fastr-session-commit)"]
-    end
+```text
+hook/CLI/MCP
+   -> secret scrubber
+   -> SQLite write (WAL)
+        -> on SQLITE_BUSY: append to .fastr/spool/pending.jsonl
+   -> FTS triggers + file/entity links
+   -> markdown mirror
 ```
 
----
+Hooks exit after each event; there is no resident process. The optional `daemon start` command exists for cross-process HTTP/SSE use and is not required.
 
-## 4. The 7 Non-Negotiable Architectural Rules
+## 4. Retrieval
 
-1. **No Lossy Sleep Merging**:
-   Never delete or overwrite raw events. Keep all raw observations immutable in `raw_events`. Summarized memories store up to 32 newest `source_event_ids`. If an agent needs full stack traces, it calls `fastr_drill`.
-2. **Bi-Temporal Validity Windows Instead of Time Decay**:
-   Memories maintain `valid_from` (ISO timestamp) and `valid_to` (NULL while active, ISO timestamp when superseded). Active queries strictly enforce `WHERE valid_to IS NULL AND status != 'superseded'`.
-3. **Staging Quarantine Until Tests Pass**:
-   Memories captured during active sessions start with `status = 'staging'`. When automated tests pass or session commit runs, they are promoted to `status = 'verified'` (receiving a 1.25x retrieval boost).
-4. **Per-ID Outcome Feedback (No Batch Penalties)**:
-   All injected memories are identified by `[mem_xxxx]`. `fastr_feedback` updates only that targeted memory's `reward_score` (+0.2 for good, -0.5 for bad). If a memory receives 3 bad ratings with 0 good ratings, it becomes `dormant`.
-5. **GBrain-Style Two-Zone Markdown Mirrors**:
-   Each module automatically updates `.fastr/pages/<module>.md` with two git-diffable sections:
-   - `## Compiled Truth`: Current active rules, traps, and decisions.
-   - `## Append-Only Timeline`: Chronological superseded history with reasons.
-6. **Triple-Stream RRF Search ($k=60$) with Session Diversification**:
-   Fuses BM25, dense vector cosine similarity, and 1-2 hop file links. Results are capped at a maximum of 3 memories per past session to prevent single-session over-dominance.
-7. **Prompt-Cache-Safe Context Injection**:
-   Context injection blocks avoid fluctuating timestamps or metrics so LLM prompt caching (Anthropic, Gemini, OpenAI) achieves near 100% cache hits (`skipUnchanged` for 10 turns).
+Three streams are fused with Reciprocal Rank Fusion:
 
----
+1. **BM25**: FTS5 `MATCH` over active memories (and the attached global DB when present).
+2. **Vector**: cosine similarity over model-tagged embeddings. This stream is **optional**; the default backfill uses deterministic hash vectors (lexical n-grams), and semantic embeddings require an explicit model install.
+3. **Graph**: file links supplied by the caller, query entities, and 1–2 hop spreading activation over `graph_edges`.
 
-## 5. Scoring & Ranking Formula
+```text
+candidates = union(BM25 top 50, vector top 50, graph-activated)
+score      = sum(1 / (k + rank_stream))            # k = 60
+score     *= reward_score                          # 0.1 .. 3.0
+score     *= 2.0 if kind == 'error_trap'
+score     *= 1.25 if status == 'verified'
+```
 
-For a candidate memory $m$ retrieved across streams (BM25, Vector, File Graph):
+Results are sorted, capped at 3 per source session, then packed into a token budget. If the top result alone exceeds the budget, the current packer truncates it rather than silently dropping it.
 
-$$\text{RRF\_Score}(m) = \sum_{s \in \{\text{FTS5}, \text{Vector}, \text{FileLinks}\}} \frac{1}{60 + \text{Rank}_s(m)}$$
+Known retrieval gaps (tracked in `ROADMAP.md`):
 
-$$\text{Final\_Score}(m) = \text{RRF\_Score}(m) \times \text{reward\_score}(m) \times B_{\text{trap}} \times B_{\text{verified}}$$
+- BM25 uses the default `f.rank`; the intended `bm25(memories_fts, 10, 5, 1)` weighting is not wired yet.
+- The global UNION uses `memories_fts MATCH ?` without the `global_db.` qualifier.
+- `k=60` is hardcoded; there are no per-stream weights.
+- The graph is seeded from the top 5 BM25/vector candidates, which can propagate noise.
+- Hash vectors duplicate BM25; they should be opt-in.
 
-Where:
-- $B_{\text{trap}} = 2.0$ if `kind == 'error_trap'`, else $1.0$
-- $B_{\text{verified}} = 1.25$ if `status == 'verified'`, else $1.0$
-- $\text{reward\_score} \in [0.1, 3.0]$, default $1.0$
+## 5. Token budgets
+
+| Level | Budget | Use |
+|---|---:|---|
+| L0 | ~150 t | wake-up summary |
+| L1 | ~500 t | file/task rules and traps |
+| L2 | ~1,500 t | multi-turn task context (default) |
+| L3 | ~4,000 t | deep history / drill-down |
+
+## 6. MCP surface
+
+- **39 tools** (memory CRUD, recall/drill, traps, conflicts, DAG actions, planning, slots, federation, snapshot/rollback, compression, doctor, vision).
+- **2 prompts**: `pre-edit-check`, `session-wrap-up`.
+- **4 resources**: `fastr://project/overview`, `fastr://project/traps`, `fastr://session/handoff`, and the `fastr://memory/{id}` template.
+
+The default server currently exposes all 39 tools; a 12-tool core profile is planned to reduce schema overhead.
+
+## 7. Design rules
+
+1. **Never delete facts.** Supersede and tombstone; raw events stay immutable.
+2. **Bi-temporal validity, not time decay.** Active queries require `valid_to IS NULL` and exclude superseded/dormant rows.
+3. **Staging until verified.** Captured memories start as `staging`; tests passing/handoff promotes them.
+4. **Per-ID feedback.** `fastr_feedback` changes one memory's score (+0.2 / −0.5). It becomes `dormant` when the score reaches 0.2 or below — not after a fixed strike count.
+5. **Two-zone Markdown.** Compiled Truth on top, append-only timeline below, both Git-diffable.
+6. **Local-first.** No network call is required for the default path; embeddings are opt-in.
+
+## 8. Not implemented yet
+
+- Prompt-cache `skipUnchanged` behavior (no byte-identical block suppression in the current hook runner).
+- Exact per-event replay (`fastr replay`) and memory-state diff (`fastr diff`).
+- Portable JSONL snapshot export/import with hash verification.
+- A 20% held-out 240+ case benchmark and real pinned competitor baselines.
+- A core MCP profile and non-lossy consolidation.
+- Crash-test evidence for 10k writes.
+
+These are roadmap items, not claims.

@@ -1,9 +1,11 @@
 # FastrMemory Technical Specification
 
-> **Package**: `@fastrsoft/fastrmemory`  
-> **Schema Version**: `1.0.0`  
-> **SDK**: `@modelcontextprotocol/server` (MCP v2) + `zod` v4  
-> **Database Engine**: Node.js 22 Built-in `node:sqlite` (`DatabaseSync`)
+> **Status (2026-10-20): historical design reference, partially stale.** Schema details below describe the v0.1.0 design. The current server registers **39 tools, 2 prompts, and 4 resources** (3 static resources plus the `fastr://memory/{id}` template). Verify counts against `src/mcp/server.ts` before citing them.
+>
+> **Package**: `@atifjubaer/fastrmemory`
+> **Schema Version**: `1.0.0`
+> **SDK**: `@modelcontextprotocol/server` (MCP v2) + `zod` v4
+> **Database Engine**: Node.js 22+ built-in `node:sqlite` (`DatabaseSync`)
 
 ---
 
@@ -113,7 +115,9 @@ CREATE TABLE IF NOT EXISTS handoffs (
 
 ---
 
-## 2. The 8 Core MCP Tools (`src/mcp/server.ts`)
+## 2. Historical Core MCP Tools (`src/mcp/server.ts`)
+
+> **Stale section:** this table documents the original 8-tool surface. The current server registers 39 tools; run `node dist/bin/fastr.js mcp` and list tools, or read `src/mcp/server.ts`, for the live catalog.
 
 Registered via `server.registerTool(...)` using `@modelcontextprotocol/server` v2:
 
@@ -124,36 +128,45 @@ Registered via `server.registerTool(...)` using `@modelcontextprotocol/server` v
 | `fastr_file_history` | `filePath: z.string()` | Returns all active rules and `[TRAP]` warnings linked to `filePath`, followed by superseded rules ordered chronologically. |
 | `fastr_remember` | `module: z.string()`, `kind: z.enum(['rule', 'decision', 'error_trap', 'workflow'])`, `title: z.string()`, `content: z.string()`, `files: z.array(z.string()).default([])`, `symbols: z.array(z.string()).default([])`, `verified: z.boolean().default(false)`, `pinned: z.boolean().default(false)` | Scrubs secrets, validates near-duplicates, inserts into `memories` and `file_links`, queues background embedding, and re-renders `.fastr/pages/<module>.md`. |
 | `fastr_supersede` | `oldMemoryId: z.string()`, `newTitle: z.string()`, `newContent: z.string()`, `reason: z.string()`, `files: z.array(z.string()).optional()` | Sets `valid_to = NOW()`, `status = 'superseded'`, `superseded_by_id = newId` on old record, creates new memory with `status = 'verified'`, and updates Markdown mirror. |
-| `fastr_feedback` | `memoryId: z.string()`, `outcome: z.enum(['good', 'bad'])`, `note: z.string().optional()` | Updates `reward_score` (+0.2 good, -0.5 bad, min 0.1) on **only** `memoryId`. Sets `status = 'dormant'` if 3 consecutive bad ratings occur. |
+| `fastr_feedback` | `memoryId: z.string()`, `outcome: z.enum(['good', 'bad'])`, `note: z.string().optional()` | Updates `reward_score` (+0.2 good, −0.5 bad, floor 0.1) on **only** `memoryId`. Sets `status = 'dormant'` when the score reaches 0.2 or below (current implementation; not a 3-strike counter). |
 | `fastr_handoff` | `action: z.enum(['save', 'latest'])`, `taskTitle: z.string().optional()`, `summary: z.string().optional()`, `nextStep: z.string().optional()`, `activeFiles: z.array(z.string()).default([])`, `verifyStaging: z.boolean().default(false)` | Saves or retrieves latest cross-agent session handoff. Promotes current session's `staging` memories to `verified` if `verifyStaging=true`. |
 | `fastr_status` | `projectId: z.string().optional()` | Returns active/staging/superseded memory counts, raw event count, pending spool count, embedding coverage %, and list of module mirror pages. |
 
 ---
 
-## 3. The 3 MCP Resources
+## 3. MCP Resources (current: 4)
 
 Registered via `server.registerResource(...)`:
 
 1. `fastr://project/overview`  
-   Exposes L0 project summary (~150 tokens) containing project mission, architecture stack, and active modules.
+   L0 project summary with active counts and the local storage location.
 2. `fastr://project/traps`  
-   Exposes all active `kind = 'error_trap'` memories to prevent agents from repeating known bugs.
+   All active `kind = 'error_trap'` memories.
 3. `fastr://session/handoff`  
-   Exposes the latest cross-agent session handoff snapshot (task title, progress summary, and next step).
+   Latest cross-agent session handoff snapshot.
+4. `fastr://memory/{id}` (resource template)
+   Full JSON for one memory, including linked files and its validity window.
+
+The server also registers **2 prompts**: `pre-edit-check` and `session-wrap-up`.
 
 ---
 
 ## 4. Bundled Agent Skills (`skills/*/SKILL.md`)
 
-1. **`skills/fastr-before-coding/SKILL.md`**:  
-   Instructs the agent to call `fastr_recall` (with target files and task query) or `fastr_file_history` before editing code, and to explicitly review `[TRAP]` warnings.
-2. **`skills/fastr-trap-logger/SKILL.md`**:  
-   Instructs the agent to immediately call `fastr_remember` with `kind: 'error_trap'` the moment a test failure, build error, or bug is diagnosed—never waiting until session end.
-3. **`skills/fastr-session-commit/SKILL.md`**:  
-   Instructs the agent upon task completion (once tests pass) to:
-   - Call `fastr_supersede` on modified rules.
-   - Call `fastr_feedback` (`good` or `bad`) on recalled memories.
-   - Call `fastr_handoff` with `verifyStaging: true`.
+The current repository ships **10 skills**:
+
+1. `fastr-memory` — recall traps and rules at task start and before edits.
+2. `fastr-trap-log` — record a diagnosed failure immediately.
+3. `fastr-session-commit` — supersede stale rules, score memories, save a handoff after tests pass.
+4. `fastr-curate` — deduplicate, merge, and resolve contradictions.
+5. `fastr-setup` — wire FastrMemory into Claude Code and verify with `status`.
+6. `fastr-plan-estimate` — base-rate estimates, file risk, and closing predictions.
+7. `fastr-dag` — dependent work and shared multi-agent backlogs.
+8. `fastr-doctor` — diagnose and heal a degraded database.
+9. `fastr-compress` — compress docs/context under a token budget.
+10. `fastr-vision` — tag and search screenshots and diagrams.
+
+Validate every tool call in the skills against the server with `npm run check:skills`.
 
 ---
 

@@ -1,51 +1,35 @@
-# ⚡ FastrMemory v0.1.0: Sovereign Cognitive Agent Memory Engine
+# FastrMemory v0.1.0 — Historical Release Notes
 
-**High-Performance Cognitive Agent Memory • Zero Daemon • Native Node 24 `node:sqlite` WAL • Bi-Temporal Git Sync • Triple-Stream RRF • Official MCP v2**
+> **Status: historical (released 2026-10-19, superseded by the current `main` branch).** These notes describe the v0.1.0 tarball, not the current commit. Several claims below were marketing copy and have not been independently verified. Current numbers and evidence live in [`CLAIMS.md`](CLAIMS.md) and [`BENCHMARKS.md`](BENCHMARKS.md).
 
----
-
-## 🌟 What's New in v0.1.0
-
-FastrMemory is the world's first agent memory architecture designed from scratch to eliminate the fatal flaws of existing systems:
-1. **Zero Daemon Overhead**: Powered purely by native Node 22/24 `node:sqlite` in WAL mode. Sub-millisecond retrieval with **0 background daemons**, **0 open network ports**, and 100% native execution across Windows, macOS, and Linux.
-2. **Bi-Temporal Git Sync**: Replaces lossy sleep summarization (which deletes raw memories in Hippo) with non-destructive bi-temporal timestamps (`valid_from` / `valid_to`) and auto-mirrors readable `.fastr/pages/*.md` files directly into Git for human PR review.
-3. **Triple-Stream RRF ($k=60$)**: Fuses SQLite FTS5 BM25 token search + 384-dimensional local vector cosine + 2-hop causal file graph links. Error traps receive an automatic **2.0x recall boost**.
-4. **React 19 High-DPI Dashboard (`fastrmemory ui`)**: Includes real-time Server-Sent Events (SSE), Bruls squarified memory strength treemap, interactive Action DAG force graph (with 0% idle CPU physics), live RRF search trace waterfall, and lightweight Markdown rendering.
-5. **Universal 25+ Agent Compatibility**: Auto-detects and connects Claude Code, Cursor, Windsurf, Devin, Antigravity, and any client speaking MCP or stdio.
+**High-Performance Cognitive Agent Memory • Zero Daemon • Native Node 22/24 `node:sqlite` WAL • Bi-Temporal Git Sync • Triple-Stream RRF • Official MCP v2**
 
 ---
 
-## 📊 Planetary Benchmark Verification
+## What shipped in v0.1.0
 
-| Metric | FastrMemory (`@atifjubaer`) | Hippo Memory | AgentMemory |
-| :--- | :--- | :--- | :--- |
-| **Daemon Overhead** | **0 open ports / 0 daemons** | 0 ports / 0 daemons | 4 open ports (`3111`-`3113`, `49134`) |
-| **Windows Support** | **100% Native OS** | Native Node | Fails without WSL2/Docker |
-| **Retrieval Power** | **Triple-Stream RRF + Graph** | BM25 only | BM25 + Vector + Graph RRF |
-| **Error Trap Protection** | **2.0x boost + per-ID attribution** | -0.5 batch penalty | None (passive telemetry only) |
-| **Git Reviewability** | **Two-Zone Diffable Markdown** | Raw markdown dumps | Web dashboard only |
-| **Test Suite Coverage** | **56 / 56 tests passed (833ms)** | Unit tests | Rust test suite |
+1. **Zero daemon**: native Node `node:sqlite` in WAL mode, no background service and no open network ports for the default CLI/MCP path.
+2. **Bi-temporal storage**: `valid_from` / `valid_to` timestamps plus Markdown mirrors in `.fastr/pages/*.md`; supersession keeps history instead of deleting it.
+3. **Hybrid retrieval**: SQLite FTS5 BM25 + optional local embeddings + a file/entity graph fused with reciprocal rank fusion (k=60). Error traps receive a 2.0× multiplier.
+4. **Local dashboard** (`fastrmemory ui`) and **39 MCP tools** (the v0.1.0 release shipped fewer tools; the 39-tool catalog is the current `main` branch).
+5. **MCP + CLI integration** for Claude Code and Cursor via native config/hook installers; other clients connect over MCP or HTTP.
 
 ---
 
-## 🚀 Quick Start (Zero-Install Execution)
+## Corrections to the original v0.1.0 notes
+
+- Removed the claim that FastrMemory was the "world's first" agent memory architecture; no evidence supports a first-ever claim.
+- The original notes reported **56/56 tests**. That number was accurate only for the v0.1.0 snapshot and is not re-verified here. The current suite count is reported in [`CLAIMS.md`](CLAIMS.md).
+- The original comparison said Hippo Memory was "BM25 only." Hippo's default is BM25 with optional local MiniLM embeddings; that row is vendor-reported.
+- The original comparison said AgentMemory "fails without WSL2/Docker." Its documented runtime is a compiled daemon on four local ports; Windows setup is manual, but "fails" is not a verified claim and has been removed.
+- The original benchmark table was generated from 12 synthetic cases with simulated baselines. It is superseded by [`docs/benchmark-report.md`](docs/benchmark-report.md) and [`bench/results/latest.json`](bench/results/latest.json).
+
+---
+
+## Install the historical tarball
 
 ```bash
-# 1. Interactive Auto-Setup (Claude Code + Cursor + Windsurf):
-npx github:atifjubaer/fastrmemory setup
-
-# 2. Launch Local Web Dashboard:
-npx github:atifjubaer/fastrmemory ui
-
-# 3. Search Memories from Terminal:
-npx github:atifjubaer/fastrmemory recall "sqlite WAL mode"
-
-# 4. Check Active 2.0x Error Traps:
-npx github:atifjubaer/fastrmemory trap list
+npm install -g ./atifjubaer-fastrmemory-0.1.0.tgz
 ```
 
----
-
-## 📦 Assets Included
-- `atifjubaer-fastrmemory-0.1.0.tgz` (204.4 kB, completely pre-compiled with both `dist/` and `dist-ui/`).
-- Ready to install offline via: `npm install -g ./atifjubaer-fastrmemory-0.1.0.tgz`
+The tarball is tracked in the repository root for archival reproducibility. It is **not** the recommended install path; use the GitHub install in the README until an npm release exists.

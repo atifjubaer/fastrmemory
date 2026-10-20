@@ -63,7 +63,7 @@ Before submitting a PR, verify that your changes adhere to FastrMemory's **7 Cor
 3. **Bi-Temporal Validity Over Decay**: Do not use time decay half-lives that cause rarely accessed architectural rules to disappear. All memories use `valid_from` / `valid_to` timestamps.
 4. **Per-ID Outcome Feedback**: Always attribute feedback to specific memory IDs (`[mem_xxxx]`). Never penalize entire batches of innocent memories.
 5. **Two-Zone Git Mirroring**: Any write or supersession must update human-readable `.fastr/pages/<module>.md` with `## Compiled Truth` (top) and `## Append-Only Timeline` (bottom).
-6. **Prompt-Cache-Safe Injection**: Context injection blocks must avoid live fluctuating timestamps or metrics so LLM prompt caching reaches ~100% hits.
+6. **No Silent Data Loss**: Never delete raw events or hard-delete memories in a migration. Supersede, tombstone, and keep the history exportable. If a change touches retention, add a test that proves the old row still exists.
 7. **Official MCP v2 Only**: Use `@modelcontextprotocol/server` v2 SDK (`server.registerTool`, `server.registerResource`). Never use legacy v1 imports.
 
 ---
@@ -89,7 +89,7 @@ Before submitting a PR, verify that your changes adhere to FastrMemory's **7 Cor
    git checkout -b fix/sqlite-busy-retry
    ```
 2. Write unit tests in `tests/` covering new behavior.
-3. Verify that all 94+ tests pass and all packages compile:
+3. Verify that all 221 tests pass and all packages compile:
    ```bash
    npm run build:all && npm test
    ```

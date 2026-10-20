@@ -1,5 +1,7 @@
 # 📦 FastrMemory NPM Publishing & Architecture Guide
 
+> **Status (2026-10-20): publication is blocked.** `npm view @atifjubaer/fastrmemory version` returns **E404**, so the package has never been published. The npm account has an unresolved security suspension/2FA issue. **Do not bypass npm security checks, 2FA, or the suspension.** Until the account is restored, use the GitHub install path and treat `npx @atifjubaer/fastrmemory` as unavailable. Steps below are a resume plan, not a workaround.
+
 This document explains why NPM is used in FastrMemory, how package publishing works, and what to do during the temporary 72-hour account cooldown.
 
 ---
@@ -33,7 +35,7 @@ NPM (Node Package Manager) serves 5 critical roles for FastrMemory:
 
 5. **Build & Test Automation**:
    - `npm run build`: Bundles the React 19 UI via Vite and compiles TypeScript via `tsc`.
-   - `npm test`: Enforces 100% test coverage (56/56 passing tests) via Vitest before any code can be published (`prepublishOnly`).
+   - `npm test`: runs the Vitest suite (221 tests across 37 files as of 2026-10-20); it does not enforce a coverage threshold.
 
 ---
 
