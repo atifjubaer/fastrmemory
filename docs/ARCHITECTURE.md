@@ -3,7 +3,7 @@
 > **Package:** `@atifjubaer/fastrmemory` (CLI: `fastr` / `fastrmemory`)
 > **Runtime:** Node.js >= 22.16.0, ESM, built-in `node:sqlite` in WAL mode
 > **Protocol:** MCP v2 via `@modelcontextprotocol/server`
-> **Status:** current `main` as of 2026-10-21 (`a91ad6d`). Known gaps are listed at the end and are not hidden.
+> **Status:** `feat/0.3.0` code state as of 2026-10-21 (`4639f27`). Known gaps are listed at the end and are not hidden.
 
 ## 1. What problem it solves
 
