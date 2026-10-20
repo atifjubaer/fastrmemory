@@ -34,3 +34,6 @@ jobs:
 
       - name: Run Test Suite
         run: npx vitest run
+
+      - name: Validate Agent Skills
+        run: npm run check:skills

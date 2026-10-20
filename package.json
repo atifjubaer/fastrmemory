@@ -43,6 +43,7 @@
     "build:all": "npm run build && npm run build:extension",
     "watch": "tsc --watch",
     "test": "vitest run",
+    "check:skills": "node scripts/check-skills.mjs",
     "start": "node dist/bin/fastr.js"
   },
   "keywords": [

@@ -1,45 +1,33 @@
 ---
 name: fastr-compress
-description: Compresses markdown documentation, PR summaries, or prompt context to fit token budgets while strictly preserving headings, URLs, and code blocks.
-triggers:
-  - fastr-compress
-  - compress-tokens
-  - compact-context
-  - compress-file
+description: Use when a markdown file, PR description, or block of context is too long for the token budget you need to fit it into, or the user asks to shrink a doc. Compresses prose while preserving headings, code blocks, and links; always preview first.
 ---
 
-# FastrMemory Token Compression Skill
+# FastrMemory: Token Compression
 
-Use this skill when preparing context payloads, long PR descriptions, or large markdown documentation files for LLM prompt windows without exceeding token limits.
+## When to use
+- A doc or context payload exceeds the budget you need it to fit.
+- The user asks to compact a long markdown file.
 
-## Core Rules
+Do not use it on source code or on files where exact wording matters (licences, legal text, changelogs).
 
-1. **Heading Invariant**: Never drop or alter ATX (`#`, `##`, `###`) headings. They provide the structural skeleton for reasoning.
-2. **Code Integrity**: Never truncate or modify fenced code blocks (` ``` `). Code must remain byte-for-byte compilable.
-3. **Link Preservation**: Never drop URLs or Markdown links (`[text](url)`).
-4. **Prose Compacting**: Strip conversational filler ("In this section...", "As previously noted..."), collapse consecutive duplicate list items, and eliminate redundant blank lines.
-5. **Safety Backup**: Whenever compressing on-disk files, verify that `<file>.original.md` is preserved as a safety backup.
+## Steps
+1. **Preview savings** without touching disk:
+   ```js
+   fastr_compress({ filePath: "docs/guide.md", dryRun: true })
+   ```
 
-## MCP Invocation
+2. **Compress the file** (writes `<file>.original.md` as a backup):
+   ```js
+   fastr_compress({ filePath: "docs/guide.md", dryRun: false })
+   ```
 
-```json
-{
-  "tool": "fastr_compress",
-  "arguments": {
-    "filePath": "docs/architecture.md",
-    "dryRun": false
-  }
-}
-```
+3. **Or compress text in memory** (nothing written to disk; output is returned):
+   ```js
+   fastr_compress({ content: "# Title\n\nLong conversational text...", dryRun: false })
+   ```
 
-Or compress in-memory strings directly:
-
-```json
-{
-  "tool": "fastr_compress",
-  "arguments": {
-    "content": "# Title\n\nLong conversational text...",
-    "dryRun": false
-  }
-}
-```
+## Guarantees to verify
+- ATX headings, fenced code blocks, URLs, and markdown links are kept intact.
+- Filler phrases, duplicate list items, and extra blank lines are removed.
+- Review any warnings in the result; restore from the `.original.md` backup if meaning was lost.

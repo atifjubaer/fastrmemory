@@ -1,44 +1,39 @@
 ---
 name: fastr-doctor
-description: Autonomous SQLite self-healing doctor for verifying B-Tree integrity, rebuilding FTS5 fulltext indices, and pruning orphaned references.
-triggers:
-  - fastr-doctor
-  - fastr-diagnose
-  - fastr-heal
-  - repair-memory
+description: Use when FastrMemory searches miss memories you just stored, recall is slow or erroring, the action frontier looks stuck, or the user asks to check or repair the memory database. Diagnoses first, previews repairs, then heals.
 ---
 
-# FastrMemory Autonomous Doctor & Self-Healing Skill
+# FastrMemory: Diagnose and Heal
 
-Use this skill whenever database latency increases, searches fail to return newly ingested memories, or foreign key inconsistencies are suspected.
+## When to use
+- `fastr_recall` does not find a memory that `fastr_timeline` shows exists.
+- Recall or status calls are slow, or report database errors.
+- Actions stay blocked although their prerequisites are done.
 
-## Diagnostic Protocol
+## Steps
+1. **Diagnose (read-only)**:
+   ```js
+   fastr_diagnose({})
+   ```
+   Checks SQLite integrity, FTS5 index consistency, orphaned file links, action DAG edges, and journal mode.
 
-1. **Pre-Heal Audit**: Call `fastr_diagnose` to perform a non-mutating health inspection across 5 subsystems:
-   - SQLite B-Tree integrity (`PRAGMA integrity_check`)
-   - FTS5 BM25 search index synchronization
-   - Orphaned `file_links`
-   - Action DAG prerequisite edges
-   - WAL page fragmentation
-2. **Automated Self-Repair**: Call `fastr_heal` with `dryRun: false` to execute atomic repairs:
-   - Rebuilds FTS5 index via `INSERT INTO memories_fts(memories_fts) VALUES('rebuild')`
-   - Prunes dangling foreign key references
-   - Reclaims space via `PRAGMA wal_checkpoint(TRUNCATE)`
+2. **Preview repairs**:
+   ```js
+   fastr_heal({ dryRun: true })
+   ```
 
-## MCP Invocation
+3. **Apply repairs** once the preview looks right:
+   ```js
+   fastr_heal({ dryRun: false })
+   ```
+   Rebuilds the FTS5 index, prunes orphaned links, unblocks stale DAG edges, and checkpoints the WAL.
 
-```json
-{
-  "tool": "fastr_diagnose",
-  "arguments": {}
-}
-```
+4. **Confirm**:
+   ```js
+   fastr_status({})
+   ```
 
-```json
-{
-  "tool": "fastr_heal",
-  "arguments": {
-    "dryRun": false
-  }
-}
-```
+## Rules
+- Always diagnose before healing and report what was found.
+- If issues remain that are not fixable, tell the user; do not delete `.fastr/` files by hand.
+- CLI equivalents: `fastrmemory diagnose`, `fastrmemory heal`.

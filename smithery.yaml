@@ -4,7 +4,8 @@
 
 startCommand:
   type: stdio
-  config:
-    command: fastrmemory
-    args:
-      - mcp
+  configSchema:
+    type: object
+    properties: {}
+  commandFunction: |-
+    () => ({ command: 'npx', args: ['-y', 'github:atifjubaer/fastrmemory', 'mcp'] })

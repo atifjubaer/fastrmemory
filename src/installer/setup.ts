@@ -65,7 +65,7 @@ export function resolveMcpCommand(platform: NodeJS.Platform = process.platform):
   if (cli && !isEphemeral) {
     return { command: 'node', args: [cli, 'mcp'] };
   }
-  const npxArgs = ['-y', '@atifjubaer/fastrmemory', 'mcp'];
+  const npxArgs = ['-y', 'github:atifjubaer/fastrmemory', 'mcp'];
   return platform === 'win32'
     ? { command: 'cmd', args: ['/c', 'npx', ...npxArgs] }
     : { command: 'npx', args: npxArgs };
@@ -190,6 +190,29 @@ export interface SkillInstallOptions {
   projectRoot?: string;
 }
 
+/** Skills shipped by earlier versions and since merged into the current set. */
+export const RETIRED_SKILLS = [
+  'fastr-architecture', 'fastr-before-coding', 'fastr-blame', 'fastr-commit', 'fastr-conflicts',
+  'fastr-discipline', 'fastr-handoff', 'fastr-learn', 'fastr-mcp', 'fastr-recall',
+  'fastr-remember', 'fastr-trap', 'fastr-trap-logger',
+];
+
+/**
+ * Removes skills an earlier install copied that no longer exist, so upgraded users don't keep
+ * stale instructions with wrong tool parameters. Only the exact retired names are touched.
+ */
+export function removeRetiredSkills(dir: string): string[] {
+  const removed: string[] = [];
+  for (const name of RETIRED_SKILLS) {
+    const skillDir = path.join(dir, name);
+    if (fs.existsSync(path.join(skillDir, 'SKILL.md'))) {
+      fs.rmSync(skillDir, { recursive: true, force: true });
+      removed.push(name);
+    }
+  }
+  return removed;
+}
+
 export function installSkills(options: SkillInstallOptions = {}): {
   antigravityCount: number;
   claudeCount: number;
@@ -217,6 +240,7 @@ export function installSkills(options: SkillInstallOptions = {}): {
       if (!fs.existsSync(target.dir)) {
         fs.mkdirSync(target.dir, { recursive: true });
       }
+      removeRetiredSkills(target.dir);
       for (const skillName of skillDirs) {
         const srcSkill = path.join(skillsDir, skillName);
         const destSkill = path.join(target.dir, skillName);

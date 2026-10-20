@@ -1,0 +1,65 @@
+{
+  "$schema": "https://skills.sh/schema/v1.json",
+  "name": "fastrmemory-skills",
+  "version": "0.1.0",
+  "description": "Agent Skills that teach coding agents when to recall, log traps, curate, and commit FastrMemory.",
+  "author": "Fastrsoft",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/atifjubaer/fastrmemory",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/atifjubaer/fastrmemory.git"
+  },
+  "skills": [
+    {
+      "name": "fastr-memory",
+      "path": "skills/fastr-memory/SKILL.md",
+      "description": "Use at the start of any coding task and before reading-to-edit, creating, or modifying project files. Checks FastrMemory for [TRAP] warnings on the target files, then recalls relevant rules and decisions so you do not repeat known mistakes or contradict project conventions."
+    },
+    {
+      "name": "fastr-trap-log",
+      "path": "skills/fastr-trap-log/SKILL.md",
+      "description": "Use the moment you diagnose the root cause of a build error, failing test, runtime exception, or platform/library gotcha. Records it as an error trap so future agents are warned before editing the same files. Do not wait until the end of the session."
+    },
+    {
+      "name": "fastr-session-commit",
+      "path": "skills/fastr-session-commit/SKILL.md",
+      "description": "Use when a task or milestone is finished and tests pass, before handing control back to the user, or when you are about to run out of context. Rates the memories you used, supersedes rules your work invalidated, and saves a handoff that promotes this session's staging memories to verified."
+    },
+    {
+      "name": "fastr-curate",
+      "path": "skills/fastr-curate/SKILL.md",
+      "description": "Use when you learn something durable worth keeping (a new convention, an architectural decision, a user preference), when recalled memories contradict each other, or when memory needs cleanup. Dedupes before storing, records or supersedes rules, resolves conflicts, and snapshots memory before risky bulk changes."
+    },
+    {
+      "name": "fastr-setup",
+      "path": "skills/fastr-setup/SKILL.md",
+      "description": "Use when FastrMemory tools are missing or not responding in Claude Code, when the user asks to install or wire up FastrMemory in a project, or when hooks (session start, pre-edit trap warnings) are not firing. Covers project install, manual MCP registration, and verification."
+    },
+    {
+      "name": "fastr-plan-estimate",
+      "path": "skills/fastr-plan-estimate/SKILL.md",
+      "description": "Use when the user asks how long or how risky a change will be, before committing to an estimate or plan for a migration, refactor, or bug fix, and again when that work finishes so the estimate can be closed with the actual result. Calibrates estimates against the project's own track record."
+    },
+    {
+      "name": "fastr-dag",
+      "path": "skills/fastr-dag/SKILL.md",
+      "description": "Use when work splits into several dependent steps, when multiple agents share one task list, or when you need to know what to work on next. Builds a task DAG with dependencies and conflicts, claims the next unblocked action, and marks progress."
+    },
+    {
+      "name": "fastr-doctor",
+      "path": "skills/fastr-doctor/SKILL.md",
+      "description": "Use when FastrMemory searches miss memories you just stored, recall is slow or erroring, the action frontier looks stuck, or the user asks to check or repair the memory database. Diagnoses first, previews repairs, then heals."
+    },
+    {
+      "name": "fastr-compress",
+      "path": "skills/fastr-compress/SKILL.md",
+      "description": "Use when a markdown file, PR description, or block of context is too long for the token budget you need to fit it into, or the user asks to shrink a doc. Compresses prose while preserving headings, code blocks, and links; always preview first."
+    },
+    {
+      "name": "fastr-vision",
+      "path": "skills/fastr-vision/SKILL.md",
+      "description": "Use when a screenshot, UI mockup, architecture diagram, or error screen should be remembered for later, or before fixing a visual bug or redesigning UI to find related images stored earlier. Tags images with descriptions and OCR text and searches them."
+    }
+  ]
+}
