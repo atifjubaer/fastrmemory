@@ -71,9 +71,22 @@ export async function getExtractor(): Promise<any | null> {
 }
 
 /**
+ * FNV-1a 32-bit hash used by the in-process feature hashing vectorizer.
+ * Kept at module scope so the hot path does not allocate a closure per call.
+ */
+function fnv1a(str: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash >>> 0;
+}
+
+/**
  * Deterministic in-process feature hashing vectorizer (384-dim).
  * Uses character 3-grams and sub-word tokens with FNV-1a projection and L2 normalization.
- * Executes in <0.05ms with ZERO external dependencies or network downloads.
+ * Zero external dependencies or network downloads.
  */
 export function computeFeatureHashVector(text: string, dimensions: number = 384): Float32Array {
   const vec = new Float32Array(dimensions);
@@ -97,16 +110,6 @@ export function computeFeatureHashVector(text: string, dimensions: number = 384)
         tokenCounts.set(tri, (tokenCounts.get(tri) || 0) + 1.0);
       }
     }
-  }
-
-  // FNV-1a 32-bit hash
-  function fnv1a(str: string): number {
-    let hash = 0x811c9dc5;
-    for (let i = 0; i < str.length; i++) {
-      hash ^= str.charCodeAt(i);
-      hash = Math.imul(hash, 0x01000193);
-    }
-    return hash >>> 0;
   }
 
   // Project into bounded vector with sub-linear damping and sign hashing
