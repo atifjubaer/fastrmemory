@@ -80,7 +80,7 @@ Architecture comparison as of **2026-10-20**. Competitor rows are **vendor-repor
 | **Per-ID feedback** | Yes (`fastr_feedback`) | Not verified | Not verified | Not verified | Not verified | Yes (vendor) | None |
 | **External dependencies** | 4 npm packages; optional local model | Compiled Rust binary | MatrixOne / Docker | Vector DB or managed service | PostgreSQL | Node.js only | None |
 
-**Where competitors win:** Hippo ships a smaller install (~4.5 MB) with no runtime dependencies and a mature hook ecosystem; agentmemory has broader live-capture hooks; mem0 has a managed platform and a larger user base; Memoria has branch/merge workflows; Letta has a mature agent runtime. FastrMemory's bet is narrower: **lossless retention, replayable history, and an honest benchmark**.
+**Where competitors win:** Hippo ships as a Node package with no runtime dependencies and a mature hook ecosystem; agentmemory has broader live-capture hooks; mem0 has a managed platform and a larger user base; Memoria has branch/merge workflows; Letta has a mature agent runtime. FastrMemory's bet is narrower: **lossless retention, replayable history, and an honest benchmark**.
 
 ---
 
@@ -268,7 +268,7 @@ Built using the official **v2 `@modelcontextprotocol/server`** SDK:
 18. `fastr_trap_recall`: Targeted lookup of high-priority error traps protecting specific target files before editing.
 
 #### Proactive Contradiction Detection & Resolution
-19. `fastr_conflicts`: Proactive contradiction detection using Jaccard token overlap ($\ge 0.5$) and 40-word opposing polarity analysis.
+19. `fastr_conflicts`: Proactive contradiction detection using Jaccard token overlap (minimum 0.35) and 50-word opposing-polarity analysis.
 20. `fastr_resolve`: Resolves contradictions by keeping preferred rule and superseding or weakening the loser.
 
 #### Kahneman Planning Fallacy & Base-Rate Calibrator
@@ -377,7 +377,7 @@ flowchart TD
     subgraph Ingestion["1. Lossless Ingestion & Spool"]
         Agent["AI Coding Agent\n(Claude Code, Cursor, Antigravity)"] --> Scrubber["Secret Scrubber\n(API Keys, Bearer, PEM)"]
         Scrubber --> Spool{"SQLite Busy?"}
-        Spool -- Yes --> SpoolFile[".fastr/spool/pending.jsonl\n(<5ms Fallback)"]
+        Spool -- Yes --> SpoolFile[".fastr/spool/pending.jsonl\n(async fallback)"]
         Spool -- No --> DB
     end
 
@@ -445,13 +445,14 @@ fastrmemory ui
 
 - **Live URL**: `http://localhost:4242`
 - **Dashboard v2 Architecture**: Built with modern **shadcn/ui**, **Tailwind CSS v4**, and **TanStack Query** with automated cross-process live sync (via `BroadcastChannel` & SSE stream).
-- **10 Focused Route Workspaces**:
+- **11 Focused Route Workspaces**:
   - `/`: Real-time system vitals, active trap alerts, recent memory feed, and quick-action shortcuts.
   - `/memories`: Search, filter, and inspect memories with the slide-out **Memory Detail Sheet**, status toggles, pin, and 1-click forget.
   - `/traps`: Dedicated **2.0x Error Trap Quarantine** displaying governing files, trap weight boosts, and verified mitigation lessons.
   - `/conflicts`: Proactive bi-temporal contradiction detection with side-by-side **Word Diff** and 1-click resolution (`Keep A`, `Keep B`, `Keep Both`).
   - `/actions`: Real-time interactive **Action DAG Canvas** tracking task dependencies, worker assignments, and glowing unblocked frontier aura.
-  - `/observatory`: High-performance **Three.js 3D Constellation Galaxy** with 60 FPS lerp camera, celestial star dust, glowing amber trap halos, and memory inspect modals.
+  - `/graph`: Interactive file and entity relationship graph with 1-hop/2-hop inspection and memory drill-down.
+  - `/observatory`: High-performance **Three.js 3D Constellation Galaxy** with a smooth lerp camera, celestial star dust, glowing amber trap halos, and memory inspect modals.
   - `/treemap`: Interactive high-DPI squarified treemap visualising memory strength bands and module density.
   - `/search`: **Search Lab** evaluating triple-stream RRF retrieval with latency waterfall breakdown (BM25 vs Vector vs Graph).
   - `/health`: Autonomous SQLite self-healing Doctor with 1-click integrity diagnosis, FTS5 rebuild, and vacuum.
@@ -516,7 +517,7 @@ Special thanks to **[@the-arizul](https://github.com/the-arizul)** for architect
 
 ---
 
-### 🚀 5-Minute Pull Request Workflow
+### 🚀 Pull Request Workflow
 
 1. **Fork & Clone Repository**:
    ```bash

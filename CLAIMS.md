@@ -3,8 +3,10 @@
 Every public claim must have a row here. A claim is only **Supported** when the command in the row reproduces the raw output on the recorded commit. **Vendor-reported** means the number comes from another project's own documentation and has not been independently reproduced. **Qualified** means the claim is true only under the stated caveat. **Removed** means the claim was published before and is no longer in the docs.
 
 - **Ledger date:** 2026-10-20
-- **Measurement commit:** `d9446e1` (this ledger is committed with the documentation changes that reference it)
+- **Benchmark measurement commit:** `d9446e1` (raw JSON in `bench/results/latest.json`)
+- **Code-inspection commit:** `8630792`
 - **Hardware:** AMD Ryzen 7 7700, 15.1 GB RAM, Windows 10 Pro 19045, Node v24.15.0
+- **Provenance rule:** every row quotes the raw output of its command on the commit above; rows marked Historical or Vendor-reported are the only exceptions.
 
 ## A. Distribution and package
 
@@ -89,6 +91,25 @@ Every public claim must have a row here. A claim is only **Supported** when the 
 | G7 | "Enforces 100% test coverage" | npm-publishing | **Removed** | No coverage threshold is configured |
 | G8 | "Sub-millisecond retrieval" | README | **Qualified** | Engine-level 0.67 ms; CLI cold start is separate |
 | G9 | `npm install -g @atifjubaer/fastrmemory` | README | **Removed** | npm E404 |
+| G10 | "Jaccard >= 0.5 and 40-word polarity" | README | **Corrected** | Code uses `jaccard < 0.35` and `.slice(0, 50)`; README now states 0.35 / 50 words |
+| G11 | "10 Focused Route Workspaces" | README | **Corrected** | Router exposes 11 routes; README now lists `/graph` and says 11 |
+| G12 | "60 FPS lerp camera" | README | **Removed** | No FPS measurement exists; replaced with "smooth lerp camera" |
+| G13 | "Hippo ~4.5 MB install" | README | **Removed** | Competitor size was not independently measured; replaced with non-numeric vendor context |
+| G14 | "Spool fallback in <5ms" | README | **Removed** | No latency measurement exists; diagram now says "async fallback" |
+| G15 | "5-Minute Pull Request Workflow" | README | **Removed** | No timing study exists; heading now says "Pull Request Workflow" |
+
+## H. Retrieval and dashboard mechanics
+
+| ID | Claim | Where | Status | Evidence command | Raw output | Caveat |
+|---|---|---|---|---|---|---|
+| H1 | Error traps receive a 2.0x ranking multiplier | README | Supported | `Select-String -Path src/search/hybrid-rrf.ts -Pattern 'const trapMultiplier','const verifiedMultiplier'` | `const trapMultiplier = memory.kind === 'error_trap' ? 2.0 : 1.0;` | Code inspection; not an end-to-end retrieval benchmark |
+| H2 | Verified memories receive a 1.25x ranking multiplier | README | Supported | same command | `const verifiedMultiplier = memory.status === 'verified' ? 1.25 : 1.0;` | Code inspection |
+| H3 | Feedback adds +0.2 for good and -0.5 for bad | README | Supported | `Select-String -Path src/db/repository.ts -Pattern 'reward_score \+ 0.2','reward_score - 0.5'` | `newScore = Math.min(3.0, Number((mem.reward_score + 0.2).toFixed(2)));`<br>`newScore = Math.max(0.1, Number((mem.reward_score - 0.5).toFixed(2)));` | Score is capped at 3.0 and floored at 0.1 |
+| H4 | RRF fusion uses k=60 | README | Supported | `Select-String -Path src/search/hybrid-rrf.ts -SimpleMatch -Pattern '60 + rank'` | `if (rankA !== undefined) rrf += 1 / (60 + rankA);`<br>`if (rankB !== undefined) rrf += 1 / (60 + rankB);`<br>`if (rankC !== undefined) rrf += 1 / (60 + rankC);` | Constant is inline in all three streams |
+| H5 | Context budgets are 150/500/1500/4000 tokens | README | Supported | `Select-String -Path src/search/budget.ts -Pattern 'L0_WAKEUP','L1_FILE_RULES','L2_TASK_RECALL','L3_DEEP_AUDIT'` | `L0_WAKEUP: 150,`<br>`L1_FILE_RULES: 500,`<br>`L2_TASK_RECALL: 1500,`<br>`L3_DEEP_AUDIT: 4000` | Estimated at ~4 chars per token, not tokenizer-exact |
+| H6 | Dashboard exposes 11 route workspaces | README | Supported | `node -e "const fs=require('fs');console.log(fs.readdirSync('ui/src/routes').filter(f=>f.endsWith('Page.tsx')).length)"` | `11` | Counts page components; `ROUTE_NAMES` also lists 11 |
+| H7 | Conflict detection uses Jaccard >=0.35 and 50-word polarity | README | Supported | `Select-String -Path src/learn/conflicts.ts -SimpleMatch -Pattern 'jaccard < 0.35','slice(0, 50)'` | `if (intersectionSize < 2 \|\| jaccard < 0.35) {`<br>`const wordsA = fullTextA.toLowerCase().split(/\s+/).slice(0, 50);`<br>`const wordsB = fullTextB.toLowerCase().split(/\s+/).slice(0, 50);` | A second path flags Jaccard >=0.65 as high overlap |
+| H8 | Embeddings are 384-dimensional | README | Supported | `Select-String -Path src/search/embeddings.ts -Pattern 'dimensions: number = 384'` | `export function computeFeatureHashVector(text: string, dimensions: number = 384): Float32Array {` | Default hash vectors are lexical, not semantic |
 
 ## How to add a claim
 
