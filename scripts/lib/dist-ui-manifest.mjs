@@ -52,10 +52,16 @@ function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
 
+function normalizeText(value) {
+  // Vite can emit mixed CR/LF on Windows. Collapse CR runs before LF so the
+  // same logical file hashes identically on Windows, macOS, and Linux.
+  return value.replace(/\r+\n/g, '\n').replace(/\r/g, '\n');
+}
+
 function hashFile(file) {
   const data = fs.readFileSync(file);
   if (TEXT_EXTENSIONS.has(path.extname(file).toLowerCase())) {
-    const text = data.toString('utf8').replaceAll('\r\n', '\n');
+    const text = normalizeText(data.toString('utf8'));
     return sha256(Buffer.from(text, 'utf8'));
   }
   return sha256(data);
@@ -117,6 +123,22 @@ export function collectOutputHashes() {
     sorted[rel] = hashes[rel];
   }
   return sorted;
+}
+
+export function normalizeOutputLineEndings() {
+  let changed = 0;
+  for (const absolute of walkFiles(OUTPUT_ROOT)) {
+    const rel = toPosix(path.relative(OUTPUT_ROOT, absolute));
+    if (rel === 'build-manifest.json') continue;
+    if (!TEXT_EXTENSIONS.has(path.extname(absolute).toLowerCase())) continue;
+    const text = fs.readFileSync(absolute, 'utf8');
+    const normalized = normalizeText(text);
+    if (normalized !== text) {
+      fs.writeFileSync(absolute, normalized, 'utf8');
+      changed += 1;
+    }
+  }
+  return changed;
 }
 
 export function computeSourceHash(sources) {

@@ -8,9 +8,11 @@ import {
   MANIFEST_PATH,
   ROOT,
   buildManifest,
+  normalizeOutputLineEndings,
   writeManifest
 } from './lib/dist-ui-manifest.mjs';
 
+const normalized = normalizeOutputLineEndings();
 const manifest = buildManifest();
 writeManifest(manifest);
 
@@ -18,5 +20,6 @@ console.log(
   `Wrote ${path.relative(ROOT, MANIFEST_PATH)}: ` +
     `${Object.keys(manifest.sources).length} source files, ` +
     `${Object.keys(manifest.files).length} output files, ` +
+    `${normalized} normalized text output(s), ` +
     `source ${manifest.sourceHash.slice(0, 12)}`
 );
