@@ -1,6 +1,6 @@
 # FastrMemory Technical Specification
 
-> **Status (2026-10-21): historical design reference, partially stale.** Schema details below describe the v0.1.0 design. The current server registers **41 tools, 2 prompts, and 4 resources** (3 static resources plus the `fastr://memory/{id}` template). Verify counts against `src/mcp/server.ts` before citing them.
+> **Status (2026-10-21): historical design reference, partially stale.** Schema details below describe the v0.1.0 design. The current full profile registers **41 tools, 2 prompts, and 4 resources** (3 static resources plus the `fastr://memory/{id}` template); the optional core profile exposes 12 tools. Verify counts against `src/mcp/server.ts` before citing them.
 >
 > **Package**: `@atifjubaer/fastrmemory`
 > **Schema Version**: `1.0.0`

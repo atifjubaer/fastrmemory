@@ -91,11 +91,12 @@ CLI: `fastr replay`, `fastr diff`, `fastr snapshot export|import`, `fastr consol
 ## 7. MCP surface
 
 - **Server name:** `fastrmemory` (registry ID: `io.github.atifjubaer/fastrmemory`).
-- **41 tools** (memory CRUD, recall/drill, traps, conflicts, DAG actions, planning, slots, federation, snapshot/rollback, replay/diff, compression, doctor, vision).
+- **41 tools** in the full profile (memory CRUD, recall/drill, traps, conflicts, DAG actions, planning, slots, federation, snapshot/rollback, replay/diff, compression, doctor, vision).
+- **12 tools** in the optional core profile: `fastr_recall`, `fastr_remember`, `fastr_handoff`, `fastr_trap_recall`, `fastr_trap_log`, `fastr_status`, `fastr_get`, `fastr_timeline`, `fastr_diff`, `fastr_replay`, `fastr_compress`, and `fastr_diagnose`.
 - **2 prompts**: `pre-edit-check`, `session-wrap-up`.
 - **4 resources**: `fastr://project/overview`, `fastr://project/traps`, `fastr://session/handoff`, and the `fastr://memory/{id}` template.
 
-The default server currently exposes all 41 tools; a 12-tool core profile is planned to reduce schema overhead. The README diagram is the frozen v0.2.0 release snapshot and still shows 39; current `main` adds `fastr_replay` and `fastr_diff`.
+The full 41-tool surface is the default. Start the core profile with `fastrmemory mcp --profile core` or `FASTR_MCP_PROFILE=core`; resources and prompts are identical in both profiles.
 
 ## 8. Design rules
 
@@ -111,9 +112,7 @@ The default server currently exposes all 41 tools; a 12-tool core profile is pla
 
 - Prompt-cache `skipUnchanged` behavior (no byte-identical block suppression in the current hook runner).
 - A real-repository benchmark and a pinned external baseline (the 240-case synthetic held-out benchmark exists; see [`BENCHMARKS.md`](../BENCHMARKS.md)).
-- A 12-tool core MCP profile.
 - Dashboard timeline slider and diff view.
 - A live PR run of the Memory CI comment path (the workflow is committed; fork PRs are job-summary-only).
-- Crash-test evidence for 10k writes.
 
 These are roadmap items, not claims.

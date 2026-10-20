@@ -9,7 +9,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.16.0-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Protocol](https://img.shields.io/badge/Protocol-MCP%20v2-7C3AED?style=flat-square)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/Tests-234%20Passed-brightgreen?style=flat-square)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-235%20Passed-brightgreen?style=flat-square)](tests/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-architecture)
 
@@ -266,7 +266,9 @@ Add this JSON block to your agent's MCP settings to enable autonomous memory:
 
 Built using the official **v2 `@modelcontextprotocol/server`** SDK:
 
-### 39 Core MCP Tools
+### 41 MCP Tools
+
+The default **full profile** exposes all 41 tools. For a smaller schema, start the **core profile** with `fastrmemory mcp --profile core` or `FASTR_MCP_PROFILE=core`; it exposes the 12-tool daily loop: `fastr_recall`, `fastr_remember`, `fastr_handoff`, `fastr_trap_recall`, `fastr_trap_log`, `fastr_status`, `fastr_get`, `fastr_timeline`, `fastr_diff`, `fastr_replay`, `fastr_compress`, and `fastr_diagnose`. Resources and prompts are the same in both profiles.
 
 #### Cognitive Retrieval & Memory Core
 1. `fastr_recall`: Triple-stream hybrid search (BM25 + Vector + Spreading Activation Graph) with progressive L0–L3 token budgeting and air-gapped offline vector fallback.
@@ -321,9 +323,13 @@ Built using the official **v2 `@modelcontextprotocol/server`** SDK:
 36. `fastr_diagnose`: Deep health audit of SQLite B-Tree integrity, FTS5 BM25 search indices, orphaned file links, and task DAGs.
 37. `fastr_heal`: Automatic repair of database indices, dangling edges, and WAL page reclamation.
 
+#### Memory Replay & Diff
+38. `fastr_replay`: Reconstructs memory state at a timestamp and returns the active snapshot for audit or recovery.
+39. `fastr_diff`: Compares two snapshots and reports added, superseded, and removed memories.
+
 #### Multimodal Visual Memory
-38. `fastr_vision_tag`: Tags screenshots, UI diagrams, and wireframes with OCR and semantic descriptions with 384-dim embeddings.
-39. `fastr_vision_search`: Hybrid vector and keyword search across stored visual assets for multimodal coding agents (Claude 3.7 Sonnet, Gemini 2.5).
+40. `fastr_vision_tag`: Tags screenshots, UI diagrams, and wireframes with OCR and semantic descriptions with 384-dim embeddings.
+41. `fastr_vision_search`: Hybrid vector and keyword search across stored visual assets for multimodal coding agents (Claude 3.7 Sonnet, Gemini 2.5).
 
 ### 2 MCP Prompt Templates
 
@@ -435,7 +441,7 @@ Run the comprehensive unit test suite:
 npm test
 ```
 
-All **234 tests pass** across **42 test files** covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, replay/diff, Memory CI, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, UI loopback security boundaries, and atomic installer configuration safety.
+All **235 tests pass** across **43 test files** covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, replay/diff, Memory CI, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, UI loopback security boundaries, and atomic installer configuration safety.
 
 **Crash-safety evidence:** `npm run test:crash` kills the writer at randomized points across 10 runs, then reopens the WAL database. The committed report at [`bench/results/crash-test.json`](bench/results/crash-test.json) records **10,718 acknowledged writes**, **10,727 committed rows**, **0 lost**, **0 duplicate ids/titles**, and `PRAGMA integrity_check = ok`; methodology is in [`docs/audit/2026-10-21-crash-test.md`](docs/audit/2026-10-21-crash-test.md). `npm run check:crash` validates the report during `check:ci`. This is a process-crash test (`taskkill /F`), not a power-loss test; SQLite runs with `synchronous=NORMAL` in WAL mode.
 
@@ -551,7 +557,7 @@ Special thanks to **[@the-arizul](https://github.com/the-arizul)** for architect
    cd fastrmemory
    ```
 
-2. **Install Dependencies & Verify Test Suite (234 Tests Passing)**:
+2. **Install Dependencies & Verify Test Suite (235 Tests Passing)**:
    ```bash
    npm install
    npm test
@@ -584,7 +590,7 @@ Special thanks to **[@the-arizul](https://github.com/the-arizul)** for architect
 Before submitting your PR, verify:
 - [ ] **Strict TypeScript**: `npm run build:all` passes without type errors.
 - [ ] **Zero External Daemons**: Engine runs in-process via Node.js WAL SQLite.
-- [ ] **100% Test Green**: `npm test` passes all 234 unit tests across 42 files.
+- [ ] **100% Test Green**: `npm test` passes all 235 unit tests across 43 files.
 - [ ] **DCO Sign-off**: All commits signed off using `git commit -s` ([Developer Certificate of Origin](https://developercertificate.org/)).
 - [ ] **Pre-Merge Trap Guardian**: Run `fastrmemory guard --strict` to verify no active error traps are violated.
 

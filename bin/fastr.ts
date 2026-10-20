@@ -65,9 +65,10 @@ program
 program
   .command('mcp')
   .description('Run FastrMemory as an MCP stdio server')
-  .action(async () => {
+  .option('--profile <profile>', 'Tool surface: full (default) or core (12 tools)')
+  .action(async (options: { profile?: string }) => {
     try {
-      await runStdioServer();
+      await runStdioServer(undefined, options.profile);
     } catch (err: any) {
       console.error('FastrMemory MCP Server error:', err.message);
       process.exit(1);

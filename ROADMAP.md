@@ -12,20 +12,20 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 
 | Item | Current state | Evidence |
 |---|---|---|
-| Local test gate | **Done:** 234 tests across 42 files | `npm run check:ci` on 2026-10-21 |
+| Local test gate | **Done:** 235 tests across 43 files | `npm run check:ci` on 2026-10-21 |
 | CI matrix | **Partial:** 6/6 green only at `de4fde3`; commits after it have not run in CI | run `39467306362` |
 | npm distribution | **Blocked:** `npm whoami` E401, `npm view` E404; suspension lifts 2026-10-21 22:42 UTC | `docs/npm-publishing.md` |
-| Package artifact | **Candidate ready:** v0.2.1 local tarball is 589,173 bytes, SHA-256 `5648DA84F43A7865803B75AE76FF2D106354A252819FE22CFDB9BEC91242A48A`; v0.2.0 GitHub asset is 571,279 bytes | `npm pack` vs release asset |
+| Package artifact | **Candidate ready:** v0.2.1 local tarball is 591,213 bytes, SHA-256 `994A2DB4379FA97761DBD65E9982C97C4B140E3793FAA3FAC1CCE66FEB47CFBA`; v0.2.0 GitHub asset is 571,279 bytes | `npm pack` vs release asset |
 | Benchmark | **Done for the synthetic gate:** 240 cases, 192/48 split; holdout 95.8% Hit@1, 100% Hit@5, 209 tokens | `bench/results/minilm.json` |
 | Replay and snapshots | **Done:** exact at three timestamps; JSONL round-trip hash stable | `bench/results/replay-evidence.json` |
-| Default install | **Pass (0.2.1 candidate):** 16,486,853 bytes, 2.12 s, three runtime dependencies | `CLAIMS.md` A8 |
+| Default install | **Pass (0.2.1 candidate):** 16,493,023 bytes, 3.89 s, three runtime dependencies | `CLAIMS.md` A8 |
 | Crash test | **Done:** 10/10 runs, 10,718 acknowledged writes, 0 lost, 0 duplicates, integrity `ok` | `bench/results/crash-test.json`; `CLAIMS.md` D4 |
 
 ## Phase 0 — Truth reset
 
 | Item | Status | Evidence / remaining work |
 |---|---|---|
-| Remove stale benchmark claims | **Done** | `README.md` now uses the `562f461` run and states 234 tests / 42 files / 41 tools; `docs/benchmark-report.md` and `BENCHMARKS.md` match. |
+| Remove stale benchmark claims | **Done** | `README.md` now uses the `562f461` run and states 235 tests / 43 files / 41 tools; `docs/benchmark-report.md` and `BENCHMARKS.md` match. |
 | Correct competitor and dependency claims | **Partial** | `CLAIMS.md` records removed claims; the full README rewrite and launch copy remain. |
 | `CLAIMS.md` with command, output, date, commit, caveat | **Done** | `CLAIMS.md` |
 | Baseline audit | **Done** | `docs/audit/2026-10-20-baseline.md` |
@@ -40,7 +40,7 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 |---|---|---|
 | Hermetic tests and `FASTR_HOME` isolation | **Done** | `tests/isolation.test.ts`; `tests/setup.ts` |
 | Clean the 60 legacy test rows | **Partial** | `scripts/clean-test-junk.mjs` exists; `--apply --yes` has not been run and needs explicit approval. |
-| Package surface, build split, tarball gate | **Done** | `scripts/check-package.mjs`; 589,173 bytes / 216 files (575.4 KiB) at `check:ci` |
+| Package surface, build split, tarball gate | **Done** | `scripts/check-package.mjs`; 591,213 bytes / 220 files (577.4 KiB) at `check:ci` |
 | Prepare v0.2.1 release candidate | **Done** | Version, README, `CLAIMS.md`, `CHANGELOG.md`, skills metadata; `npm run check:ci`; tarball SHA-256 recorded |
 | Publish v0.2.1 to npm | **Blocked** | npm account suspension; resume protocol documented |
 | Attach v0.2.1 GitHub Release asset | **Missing** | Candidate is local only; needs push and release approval. |
@@ -72,7 +72,7 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 | Conflict detection and structured resolve | **Partial** | DB and MCP tools exist; CLI/UI resolve path and conflict-aware recall are missing. |
 | Cross-tool import | **Missing** | No `fastr import` for local memory formats. |
 | OpenCode, Gemini CLI, and Copilot CLI hooks | **Missing** | Installers cover Claude Code and Cursor only. |
-| 12-tool core MCP profile | **Missing** | Server always exposes all 41 tools. |
+| 12-tool core MCP profile | **Done** | `fastrmemory mcp --profile core` or `FASTR_MCP_PROFILE=core`; `tests/mcp-core-profile.test.ts` asserts 12 tools and the 41-tool full default. |
 | Memory envelope resource | **Missing** | Four resources exist; envelope resource is not implemented. |
 | Branch / merge | **Missing** | Snapshots, replay, and diff exist; branch and merge do not. |
 | Memory hygiene | **Partial** | `fastr diagnose` / `fastr heal` exist; orphan/duplicate/stale coverage needs a dedicated gate. |
@@ -100,7 +100,7 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 |---|---|---|
 | Optional local model; three runtime dependencies | **Done** | `package.json`; `scripts/check-package.mjs` |
 | SQLite pragmas and query-plan review | **Partial** | Pragmas exist; top-10 query-plan evidence is not documented as a gate. |
-| Clean install under 20 MB / 10 s | **Pass (0.2.1 candidate)** | 16,486,853 bytes, 2.12 s; `CLAIMS.md` A8. |
+| Clean install under 20 MB / 10 s | **Pass (0.2.1 candidate)** | 16,493,023 bytes, 3.89 s; `CLAIMS.md` A8. |
 | 10k crash test, 10/10 runs, 0 lost / 0 duplicates | **Done** | 10,718 acknowledged writes, 10,727 committed rows, 0 missing, 0 duplicate ids/titles, integrity `ok`; `bench/results/crash-test.json`; `CLAIMS.md` D4. |
 | Export/import/backup with provenance | **Partial** | JSONL export/import exists; a dedicated backup command and gate are missing. |
 | CI size and latency gates | **Partial** | Package size gate exists; latency and install-size gates are not enforced. |
@@ -126,9 +126,9 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 | Gate | Pass condition | Current |
 |---|---|---|
 | Truth | No false/stale claims; `CLAIMS.md` covers every public claim | **Partial** — README counts are current; full CLAIMS coverage is not |
-| Tests | 6/6 OS × Node green on the release commit; isolation green | **Partial** — local 234 green; current commit unrun |
+| Tests | 6/6 OS × Node green on the release commit; isolation green | **Partial** — local 235 green; current commit unrun |
 | Package | npm published or explicitly blocked and documented; `npx` works | **Blocked** — 0.2.1 candidate ready; npm suspension |
-| Footprint | Default install under 20 MB; install under 10 s | **Pass (candidate)** — 16,486,853 bytes, 2.12 s |
+| Footprint | Default install under 20 MB; install under 10 s | **Pass (candidate)** — 16,493,023 bytes, 3.89 s |
 | Benchmark | 240+ cases; held-out; raw JSON committed | **Done** |
 | Retrieval | Hit@1 ≥90%; Hit@5 ≥98%; external baseline +5pp Hit@5; tokens ≤0.5× | **Partial** — synthetic targets pass; external gate missing |
 | Integrity | 0 lost/0 duplicates in 10k crash test; replay exact | **Done (process crash)** — 10/10 runs, 0 lost, 0 duplicates; replay exact; power loss not tested |
@@ -139,18 +139,18 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 
 1. **Done:** choose `0.2.1` from current HEAD, because current HEAD includes the corrected MCP server name and the 41-tool surface.
 2. **Done locally:** version, README, `CLAIMS.md`, `CHANGELOG.md`, and skills metadata updated; core rebuilt and tarball packed.
-3. **Done:** `npm run check:ci` green; tarball is 589,173 bytes with SHA-256 `5648DA84F43A7865803B75AE76FF2D106354A252819FE22CFDB9BEC91242A48A`.
+3. **Done:** `npm run check:ci` green; tarball is 591,213 bytes with SHA-256 `994A2DB4379FA97761DBD65E9982C97C4B140E3793FAA3FAC1CCE66FEB47CFBA`.
 4. **Pending:** after the npm suspension lifts, run `npm login`, `npm whoami`, and `npm publish --access public`.
 5. **Pending:** verify `npm view` and `npx` from a clean temp directory; update the claims ledger from Blocked to Supported.
 
-Do not publish current HEAD as `0.2.0`: current HEAD is now `0.2.1`, its tarball is 589,173 bytes, and the existing GitHub v0.2.0 asset is 571,279 bytes.
+Do not publish current HEAD as `0.2.0`: current HEAD is now `0.2.1`, its tarball is 591,213 bytes, and the existing GitHub v0.2.0 asset is 571,279 bytes.
 
 ## Work order
 
 1. **P0:** prepare and verify the npm release candidate. **Done** for `0.2.1`; publish remains blocked.
 2. **P0:** run the 10k crash test and commit the report. **Done.**
-3. **P1:** add the 12-tool core profile and its smoke test. **Next.**
-4. **P1:** add OpenCode/Gemini/Copilot hook parity, local import, and conflict-aware recall.
+3. **P1:** add the 12-tool core profile and its smoke test. **Done.**
+4. **P1:** add OpenCode/Gemini/Copilot hook parity, local import, and conflict-aware recall. **Next.**
 5. **P1:** add the dashboard timeline/diff view and observe a live Memory CI PR comment.
 6. **P2:** add public benchmark harnesses and a pinned external baseline.
 7. **P2:** finish README, migration, security, scorecard, changelog, and launch evidence.

@@ -16,6 +16,11 @@ import { compressFile, compressContent } from '../compress/markdown.js';
 import { diagnoseDatabase, healDatabase } from '../db/doctor.js';
 import { tagVisionAsset, searchVisionAssets } from '../vision/assets.js';
 import { diffSnapshots, formatDiffMarkdown, replayAt } from '../replay/snapshot.js';
+import {
+  DEFAULT_MCP_TOOL_PROFILE,
+  isMcpToolEnabled,
+  McpToolProfile
+} from './profiles.js';
 
 // ==========================================
 // Shared input bounds (keep tool/param names stable; skills depend on them)
@@ -98,19 +103,36 @@ export function createFastrServerContext(customRoot?: string, homeDir?: string):
   return { db, repo, spool, config };
 }
 
-export function createFastrMcpServer(context?: ServerContext): McpServer {
+export interface FastrMcpServerOptions {
+  /** Tool surface to expose. Defaults to the complete 41-tool surface. */
+  profile?: McpToolProfile;
+}
+
+export function createFastrMcpServer(
+  context?: ServerContext,
+  options: FastrMcpServerOptions = {}
+): McpServer {
   const ctx = context || createFastrServerContext();
   const { db, repo, config } = ctx;
+  const profile = options.profile ?? DEFAULT_MCP_TOOL_PROFILE;
 
   const server = new McpServer({
     name: MCP_SERVER_NAME,
     version: PACKAGE_VERSION
   });
 
+  // Register only the tools selected by the profile. Resources and prompts stay
+  // available in both profiles because their schema cost is small.
+  const registerTool = ((name: string, toolConfig: any, handler: any): void => {
+    if (isMcpToolEnabled(profile, name)) {
+      (server.registerTool as (n: string, c: any, h: any) => void)(name, toolConfig, handler);
+    }
+  }) as typeof server.registerTool;
+
   // ==========================================
   // TOOL 1: fastr_recall
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_recall',
     {
       description: 'Triple-Stream hybrid search (BM25 + Vector + Graph) with progressive token budgeting and trap weighting.',
@@ -150,7 +172,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 2: fastr_drill
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_drill',
     {
       description: 'Inspects verbatim raw observations (untruncated stack traces, diffs, tool outputs) for a memory or event.',
@@ -194,7 +216,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 3: fastr_file_history
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_file_history',
     {
       description: 'Returns active rules, [TRAP] warnings, and historical decisions linked to a specific file path.',
@@ -229,7 +251,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 4: fastr_remember
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_remember',
     {
       description: 'Records a new rule, architectural decision, error trap, or workflow. Automatically scrubs credentials.',
@@ -288,7 +310,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 5: fastr_supersede
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_supersede',
     {
       description: 'Retires an old memory rule and replaces it with a new verified rule, recording the reason for Git diffs.',
@@ -330,7 +352,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 6: fastr_feedback
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_feedback',
     {
       description: 'Scores outcome on a specific recalled memory (+0.2 good, -0.5 bad). Never penalizes the whole batch.',
@@ -356,7 +378,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 7: fastr_handoff
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_handoff',
     {
       description: 'Saves or retrieves cross-agent session milestones. Promotes staging memories when verifyStaging=true.',
@@ -427,7 +449,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 8: fastr_status
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_status',
     {
       description: 'Returns health, memory counts, raw event counts, pending spool count, and embedding coverage %.',
@@ -461,7 +483,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 9: fastr_graph_query
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_graph_query',
     {
       description: 'Query the code file-dependency graph to discover linked memories, error traps, and neighboring files (up to 2-hop structural links).',
@@ -505,7 +527,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 10: fastr_timeline
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_timeline',
     {
       description: 'Returns chronological audit trail of memories, verified rules, error traps, and historical supersessions.',
@@ -552,7 +574,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 11: fastr_snapshot (Git-for-Memory)
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_snapshot',
     {
       description: 'Create an immutable point-in-time snapshot of all active memories and file links.',
@@ -582,7 +604,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 12: fastr_rollback (Time Travel)
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_rollback',
     {
       description: 'Revert project memory state to a previous snapshot, superseding newer erroneous rules.',
@@ -617,7 +639,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 13: fastr_trap_log (Rapid Error Trap Logger)
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_trap_log',
     {
       description: 'Immediately logs an error trap diagnosed during a build failure or test error. Receives a conditional 2.0x recall boost for trap-intent or file-scoped queries.',
@@ -660,7 +682,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 14: fastr_trap_recall
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_trap_recall',
     {
       description: 'Fetch all active [TRAP] warnings protecting specific files before beginning an edit.',
@@ -701,7 +723,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 15: fastr_conflicts
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_conflicts',
     {
       description: 'List detected contradictory memories and policy conflicts requiring resolution.',
@@ -744,7 +766,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 16: fastr_resolve
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_resolve',
     {
       description: 'Resolve a memory contradiction by picking the winning rule and superseding or weakening the loser.',
@@ -777,7 +799,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 17: fastr_predict
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_predict',
     {
       description: 'Record an effort/time/risk prediction or close an existing prediction with actual results.',
@@ -861,7 +883,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 18: fastr_predict_baserate
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_predict_baserate',
     {
       description: 'Get historical reference-class base-rate calibration statistics (Mean, Median p50 ratio, MAE) to debias agent planning.',
@@ -899,7 +921,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 19: fastr_action_create
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_action_create',
     {
       description: 'Create a new work item action in the Multi-Agent Action DAG with dependencies and conflict constraints.',
@@ -936,7 +958,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 20: fastr_action_update
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_action_update',
     {
       description: 'Update the lifecycle status, assignment, or crystallization of an action in the Action DAG.',
@@ -973,7 +995,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 21: fastr_frontier
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_frontier',
     {
       description: 'Get all unblocked, executable work item actions in the DAG whose prerequisites are satisfied and have no active conflicts.',
@@ -1003,7 +1025,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 22: fastr_next
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_next',
     {
       description: 'Atomically claim and return the highest-priority unblocked action ready for execution by an agent.',
@@ -1034,7 +1056,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 23: fastr_slot_get
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_slot_get',
     {
       description: 'Retrieve a bounded working memory slot (e.g. current_goal, user_preferences, active_hypothesis).',
@@ -1063,7 +1085,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 24: fastr_slot_set
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_slot_set',
     {
       description: 'Store or update a bounded working memory slot. Enforces hard size bounds to avoid context bloat.',
@@ -1095,7 +1117,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 25: fastr_slot_list
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_slot_list',
     {
       description: 'List all active bounded working memory slots and their size usages.',
@@ -1126,7 +1148,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 26: fastr_obsidian_export
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_obsidian_export',
     {
       description: 'Export all project memories, entities, and links into an Obsidian-compatible markdown vault with YAML frontmatter, [[wikilinks]], and MOC.md.',
@@ -1155,7 +1177,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 27: fastr_federate
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_federate',
     {
       description: 'Manage cross-repository organization federation. Inspect attached global memory databases or list shared rules.',
@@ -1210,7 +1232,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 28: fastr_assemble
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_assemble',
     {
       description: 'Dynamically assembles an optimized, token-budgeted prompt context block (<fastr_context>) combining relevant rules, active 2.0x error traps for target files, frontier tasks, and session handoffs.',
@@ -1248,7 +1270,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 29: fastr_risk_predict
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_risk_predict',
     {
       description: 'Estimates pre-edit failure risk probability (0.0 to 1.0) and planning track record based on active error traps and historical bug churn for target files.',
@@ -1283,7 +1305,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 30: fastr_verify_provenance
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_verify_provenance',
     {
       description: 'Verifies the cryptographic SHA-256 provenance signature of a memory to ensure authentic agent authoring and tamper-free storage.',
@@ -1313,7 +1335,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 31: fastr_compress
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_compress',
     {
       description: 'Compresses markdown files or text to reduce token usage while strictly preserving headings, URLs, and code blocks. Creates .original.md backup if filePath is provided.',
@@ -1370,7 +1392,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 32: fastr_diagnose
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_diagnose',
     {
       description: 'Performs comprehensive health checks across SQLite B-Trees, FTS5 BM25 search index consistency, orphaned file links, and multi-agent DAG frontiers.',
@@ -1418,7 +1440,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 33: fastr_heal
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_heal',
     {
       description: 'Auto-repairs all fixable database issues found by fastr_diagnose: rebuilds FTS5 BM25 indices, prunes orphaned file links, unblocks action DAGs, and runs WAL page truncation.',
@@ -1452,7 +1474,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 34: fastr_vision_tag
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_vision_tag',
     {
       description: 'Attaches a screenshot image, architecture diagram, or wireframe to long-term memory with OCR and semantic description for multimodal coding agents.',
@@ -1498,7 +1520,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 35: fastr_vision_search
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_vision_search',
     {
       description: 'Searches stored visual assets (screenshots, diagrams, error screens) via hybrid vector + keyword matching across descriptions and OCR text.',
@@ -1571,7 +1593,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 36: fastr_get
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_get',
     {
       description: 'Fetch one memory by ID with full content, linked files, status, bi-temporal validity (valid_from/valid_to), and superseded_by.',
@@ -1593,7 +1615,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 37: fastr_list
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_list',
     {
       description: 'Page through memories (newest first) filtered by module, kind, and status. Returns {items, nextCursor}; pass nextCursor back as `cursor` for the next page.',
@@ -1660,7 +1682,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 38: fastr_forget
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_forget',
     {
       description: 'Retire a memory without a replacement (marks it superseded with valid_to = now and records the reason). Use fastr_supersede instead when a corrected rule exists.',
@@ -1691,7 +1713,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 39: fastr_pin
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_pin',
     {
       description: 'Pin or unpin a memory. Pinned memories always surface first during recall.',
@@ -1712,7 +1734,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 40: fastr_replay
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_replay',
     {
       description: 'Reconstruct the active memory set at a past ISO timestamp from bi-temporal valid_from/valid_to windows.',
@@ -1742,7 +1764,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   // ==========================================
   // TOOL 41: fastr_diff
   // ==========================================
-  server.registerTool(
+  registerTool(
     'fastr_diff',
     {
       description: 'Compare two memory states and report added, superseded, changed, still-active, and conflicted memories with a token delta.',
