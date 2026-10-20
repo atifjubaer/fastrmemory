@@ -89,8 +89,9 @@ Replay is derived from the existing bi-temporal columns, not from a second log:
 - `consolidateMemories()` writes a new `workflow` summary that links every source memory and raw event. It does not delete, merge, or mutate the originals; project-wide before/after counts make the non-loss property visible.
 - `runMemoryCi()` compares base and head JSONL snapshots, emits Markdown, and optionally exits `1` when the head adds an active trap.
 - `createBranch()` stores an immutable branch pointer to a base and head snapshot. `mergeBranch()` is one-way into the current active set: branch-only memories are added, target-only memories are preserved, and same-identity changes become conflicts. Conflicts block writes by default; `--force` applies additions, and `--force --strategy branch` supersedes the target while keeping the old rows in history. Every non-dry-run attempt is recorded in `memory_branch_merges`.
+- `inspectMemoryHygiene()` reports orphaned `file_links`, conflict, and feedback rows; duplicate active rows by `module + kind + normalized title` or exact content; and stale unpinned active rows whose last recall (or creation time) is older than the threshold. `fastr hygiene` prints the report and can exit nonzero with `--fail-on-issues`; `npm run check:hygiene` exercises the same inspector against a deterministic fixture in `check:ci` and asserts raw counts. The gate does not mutate a project database.
 
-CLI: `fastr replay`, `fastr diff`, `fastr snapshot export|import`, `fastr branch create|list`, `fastr merge`, `fastr feedback`, `fastr consolidate`, and `fastr memory-ci`. MCP: `fastr_replay`, `fastr_diff`, and `fastr_feedback`.
+CLI: `fastr replay`, `fastr diff`, `fastr snapshot export|import`, `fastr branch create|list`, `fastr merge`, `fastr feedback`, `fastr hygiene`, `fastr consolidate`, and `fastr memory-ci`. MCP: `fastr_replay`, `fastr_diff`, and `fastr_feedback`.
 
 ## 7. MCP surface
 
@@ -111,6 +112,7 @@ The full 41-tool surface is the default. Start the core profile with `fastrmemor
 5. **Two-zone Markdown.** Compiled Truth on top, append-only timeline below, both Git-diffable.
 6. **Local-first.** No network call is required for the default path; embeddings are opt-in.
 7. **Additive consolidation.** A summary is a new linked memory; originals remain queryable and replayable.
+8. **Hygiene is observable, not destructive.** Orphan, duplicate, and stale checks report raw counts; `check:ci` validates the detector on a fixture, and no automatic cleanup runs against a project database.
 
 ## 9. Not implemented yet
 

@@ -12,7 +12,7 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 
 | Item | Current state | Evidence |
 |---|---|---|
-| Local test gate | **Done:** 259 tests across 47 files | `npm run check:ci` on 2026-10-21 |
+| Local test gate | **Done:** 262 tests across 48 files | `npm run check:ci` on 2026-10-21 |
 | CI matrix | **Done:** 6/6 green at `3fa2bf9` | run `39495621243` |
 | npm distribution | **Blocked:** `npm whoami` E401, `npm view` E404; suspension lifts 2026-10-21 22:42 UTC | `docs/npm-publishing.md` |
 | Package artifact | **GitHub asset attached:** v0.2.1 asset is 591,204 bytes, SHA-256 `78F1535E87A7148272824C0B0D31F21D4AD385D9EEAA2EF8A40D41DCD0ACA63B`; v0.2.0 asset is 571,279 bytes | `npm pack` vs downloaded release asset |
@@ -45,9 +45,9 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 | 3.6 | Memory envelope resource | `fastr://memory/{id}/envelope` returns metadata, provenance, links, and conflict state | **Done** |
 | 3.7 | Memory branch and merge | `fastr branch create/list` and `fastr merge` produce a conflict report and preserve history | **Done** |
 | 3.8 | Confidence tiers and 3-bad dormancy | Per-ID confidence tiers and automatic dormancy after three bad outcomes have tests | **Done** |
-| 3.9 | Memory hygiene gate | Orphan, duplicate, and stale checks run in `check:ci` with raw counts | Partial |
+| 3.9 | Memory hygiene gate | Orphan, duplicate, and stale checks run in `check:ci` with raw counts | **Done** |
 
-**Phase 3 gate:** hook-parity table with one tested path per client; import round-trip; conflict-aware recall; branch merge conflict report preserves history; confidence tiers and 3-consecutive-bad dormancy; core profile smoke still 12/12.
+**Phase 3 gate:** hook-parity table with one tested path per client; import round-trip; conflict-aware recall; branch merge conflict report preserves history; confidence tiers and 3-consecutive-bad dormancy; hygiene raw counts asserted in `check:ci`; core profile smoke still 12/12. Current result: **Done**.
 
 ### Phase 4 — Memory CI and UI (P1, 1.5–2 days)
 
@@ -149,9 +149,9 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 | 12-tool core MCP profile | **Done** | `fastrmemory mcp --profile core` or `FASTR_MCP_PROFILE=core`; `tests/mcp-core-profile.test.ts` and `scripts/smoke-mcp-profile.mjs` assert 12 core tools and the 41-tool full default. |
 | Memory envelope resource | **Done** | `fastr://memory/{id}/envelope` returns metadata, cryptographic provenance, file/graph links, and open/resolved/ignored conflict state; covered by `tests/mcp-server-v2.test.ts`. |
 | Branch / merge | **Done** | `fastr branch create/list` and `fastr merge` with conflict reports, target-only preservation, history-preserving supersession, and a merge audit log; covered by `tests/branch-merge.test.ts`. |
-| Memory hygiene | **Partial** | `fastr diagnose` / `fastr heal` exist; orphan/duplicate/stale coverage needs a dedicated gate. |
+| Memory hygiene | **Done** | `fastr hygiene` reports orphaned file links/conflicts/feedback, duplicate active rows, and stale unpinned rows; `npm run check:hygiene` asserts raw fixture counts inside `check:ci`; covered by `tests/hygiene.test.ts`. |
 
-**Gate:** hook-parity table with a tested path per client; import round-trip test; core profile starts and passes the MCP smoke test. Current result: **Partial**.
+**Gate:** hook-parity table with a tested path per client; import round-trip test; branch merge conflict report preserves history; confidence tiers and 3-bad dormancy; hygiene counts; core profile starts and passes the MCP smoke test. Current result: **Done**.
 
 ## Phase 4 — Memory Replay and Memory CI
 

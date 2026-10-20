@@ -20,6 +20,7 @@ import { cognitiveBlame } from '../src/git/blame.js';
 import { executeMemoryCommit } from '../src/git/commit.js';
 import { compressFile } from '../src/compress/markdown.js';
 import { diagnoseDatabase, healDatabase } from '../src/db/doctor.js';
+import { inspectMemoryHygiene } from '../src/db/hygiene.js';
 import { tagVisionAsset, searchVisionAssets } from '../src/vision/assets.js';
 import { runTrapGuardian } from '../src/ci/guardian.js';
 import { diffSnapshots, formatDiffMarkdown, replayAt } from '../src/replay/snapshot.js';
@@ -972,6 +973,54 @@ program
       }
     } catch (err: any) {
       console.error(`Diagnose error: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+// 18b. Hygiene command
+program
+  .command('hygiene')
+  .description('Report orphaned records, duplicate active memories, and stale memories')
+  .option('--stale-days <days>', 'Stale threshold in days', '90')
+  .option('--json', 'Print the hygiene report as JSON', false)
+  .option('--fail-on-issues', 'Exit 1 when any hygiene issue is found', false)
+  .action((opts: any) => {
+    try {
+      const ctx = createFastrServerContext();
+      const staleAfterDays = Number.parseInt(opts.staleDays, 10);
+      if (!Number.isFinite(staleAfterDays) || staleAfterDays < 1) {
+        throw new Error('--stale-days must be a positive integer.');
+      }
+      const report = inspectMemoryHygiene(ctx.db, ctx.config.projectId, { staleAfterDays });
+      if (opts.json) {
+        console.log(JSON.stringify(report, null, 2));
+      } else {
+        const fmt = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+        const orphans = report.counts.orphanFileLinks + report.counts.orphanConflicts + report.counts.orphanFeedback;
+        console.log(`\n=== FastrMemory Hygiene (${ctx.config.projectName}) ===`);
+        console.log(`Status:           ${report.healthy ? 'HEALTHY' : 'ISSUES DETECTED'}`);
+        console.log(`Active memories:  ${report.counts.activeMemories} (pinned ${report.counts.pinnedMemories})`);
+        console.log(`Never recalled:   ${report.counts.neverRecalled}`);
+        console.log(`Stale threshold:  ${report.thresholds.staleAfterDays} days`);
+        console.log(`Orphans:          ${orphans} (file_links ${report.counts.orphanFileLinks}, conflicts ${report.counts.orphanConflicts}, feedback ${report.counts.orphanFeedback})`);
+        console.log(`Duplicate titles: ${fmt(report.counts.duplicateTitleGroups, 'group', 'groups')} / ${fmt(report.counts.duplicateTitleRows, 'extra row', 'extra rows')}`);
+        console.log(`Duplicate content: ${fmt(report.counts.duplicateContentGroups, 'group', 'groups')} / ${fmt(report.counts.duplicateContentRows, 'extra row', 'extra rows')}`);
+        console.log(`Stale memories:   ${report.counts.staleMemories}`);
+        if (report.issues.length > 0) {
+          console.log('\nIssues:');
+          for (const issue of report.issues) {
+            console.log(`  - [${issue.category.toUpperCase()}] ${issue.description}`);
+          }
+        } else {
+          console.log('\nNo orphan, duplicate, or stale memory issues found.');
+        }
+        console.log('');
+      }
+      if (opts.failOnIssues && !report.healthy) {
+        process.exit(1);
+      }
+    } catch (err: any) {
+      console.error(`Hygiene error: ${err.message}`);
       process.exit(1);
     }
   });
