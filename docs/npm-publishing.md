@@ -1,6 +1,6 @@
 # FastrMemory NPM Publishing & Architecture Guide
 
-> **Status (2026-10-21): npm publication is blocked until the temporary suspension lifts.** npm Support states the account will return to normal on **2026-10-21 22:42 UTC** (**2026-10-22 04:42 Asia/Dhaka**) after a recovery-code login triggered a 72-hour security suspension. `npm whoami` returns **E401 Unauthorized** and `npm view @atifjubaer/fastrmemory version` returns **E404**, so the npm registry package has never been published. If the recovery-code login was legitimate, no action is required; wait for the automatic return. **Do not bypass npm security checks, 2FA, or the suspension.** Use the GitHub Release tarball or the GitHub source install until the account is restored.
+> **Status (2026-10-21): the 0.2.1 release candidate is prepared locally; npm publication is blocked until the temporary suspension lifts.** npm Support states the account will return to normal on **2026-10-21 22:42 UTC** (**2026-10-22 04:42 Asia/Dhaka**) after a recovery-code login triggered a 72-hour security suspension. `npm whoami` returns **E401 Unauthorized** and `npm view @atifjubaer/fastrmemory version` returns **E404**, so the npm registry package has never been published. If the recovery-code login was legitimate, no action is required; wait for the automatic return. **Do not bypass npm security checks, 2FA, or the suspension.** Use the GitHub Release tarball or the GitHub source install until the account is restored.
 
 This document explains why npm matters for FastrMemory, how the package is verified, and the exact resume protocol. It is a resume plan, not a workaround.
 
@@ -35,6 +35,17 @@ This document explains why npm matters for FastrMemory, how the package is verif
 
 ---
 
+## Release candidate 0.2.1
+
+The 0.2.1 release candidate is prepared and verified locally:
+
+- `npm pack` produced `atifjubaer-fastrmemory-0.2.1.tgz` at **588,890 bytes**.
+- SHA-256: `57A14F9E4615DC468469E6A27471DAA5CDD4810DE1732FFB55B8A2AA36A7CF1D`.
+- Clean install in an empty temp project: **2.12 s**, **16,486,853 bytes** in `node_modules`; `fastr --version` and `fastrmemory --version` both report `0.2.1`.
+- `npm whoami` remains E401 and `npm view` remains E404, so the package is not published.
+
+The candidate has no GitHub Release asset yet. Do not link to a 0.2.1 asset until it is attached.
+
 ## Current interim distribution
 
 The verified v0.2.0 tarball is published as a GitHub Release asset:
@@ -57,9 +68,9 @@ npx github:atifjubaer/fastrmemory ui
 npm install -g git+https://github.com/atifjubaer/fastrmemory.git
 ```
 
-The release tarball is 571,279 bytes with SHA-256
+The v0.2.0 release tarball is 571,279 bytes with SHA-256
 `12B7D49546D6B904A2296724490E4D6EECE313514DA6C4BFDA6950137F309ED7`.
-The clean-install check reported `npx fastr --version` = `0.2.0`,
+The v0.2.0 clean-install check reported `npx fastr --version` = `0.2.0`,
 `npx fastrmemory --version` = `0.2.0`, and 16,397,409 bytes in `node_modules`.
 See [CLAIMS.md](../CLAIMS.md) for the evidence rows.
 
@@ -125,7 +136,7 @@ When the npm account is restored:
    npm view @atifjubaer/fastrmemory version
    npx @atifjubaer/fastrmemory@latest --version
    ```
-   Both must report `0.2.0` before any npm install claim is published.
+   Both must report `0.2.1` before any npm install claim is published.
 
 The automated assistant is optional:
 

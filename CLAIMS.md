@@ -8,21 +8,22 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 - **Packaging/CI inspection:** `de4fde3` (package, version, and CI changes in this ledger)
 - **Hardware:** AMD Ryzen 7 7700, 15.1 GB RAM, Windows 10 Pro 19045, Node v24.15.0
 - **Scope:** FastrMemory only. No external memory engine is measured in this repository.
-- **Row provenance:** benchmark rows use commit `562f461`; Phase 3/4 rows use `a91ad6d`; package rows use `2aa4e20`; CI rows use `de4fde3`; `npm view` rows were run on 2026-10-20. The README table remains the frozen v0.2.0 release snapshot at `1495622`, preserved as `bench/results/minilm-1495622.json`.
+- **Row provenance:** benchmark rows use commit `562f461`; Phase 3/4 rows use `a91ad6d`; package rows use `2aa4e20`; CI rows use `de4fde3`; `npm view` rows were run on 2026-10-20. The README table is the current `562f461` run; the earlier v0.2.0 snapshot at `1495622` is preserved as `bench/results/minilm-1495622.json` for comparison.
 
 ## A. Distribution and package
 
 | ID | Claim | Where | Status | Evidence command | Raw output | Caveat |
 |---|---|---|---|---|---|---|
-| A1 | Package is `@atifjubaer/fastrmemory` v0.2.0 | `package.json` | Supported | `node -p "require('./package.json').name + ' ' + require('./package.json').version"` | `@atifjubaer/fastrmemory 0.2.0` | Version bump accompanies the retrieval and packaging changes |
+| A1 | Package is `@atifjubaer/fastrmemory` v0.2.1 | `package.json` | Supported | `node -p "require('./package.json').name + ' ' + require('./package.json').version"` | `@atifjubaer/fastrmemory 0.2.1` | 0.2.1 release candidate; npm publication remains blocked until the suspension lifts |
 | A2 | Package is published on npm | README | **Blocked** | `npm view @atifjubaer/fastrmemory version` | `E404 Not Found` | Never advertise npm install until this passes |
-| A3 | GitHub source metadata resolves | README | Supported | `npm view github:atifjubaer/fastrmemory version` | `0.2.0` | GitHub default branch was at `de4fde3` when inspected; later commits are local until pushed; the npm registry package is still E404 |
-| A4 | Tarball size | README (not claimed) | Supported | `npm pack --dry-run --json --ignore-scripts` | 557.9 kB packed, 2.1 MB unpacked, 200 files | Dry-run on 2026-10-20; the actual tarball is 571,279 bytes with SHA-256 `12B7D49546D6B904A2296724490E4D6EECE313514DA6C4BFDA6950137F309ED7`; generated from the release tree (README install update included); the attached release asset is the canonical artifact; tarball hashes are sensitive to line endings; excludes the optional MiniLM model; the asset predates the Phase 2 module-scope fix |
+| A3 | GitHub source metadata resolves | README | Supported | `npm view github:atifjubaer/fastrmemory version` | `0.2.0` | GitHub default branch was at `de4fde3` when inspected; the 0.2.1 release candidate is local until pushed; the npm registry package is still E404 |
+| A4 | Tarball size | README (not claimed) | Supported | `npm pack --ignore-scripts`; `scripts/check-package.mjs` | 588,890 bytes; 2,327,908 bytes unpacked; 216 files; SHA-256 `57A14F9E4615DC468469E6A27471DAA5CDD4810DE1732FFB55B8A2AA36A7CF1D` | Local pack on 2026-10-21 for v0.2.1; `check:package` reports 575.1 kB using 1024-byte units, which equals 588,890 bytes, so the gate and the actual tarball agree; registry tarballs can differ because archive timestamps and the publish-time pack are not byte-stable; excludes the optional MiniLM model; verify the registry hash after publish |
 | A5 | Apache-2.0 license | README, `package.json` | Supported | `node -p "require('./package.json').license"` | `Apache-2.0` | `LICENSE` present |
 | A6 | Node >= 22.16.0 | `package.json` | Supported | `node -p "require('./package.json').engines.node"` | `>=22.16.0` | Local tests run on Node 24.15.0 |
 | A7 | Three required runtime dependencies | README | Supported | `npm ls --depth=0 --omit=dev` | `@modelcontextprotocol/server`, `commander`, `zod` | MiniLM is an optional peer plus a dev dependency |
-| A8 | Clean install stays under 20 MB | README (not claimed) | Supported | `npm install <0.2.0 tarball> --ignore-scripts` in an empty temp project, then measure `node_modules` | 1.81 s install; 16,397,409 bytes; `npx fastr --version` and `npx fastrmemory --version` both `0.2.0` | Local Windows run on 2026-10-20; npm cache may affect install time; optional MiniLM model is not installed |
+| A8 | Clean install stays under 20 MB | README (not claimed) | Supported | `npm install <0.2.1 tarball> --ignore-scripts` in an empty temp project, then measure `node_modules` | 2.12 s install; 16,486,853 bytes; `fastr --version` and `fastrmemory --version` both `0.2.1` | Local Windows run on 2026-10-21; npm cache may affect install time; optional MiniLM model is not installed |
 | A9 | v0.2.0 GitHub Release asset is attached and installable | README | Supported | `gh release download v0.2.0 --pattern atifjubaer-fastrmemory-0.2.0.tgz`; `npm install <release asset URL> --ignore-scripts` | 571,279 bytes; SHA-256 `12B7D49546D6B904A2296724490E4D6EECE313514DA6C4BFDA6950137F309ED7`; release-URL install 3.71 s; CLI `0.2.0` | Asset URL `https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.0/atifjubaer-fastrmemory-0.2.0.tgz`; local Windows run on 2026-10-20; line-ending hash sensitivity applies; the asset predates the Phase 2 module-scope fix |
+| A10 | v0.2.1 GitHub Release asset is attached | README fallback path | **Not measured** | `gh release view v0.2.1` | Not attached | The 0.2.1 candidate is local only; do not link to a v0.2.1 asset until the release is created |
 
 ## B. Architecture and footprint
 
@@ -40,7 +41,7 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 
 | ID | Claim | Where | Status | Evidence command | Raw output | Caveat |
 |---|---|---|---|---|---|---|
-| C1 | 41 MCP tools | README (39 at v0.2.0), current HEAD | Supported | `Select-String -Path src/mcp/server.ts -Pattern 'server.registerTool\\(' \| Measure-Object` | `41` | Adds `fastr_replay` and `fastr_diff` after the v0.2.0 release; README badge remains release-era |
+| C1 | 41 MCP tools | README, current HEAD | Supported | `Select-String -Path src/mcp/server.ts -Pattern 'server.registerTool\\(' \| Measure-Object` | `41` | Adds `fastr_replay` and `fastr_diff`; README now states 41 |
 | C2 | 2 MCP prompts | README | Supported | same, `registerPrompt` | `2` (`pre-edit-check`, `session-wrap-up`) | - |
 | C3 | 4 MCP resources | README | Supported | same, `registerResource` | `4` (3 static + 1 template) | Template is `fastr://memory/{id}` |
 | C4 | 10 Agent Skills | README | Supported | `(Get-ChildItem skills -Directory).Count` | `10` | Mirrored to `.cursor/skills/` |
@@ -50,7 +51,7 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 
 | ID | Claim | Where | Status | Evidence command | Raw output | Caveat |
 |---|---|---|---|---|---|---|
-| D1 | 226 tests pass across 38 files | README (v0.2.0 release) | Supported | `npm test` | `226 passed`, `38 passed` | Frozen release-era badge; current suite is D1b. Local Windows run; CI is separate |
+| D1 | Historical v0.2.0 count: 226 tests, 38 files | v0.2.0 release notes | Historical | `npm test` | `226 passed`, `38 passed` | Historical v0.2.0 result; current suite is D1b |
 | D1b | 234 tests pass across 42 files | Current HEAD | Supported | `npm test` | `234 passed`, `42 passed` | Run on 2026-10-21 at `a91ad6d`; local Windows run; CI is separate |
 | D2 | Test suite writes nothing to the real home store | README | Supported | `npm test` then count rows | 60 before, 60 after | The 60 pre-existing rows are documented legacy data |
 | D3 | 6/6 CI matrix green | ROADMAP | Supported | `gh run view 39467306362 --json conclusion,jobs` | 6/6 jobs succeeded: Ubuntu, Windows, and Intel macOS on Node 22.x and 24.x | Run on `de4fde3`; `fail-fast` disabled; macOS jobs use `macos-15-intel`; Apple Silicon is not covered |

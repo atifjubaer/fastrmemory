@@ -15,24 +15,24 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 | Local test gate | **Done:** 234 tests across 42 files | `npm run check:ci` on 2026-10-21 |
 | CI matrix | **Partial:** 6/6 green only at `de4fde3`; commits after it have not run in CI | run `39467306362` |
 | npm distribution | **Blocked:** `npm whoami` E401, `npm view` E404; suspension lifts 2026-10-21 22:42 UTC | `docs/npm-publishing.md` |
-| Package artifact | **Partial:** v0.2.0 GitHub asset is 571,279 bytes; current HEAD packs to 588,767 bytes | release asset vs `npm pack` |
+| Package artifact | **Candidate ready:** v0.2.1 local tarball is 588,890 bytes, SHA-256 `57A14F9E4615DC468469E6A27471DAA5CDD4810DE1732FFB55B8A2AA36A7CF1D`; v0.2.0 GitHub asset is 571,279 bytes | `npm pack` vs release asset |
 | Benchmark | **Done for the synthetic gate:** 240 cases, 192/48 split; holdout 95.8% Hit@1, 100% Hit@5, 209 tokens | `bench/results/minilm.json` |
 | Replay and snapshots | **Done:** exact at three timestamps; JSONL round-trip hash stable | `bench/results/replay-evidence.json` |
-| Default install | **Likely pass, needs current measurement:** release clean install was 16.4 MB with three runtime dependencies | `CLAIMS.md` A8 |
+| Default install | **Pass (0.2.1 candidate):** 16,486,853 bytes, 2.12 s, three runtime dependencies | `CLAIMS.md` A8 |
 | Crash test | **Missing:** no 10k random-kill report | `CLAIMS.md` D4 |
 
 ## Phase 0 — Truth reset
 
 | Item | Status | Evidence / remaining work |
 |---|---|---|
-| Remove stale benchmark claims | **Partial** | `docs/benchmark-report.md` is current; `README.md` remains the frozen release snapshot and still shows 226 tests / 38 suites / 39 tools. It can be updated only when the release artifact is repacked. |
-| Correct competitor and dependency claims | **Partial** | `CLAIMS.md` records removed claims; README still contains release-era wording. |
+| Remove stale benchmark claims | **Done** | `README.md` now uses the `562f461` run and states 234 tests / 42 files / 41 tools; `docs/benchmark-report.md` and `BENCHMARKS.md` match. |
+| Correct competitor and dependency claims | **Partial** | `CLAIMS.md` records removed claims; the full README rewrite and launch copy remain. |
 | `CLAIMS.md` with command, output, date, commit, caveat | **Done** | `CLAIMS.md` |
 | Baseline audit | **Done** | `docs/audit/2026-10-20-baseline.md` |
 | Align specification, release notes, npm docs | **Partial** | `docs/SPECIFICATION.md` and `RELEASE_v0.1.0.md` still need a final pass against current counts. |
 | Replace inflated time estimates with evidence gates | **Done** | This roadmap |
 
-**Gate:** every public claim maps to `CLAIMS.md`; no stale count remains in a shipped README. Current result: **Partial** because README is still release-frozen.
+**Gate:** every public claim maps to `CLAIMS.md`; no stale count remains in a shipped README. Current result: **Partial** because `CLAIMS.md` coverage is not yet complete across every launch document.
 
 ## Phase 1 — Credibility and distribution
 
@@ -40,10 +40,11 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 |---|---|---|
 | Hermetic tests and `FASTR_HOME` isolation | **Done** | `tests/isolation.test.ts`; `tests/setup.ts` |
 | Clean the 60 legacy test rows | **Partial** | `scripts/clean-test-junk.mjs` exists; `--apply --yes` has not been run and needs explicit approval. |
-| Package surface, build split, tarball gate | **Done** | `scripts/check-package.mjs`; 574.9 kB reported packed at `check:ci` |
-| Publish v0.2.0 to npm | **Blocked** | npm account suspension; resume protocol documented |
-| Publish a release that matches current HEAD | **Missing** | Current HEAD is 5 commits past `origin/main`; current tarball differs from the v0.2.0 GitHub asset. |
-| CI matrix for the current commit | **Partial** | Last full matrix is 6/6 at `de4fde3`; `a91ad6d`, `02a6bf0`, `6c27f32`, and `f5d9c06` are unpushed and unrun. |
+| Package surface, build split, tarball gate | **Done** | `scripts/check-package.mjs`; 588,890 bytes / 216 files (575.1 KiB) at `check:ci` |
+| Prepare v0.2.1 release candidate | **Done** | Version, README, `CLAIMS.md`, `CHANGELOG.md`, skills metadata; `npm run check:ci`; tarball SHA-256 recorded |
+| Publish v0.2.1 to npm | **Blocked** | npm account suspension; resume protocol documented |
+| Attach v0.2.1 GitHub Release asset | **Missing** | Candidate is local only; needs push and release approval. |
+| CI matrix for the current commit | **Partial** | Last full matrix is 6/6 at `de4fde3`; `a91ad6d`, `02a6bf0`, `6c27f32`, `f5d9c06`, `eefcac6`, and the release prep are unpushed and unrun. |
 | Apple Silicon macOS coverage | **Missing** | Matrix uses `macos-15-intel` only. |
 
 **Gate:** 6/6 OS × Node green on the release commit; npm published or explicitly blocked; `npx` works; tarball under 5 MB. Current result: **Partial**.
@@ -110,12 +111,12 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 
 | Item | Status | Evidence / remaining work |
 |---|---|---|
-| README rewritten around measured claims | **Missing** | README is frozen at the v0.2.0 release snapshot. |
+| README rewritten around measured claims | **Partial** | Truth reset is done: counts, benchmark table, and registry status now match current evidence. Full launch rewrite remains. |
 | `BENCHMARKS.md` and `CLAIMS.md` | **Done** | Both present and checked. |
 | `MIGRATION.md` | **Missing** | Not present. |
 | `SECURITY.md` | **Missing** | Not present. |
 | `SCORECARD.md` | **Missing** | Not present. |
-| `CHANGELOG.md` | **Missing** | Not present. |
+| `CHANGELOG.md` | **Done** | `CHANGELOG.md` covers 0.1.0 through the 0.2.1 candidate. |
 | Launch post with one command per number | **Partial** | Blog post exists; README/npm launch path is not complete. |
 
 **Gate:** 100% of README claims traced; docs checks green; every launch number reproducible. Current result: **Partial**.
@@ -124,10 +125,10 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 
 | Gate | Pass condition | Current |
 |---|---|---|
-| Truth | No false/stale claims; `CLAIMS.md` covers every public claim | **Partial** — README frozen with stale counts |
+| Truth | No false/stale claims; `CLAIMS.md` covers every public claim | **Partial** — README counts are current; full CLAIMS coverage is not |
 | Tests | 6/6 OS × Node green on the release commit; isolation green | **Partial** — local 234 green; current commit unrun |
-| Package | npm published or explicitly blocked and documented; `npx` works | **Blocked** |
-| Footprint | Default install under 20 MB; install under 10 s | **Partial** — needs current measurement |
+| Package | npm published or explicitly blocked and documented; `npx` works | **Blocked** — 0.2.1 candidate ready; npm suspension |
+| Footprint | Default install under 20 MB; install under 10 s | **Pass (candidate)** — 16,486,853 bytes, 2.12 s |
 | Benchmark | 240+ cases; held-out; raw JSON committed | **Done** |
 | Retrieval | Hit@1 ≥90%; Hit@5 ≥98%; external baseline +5pp Hit@5; tokens ≤0.5× | **Partial** — synthetic targets pass; external gate missing |
 | Integrity | 0 lost/0 duplicates in 10k crash test; replay exact | **Partial** — replay done; crash test missing |
@@ -136,25 +137,25 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 
 ## Immediate release path (npm)
 
-1. Choose the release identity: recommended `0.2.1` from current HEAD, because current HEAD includes the corrected MCP server name and the 41-tool surface.
-2. Update version, README, `CLAIMS.md`, and release notes together; rebuild and pack the release tarball.
-3. Run `npm run check:ci`, then verify the exact tarball and SHA-256.
-4. After the npm suspension lifts, run `npm login`, `npm whoami`, and `npm publish --access public`.
-5. Verify `npm view` and `npx` from a clean temp directory; then update the claims ledger from Blocked to Supported.
+1. **Done:** choose `0.2.1` from current HEAD, because current HEAD includes the corrected MCP server name and the 41-tool surface.
+2. **Done locally:** version, README, `CLAIMS.md`, `CHANGELOG.md`, and skills metadata updated; core rebuilt and tarball packed.
+3. **Done:** `npm run check:ci` green; tarball is 588,890 bytes with SHA-256 `57A14F9E4615DC468469E6A27471DAA5CDD4810DE1732FFB55B8A2AA36A7CF1D`.
+4. **Pending:** after the npm suspension lifts, run `npm login`, `npm whoami`, and `npm publish --access public`.
+5. **Pending:** verify `npm view` and `npx` from a clean temp directory; update the claims ledger from Blocked to Supported.
 
-Do not publish current HEAD as `0.2.0`: the current tarball is 588,767 bytes, while the existing GitHub v0.2.0 asset is 571,279 bytes, and the README inside still describes an unpublished npm package.
+Do not publish current HEAD as `0.2.0`: current HEAD is now `0.2.1`, its tarball is 588,890 bytes, and the existing GitHub v0.2.0 asset is 571,279 bytes.
 
 ## Work order
 
-1. **P0:** prepare and verify the npm release candidate.
-2. **P0:** run the 10k crash test and commit the report.
+1. **P0:** prepare and verify the npm release candidate. **Done** for `0.2.1`; publish remains blocked.
+2. **P0:** run the 10k crash test and commit the report. **Next.**
 3. **P1:** add the 12-tool core profile and its smoke test.
 4. **P1:** add OpenCode/Gemini/Copilot hook parity, local import, and conflict-aware recall.
 5. **P1:** add the dashboard timeline/diff view and observe a live Memory CI PR comment.
 6. **P2:** add public benchmark harnesses and a pinned external baseline.
 7. **P2:** finish README, migration, security, scorecard, changelog, and launch evidence.
 
-Estimated remaining effort: **7–12 focused days**, not one session. The npm release candidate can be ready before the suspension lifts; the full prompt cannot be completed and evidenced before 2026-10-22 without skipping gates.
+Estimated remaining effort: **7–12 focused days**, not one session. The `0.2.1` release candidate is ready before the suspension lifts; the full prompt cannot be completed and evidenced before 2026-10-22 without skipping gates.
 
 ## Reporting contract
 

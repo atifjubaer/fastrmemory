@@ -9,11 +9,11 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.16.0-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Protocol](https://img.shields.io/badge/Protocol-MCP%20v2-7C3AED?style=flat-square)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/Tests-226%20Passed-brightgreen?style=flat-square)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-234%20Passed-brightgreen?style=flat-square)](tests/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-architecture)
 
-> **Status (2026-10-20, benchmark commit `1495622`):** `@atifjubaer/fastrmemory` is **not yet published to npm** (`npm view` returns E404); install the **v0.2.0 GitHub Release tarball** or the GitHub source below. The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval, and no external engine is measured. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md). Release notes: [FastrMemory 0.2.0](docs/blog/2026-10-20-fastrmemory-0.2.0.md).
+> **Status (2026-10-21, v0.2.1):** Registry availability is verified with `npm view @atifjubaer/fastrmemory version`. If it returns `0.2.1`, install from npm. If it returns E404, use the **v0.2.0 GitHub Release tarball** or the GitHub source below. The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval, and no external engine is measured. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md). Release notes: [CHANGELOG.md](CHANGELOG.md).
 
 <p align="center">
   <a href="#-overview">Overview</a> &bull;
@@ -91,7 +91,7 @@ Clients commonly used with FastrMemory include Codex CLI, Gemini CLI, OpenCode, 
 
 ### ⚡ Run Without a Global Install
 
-Run directly from GitHub. The npm registry package is still unavailable (`npm view` returns E404):
+Run directly from GitHub (this works while npm publication is pending):
 
 ```bash
 # Instant interactive auto-setup:
@@ -102,6 +102,19 @@ npx github:atifjubaer/fastrmemory ui
 ```
 
 ---
+
+### Install from npm (when available)
+
+```bash
+# Check the registry first:
+npm view @atifjubaer/fastrmemory version
+
+# If it returns 0.2.1:
+npm install -g @atifjubaer/fastrmemory@0.2.1
+fastr --version
+```
+
+If `npm view` returns E404, use one of the GitHub install paths below.
 
 ### Install the v0.2.0 GitHub Release Tarball
 
@@ -407,7 +420,7 @@ flowchart TD
 
     subgraph Protocol["4. Official MCP Protocol"]
         Budget --> MCPServer["Official MCP v2 Server\n(@modelcontextprotocol/server)"]
-        MCPServer --> Tools["39 tools • 2 prompts • 4 resources"]
+        MCPServer --> Tools["41 tools • 2 prompts • 4 resources"]
         Tools --> Agent
     end
 ```
@@ -422,13 +435,13 @@ Run the comprehensive unit test suite:
 npm test
 ```
 
-All **226 tests pass** across **38 test suites** covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, UI loopback security boundaries, and atomic installer configuration safety.
+All **234 tests pass** across **42 test files** covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, replay/diff, Memory CI, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, UI loopback security boundaries, and atomic installer configuration safety.
 
 ---
 
 ## Retrieval Benchmark (240 synthetic cases)
 
-Generated from [`bench/results/minilm.json`](bench/results/minilm.json) on **2026-10-20** at benchmark commit `1495622`. The corpus is deterministic: 120 memories and 240 queries, split into **192 train / 48 holdout (20%)**. The holdout was fixed before tuning and is reported separately. Reproduce with:
+Generated from [`bench/results/minilm.json`](bench/results/minilm.json) on **2026-10-20** at benchmark commit `562f461`. The corpus is deterministic: 120 memories and 240 queries, split into **192 train / 48 holdout (20%)**. The holdout was fixed before tuning and is reported separately. Reproduce with:
 
 ```bash
 npx tsx scripts/eval-bench.ts --split all --embeddings minilm --out bench/results/minilm.json
@@ -437,11 +450,12 @@ npx tsx scripts/eval-bench.ts --split all --embeddings hash   --out bench/result
 
 | Configuration | Split | Cases | Hit@1 | Hit@3 | Hit@5 | MRR | nDCG@10 | Context tokens | p50 |
 | :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| FastrMemory + MiniLM | Train | 192 | 94.8% | 99.0% | 100% | 0.968 | 0.976 | 206 | 4.04 ms |
-| FastrMemory + MiniLM | **Holdout** | 48 | **89.6%** | **95.8%** | **100%** | **0.932** | **0.949** | 206 | 3.65 ms |
-| FastrMemory BM25-only | Train | 192 | 79.7% | 90.6% | 100% | 0.868 | 0.900 | 203 | 0.49 ms |
-| FastrMemory BM25-only | Holdout | 48 | 77.1% | 77.1% | 93.8% | 0.804 | 0.835 | 204 | 0.70 ms |
+| FastrMemory + MiniLM | Train | 192 | 96.4% | 99.0% | 100% | 0.976 | 0.982 | 208 | 3.30 ms |
+| FastrMemory + MiniLM | **Holdout** | 48 | **95.8%** | **97.9%** | **100%** | **0.969** | **0.977** | 209 | 3.41 ms |
+| FastrMemory BM25-only | Train | 192 | 79.7% | 90.6% | 100% | 0.868 | 0.900 | 203 | 0.48 ms |
+| FastrMemory BM25-only | Holdout | 48 | 77.1% | 77.1% | 93.8% | 0.804 | 0.835 | 204 | 0.60 ms |
 | Static dump - simulated baseline | Train | 192 | 2.1% | 6.3% | 8.3% | 0.055 | 0.081 | 3652 | 0.00 ms |
+| Static dump - simulated baseline | Holdout | 48 | 0.0% | 0.0% | 8.3% | 0.025 | 0.056 | 3652 | 0.00 ms |
 
 > **Caveats:** this is a deterministic synthetic corpus, not SWE-bench or LongMemEval. No external memory engine is measured. The static-dump row is a simulation implemented in this repository, not an external project. Context tokens are the compact prompt text under a 250-token budget; the ranked result objects retain full memory content. Methodology, per-category breakdowns, ablations, and confidence intervals are in [BENCHMARKS.md](BENCHMARKS.md) and [docs/benchmark-report.md](docs/benchmark-report.md).
 
@@ -535,7 +549,7 @@ Special thanks to **[@the-arizul](https://github.com/the-arizul)** for architect
    cd fastrmemory
    ```
 
-2. **Install Dependencies & Verify Test Suite (226 Tests Passing)**:
+2. **Install Dependencies & Verify Test Suite (234 Tests Passing)**:
    ```bash
    npm install
    npm test
@@ -568,7 +582,7 @@ Special thanks to **[@the-arizul](https://github.com/the-arizul)** for architect
 Before submitting your PR, verify:
 - [ ] **Strict TypeScript**: `npm run build:all` passes without type errors.
 - [ ] **Zero External Daemons**: Engine runs in-process via Node.js WAL SQLite.
-- [ ] **100% Test Green**: `npm test` passes all 226 unit tests across 38 suites.
+- [ ] **100% Test Green**: `npm test` passes all 234 unit tests across 42 files.
 - [ ] **DCO Sign-off**: All commits signed off using `git commit -s` ([Developer Certificate of Origin](https://developercertificate.org/)).
 - [ ] **Pre-Merge Trap Guardian**: Run `fastrmemory guard --strict` to verify no active error traps are violated.
 

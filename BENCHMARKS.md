@@ -6,7 +6,7 @@
 **Raw JSON:** [`bench/results/minilm.json`](bench/results/minilm.json), [`bench/results/hash.json`](bench/results/hash.json)
 **Corpus size:** 240 deterministic synthetic cases (192 train / 48 holdout)
 
-The README table is the frozen v0.2.0 release snapshot at commit `1495622`; its raw artifact is preserved as [`bench/results/minilm-1495622.json`](bench/results/minilm-1495622.json). The numbers below are the current post-fix run at `562f461`.
+The README table and the numbers below are generated from the current post-fix run at `562f461`. The earlier v0.2.0 snapshot at `1495622` is preserved as [`bench/results/minilm-1495622.json`](bench/results/minilm-1495622.json) for comparison.
 
 ## Corpus
 

@@ -10,7 +10,7 @@
 
 This report replaces the earlier 12-case smoke test as the headline benchmark. The new corpus has **240 deterministic synthetic cases** (120 memories, 192 train / 48 holdout). The holdout is fixed by the generator and was not used to choose retrieval weights.
 
-The README table remains the frozen v0.2.0 release snapshot at commit `1495622`; its artifact is preserved as [`bench/results/minilm-1495622.json`](../bench/results/minilm-1495622.json). The table below is the current post-fix run at `562f461`.
+The README table and the table below are generated from the current post-fix run at `562f461`. The earlier v0.2.0 snapshot at `1495622` is preserved as [`bench/results/minilm-1495622.json`](../bench/results/minilm-1495622.json) for comparison.
 
 | Configuration | Split | Hit@1 | Hit@3 | Hit@5 | MRR | nDCG@10 | Context tokens | p50 |
 | :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
