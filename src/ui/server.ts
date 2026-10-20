@@ -13,11 +13,107 @@ import { globalBroadcaster } from './sse.js';
 export interface UiServerOptions {
   port?: number;
   openBrowser?: boolean;
+  /** Interface to bind. Defaults to loopback so the dashboard is never exposed to the LAN. */
+  host?: string;
+}
+
+const MAX_BODY_BYTES = 1024 * 1024;
+const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
+
+class HttpError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+  }
+}
+
+function hostnameOf(value: string): string | null {
+  try {
+    return new URL(value.includes('://') ? value : `http://${value}`).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Rejects cross-site and DNS-rebinding requests. The dashboard API exposes every memory and can
+ * create verified rules, so only pages served from a loopback origin may call it.
+ */
+export function isTrustedRequest(headers: http.IncomingHttpHeaders): boolean {
+  const host = headers.host ? hostnameOf(headers.host) : null;
+  if (!host || !LOOPBACK_HOSTNAMES.has(host)) return false;
+  const origin = headers.origin;
+  if (origin === undefined) return true; // same-origin GETs and non-browser clients (curl, tests)
+  const originHost = hostnameOf(origin);
+  return originHost !== null && LOOPBACK_HOSTNAMES.has(originHost) && /^https?:\/\//.test(origin);
+}
+
+function readJsonBody(req: http.IncomingMessage): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const contentType = String(req.headers['content-type'] || '');
+    if (!contentType.toLowerCase().startsWith('application/json')) {
+      // Requiring JSON forces a CORS preflight for any cross-origin caller, which we never approve.
+      req.resume();
+      reject(new HttpError(415, 'Content-Type must be application/json'));
+      return;
+    }
+    let size = 0;
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > MAX_BODY_BYTES) {
+        reject(new HttpError(413, 'Request body too large'));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => {
+      try {
+        const text = Buffer.concat(chunks).toString('utf8');
+        resolve(text ? JSON.parse(text) : {});
+      } catch {
+        reject(new HttpError(400, 'Invalid JSON body'));
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
+function sendJson(res: http.ServerResponse, status: number, payload: unknown): void {
+  if (res.headersSent) return;
+  res.writeHead(status, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(payload));
+}
+
+function handleJsonPost(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  fallbackError: string,
+  handler: (data: any) => { status?: number; body: unknown }
+): void {
+  readJsonBody(req)
+    .then((data) => {
+      const { status = 200, body } = handler(data);
+      sendJson(res, status, body);
+    })
+    .catch((err: any) => {
+      sendJson(res, err instanceof HttpError ? err.status : 400, { error: err?.message || fallbackError });
+    });
+}
+
+function escapeHtmlServer(value: string): string {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 export function startUiServer(config: FastrConfig, options: UiServerOptions = {}): Promise<{ server: http.Server; port: number; url: string }> {
   const preferredPort = options.port !== undefined ? options.port : 4242;
   const shouldOpen = options.openBrowser ?? true;
+  const host = options.host ?? '127.0.0.1';
 
   const db = initDatabase(config.dbPath);
   const spool = new SpoolManager(config.spoolPath);
@@ -27,19 +123,30 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
     let resolved = false;
 
     const server = http.createServer((req, res) => {
-      const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+      try {
+        handleRequest(req, res);
+      } catch (err: any) {
+        sendJson(res, 500, { error: err?.message || 'Internal server error' });
+      }
+    });
 
-      // Enable CORS for local dev
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    const handleRequest = (req: http.IncomingMessage, res: http.ServerResponse): void => {
       res.setHeader('Connection', 'close');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+
+      // No CORS headers are ever sent: cross-origin pages must not read or mutate memories.
+      if (!isTrustedRequest(req.headers)) {
+        sendJson(res, 403, { error: 'Forbidden: dashboard only accepts requests from localhost' });
+        return;
+      }
 
       if (req.method === 'OPTIONS') {
         res.writeHead(204);
         res.end();
         return;
       }
+
+      const url = new URL(req.url || '/', 'http://localhost');
 
       // API: Status & Metadata
       if (url.pathname === '/api/status') {
@@ -110,65 +217,38 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
 
       // API: Create Memory / Error Trap from UI
       if (req.method === 'POST' && url.pathname === '/api/memories') {
-        let body = '';
-        req.on('data', (chunk) => { body += chunk; });
-        req.on('end', () => {
-          try {
-            const data = JSON.parse(body || '{}');
-            const memory = repo.insertMemory({
-              projectId: config.projectId,
-              title: String(data.title || '').trim(),
-              content: String(data.content || '').trim(),
-              module: data.module ? String(data.module).trim() : 'general',
-              kind: data.kind || 'rule',
-              files: Array.isArray(data.files) ? data.files : [],
-              verified: true,
-            });
-            globalBroadcaster.broadcast('memory_created', memory);
-            res.writeHead(201, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify(memory));
-          } catch (err: any) {
-            res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: err.message || 'Failed to create memory' }));
-          }
+        handleJsonPost(req, res, 'Failed to create memory', (data) => {
+          const memory = repo.insertMemory({
+            projectId: config.projectId,
+            title: String(data.title || '').trim(),
+            content: String(data.content || '').trim(),
+            module: data.module ? String(data.module).trim() : 'general',
+            kind: data.kind || 'rule',
+            files: Array.isArray(data.files) ? data.files.map(String) : [],
+            verified: true,
+          });
+          globalBroadcaster.broadcast('memory_created', memory);
+          return { status: 201, body: memory };
         });
         return;
       }
 
       // API: Pin / Unpin Memory
       if (req.method === 'POST' && url.pathname === '/api/memories/pin') {
-        let body = '';
-        req.on('data', (chunk) => { body += chunk; });
-        req.on('end', () => {
-          try {
-            const data = JSON.parse(body || '{}');
-            const result = repo.pinMemory(String(data.memoryId), Boolean(data.pinned));
-            globalBroadcaster.broadcast('memory_updated', { id: data.memoryId, pinned: data.pinned });
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify(result));
-          } catch (err: any) {
-            res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: err.message || 'Failed to update pin' }));
-          }
+        handleJsonPost(req, res, 'Failed to update pin', (data) => {
+          const result = repo.pinMemory(String(data.memoryId), Boolean(data.pinned));
+          globalBroadcaster.broadcast('memory_updated', { id: data.memoryId, pinned: data.pinned });
+          return { body: result };
         });
         return;
       }
 
       // API: Forget / Soft-Delete Memory
       if (req.method === 'POST' && url.pathname === '/api/memories/forget') {
-        let body = '';
-        req.on('data', (chunk) => { body += chunk; });
-        req.on('end', () => {
-          try {
-            const data = JSON.parse(body || '{}');
-            const result = repo.forgetMemory(String(data.memoryId), data.reason);
-            globalBroadcaster.broadcast('memory_updated', { id: data.memoryId, status: 'superseded' });
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify(result));
-          } catch (err: any) {
-            res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: err.message || 'Failed to forget memory' }));
-          }
+        handleJsonPost(req, res, 'Failed to forget memory', (data) => {
+          const result = repo.forgetMemory(String(data.memoryId), data.reason);
+          globalBroadcaster.broadcast('memory_updated', { id: data.memoryId, status: 'superseded' });
+          return { body: result };
         });
         return;
       }
@@ -254,6 +334,11 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
 
       // API: Seed Example Action DAG Tasks
       if (req.method === 'POST' && url.pathname === '/api/actions/seed') {
+        // Idempotent: a second click must not hit the UNIQUE constraint on the fixed demo ids.
+        if (repo.getAction('task_sqlite_wal_bench')) {
+          sendJson(res, 200, { seeded: [], alreadySeeded: true });
+          return;
+        }
         const a1 = repo.createAction({
           id: 'task_sqlite_wal_bench',
           projectId: config.projectId,
@@ -304,24 +389,15 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
 
       // API: Resolve Memory Conflict
       if (req.method === 'POST' && url.pathname === '/api/conflicts/resolve') {
-        let body = '';
-        req.on('data', (chunk) => { body += chunk; });
-        req.on('end', () => {
-          try {
-            const data = JSON.parse(body || '{}');
-            const conflictId = Number(data.conflictId);
-            const keepMemoryId = String(data.keepMemoryId);
-            const forgetLoser = Boolean(data.forgetLoser);
-            const reason = data.reason ? String(data.reason) : undefined;
+        handleJsonPost(req, res, 'Failed to resolve conflict', (data) => {
+          const conflictId = Number(data.conflictId);
+          const keepMemoryId = String(data.keepMemoryId);
+          const forgetLoser = Boolean(data.forgetLoser);
+          const reason = data.reason ? String(data.reason) : undefined;
 
-            const result = repo.resolveConflict(conflictId, keepMemoryId, forgetLoser, reason);
-            globalBroadcaster.broadcast('conflict_resolved', result);
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify(result));
-          } catch (err: any) {
-            res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: err.message || 'Failed to resolve conflict' }));
-          }
+          const result = repo.resolveConflict(conflictId, keepMemoryId, forgetLoser, reason);
+          globalBroadcaster.broadcast('conflict_resolved', result);
+          return { body: result };
         });
         return;
       }
@@ -335,9 +411,10 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
       // Static File Serving (from precompiled dist-ui if present)
       const distDir = getDistUiDir();
       if (distDir && fs.existsSync(path.join(distDir, 'index.html'))) {
-        const reqPath = url.pathname === '/' ? '/index.html' : url.pathname;
-        const filePath = path.join(distDir, reqPath);
-        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+        const reqPath = url.pathname === '/' ? '/index.html' : decodeURIComponentSafe(url.pathname);
+        const filePath = path.resolve(distDir, '.' + reqPath);
+        const insideDist = filePath === distDir || filePath.startsWith(distDir + path.sep);
+        if (insideDist && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
           const ext = path.extname(filePath).toLowerCase();
           res.writeHead(200, { 'Content-Type': MIME_TYPES[ext] || 'application/octet-stream' });
           fs.createReadStream(filePath).pipe(res);
@@ -361,7 +438,7 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
 
       res.writeHead(404, { 'Content-Type': 'text/plain' });
       res.end('Not Found');
-    });
+    };
 
     let currentPort = preferredPort;
     let attempts = 0;
@@ -384,9 +461,9 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
       if (err.code === 'EADDRINUSE' && attempts < maxAttempts) {
         attempts++;
         currentPort++;
-        server.listen(currentPort);
+        server.listen(currentPort, host);
       } else if (err.code === 'EADDRINUSE') {
-        server.listen(0);
+        server.listen(0, host);
       } else {
         reject(err);
       }
@@ -416,7 +493,7 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
       }
     });
 
-    server.listen(currentPort);
+    server.listen(currentPort, host);
   });
 }
 
@@ -430,16 +507,27 @@ const MIME_TYPES: Record<string, string> = {
   '.ico': 'image/x-icon',
 };
 
+function decodeURIComponentSafe(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 function getDistUiDir(): string | null {
   try {
     const base = path.dirname(fileURLToPath(import.meta.url));
     const candidates = [
+      // Compiled: dist/src/ui/server.js -> <package root>/dist-ui (the layout npm/npx installs ship)
+      path.resolve(base, '..', '..', '..', 'dist-ui'),
+      // Source (tsx/vitest): src/ui/server.ts -> <repo root>/dist-ui
       path.resolve(base, '..', '..', 'dist-ui'),
       path.resolve(base, '..', 'dist-ui'),
       path.resolve(process.cwd(), 'dist-ui'),
     ];
     for (const c of candidates) {
-      if (fs.existsSync(c)) {
+      if (fs.existsSync(path.join(c, 'index.html'))) {
         return c;
       }
     }
@@ -453,7 +541,7 @@ function renderDashboardHtml(projectId: string, projectName: string): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>⚡ FastrMemory Hub &bull; ${projectName}</title>
+  <title>⚡ FastrMemory Hub &bull; ${escapeHtmlServer(projectName)}</title>
   <style>
     :root {
       --bg: #090d16;
@@ -788,7 +876,7 @@ function renderDashboardHtml(projectId: string, projectName: string): string {
     </div>
 
     <div style="font-size: 12px; color: var(--text-muted);">
-      Node 24 WAL &bull; <code style="color: #60a5fa;">${projectId}</code>
+      Node 24 WAL &bull; <code style="color: #60a5fa;">${escapeHtmlServer(projectId)}</code>
     </div>
   </header>
 
@@ -1049,8 +1137,8 @@ function renderDashboardHtml(projectId: string, projectName: string): string {
         // Populate module filter pills
         const pillsContainer = document.getElementById('module-pills');
         if (pillsContainer) {
-          pillsContainer.innerHTML = '<button class="pill active" onclick="filterByModule(\'all\')">All Modules</button>' +
-            (data.modules || []).map(m => '<button class="pill" onclick="filterByModule(\'' + m + '\')">' + m + '</button>').join('');
+          pillsContainer.innerHTML = '<button class="pill active" onclick="filterByModule(\\'all\\')">All Modules</button>' +
+            (data.modules || []).map(m => '<button class="pill" onclick="filterByModule(' + escapeHtml(JSON.stringify(m)) + ')">' + escapeHtml(m) + '</button>').join('');
         }
       } catch (err) {
         console.error('Failed to load status', err);
@@ -1105,7 +1193,7 @@ function renderDashboardHtml(projectId: string, projectName: string): string {
           ? '<div class="files-list">' + m.linked_files.map(f => '<span class="file-tag">' + escapeHtml(f) + '</span>').join('') + '</div>'
           : '<span style="color: var(--text-muted);">No linked files</span>';
 
-        return '<div class="card ' + (isTrap ? 'card-trap' : '') + '" onclick="openMemoryModal(\'' + m.id + '\')">' +
+        return '<div class="card ' + (isTrap ? 'card-trap' : '') + '" onclick="openMemoryModal(\\'' + m.id + '\\')">' +
           '<div class="card-header">' +
             '<div>' +
               '<div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">[' + m.id + '] &bull; ' + escapeHtml(m.module) + '</div>' +
@@ -1185,7 +1273,7 @@ function renderDashboardHtml(projectId: string, projectName: string): string {
         var borderCol = category === 'frontier' ? '#f59e0b' : category === 'active' ? '#3b82f6' : category === 'done' ? '#10b981' : '#6b7280';
         var assignHtml = a.assigned_to ? '<span>&bull; ' + escapeHtml(a.assigned_to) + '</span>' : '<span style="color: #34d399;">&bull; Unassigned</span>';
         var reqHtml = (a.requires && a.requires.length > 0) ? '<span style="color: #94a3b8;">&bull; Req: ' + a.requires.length + '</span>' : '';
-        return '<div class="card" onclick="openActionModal(\'' + a.id + '\')" style="padding: 12px; border-left: 3px solid ' + borderCol + ';">' +
+        return '<div class="card" onclick="openActionModal(\\'' + a.id + '\\')" style="padding: 12px; border-left: 3px solid ' + borderCol + ';">' +
           '<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">' +
             '<div style="font-size: 13px; font-weight: 600; color: #fff;">' + escapeHtml(a.title) + '</div>' +
             '<span class="badge" style="background: rgba(255,255,255,0.08); color: #cbd5e1;">P' + a.priority + '</span>' +
@@ -1240,9 +1328,9 @@ function renderDashboardHtml(projectId: string, projectName: string): string {
               'Memory A: <code style="color: #60a5fa;">' + c.memory_a_id + '</code> vs Memory B: <code style="color: #f43f5e;">' + c.memory_b_id + '</code>' +
             '</div>' +
             '<div style="display: flex; gap: 8px; flex-wrap: wrap;">' +
-              '<button class="pill" style="background: rgba(59, 130, 246, 0.15); border-color: #3b82f6; color: #93c5fd; font-size: 11px; padding: 4px 10px;" onclick="resolveConflictAction(' + c.id + ', \'' + c.memory_a_id + '\', true)">Keep ' + c.memory_a_id + ' (Deprecate B)</button>' +
-              '<button class="pill" style="background: rgba(244, 63, 94, 0.15); border-color: #f43f5e; color: #fca5a5; font-size: 11px; padding: 4px 10px;" onclick="resolveConflictAction(' + c.id + ', \'' + c.memory_b_id + '\', true)">Keep ' + c.memory_b_id + ' (Deprecate A)</button>' +
-              '<button class="pill" style="background: rgba(255, 255, 255, 0.05); color: #cbd5e1; font-size: 11px; padding: 4px 10px;" onclick="resolveConflictAction(' + c.id + ', \'' + c.memory_a_id + '\', false)">Keep Both (Weaken B)</button>' +
+              '<button class="pill" style="background: rgba(59, 130, 246, 0.15); border-color: #3b82f6; color: #93c5fd; font-size: 11px; padding: 4px 10px;" onclick="resolveConflictAction(' + c.id + ', \\'' + c.memory_a_id + '\\', true)">Keep ' + c.memory_a_id + ' (Deprecate B)</button>' +
+              '<button class="pill" style="background: rgba(244, 63, 94, 0.15); border-color: #f43f5e; color: #fca5a5; font-size: 11px; padding: 4px 10px;" onclick="resolveConflictAction(' + c.id + ', \\'' + c.memory_b_id + '\\', true)">Keep ' + c.memory_b_id + ' (Deprecate A)</button>' +
+              '<button class="pill" style="background: rgba(255, 255, 255, 0.05); color: #cbd5e1; font-size: 11px; padding: 4px 10px;" onclick="resolveConflictAction(' + c.id + ', \\'' + c.memory_a_id + '\\', false)">Keep Both (Weaken B)</button>' +
             '</div>' +
           '</div>';
         }).join('');
