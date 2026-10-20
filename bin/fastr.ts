@@ -216,7 +216,72 @@ trapCmd
     console.log(`✅ Trap [${id}] "${trap.title}" marked as dormant (${opts.reason}).`);
   });
 
-// 6. Sync command
+// 6. Conflict inspection and resolution
+const conflictCmd = program.command('conflict').description('Inspect and resolve contradictory memories');
+
+conflictCmd
+  .command('list')
+  .description('List detected memory conflicts')
+  .option('-s, --status <status>', 'open | resolved | ignored', 'open')
+  .option('--json', 'Print raw JSON', false)
+  .action((opts: any) => {
+    const status = String(opts.status || 'open').toLowerCase();
+    if (!['open', 'resolved', 'ignored'].includes(status)) {
+      console.error('Error: --status must be one of: open, resolved, ignored.');
+      process.exit(1);
+    }
+
+    const ctx = createFastrServerContext();
+    const conflicts = ctx.repo.listConflicts(ctx.config.projectId, status as 'open' | 'resolved' | 'ignored');
+    if (opts.json) {
+      console.log(JSON.stringify(conflicts, null, 2));
+      return;
+    }
+    if (conflicts.length === 0) {
+      console.log(`No ${status} memory conflicts for ${ctx.config.projectName}.`);
+      return;
+    }
+
+    console.log(`\n=== FastrMemory Conflicts (${conflicts.length} ${status}) ===`);
+    for (const conflict of conflicts) {
+      const a = ctx.repo.getMemory(conflict.memory_a_id);
+      const b = ctx.repo.getMemory(conflict.memory_b_id);
+      console.log(`- Conflict #${conflict.id} [${conflict.status}] score ${Number(conflict.score).toFixed(2)}`);
+      console.log(`  A: [${conflict.memory_a_id}] "${a?.title ?? 'missing memory'}"`);
+      console.log(`  B: [${conflict.memory_b_id}] "${b?.title ?? 'missing memory'}"`);
+      console.log(`  Reason: ${conflict.reason}`);
+      if (conflict.status === 'open') {
+        console.log(`  Resolve: fastr conflict resolve ${conflict.id} --keep <memory-id> [--forget]`);
+      }
+    }
+    console.log('');
+  });
+
+conflictCmd
+  .command('resolve <id>')
+  .description('Resolve a memory conflict by keeping one side')
+  .requiredOption('-k, --keep <memoryId>', 'Memory ID to keep')
+  .option('--forget', 'Supersede the losing memory instead of only weakening its score', false)
+  .option('-r, --reason <reason>', 'Resolution rationale')
+  .action((id: string, opts: any) => {
+    const conflictId = Number.parseInt(id, 10);
+    if (!Number.isInteger(conflictId) || conflictId < 1) {
+      console.error('Error: conflict id must be a positive integer.');
+      process.exit(1);
+    }
+
+    const ctx = createFastrServerContext();
+    try {
+      const res = ctx.repo.resolveConflict(conflictId, opts.keep, Boolean(opts.forget), opts.reason);
+      syncAllModulePages(ctx.db, ctx.config.projectRoot, ctx.config.projectId);
+      console.log(`✅ Conflict #${conflictId} resolved. Kept [${res.keptId}]; loser [${res.loserId}] ${opts.forget ? 'superseded' : 'weakened'}.`);
+    } catch (err: any) {
+      console.error(`Error: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+// 7. Sync command
 program
   .command('sync')
   .description('Re-render all Two-Zone Markdown pages in .fastr/pages/')

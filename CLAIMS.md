@@ -52,7 +52,7 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 | ID | Claim | Where | Status | Evidence command | Raw output | Caveat |
 |---|---|---|---|---|---|---|
 | D1 | Historical v0.2.0 count: 226 tests, 38 files | v0.2.0 release notes | Historical | `npm test` | `226 passed`, `38 passed` | Historical v0.2.0 result; current suite is D1b |
-| D1b | 235 tests pass across 43 files | Current HEAD | Supported | `npm test` | `235 passed`, `43 passed` | Run on 2026-10-21 after the core-profile test; local Windows run; CI is separate |
+| D1b | 239 tests pass across 44 files | Current HEAD | Supported | `npm test` | `239 passed`, `44 passed` | Run on 2026-10-21 after the conflict-recall test; local Windows run; CI is separate |
 | D2 | Test suite writes nothing to the real home store | README | Supported | `npm test` then count rows | 60 before, 60 after | The 60 pre-existing rows are documented legacy data |
 | D3 | 6/6 CI matrix green | ROADMAP | Supported | `gh run view 39495621243 --json conclusion,jobs` | 6/6 jobs succeeded: Ubuntu, Windows, and Intel macOS on Node 22.x and 24.x | Run on `3fa2bf9`; `fail-fast` disabled; macOS jobs use `macos-15-intel`; Apple Silicon is not covered |
 | D4 | Zero data loss in a 10k crash test | README, Roadmap | Supported | `npm run test:crash`; `npm run check:crash` | 10/10 runs; 10,718 acknowledged writes; 10,727 committed rows; 0 missing; 0 duplicate ids; 0 duplicate titles; `PRAGMA integrity_check` = `ok` | Local Windows run on 2026-10-21; kill is `taskkill /F`, not a power-loss test; `synchronous=NORMAL` in WAL mode; report at `bench/results/crash-test.json` |

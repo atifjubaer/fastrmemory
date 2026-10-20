@@ -957,6 +957,12 @@ export class FastrRepository {
     if (!conflict) {
       throw new Error(`Conflict ${conflictId} not found`);
     }
+    if (conflict.status !== 'open') {
+      throw new Error(`Conflict ${conflictId} is already ${conflict.status}`);
+    }
+    if (keepMemoryId !== conflict.memory_a_id && keepMemoryId !== conflict.memory_b_id) {
+      throw new Error(`Memory ${keepMemoryId} is not part of conflict ${conflictId}`);
+    }
 
     const loserId = conflict.memory_a_id === keepMemoryId ? conflict.memory_b_id : conflict.memory_a_id;
     const nowIso = new Date().toISOString();

@@ -2,6 +2,17 @@
 
 All notable changes to FastrMemory are recorded here. Versions follow semantic versioning.
 
+## [Unreleased]
+
+### Added
+
+- Conflict-aware recall: ranked results mark both sides of an open contradiction with the conflict id and the opposing memory.
+- `fastr conflict list` and `fastr conflict resolve <id> --keep <memory-id> [--forget] [--reason]`.
+
+### Fixed
+
+- Conflict resolution now rejects a keep id that is not part of the conflict and refuses to resolve an already-resolved conflict.
+
 ## [0.2.1] - 2026-10-21
 
 GitHub release attached from the post-0.2.0 fixes. npm publication remains blocked by the account suspension documented in [docs/npm-publishing.md](docs/npm-publishing.md).

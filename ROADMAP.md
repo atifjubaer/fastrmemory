@@ -3,7 +3,7 @@
 This roadmap is evidence-gated. A phase is complete only when its gate passes on a committed artifact (test, raw JSON, CI run, or installable package), not when code exists.
 
 - **Roadmap date:** 2026-10-21
-- **Code HEAD:** `f5d9c06`
+- **Code HEAD:** `feat/0.3.0` branch (release tag `v0.2.1` = `3fa2bf9`)
 - **Source:** the full 2026-10-20 mission prompt, not the earlier summary.
 - **Status legend:** **Done**, **Partial**, **Missing**, **Blocked**.
 - **Rule:** do not call the project complete while any gate below is Partial, Missing, or Blocked.
@@ -12,7 +12,7 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 
 | Item | Current state | Evidence |
 |---|---|---|
-| Local test gate | **Done:** 235 tests across 43 files | `npm run check:ci` on 2026-10-21 |
+| Local test gate | **Done:** 239 tests across 44 files | `npm run check:ci` on 2026-10-21 |
 | CI matrix | **Done:** 6/6 green at `3fa2bf9` | run `39495621243` |
 | npm distribution | **Blocked:** `npm whoami` E401, `npm view` E404; suspension lifts 2026-10-21 22:42 UTC | `docs/npm-publishing.md` |
 | Package artifact | **GitHub asset attached:** v0.2.1 asset is 591,204 bytes, SHA-256 `78F1535E87A7148272824C0B0D31F21D4AD385D9EEAA2EF8A40D41DCD0ACA63B`; v0.2.0 asset is 571,279 bytes | `npm pack` vs downloaded release asset |
@@ -20,6 +20,80 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 | Replay and snapshots | **Done:** exact at three timestamps; JSONL round-trip hash stable | `bench/results/replay-evidence.json` |
 | Default install | **Pass (v0.2.1):** 16,493,075 bytes, 1.93 s, three runtime dependencies | `CLAIMS.md` A8 |
 | Crash test | **Done:** 10/10 runs, 10,718 acknowledged writes, 0 lost, 0 duplicates, integrity `ok` | `bench/results/crash-test.json`; `CLAIMS.md` D4 |
+
+## 0.3.0 execution plan
+
+**Goal:** convert the remaining Partial/Missing gates into evidence-backed Done without changing the v0.2.1 artifact.
+
+**Release isolation:**
+
+- `v0.2.1` stays frozen at tag `v0.2.1` and code commit `3fa2bf9`.
+- Publish `0.2.1` from that tag, never from the `feat/0.3.0` branch.
+- Every 0.3.0 task lands on `feat/0.3.0` with its own tests and evidence row.
+
+**Execution order:** Phase 3 → Phase 4 → Phase 2 → Phase 6 → Phase 5 → Phase 0 → Phase 1 release gate.
+
+### Phase 3 — Integration parity (P1, 2–3 days)
+
+| ID | Task | Acceptance gate | Status |
+|---|---|---|---|
+| 3.1 | Conflict-aware recall plus CLI conflict list/resolve | Recall marks both sides of an open conflict; `fastr conflict list` and `fastr conflict resolve` work; tests and docs updated | **Done** |
+| 3.2 | Local memory import | `fastr import --from <format>` imports Markdown rules and JSONL with dry-run, dedupe, and round-trip test | Missing |
+| 3.3 | OpenCode hook and MCP parity | Installer writes a tested OpenCode config/plugin path and a smoke check starts the MCP server | Missing |
+| 3.4 | Gemini CLI hook and MCP parity | Installer writes a tested Gemini config path with idempotent merge | Missing |
+| 3.5 | Copilot CLI hook and MCP parity | Installer writes a tested Copilot config/instruction path with idempotent merge | Missing |
+| 3.6 | Memory envelope resource | `fastr://memory/{id}/envelope` returns metadata, provenance, links, and conflict state | Missing |
+| 3.7 | Memory branch and merge | `fastr branch create/list` and `fastr merge` produce a conflict report and preserve history | Missing |
+| 3.8 | Confidence tiers and 3-bad dormancy | Per-ID confidence tiers and automatic dormancy after three bad outcomes have tests | Partial |
+| 3.9 | Memory hygiene gate | Orphan, duplicate, and stale checks run in `check:ci` with raw counts | Partial |
+
+**Phase 3 gate:** hook-parity table with one tested path per client; import round-trip; conflict-aware recall; core profile smoke still 12/12.
+
+### Phase 4 — Memory CI and UI (P1, 1.5–2 days)
+
+| ID | Task | Acceptance gate | Status |
+|---|---|---|---|
+| 4.1 | Dashboard timeline and diff workspace | UI route renders replay snapshots and a diff view; component test covers empty and populated states | Missing |
+| 4.2 | Live PR Memory CI comment | A test PR receives one comment; re-run updates the same comment | Partial |
+| 4.3 | `docs/MEMORY_CI.md` | Workflow inputs, outputs, permissions, and fork behavior documented with a sample comment | Missing |
+
+### Phase 2 — Public benchmarks (P2, 1.5–2 days)
+
+| ID | Task | Acceptance gate | Status |
+|---|---|---|---|
+| 2.1 | Public benchmark harnesses | LongMemEval, LoCoMo, and a real-repository runner produce raw JSON with pinned dataset revisions | Missing |
+| 2.2 | Pinned external baseline | One external memory engine runs from a pinned version; raw output and caveats recorded | Missing |
+| 2.3 | Frozen-holdout rerun | Rerun is reproducibility-only; no tuning on the 48 holdout cases; claims updated | Partial |
+
+### Phase 6 — Evidence and launch (P1/P2, 1–1.5 days)
+
+| ID | Task | Acceptance gate | Status |
+|---|---|---|---|
+| 6.1 | `MIGRATION.md` | Upgrade paths from 0.1.x and 0.2.x with rollback steps | Missing |
+| 6.2 | `SECURITY.md` | Threat model, secret handling, local data boundaries, and reporting path | Missing |
+| 6.3 | `SCORECARD.md` | Every completion gate scored from evidence, including gaps | Missing |
+| 6.4 | README and launch rewrite | Every public number traces to `CLAIMS.md`; no stale counts | Partial |
+| 6.5 | Specification and release-note alignment | `docs/SPECIFICATION.md` and release notes match current counts and profiles | Partial |
+
+### Phase 5 — Hygiene and CI (P2, 0.5–1 day)
+
+| ID | Task | Acceptance gate | Status |
+|---|---|---|---|
+| 5.1 | Query-plan evidence | Top-10 query plans recorded with `EXPLAIN QUERY PLAN` | Partial |
+| 5.2 | Backup command and gate | `fastr backup` writes a restorable snapshot with provenance | Missing |
+| 5.3 | Latency and install-size CI gates | CI fails above the documented install-size and recall-latency ceilings | Partial |
+| 5.4 | Apple Silicon CI | Matrix adds an Apple Silicon runner and passes | Missing |
+| 5.5 | Legacy row cleanup | 60 pre-existing rows removed with explicit approval and before/after counts | Partial |
+
+### Phase 0 and release gate
+
+| ID | Task | Acceptance gate | Status |
+|---|---|---|---|
+| 0.1 | Finish CLAIMS coverage | Every README and launch claim has a row with command, output, date, commit, caveat | Partial |
+| 0.2 | Remove stale specification text | No stale counts in `docs/SPECIFICATION.md` or `RELEASE_v0.1.0.md` | Partial |
+| 1.1 | Publish 0.3.0 | CI 6/6 green, package gate green, npm publish, clean `npx` install | Not started |
+
+**Estimated remaining effort:** 7–12 focused days. Phase 3 is the next executable phase; the npm publish gate is time-blocked independently.
 
 ## Phase 0 — Truth reset
 
