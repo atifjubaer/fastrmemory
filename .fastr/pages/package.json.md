@@ -6,29 +6,7 @@
 
 ## Compiled Truth (Active Rules & Traps)
 
-### [mem_a29268d9] [TRAP] fix(bin): normalize bin paths to standard format
-- **Kind**: `error_trap`
-- **Status**: `staging` (Reward Score: 1)
-- **Linked Files**: `package.json`
-- **Active Since**: `2026-10-19T11:14:23Z`
-
-Extracted from git fix commit 629645d4:
-fix(bin): normalize bin paths to standard format
-Affected files: package.json
-
----
-
-### [mem_0d5e4403] [TRAP] fix(bin): normalize bin paths to standard format
-- **Kind**: `error_trap`
-- **Status**: `staging` (Reward Score: 1)
-- **Linked Files**: `package.json`
-- **Active Since**: `2026-10-18T23:36:58Z`
-
-Extracted from git fix commit 629645d4:
-fix(bin): normalize bin paths to standard format
-Affected files: package.json
-
----
+_No active memories recorded for this module._
 
 ## Append-Only Timeline (History & Superseded)
 

@@ -10,7 +10,7 @@
 - **Kind**: `rule`
 - **Status**: `verified` (Reward Score: 1)
 - **Linked Files**: `src/search/hybrid-rrf.ts`
-- **Active Since**: `2026-10-18T23:07:29Z`
+- **Active Since**: `2026-10-19T22:45:41Z`
 
 Reciprocal Rank Fusion must use smoothing constant k=60 to balance BM25 full-text and vector ranking.
 

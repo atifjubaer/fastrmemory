@@ -10,9 +10,19 @@
 - **Kind**: `error_trap`
 - **Status**: `verified` (Reward Score: 1)
 - **Linked Files**: `src/api/cors.ts`
-- **Active Since**: `2026-10-18T23:07:29Z`
+- **Active Since**: `2026-10-19T22:45:41Z`
 
 When credentials are required, Access-Control-Allow-Origin must specify exact client origin, not *.
+
+---
+
+### [mem_empty_json_trap] [TRAP] Always Guard JSON.parse Against Empty String Payloads
+- **Kind**: `error_trap`
+- **Status**: `verified` (Reward Score: 1)
+- **Linked Files**: `src/api/stream.ts`
+- **Active Since**: `2026-10-19T22:45:41Z`
+
+Empty request bodies throw SyntaxError in JSON.parse. Always fallback to JSON.parse(body || "{}").
 
 ---
 

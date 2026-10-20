@@ -6,23 +6,11 @@
 
 ## Compiled Truth (Active Rules & Traps)
 
-### [mem_e16378a3] [TRAP] fix(ui): patch canvas click detection, add zoom controls, and enable 1-click conflict resolution
-- **Kind**: `error_trap`
-- **Status**: `staging` (Reward Score: 1)
-- **Linked Files**: `src/db/repository.ts`, `src/ui/server.ts`, `tests/ui-server.test.ts`
-- **Active Since**: `2026-10-19T11:14:23Z`
-
-Extracted from git fix commit a18c98e6:
-fix(ui): patch canvas click detection, add zoom controls, and enable 1-click conflict resolution
-Affected files: src/db/repository.ts, src/ui/server.ts, tests/ui-server.test.ts
-
----
-
 ### [mem_pg_pool_trap] [TRAP] Postgres Client Must Always Call client.release() in Finally Block
 - **Kind**: `error_trap`
 - **Status**: `verified` (Reward Score: 1)
 - **Linked Files**: `src/db/postgres.ts`
-- **Active Since**: `2026-10-18T23:07:29Z`
+- **Active Since**: `2026-10-19T22:45:41Z`
 
 Failing to release pool clients causes pool exhaustion within 10 concurrent requests.
 
@@ -32,9 +20,19 @@ Failing to release pool clients causes pool exhaustion within 10 concurrent requ
 - **Kind**: `rule`
 - **Status**: `verified` (Reward Score: 1)
 - **Linked Files**: `src/db/queries.ts`
-- **Active Since**: `2026-10-18T23:07:29Z`
+- **Active Since**: `2026-10-19T22:45:41Z`
 
 Never concatenate user input directly into SQL strings. Always pass parameters via bind variables.
+
+---
+
+### [mem_sqlite_busy_timeout] [RULE] Configure SQLite busy_timeout = 5000ms for High Concurrency
+- **Kind**: `rule`
+- **Status**: `verified` (Reward Score: 1)
+- **Linked Files**: `src/db/concurrency.ts`
+- **Active Since**: `2026-10-19T22:45:41Z`
+
+Set PRAGMA busy_timeout = 5000 and handle SQLITE_BUSY with exponential backoff retry loops.
 
 ---
 
@@ -42,7 +40,7 @@ Never concatenate user input directly into SQL strings. Always pass parameters v
 - **Kind**: `rule`
 - **Status**: `verified` (Reward Score: 1)
 - **Linked Files**: `src/db/connection.ts`, `src/db/sqlite.ts`
-- **Active Since**: `2026-10-18T23:07:29Z`
+- **Active Since**: `2026-10-19T22:45:41Z`
 
 Always use import { DatabaseSync } from "node:sqlite" with WAL mode for FastrMemory.
 

@@ -10,7 +10,7 @@
 - **Kind**: `error_trap`
 - **Status**: `verified` (Reward Score: 1)
 - **Linked Files**: `src/auth/jwt.ts`
-- **Active Since**: `2026-10-18T23:07:29Z`
+- **Active Since**: `2026-10-19T22:45:41Z`
 
 JWT exp claims expect integer seconds. Always use Math.floor(Date.now() / 1000).
 
@@ -30,7 +30,7 @@ JWT exp claims expect integer seconds. Always use Math.floor(Date.now() / 1000).
 - **Kind**: `rule`
 - **Status**: `verified` (Reward Score: 1)
 - **Linked Files**: `src/auth/jwt.ts`
-- **Active Since**: `2026-10-18T23:07:29Z`
+- **Active Since**: `2026-10-19T22:45:41Z`
 
 Standardize on Ed25519 asymmetric signatures for ultra-low latency token verification.
 
@@ -38,7 +38,7 @@ Standardize on Ed25519 asymmetric signatures for ultra-low latency token verific
 
 ## Append-Only Timeline (History & Superseded)
 
-### [EXPIRED 2026-10-18T23:07:29Z -> 2026-10-18T20:00:00Z] [mem_jwt_old] Token Signing RS256 Algorithm
+### [EXPIRED 2026-10-19T22:45:41Z -> 2026-10-18T20:00:00Z] [mem_jwt_old] Token Signing RS256 Algorithm
 - **Superseded By**: Manual Retirement
 - **Historical Status**: `superseded`
 
