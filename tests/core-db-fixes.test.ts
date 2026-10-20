@@ -23,6 +23,16 @@ function rule(repo: FastrRepository, title: string, extra: Record<string, any> =
   return repo.insertMemory({ projectId, kind: 'rule', module: 'core', title, content: `${title} content`, verified: true, ...extra });
 }
 
+// macOS exposes /var as a symlink to /private/var. SQLite reports the resolved
+// path, so compare canonical paths instead of raw strings.
+function canonicalPath(value: string): string {
+  try {
+    return fs.realpathSync(value);
+  } catch {
+    return path.resolve(value);
+  }
+}
+
 beforeEach(() => {
   tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fastr-core-db-'));
 });
@@ -45,7 +55,7 @@ describe('attachGlobalDatabase', () => {
     expect(repo.hasGlobalDb()).toBe(true);
 
     const attached = (db.prepare('PRAGMA database_list').all() as any[]).find((d) => d.name === 'global_db');
-    expect(path.resolve(attached.file)).toBe(path.resolve(nasty));
+    expect(canonicalPath(attached.file)).toBe(canonicalPath(nasty));
     expect(fs.existsSync(nasty)).toBe(true);
     expect((db.prepare('SELECT COUNT(*) AS c FROM main.memories').get() as any).c).toBe(1);
   });
@@ -61,7 +71,7 @@ describe('attachGlobalDatabase', () => {
     expect(repo.attachGlobalDatabase(second)).toBe(true);
 
     const attached = (db.prepare('PRAGMA database_list').all() as any[]).find((d) => d.name === 'global_db');
-    expect(path.resolve(attached.file)).toBe(path.resolve(second));
+    expect(canonicalPath(attached.file)).toBe(canonicalPath(second));
   });
 });
 
