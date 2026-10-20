@@ -387,26 +387,20 @@ JWT exp claims expect integer seconds. Always use Math.floor(Date.now() / 1000).
 
 ## 🧠 Planetary Agent Skills Suite
 
-FastrMemory packages 18 auto-pilot skill instructions that train agents when to recall, trap, commit, and coordinate:
+FastrMemory ships 10 Agent Skills (in `skills/`, mirrored to `.cursor/skills/`) that tell agents *when* to use each memory tool. Install them as a Claude Code plugin (`.claude-plugin/`) or copy them with `fastrmemory setup`:
 
-- [skills/fastr-before-coding/SKILL.md](skills/fastr-before-coding/SKILL.md): Enforces calling `fastr_trap_recall` before editing any codebase file.
-- [skills/fastr-trap-logger/SKILL.md](skills/fastr-trap-logger/SKILL.md): Immediately logs error traps the exact moment a build error or test failure is diagnosed.
-- [skills/fastr-session-commit/SKILL.md](skills/fastr-session-commit/SKILL.md): Supersedes outdated rules, records per-ID outcome feedback, and verifies staging memories.
-- [skills/fastr-blame/SKILL.md](skills/fastr-blame/SKILL.md): Cognitive Git blame linking codebase lines to memory rationale and error traps.
-- [skills/fastr-commit/SKILL.md](skills/fastr-commit/SKILL.md): Memory-aware pre-commit trap validation and conventional commit synthesis.
-- [skills/fastr-compress/SKILL.md](skills/fastr-compress/SKILL.md): Token-saving Markdown and context compression preserving headings, code blocks, and URLs.
-- [skills/fastr-doctor/SKILL.md](skills/fastr-doctor/SKILL.md): Autonomous database doctor diagnosing and healing SQLite indices, orphans, and DAG frontiers.
-- [skills/fastr-vision/SKILL.md](skills/fastr-vision/SKILL.md): Multimodal screenshot and diagram asset tagging and hybrid semantic search.
-- [skills/fastr-trap/SKILL.md](skills/fastr-trap/SKILL.md): 2.0x recall boost failure logging and zero-regression safeguards.
-- [skills/fastr-dag/SKILL.md](skills/fastr-dag/SKILL.md): Multi-agent task frontier orchestration and dependency propagation.
-- [skills/fastr-conflicts/SKILL.md](skills/fastr-conflicts/SKILL.md): Bi-temporal contradiction detection and structured rule collision resolution.
-- [skills/fastr-recall/SKILL.md](skills/fastr-recall/SKILL.md): High-precision triple-stream hybrid search with progressive token budgeting.
-- [skills/fastr-remember/SKILL.md](skills/fastr-remember/SKILL.md): Autonomous memory consolidation, semantic deduplication, and slot allocation.
-- [skills/fastr-handoff/SKILL.md](skills/fastr-handoff/SKILL.md): Multi-agent session milestone handoffs and cross-IDE state preservation.
-- [skills/fastr-discipline/SKILL.md](skills/fastr-discipline/SKILL.md): Anti-hallucination guardrails and cognitive hygiene.
-- [skills/fastr-learn/SKILL.md](skills/fastr-learn/SKILL.md): Autonomous pattern extraction and rule consolidation from Git history.
-- [skills/fastr-mcp/SKILL.md](skills/fastr-mcp/SKILL.md): Model Context Protocol tool mastery and client configuration.
-- [skills/fastr-architecture/SKILL.md](skills/fastr-architecture/SKILL.md): FastrMemory systems architecture, zero-loss durability, and SQLite WAL design.
+- [fastr-memory](skills/fastr-memory/SKILL.md): At the start of a task and before editing files: `fastr_trap_recall`, then `fastr_recall` / `fastr_assemble`.
+- [fastr-trap-log](skills/fastr-trap-log/SKILL.md): The moment a failure is diagnosed: record it with `fastr_trap_log`.
+- [fastr-session-commit](skills/fastr-session-commit/SKILL.md): When a task is done and tests pass: supersede, rate memories, and `fastr_handoff` with `verifyStaging`.
+- [fastr-curate](skills/fastr-curate/SKILL.md): When storing durable lessons or fixing contradictions: dedupe, remember, supersede, resolve conflicts, snapshot/rollback.
+- [fastr-setup](skills/fastr-setup/SKILL.md): When FastrMemory is not wired into Claude Code: `fastrmemory hook install`, `claude mcp add`, verify with `fastrmemory status`.
+- [fastr-plan-estimate](skills/fastr-plan-estimate/SKILL.md): When estimating effort or risk: base rates, file risk, and closing predictions.
+- [fastr-dag](skills/fastr-dag/SKILL.md): When work has dependent steps or several agents share a backlog.
+- [fastr-doctor](skills/fastr-doctor/SKILL.md): When recall misses memories or the database looks unhealthy: diagnose, then heal.
+- [fastr-compress](skills/fastr-compress/SKILL.md): When a doc or context block exceeds its token budget.
+- [fastr-vision](skills/fastr-vision/SKILL.md): When screenshots or diagrams should be remembered or searched.
+
+Run `npm run check:skills` to validate every tool call in the skills against `src/mcp/server.ts`.
 
 ---
 

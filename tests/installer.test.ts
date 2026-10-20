@@ -54,7 +54,7 @@ describe('Installer & MCP Multi-Client Configuration', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('locates planetary skills directory and installs 12+ skills', async () => {
+  it('locates planetary skills directory and installs all skills', async () => {
     const { findSkillsDir, installSkills } = await import('../src/installer/setup.js');
     const skillsDir = findSkillsDir();
     expect(skillsDir).not.toBeNull();
@@ -64,10 +64,10 @@ describe('Installer & MCP Multi-Client Configuration', () => {
     const sandbox = fs.mkdtempSync(path.join(os.tmpdir(), 'fastr-test-skills-'));
     try {
       const counts = installSkills({ homeDir: path.join(sandbox, 'home'), projectRoot: path.join(sandbox, 'project') });
-      expect(counts.antigravityCount).toBeGreaterThanOrEqual(12);
-      expect(counts.claudeCount).toBeGreaterThanOrEqual(12);
-      expect(counts.cursorCount).toBeGreaterThanOrEqual(12);
-      expect(fs.existsSync(path.join(sandbox, 'home', '.claude', 'skills', 'fastr-discipline', 'SKILL.md'))).toBe(true);
+      expect(counts.antigravityCount).toBeGreaterThanOrEqual(9);
+      expect(counts.claudeCount).toBeGreaterThanOrEqual(9);
+      expect(counts.cursorCount).toBeGreaterThanOrEqual(9);
+      expect(fs.existsSync(path.join(sandbox, 'home', '.claude', 'skills', 'fastr-memory', 'SKILL.md'))).toBe(true);
     } finally {
       fs.rmSync(sandbox, { recursive: true, force: true });
     }

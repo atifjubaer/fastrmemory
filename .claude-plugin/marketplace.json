@@ -1,0 +1,14 @@
+{
+  "name": "fastrmemory",
+  "owner": {
+    "name": "Fastrsoft"
+  },
+  "plugins": [
+    {
+      "name": "fastrmemory",
+      "source": "./",
+      "description": "Local-first agent memory for Claude Code: MCP server plus Agent Skills for pre-edit trap checks, recall, trap logging, curation, and session handoffs.",
+      "version": "0.1.0"
+    }
+  ]
+}

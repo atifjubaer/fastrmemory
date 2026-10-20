@@ -1,46 +1,35 @@
 ---
 name: fastr-vision
-description: Multimodal visual memory skill for tagging and retrieving screenshots, UI diagrams, and error screens with hybrid vector and keyword search.
-triggers:
-  - fastr-vision
-  - visual-memory
-  - screenshot-search
-  - image-tag
+description: Use when a screenshot, UI mockup, architecture diagram, or error screen should be remembered for later, or before fixing a visual bug or redesigning UI to find related images stored earlier. Tags images with descriptions and OCR text and searches them.
 ---
 
-# FastrMemory Multimodal Vision Skill
+# FastrMemory: Visual Memory
 
-Use this skill when multimodal AI agents (Claude 3.7 Sonnet, Gemini 2.5 Pro) inspect UI layouts, examine error screenshots, or review architectural diagrams.
+## When to use
+- The user shares a screenshot or diagram that explains a bug, design, or architecture.
+- A test or tool produced an image worth keeping (visual regression, error dialog).
+- You are about to change UI and want earlier screenshots or design references.
 
-## Operating Principles
-
-1. **Tagging Visual Ground Truth**: When a user or test generates an image or screenshot artifact, call `fastr_vision_tag` with:
-   - `filePath`: Local path to image
-   - `description`: Detailed visual description of components, colors, and layout
-   - `ocrText`: Exact error banners, HTTP codes, or code snippets visible in image
-   - `memoryId`: Link to governing error trap or architectural rule
-2. **Hybrid Visual Recall**: Before redesigning UI components or fixing visual regressions, call `fastr_vision_search` to find relevant screenshots and previous design patterns.
-
-## MCP Invocation
-
-```json
-{
-  "tool": "fastr_vision_tag",
-  "arguments": {
-    "filePath": "screenshots/modal-error.png",
-    "description": "Modal error dialog showing HTTP 401 Unauthorized alert on checkout",
-    "ocrText": "HTTP 401 Unauthorized. Access token expired.",
-    "memoryId": "mem_009e4a7d"
-  }
-}
+## 1. Tag an image
+```js
+fastr_vision_tag({
+  filePath: "screenshots/checkout-401.png",
+  description: "Checkout modal showing a red HTTP 401 banner above the pay button",
+  ocrText: "HTTP 401 Unauthorized. Access token expired.",
+  memoryId: "mem_009e4a7d",
+  taskId: "act_checkout_fix"
+})
 ```
+- `description`: components, layout, colours, and what is wrong or notable.
+- `ocrText`: exact visible text (error messages, codes, labels) to make keyword search work.
+- `memoryId` / `taskId` (optional): link the governing trap or rule, and the related action.
 
-```json
-{
-  "tool": "fastr_vision_search",
-  "arguments": {
-    "query": "checkout modal error 401",
-    "limit": 5
-  }
-}
+## 2. Search images
+```js
+fastr_vision_search({ query: "checkout modal 401 error", limit: 5 })
 ```
+Filter to images linked to one memory with `memoryId: "mem_009e4a7d"`.
+
+## Rules
+- Describe what is in the image; do not guess at content you cannot see.
+- Do not tag images containing secrets or personal data.

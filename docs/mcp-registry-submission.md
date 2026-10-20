@@ -9,7 +9,7 @@ Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://gi
 
 ### Table Entry for `README.md`
 ```markdown
-| [FastrMemory](https://github.com/atifjubaer/fastrmemory) | High-Performance Cognitive Agent Memory Engine with Native Node 24 WAL SQLite, Bi-Temporal Git Sync, Triple-Stream RRF ($k=60$), 2.0x Error Trap Shield, and High-DPI React 19 Dashboard. Zero background daemons, zero open ports. | `npx github:atifjubaer/fastrmemory mcp` |
+| [FastrMemory](https://github.com/atifjubaer/fastrmemory) | High-Performance Cognitive Agent Memory Engine with native `node:sqlite` WAL storage (Node >= 22.16), Bi-Temporal Git Sync, Triple-Stream RRF ($k=60$), 2.0x Error Trap Shield, and High-DPI React 19 Dashboard. Zero background daemons, zero open ports. | `npx -y github:atifjubaer/fastrmemory mcp` |
 ```
 
 ### Full Server Description & Metadata
@@ -17,14 +17,15 @@ Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://gi
 - **Repository**: [https://github.com/atifjubaer/fastrmemory](https://github.com/atifjubaer/fastrmemory)
 - **Author**: Atif Jubaer / Fastrsoft
 - **Transport**: `stdio` (Zero network daemon, in-process WAL SQLite)
-- **Primary Tool Interfaces**:
+- **Runtime**: Node.js >= 22.16 (uses built-in `node:sqlite`)
+- **Primary Tool Interfaces** (35 tools total; see `src/mcp/server.ts`):
   - `fastr_recall`: Search memories using Triple-Stream RRF ($k=60$) fusing FTS5 BM25, 384-dim local embeddings, and 2-hop file graph spreading.
   - `fastr_remember`: Ingest architectural decisions, rules, and workflows with verbatim event attribution.
   - `fastr_trap_recall`: Active pre-edit error check with 2.0x recall boost multiplier.
-  - `fastr_trap_log`: Quarantine known failures, library gotchas, and syntax bugs into staging memory.
-  - `fastr_action_dag`: Multi-agent topological task scheduler with frontier discovery.
+  - `fastr_trap_log`: Logs a diagnosed failure as a verified error trap linked to the affected files, with a 2.0x recall boost.
+  - `fastr_action_create` / `fastr_action_update` / `fastr_frontier` / `fastr_next`: Multi-agent action DAG with dependencies, conflicts, frontier discovery, and atomic claiming.
   - `fastr_handoff`: Structured agent handoff packets and staging rule verification.
-  - `fastr_conflict_check`: Contradiction detection between opposing agent rules with 1-click resolution.
+  - `fastr_conflicts` / `fastr_resolve`: Contradiction detection between opposing rules and structured resolution.
 
 ### Quick Start
 ```bash
