@@ -65,15 +65,29 @@ export class FastrRepository {
         gDb.close();
       }
 
-      if (this.hasGlobalDb()) return true;
+      const list = this.db.prepare('PRAGMA database_list').all() as Array<{ name: string; file: string }>;
+      const existing = list.find((d) => d.name === 'global_db');
+      if (existing) {
+        if (sameDbFile(existing.file, globalDbPath)) return true;
+        // Attached to a different file: switch over instead of silently keeping the old one.
+        this.db.exec('DETACH DATABASE global_db');
+      }
 
-      const normalized = globalDbPath.replace(/\\/g, '/');
-      this.db.exec(`ATTACH DATABASE '${normalized}' AS global_db`);
+      this.db.prepare('ATTACH DATABASE ? AS global_db').run(globalDbPath);
       this.db.exec('PRAGMA busy_timeout = 5000;');
       return true;
     } catch {
       return false;
     }
+  }
+
+  /** Resolves which schema-qualified memories table holds the given id. */
+  private locateMemoryTable(id: string): 'memories' | 'global_db.memories' | null {
+    if (this.db.prepare('SELECT 1 FROM main.memories WHERE id = ?').get(id)) return 'memories';
+    if (this.hasGlobalDb() && this.db.prepare('SELECT 1 FROM global_db.memories WHERE id = ?').get(id)) {
+      return 'global_db.memories';
+    }
+    return null;
   }
 
   // --- RAW EVENTS ---
@@ -106,7 +120,7 @@ export class FastrRepository {
         fullEvent.content_hash
       );
     } catch (err: any) {
-      if (err.message && err.message.includes('SQLITE_BUSY') && this.spool) {
+      if (this.spool && isBusyError(err)) {
         this.spool.append(fullEvent);
         return fullEvent;
       }
@@ -186,15 +200,6 @@ export class FastrRepository {
       provenanceHash
     );
 
-    if (isGlobal && this.hasGlobalDb()) {
-      try {
-        this.db.prepare(`
-          INSERT OR REPLACE INTO global_db.memories_fts (id, title, module, content)
-          VALUES (?, ?, ?, ?)
-        `).run(id, params.title, module, params.content);
-      } catch {}
-    }
-
     // Explicit file links
     if (params.files && params.files.length > 0) {
       this.linkFiles(id, params.files, params.symbols, isGlobal && this.hasGlobalDb());
@@ -240,7 +245,7 @@ export class FastrRepository {
       const candidates = this.db.prepare(`
         SELECT id, title, content FROM memories
         WHERE project_id = ? AND valid_to IS NULL AND id != ?
-        ORDER BY id DESC LIMIT 50
+        ORDER BY created_at DESC LIMIT 50
       `).all(params.projectId, id) as unknown as Array<{ id: string; title: string; content: string }>;
 
       for (const c of candidates) {
@@ -345,25 +350,33 @@ export class FastrRepository {
     reason: string,
     files?: string[]
   ): { oldMemory: Memory; newMemory: Memory } {
-    const oldMem = this.getMemory(oldMemoryId);
-    if (!oldMem) {
-      throw new Error(`Memory not found: ${oldMemoryId}`);
-    }
-
     const newId = `mem_${crypto.randomBytes(4).toString('hex')}`;
     const nowIso = new Date().toISOString();
 
-    this.db.exec('BEGIN TRANSACTION');
+    // IMMEDIATE takes the write lock up front so the read below cannot go stale.
+    this.db.exec('BEGIN IMMEDIATE');
     try {
-      // 1. Mark old memory as superseded
-      this.db.prepare(`
-        UPDATE memories
+      const table = this.locateMemoryTable(oldMemoryId);
+      const oldMem = table ? this.getMemory(oldMemoryId) : null;
+      if (!table || !oldMem) {
+        throw new Error(`Memory not found: ${oldMemoryId}`);
+      }
+      const inGlobal = table === 'global_db.memories';
+
+      // 1. Mark old memory as superseded (only if it is still the live head of its chain)
+      const res = this.db.prepare(`
+        UPDATE ${table}
         SET valid_to = ?,
             status = 'superseded',
             superseded_by_id = ?,
             superseded_reason = ?
-        WHERE id = ?
+        WHERE id = ? AND valid_to IS NULL
       `).run(nowIso, newId, reason, oldMemoryId);
+      if (Number(res.changes) === 0) {
+        throw new Error(
+          `Memory ${oldMemoryId} is no longer active (already superseded by ${oldMem.superseded_by_id ?? 'another update'}); supersede the current version instead.`
+        );
+      }
 
       // 2. Insert new memory with verified status and authentic cryptographic provenance
       const provHash = computeProvenanceHash({
@@ -377,7 +390,7 @@ export class FastrRepository {
       });
 
       this.db.prepare(`
-        INSERT INTO memories (
+        INSERT INTO ${table} (
           id, project_id, agent_id, module, kind, title, content, status, pinned, reward_score, source_event_ids, created_at, provenance_hash
         ) VALUES (?, ?, ?, ?, ?, ?, ?, 'verified', ?, ?, ?, ?, ?)
       `).run(
@@ -398,7 +411,7 @@ export class FastrRepository {
       // 3. Link files
       const targetFiles = files && files.length > 0 ? files : this.getFilesForMemory(oldMemoryId);
       if (targetFiles.length > 0) {
-        this.linkFiles(newId, targetFiles);
+        this.linkFiles(newId, targetFiles, undefined, inGlobal);
       }
 
       this.db.exec('COMMIT');
@@ -420,8 +433,9 @@ export class FastrRepository {
   }
 
   updateFeedback(memoryId: string, outcome: 'good' | 'bad', note?: string): { reward_score: number; status: string } {
-    const mem = this.getMemory(memoryId);
-    if (!mem) {
+    const table = this.locateMemoryTable(memoryId);
+    const mem = table ? this.getMemory(memoryId) : null;
+    if (!table || !mem) {
       throw new Error(`Memory not found: ${memoryId}`);
     }
 
@@ -438,31 +452,40 @@ export class FastrRepository {
       }
     }
 
-    this.db.prepare(`
-      UPDATE memories
+    const res = this.db.prepare(`
+      UPDATE ${table}
       SET reward_score = ?, status = ?
       WHERE id = ?
     `).run(newScore, newStatus, memoryId);
+    if (Number(res.changes) === 0) {
+      throw new Error(`Memory not found: ${memoryId}`);
+    }
 
     return { reward_score: newScore, status: newStatus };
   }
 
-  pinMemory(memoryId: string, pinned: boolean): { success: boolean; pinned: boolean } {
-    this.db.prepare(`
-      UPDATE memories
+  pinMemory(memoryId: string, pinned: boolean): { success: boolean; pinned: boolean; error?: string } {
+    const table = this.locateMemoryTable(memoryId);
+    if (!table) return { success: false, pinned, error: `Memory not found: ${memoryId}` };
+    const res = this.db.prepare(`
+      UPDATE ${table}
       SET pinned = ?
       WHERE id = ?
     `).run(pinned ? 1 : 0, memoryId);
+    if (Number(res.changes) === 0) return { success: false, pinned, error: `Memory not found: ${memoryId}` };
     return { success: true, pinned };
   }
 
-  forgetMemory(memoryId: string, reason: string = 'User requested forget via dashboard'): { success: boolean } {
+  forgetMemory(memoryId: string, reason: string = 'User requested forget via dashboard'): { success: boolean; error?: string } {
+    const table = this.locateMemoryTable(memoryId);
+    if (!table) return { success: false, error: `Memory not found: ${memoryId}` };
     const nowIso = new Date().toISOString();
-    this.db.prepare(`
-      UPDATE memories
+    const res = this.db.prepare(`
+      UPDATE ${table}
       SET status = 'superseded', valid_to = ?, superseded_reason = ?
-      WHERE id = ?
+      WHERE id = ? AND valid_to IS NULL
     `).run(nowIso, reason, memoryId);
+    if (Number(res.changes) === 0) return { success: false, error: `Memory ${memoryId} is already inactive` };
     return { success: true };
   }
 
@@ -775,10 +798,7 @@ export class FastrRepository {
     const embedded = counts.embeddedCount || 0;
     const coverage = total > 0 ? Math.round((embedded / total) * 100) : 100;
 
-    let pendingSpool = 0;
-    if (this.spool && this.spool.hasPending()) {
-      pendingSpool = 1;
-    }
+    const pendingSpool = this.spool ? this.spool.pendingCount() : 0;
 
     return {
       projectId,
@@ -796,10 +816,17 @@ export class FastrRepository {
 
   createSnapshot(projectId: string, tag: string, description?: string): { id: string; tag: string; memoryCount: number; createdAt: string } {
     const id = `snap_${crypto.randomBytes(4).toString('hex')}`;
-    const memories = this.listActiveMemories(projectId);
+    // Only this project's local rows: rollback rewrites main.memories, so global/federated rows
+    // must never be captured (they would be copied into the local DB on restore).
+    const memories = this.db.prepare(`
+      SELECT * FROM main.memories
+      WHERE project_id = ? AND valid_to IS NULL
+      ORDER BY pinned DESC, reward_score DESC, created_at DESC
+    `).all(projectId) as unknown as Memory[];
+    for (const m of memories) m.embedding = null;
     const fileLinks = this.db.prepare(`
-      SELECT fl.* FROM file_links fl
-      JOIN memories m ON m.id = fl.memory_id
+      SELECT fl.* FROM main.file_links fl
+      JOIN main.memories m ON m.id = fl.memory_id
       WHERE m.project_id = ? AND m.valid_to IS NULL
     `).all(projectId);
 
@@ -846,7 +873,9 @@ export class FastrRepository {
     }
 
     const state = JSON.parse(snap.state_json);
-    const targetMemories: Memory[] = state.memories || [];
+    // Older snapshots may contain global rows; never restore those into this project.
+    const targetMemories: Memory[] = (state.memories || []).filter((m: Memory) => m.project_id === projectId);
+    const restoredIds = new Set(targetMemories.map((m) => m.id));
     const targetLinks: any[] = state.fileLinks || [];
 
     this.db.exec('BEGIN TRANSACTION');
@@ -869,7 +898,10 @@ export class FastrRepository {
           ON CONFLICT(id) DO UPDATE SET
             valid_to = NULL,
             status = excluded.status,
-            reward_score = excluded.reward_score
+            pinned = excluded.pinned,
+            reward_score = excluded.reward_score,
+            superseded_by_id = NULL,
+            superseded_reason = NULL
         `).run(
           m.id,
           m.project_id,
@@ -889,6 +921,7 @@ export class FastrRepository {
 
       // 3. Restore file links
       for (const fl of targetLinks) {
+        if (!restoredIds.has(fl.memory_id)) continue;
         this.db.prepare(`
           INSERT OR IGNORE INTO file_links (memory_id, file_path, symbol_name)
           VALUES (?, ?, ?)
@@ -928,6 +961,7 @@ export class FastrRepository {
     const loserId = conflict.memory_a_id === keepMemoryId ? conflict.memory_b_id : conflict.memory_a_id;
     const nowIso = new Date().toISOString();
     const resolutionReason = reason || `Resolved conflict #${conflictId} in favor of ${keepMemoryId}`;
+    const loserTable = this.locateMemoryTable(loserId) ?? 'memories';
 
     this.db.exec('BEGIN TRANSACTION');
     try {
@@ -942,15 +976,15 @@ export class FastrRepository {
       if (forgetLoser) {
         // Soft-delete / supersede loser
         this.db.prepare(`
-          UPDATE memories
+          UPDATE ${loserTable}
           SET valid_to = ?, status = 'superseded', superseded_by_id = ?, superseded_reason = ?
-          WHERE id = ?
+          WHERE id = ? AND valid_to IS NULL
         `).run(nowIso, keepMemoryId, resolutionReason, loserId);
       } else {
-        // Weaken loser reward score by -0.4
+        // Weaken loser reward score by -0.4 (same 0.1 floor as updateFeedback)
         this.db.prepare(`
-          UPDATE memories
-          SET reward_score = MAX(-1.0, reward_score - 0.4)
+          UPDATE ${loserTable}
+          SET reward_score = MAX(0.1, reward_score - 0.4)
           WHERE id = ?
         `).run(loserId);
       }
@@ -1231,15 +1265,53 @@ export class FastrRepository {
   }
 
   getNextAction(projectId: string, agentId?: string): Action | null {
-    const frontier = this.getFrontier(projectId);
-    if (frontier.length === 0) return null;
-
-    const next = frontier[0];
-    if (agentId && next.status === 'pending') {
-      this.updateAction(next.id, { status: 'active', assignedTo: agentId });
-      return this.getAction(next.id);
+    if (!agentId) {
+      const frontier = this.getFrontier(projectId);
+      return frontier.length > 0 ? frontier[0] : null;
     }
-    return next;
+
+    let claimedId: string | null = null;
+    let ownActive: Action | null = null;
+    // Hold the write lock across read + claim so two agents can never claim the same action.
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const claim = this.db.prepare(`
+        UPDATE actions SET status = 'active', assigned_to = ?
+        WHERE id = ? AND status = 'pending'
+      `);
+      for (const candidate of this.getFrontier(projectId)) {
+        if (candidate.status === 'active') {
+          if (candidate.assigned_to === agentId) {
+            ownActive = candidate;
+            break;
+          }
+          continue; // claimed by another agent
+        }
+        if (Number(claim.run(agentId, candidate.id).changes) > 0) {
+          claimedId = candidate.id;
+          break;
+        }
+      }
+      this.db.exec('COMMIT');
+    } catch (err) {
+      this.db.exec('ROLLBACK');
+      throw err;
+    }
+
+    if (ownActive) return ownActive;
+    if (!claimedId) return null;
+
+    const claimed = this.getAction(claimedId);
+    if (claimed) {
+      globalBroadcaster.broadcast('action_claimed', {
+        actionId: claimedId,
+        title: claimed.title,
+        claimedBy: agentId,
+        claimedAt: new Date().toISOString()
+      });
+      globalBroadcaster.broadcast('action_updated', claimed);
+    }
+    return claimed;
   }
 
   // --- BOUNDED WORKING MEMORY SLOTS ---
@@ -1339,4 +1411,20 @@ export class FastrRepository {
         : 'Signature mismatch: Payload content, project, or author modified post-creation'
     };
   }
+}
+
+/** node:sqlite reports SQLITE_BUSY (5) / SQLITE_LOCKED (6) via errcode, possibly as an extended code. */
+function isBusyError(err: any): boolean {
+  const code = typeof err?.errcode === 'number' ? err.errcode & 0xff : -1;
+  if (code === 5 || code === 6) return true;
+  const msg = String(err?.message ?? '');
+  return msg.includes('SQLITE_BUSY') || msg.includes('database is locked') || msg.includes('database table is locked');
+}
+
+function sameDbFile(attachedFile: string, requested: string): boolean {
+  if (requested === ':memory:' || requested === '') return attachedFile === '';
+  if (!attachedFile) return false;
+  const a = path.resolve(attachedFile);
+  const b = path.resolve(requested);
+  return process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
 }

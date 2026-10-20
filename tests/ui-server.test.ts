@@ -196,7 +196,7 @@ describe('FastrMemory Web UI Server', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        id: createdMemory.id,
+        memoryId: createdMemory.id,
         pinned: true,
       }),
     });
@@ -218,7 +218,7 @@ describe('FastrMemory Web UI Server', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        id: createdMemory.id,
+        memoryId: createdMemory.id,
         reason: 'Superseded in test',
       }),
     });
