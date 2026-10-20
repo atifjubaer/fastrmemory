@@ -111,4 +111,14 @@ describe('FastrMemory Web UI Server security', () => {
     const text = await res.text();
     expect(text).not.toContain('"@atifjubaer/fastrmemory"');
   });
+
+  it('404s missing build assets instead of answering with the SPA page', async () => {
+    // A tab left open across an upgrade requests chunks from the previous build; HTML with status 200
+    // would surface as a confusing MIME-type error instead of a clean failed import.
+    const missing = await fetch(`${base}/assets/ActionsPage-OldBuild.js`);
+    expect(missing.status).toBe(404);
+    const page = await fetch(`${base}/some/client/route`);
+    expect(page.status).toBe(200);
+    expect(page.headers.get('content-type')).toContain('text/html');
+  });
 });

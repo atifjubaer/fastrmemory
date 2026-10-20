@@ -1,16 +1,26 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>⚡ FastrMemory Hub</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <title>FastrMemory Hub</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2338bdf8'><path d='M13 2L3 14h9l-1 8 10-12h-9l1-8z'/></svg>" />
-    <script type="module" crossorigin src="/assets/index-BXV-meba.js"></script>
-    <link rel="modulepreload" crossorigin href="/assets/lucide-kupuKQYy.js">
-    <link rel="modulepreload" crossorigin href="/assets/react-BtN6GaCc.js">
-    <link rel="stylesheet" crossorigin href="/assets/index-D59tTIlR.css">
+    <script>
+      // Apply the persisted theme before first paint to avoid a light/dark flash.
+      (function () {
+        var mode = 'system';
+        try { mode = localStorage.getItem('fastr-theme') || 'system'; } catch (e) {}
+        var dark = mode === 'dark' || (mode !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.toggle('dark', dark);
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-Umrf8xSg.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vendor-wVc5lIPn.js">
+    <link rel="modulepreload" crossorigin href="/assets/query-fe9kutlk.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-B0NJwfrj.css">
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"></div>
   </body>
 </html>
