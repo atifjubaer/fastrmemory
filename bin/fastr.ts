@@ -6,7 +6,7 @@ import { searchMemories } from '../src/search/hybrid-rrf.js';
 import { syncAllModulePages } from '../src/mirror/markdown-pages.js';
 import { scrubSecrets } from '../src/privacy/scrubber.js';
 import { runInteractiveSetup } from '../src/installer/setup.js';
-import { runBenchmarks, formatBenchmarkMarkdown } from '../src/bench/benchmark.js';
+import { formatBenchmarkMarkdown } from '../src/bench/benchmark.js';
 import { startUiServer } from '../src/ui/server.js';
 import { installAgentHooks } from '../src/installer/hooks.js';
 import { learnFromGitHistory } from '../src/learn/git-learner.js';
@@ -228,9 +228,10 @@ program
   .option('--json', 'Output results as raw JSON')
   .option('--save <file>', 'Save benchmark report to a file')
   .action(async (options) => {
-    const ctx = createFastrServerContext();
-    console.log('⚡ Running FastrMemory Cognitive Retrieval Benchmarks against Hippo, Memoria & Baselines...\n');
-    const report = await runBenchmarks(ctx.db, ctx.config.projectId);
+    // Runs on an isolated in-memory database: never writes benchmark fixtures into the user's DB.
+    const { runIsolatedBenchmarks } = await import('../src/bench/benchmark.js');
+    console.log('⚡ Running FastrMemory retrieval benchmarks on synthetic cases against simulated baselines (not the real projects)...\n');
+    const report = await runIsolatedBenchmarks('bench_proj');
     const md = formatBenchmarkMarkdown(report);
     if (options.json) {
       console.log(JSON.stringify(report, null, 2));

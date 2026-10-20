@@ -1,12 +1,30 @@
 import { DatabaseSync } from 'node:sqlite';
 import { applySchema } from '../db/schema.js';
 import { FastrRepository } from '../db/repository.js';
-import { searchMemories } from '../search/hybrid-rrf.js';
-import { TOKEN_LEVELS } from '../search/budget.js';
+import { searchMemories, sanitizeFtsQuery } from '../search/hybrid-rrf.js';
+import { TOKEN_LEVELS, estimateTokens } from '../search/budget.js';
+
+/**
+ * NOTE ON HONESTY: the benchmark cases below are small, hand-written synthetic cases
+ * (NOT SWE-bench or LongMemEval data). The competitor rows ("Hippo-style", "Memoria-style",
+ * "Static dump") are simulated baselines implemented in this file — they are NOT the real
+ * projects and their numbers say nothing about those projects' actual performance.
+ */
+export const SIMULATED_BASELINE_LABEL = 'simulated baseline (not the real project)';
+
+/** Runs the benchmark on an isolated in-memory database (never touches a user DB). */
+export async function runIsolatedBenchmarks(projectId: string = 'bench_proj'): Promise<BenchmarkReport> {
+  const db = new DatabaseSync(':memory:');
+  try {
+    return await runBenchmarks(db, projectId);
+  } finally {
+    db.close();
+  }
+}
 
 export interface BenchmarkCase {
   id: string;
-  category: 'exact_keyword' | 'semantic_paraphrase' | 'file_trap' | 'bitemporal_superseded' | 'swe_bench' | 'longmemeval';
+  category: 'exact_keyword' | 'semantic_paraphrase' | 'file_trap' | 'bitemporal_superseded' | 'synthetic_issue' | 'synthetic_long_horizon';
   query: string;
   file?: string;
   expectedMemoryId: string;
@@ -92,30 +110,30 @@ export const BENCHMARK_CASES: BenchmarkCase[] = [
   },
   {
     id: 'case_09',
-    category: 'swe_bench',
-    query: 'SWE-bench Issue #1282: Handle concurrent SQLite write collisions with busy_timeout backoff',
+    category: 'synthetic_issue',
+    query: 'Handle concurrent SQLite write collisions with busy_timeout backoff',
     file: 'src/db/concurrency.ts',
     expectedMemoryId: 'mem_sqlite_busy_timeout',
   },
   {
     id: 'case_10',
-    category: 'longmemeval',
-    query: 'LongMemEval: Recall architectural decision on zero background daemons established in initial design',
+    category: 'synthetic_long_horizon',
+    query: 'Recall architectural decision on zero background daemons established in initial design',
     file: 'src/architecture/design.ts',
     expectedMemoryId: 'mem_zero_daemon_adr',
   },
   {
     id: 'case_11',
-    category: 'swe_bench',
-    query: 'SWE-bench Trap #409: Uncaught syntax exception in JSON.parse stream when body payload is empty',
+    category: 'synthetic_issue',
+    query: 'Uncaught syntax exception in JSON.parse stream when body payload is empty',
     file: 'src/api/stream.ts',
     expectedMemoryId: 'mem_empty_json_trap',
     isTrap: true,
   },
   {
     id: 'case_12',
-    category: 'longmemeval',
-    query: 'LongMemEval: What is the active official MCP protocol SDK dependency version?',
+    category: 'synthetic_long_horizon',
+    query: 'What is the active official MCP protocol SDK dependency version?',
     file: 'package.json',
     expectedMemoryId: 'mem_mcp_sdk_v2',
   },
@@ -241,7 +259,7 @@ export function setupBenchmarkDatabase(db: DatabaseSync, projectId: string = 'be
     1.0
   );
 
-  // 8. SWE-bench Concurrency Rule
+  // 8. Concurrency Rule (synthetic)
   insertHelper(
     'mem_sqlite_busy_timeout',
     'db',
@@ -253,7 +271,7 @@ export function setupBenchmarkDatabase(db: DatabaseSync, projectId: string = 'be
     1.0
   );
 
-  // 9. LongMemEval Architectural Decision
+  // 9. Architectural Decision (synthetic)
   insertHelper(
     'mem_zero_daemon_adr',
     'architecture',
@@ -265,7 +283,7 @@ export function setupBenchmarkDatabase(db: DatabaseSync, projectId: string = 'be
     1.0
   );
 
-  // 10. SWE-bench Empty JSON Stream Trap
+  // 10. Empty JSON Stream Trap (synthetic)
   insertHelper(
     'mem_empty_json_trap',
     'api',
@@ -277,7 +295,7 @@ export function setupBenchmarkDatabase(db: DatabaseSync, projectId: string = 'be
     1.0
   );
 
-  // 11. LongMemEval MCP SDK Rule
+  // 11. MCP SDK Rule (synthetic)
   insertHelper(
     'mem_mcp_sdk_v2',
     'mcp',
@@ -302,12 +320,12 @@ export async function runBenchmarks(db: DatabaseSync, projectId: string = 'bench
   let fastrTrapHits = 0, fastrTotalTraps = 0;
   let fastrLatencySum = 0, fastrTokensSum = 0;
 
-  // Trackers for Hippo Memory Baseline (Pure BM25, no vector, no trap multiplier)
+  // Trackers for Hippo-style simulated baseline (pure BM25, no vector, no trap multiplier)
   let hippoHits1 = 0, hippoHits3 = 0, hippoHits5 = 0, hippoReciprocalSum = 0;
   let hippoTrapHits = 0;
   let hippoLatencySum = 0, hippoTokensSum = 0;
 
-  // Trackers for Memoria Baseline (Episodic Graph, higher latency, no 2.0x trap multiplier)
+  // Trackers for Memoria-style simulated baseline (no trap multiplier)
   let memoriaHits1 = 0, memoriaHits3 = 0, memoriaHits5 = 0, memoriaReciprocalSum = 0;
   let memoriaTrapHits = 0;
   let memoriaLatencySum = 0, memoriaTokensSum = 0;
@@ -342,19 +360,23 @@ export async function runBenchmarks(db: DatabaseSync, projectId: string = 'bench
     }
     if (fastrRank > 0) fastrReciprocalSum += 1 / fastrRank;
 
-    // 2. Evaluate Hippo Baseline (Pure BM25 FTS5, no vector, no trap boost)
+    // 2. Evaluate Hippo-style simulated baseline (pure BM25 FTS5 MATCH, no vector, no trap boost)
     const t2 = performance.now();
-    const ftsRows = db.prepare(`
-      SELECT m.id, f.rank
-      FROM memories_fts f
-      JOIN memories m ON m.id = f.id
-      WHERE m.project_id = ? AND m.valid_to IS NULL
-      ORDER BY f.rank ASC
-      LIMIT 5
-    `).all(projectId) as unknown as { id: string; rank: number }[];
+    const hippoFts = sanitizeFtsQuery(c.query);
+    const ftsRows = hippoFts
+      ? db.prepare(`
+          SELECT m.id, m.title, m.content, f.rank
+          FROM memories_fts f
+          JOIN memories m ON m.id = f.id
+          WHERE m.project_id = ? AND m.valid_to IS NULL
+            AND memories_fts MATCH ?
+          ORDER BY f.rank ASC
+          LIMIT 5
+        `).all(projectId, hippoFts) as unknown as { id: string; title: string; content: string; rank: number }[]
+      : [];
     const t3 = performance.now();
     hippoLatencySum += (t3 - t2);
-    hippoTokensSum += 820;
+    hippoTokensSum += ftsRows.reduce((sum, r) => sum + estimateTokens(`${r.title}\n${r.content}\n`), 0);
 
     const hippoIds = ftsRows.map((r) => r.id);
     const hippoRank = hippoIds.indexOf(c.expectedMemoryId) + 1;
@@ -366,12 +388,12 @@ export async function runBenchmarks(db: DatabaseSync, projectId: string = 'bench
     }
     if (hippoRank > 0) hippoReciprocalSum += 1 / hippoRank;
 
-    // 3. Evaluate Memoria Baseline (Episodic Graph BFS without 2.0x trap multipliers)
+    // 3. Evaluate Memoria-style simulated baseline (keyword overlap, no trap multiplier)
     const t4 = performance.now();
     const memRows = db.prepare(`
       SELECT id, title, content, kind FROM memories WHERE project_id = ? AND valid_to IS NULL
     `).all(projectId) as unknown as { id: string; title: string; content: string; kind: string }[];
-    // Simulated multi-hop graph BFS scoring (heavier traversal latency & unboosted traps)
+    // Simulated keyword-overlap scoring standing in for an episodic graph engine (not the real Memoria)
     const queryTokens = c.query.toLowerCase().split(/\s+/);
     const scoredMemoria = memRows.map((r) => {
       let score = 0;
@@ -379,14 +401,12 @@ export async function runBenchmarks(db: DatabaseSync, projectId: string = 'bench
         if (r.title.toLowerCase().includes(tk)) score += 1.5;
         if (r.content.toLowerCase().includes(tk)) score += 0.8;
       });
-      if (r.kind === 'error_trap') {
-        score *= 0.6; // No 2.0x error trap boost in standard episodic graphs
-      }
-      return { id: r.id, score };
-    }).sort((a, b) => b.score - a.score).slice(0, 5);
+      // No trap boost (and no artificial trap penalty) in this simulated baseline
+      return { id: r.id, score, tokens: estimateTokens(`${r.title}\n${r.content}\n`) };
+    }).filter((r) => r.score > 0).sort((a, b) => b.score - a.score).slice(0, 5);
     const t5 = performance.now();
-    memoriaLatencySum += (t5 - t4 + 45); // Graph hop traversal penalty
-    memoriaTokensSum += 650;
+    memoriaLatencySum += (t5 - t4); // measured only; no synthetic latency penalty
+    memoriaTokensSum += scoredMemoria.reduce((sum, r) => sum + r.tokens, 0);
 
     const memoriaIds = scoredMemoria.map((r) => r.id);
     const memoriaRank = memoriaIds.indexOf(c.expectedMemoryId) + 1;
@@ -405,7 +425,8 @@ export async function runBenchmarks(db: DatabaseSync, projectId: string = 'bench
     const matched = allRows.filter((r) => queryTerms.some((term) => r.content.toLowerCase().includes(term)));
     const t7 = performance.now();
     staticLatencySum += (t7 - t6);
-    staticTokensSum += 2400; // Flat dumps inject massive 2,400+ token context
+    // A flat dump injects every memory into context: count the real size of that dump
+    staticTokensSum += allRows.reduce((sum, r) => sum + estimateTokens(r.content), 0);
 
     const staticIds = matched.map((r) => r.id);
     const staticRank = staticIds.indexOf(c.expectedMemoryId) + 1;
@@ -432,7 +453,7 @@ export async function runBenchmarks(db: DatabaseSync, projectId: string = 'bench
       avgTokens: Math.round(fastrTokensSum / n),
     },
     {
-      name: 'Hippo Memory (Pure BM25 baseline)',
+      name: `Hippo-style BM25 (${SIMULATED_BASELINE_LABEL})`,
       hitAt1: Math.round((hippoHits1 / n) * 100),
       hitAt3: Math.round((hippoHits3 / n) * 100),
       hitAt5: Math.round((hippoHits5 / n) * 100),
@@ -442,7 +463,7 @@ export async function runBenchmarks(db: DatabaseSync, projectId: string = 'bench
       avgTokens: Math.round(hippoTokensSum / n),
     },
     {
-      name: 'Memoria (Episodic Graph baseline)',
+      name: `Memoria-style episodic (${SIMULATED_BASELINE_LABEL})`,
       hitAt1: Math.round((memoriaHits1 / n) * 100),
       hitAt3: Math.round((memoriaHits3 / n) * 100),
       hitAt5: Math.round((memoriaHits5 / n) * 100),
@@ -452,7 +473,7 @@ export async function runBenchmarks(db: DatabaseSync, projectId: string = 'bench
       avgTokens: Math.round(memoriaTokensSum / n),
     },
     {
-      name: 'Static Flat Dump (CLAUDE.md baseline)',
+      name: `Static flat dump (${SIMULATED_BASELINE_LABEL})`,
       hitAt1: Math.round((staticHits1 / n) * 100),
       hitAt3: Math.round((staticHits3 / n) * 100),
       hitAt5: Math.round((staticHits5 / n) * 100),
@@ -475,13 +496,15 @@ export function formatBenchmarkMarkdown(report: BenchmarkReport): string {
   md += `| Engine Architecture | Hit@1 | Hit@3 | Hit@5 | MRR | Latency | Trap Recall | Avg Tokens |\n`;
   md += `| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n`;
 
+  // Bold the row with the best MRR (ties: higher Hit@1), whichever engine that is.
+  const best = [...report.engines].sort((a, b) => b.mrr - a.mrr || b.hitAt1 - a.hitAt1)[0];
   for (const e of report.engines) {
-    const isWinner = e.name.includes('FastrMemory');
+    const isWinner = e === best;
     const bold = (val: string | number) => (isWinner ? `**${val}**` : `${val}`);
     md += `| ${bold(e.name)} | ${bold(`${e.hitAt1}%`)} | ${bold(`${e.hitAt3}%`)} | ${bold(`${e.hitAt5}%`)} | ${bold(e.mrr)} | ${bold(`${e.avgLatencyMs}ms`)} | ${bold(`${e.trapRecallRate}%`)} | ${bold(`${e.avgTokens}t`)} |\n`;
   }
 
-  md += `\n*Evaluated across ${report.totalCases} real-world SWE-bench and LongMemEval test cases (error traps, concurrent deadlocks, multi-hop debugging, and bi-temporal supersession).*\n\n`;
+  md += `\n*Evaluated across ${report.totalCases} hand-written synthetic cases (error traps, keyword, paraphrase, bi-temporal supersession). These are NOT SWE-bench or LongMemEval data. Rows marked "simulated baseline" are approximations implemented inside FastrMemory, not the real projects.*\n\n`;
 
   // Visual ASCII Accuracy Bars
   md += `#### ⚡ Error Trap Recall Comparison (Zero-Regression Safeguard):\n\`\`\`text\n`;
@@ -489,7 +512,7 @@ export function formatBenchmarkMarkdown(report: BenchmarkReport): string {
     const filled = Math.round(e.trapRecallRate / 5);
     const empty = 20 - filled;
     const bar = '█'.repeat(filled) + '░'.repeat(empty);
-    const paddedName = e.name.padEnd(38, ' ');
+    const paddedName = e.name.padEnd(64, ' ');
     md += `${paddedName} ${bar} ${e.trapRecallRate}%\n`;
   }
   md += `\`\`\`\n\n`;
@@ -500,7 +523,7 @@ export function formatBenchmarkMarkdown(report: BenchmarkReport): string {
     const filled = Math.min(20, Math.round(e.avgTokens / 120));
     const empty = 20 - filled;
     const bar = '█'.repeat(filled) + '░'.repeat(empty);
-    const paddedName = e.name.padEnd(38, ' ');
+    const paddedName = e.name.padEnd(64, ' ');
     md += `${paddedName} ${bar} ${e.avgTokens} tokens\n`;
   }
   md += `\`\`\`\n`;
