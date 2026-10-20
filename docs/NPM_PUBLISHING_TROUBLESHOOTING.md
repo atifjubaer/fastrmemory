@@ -61,7 +61,7 @@ npm publish --access public
 
 ### 4. Tarball Bloat (Raw Tests & Local Databases)
 - **Location**: NPM Tarball package contents
-- **Issue**: `npm pack` was bundling `tests/`, `.fastr/fastr.db`, and `docs/conversations/` (100 files, ~400 KB).
+- **Issue**: `npm pack` was bundling `tests/`, `.fastr/fastr.db`, and other non-package files (100 files, ~400 KB).
 - **Fix Applied**: Added `"files"` whitelist to `package.json`:
   ```json
   "files": [
