@@ -11,9 +11,10 @@ import {
 } from '../src/installer/json-config.js';
 import { buildHookCommand, claudeHookSpecs, installAgentHooks } from '../src/installer/hooks.js';
 import { installGemini } from '../src/installer/gemini.js';
+import { installCopilot } from '../src/installer/copilot.js';
 import { installOpenCode } from '../src/installer/opencode.js';
 import { resolveMcpCommand } from '../src/installer/setup.js';
-import { extractTargetFiles, toClaudeHookStdout, toGeminiHookStdout } from '../src/hooks/runner.js';
+import { extractTargetFiles, toClaudeHookStdout, toGeminiHookStdout, toCopilotHookStdout } from '../src/hooks/runner.js';
 
 describe('Installer config safety', () => {
   let dir: string;
@@ -101,6 +102,10 @@ describe('Installer config safety', () => {
     expect(gemini).toMatch(/hook run SessionStart --format gemini$/);
     expect(gemini).not.toContain(' mcp ');
     expect(isFastrHookCommand(gemini)).toBe(true);
+
+    const copilot = buildHookCommand('PreToolUse', 'linux', 'copilot');
+    expect(copilot).toMatch(/hook run PreToolUse --format copilot$/);
+    expect(isFastrHookCommand(copilot)).toBe(true);
   });
 
   it('never points MCP clients at the bare .cmd shim on Windows', () => {
@@ -117,6 +122,7 @@ describe('Installer config safety', () => {
     const res = installAgentHooks(dir);
     expect(res.claudeCodeUpdated).toBe(true);
     expect(res.geminiUpdated).toBe(true);
+    expect(res.copilotUpdated).toBe(true);
     expect(res.openCodeUpdated).toBe(true);
 
     const mcp = JSON.parse(fs.readFileSync(path.join(dir, '.mcp.json'), 'utf-8'));
@@ -133,12 +139,21 @@ describe('Installer config safety', () => {
     expect(gemini.hooks.SessionStart.flatMap((group: any) => group.hooks)
       .some((hook: any) => hook.command.includes('--format gemini'))).toBe(true);
 
+    const copilotMcp = JSON.parse(fs.readFileSync(path.join(dir, '.github', 'mcp.json'), 'utf-8'));
+    expect(copilotMcp.mcpServers.fastrmemory.type).toBe('local');
+    expect(copilotMcp.mcpServers.fastrmemory.args).toContain('mcp');
+    const copilotHooks = JSON.parse(fs.readFileSync(path.join(dir, '.github', 'hooks', 'fastrmemory.json'), 'utf-8'));
+    expect(copilotHooks.version).toBe(1);
+    expect(copilotHooks.hooks.preToolUse[0].matcher).toBe('edit|create|str_replace_editor|apply_patch');
+    expect(copilotHooks.hooks.sessionStart[0].command).toContain('--format copilot');
+
     const openCode = JSON.parse(fs.readFileSync(path.join(dir, 'opencode.json'), 'utf-8'));
     expect(openCode.mcp.servers.fastrmemory.command).toContain('mcp');
     expect(fs.existsSync(path.join(dir, '.opencode', 'plugins', 'fastrmemory', 'index.ts'))).toBe(true);
 
     const again = installAgentHooks(dir);
     expect(again.geminiUpdated).toBe(false);
+    expect(again.copilotUpdated).toBe(false);
     expect(again.openCodeUpdated).toBe(false);
   });
 
@@ -180,6 +195,48 @@ describe('Installer config safety', () => {
     const sessionStartHooks = config.hooks.SessionStart.flatMap((group: any) => group.hooks);
     expect(sessionStartHooks.filter((hook: any) => isFastrHookCommand(hook.command))).toHaveLength(1);
     expect(sessionStartHooks[0].name).toBe('fastrmemory-session-start');
+  });
+
+  it('writes Copilot CLI MCP and hooks idempotently and preserves user entries', () => {
+    const mcpPath = path.join(dir, '.github', 'mcp.json');
+    const hooksPath = path.join(dir, '.github', 'hooks', 'fastrmemory.json');
+    fs.mkdirSync(path.dirname(hooksPath), { recursive: true });
+    fs.writeFileSync(mcpPath, JSON.stringify({
+      mcpServers: { other: { type: 'local', command: 'other', args: ['serve'] } }
+    }));
+    fs.writeFileSync(hooksPath, JSON.stringify({
+      version: 1,
+      hooks: {
+        sessionStart: [
+          { type: 'command', command: 'node user-start.js' },
+          { type: 'command', command: 'fastrmemory hook run SessionStart' }
+        ],
+        preToolUse: [{ type: 'command', command: 'node user-policy.js' }]
+      }
+    }));
+
+    const first = installCopilot(dir, { command: 'node', args: ['cli.js', 'mcp'] });
+    expect(first.changed).toBe(true);
+    const second = installCopilot(dir, { command: 'node', args: ['cli.js', 'mcp'] });
+    expect(second.changed).toBe(false);
+
+    const mcp = JSON.parse(fs.readFileSync(mcpPath, 'utf-8'));
+    expect(mcp.mcpServers.other).toEqual({ type: 'local', command: 'other', args: ['serve'] });
+    expect(mcp.mcpServers.fastrmemory).toEqual({
+      type: 'local',
+      command: 'node',
+      args: ['cli.js', 'mcp']
+    });
+
+    const hooks = JSON.parse(fs.readFileSync(hooksPath, 'utf-8'));
+    expect(hooks.version).toBe(1);
+    expect(hooks.hooks.sessionStart.filter((entry: any) => isFastrHookCommand(entry.command))).toHaveLength(1);
+    expect(hooks.hooks.sessionStart.some((entry: any) => entry.command === 'node user-start.js')).toBe(true);
+    expect(hooks.hooks.preToolUse.some((entry: any) => entry.command === 'node user-policy.js')).toBe(true);
+    expect(hooks.hooks.preToolUse[0].command).toBe('node user-policy.js');
+    expect(hooks.hooks.preToolUse[1].matcher).toBe('edit|create|str_replace_editor|apply_patch');
+    expect(hooks.hooks.sessionStart.filter((entry: any) => isFastrHookCommand(entry.command))[0].command)
+      .toContain('--format copilot');
   });
 
   it('writes an OpenCode V2 MCP server and managed plugin without touching other settings', () => {
@@ -248,6 +305,16 @@ describe('Claude Code hook I/O', () => {
     );
     expect(files).toEqual(['src/auth/jwt.ts']);
     expect(extractTargetFiles({ files: ['src\\a.ts'] }, root)).toEqual(['src/a.ts']);
+    expect(extractTargetFiles({
+      toolName: 'edit',
+      toolArgs: { path: path.join(root, 'src', 'copilot.ts') }
+    }, root)).toEqual(['src/copilot.ts']);
+    expect(extractTargetFiles({
+      toolArgs: { edits: [{ path: 'src/b.ts' }, { filePath: 'src/c.ts' }] }
+    }, root)).toEqual(['src/b.ts', 'src/c.ts']);
+    expect(extractTargetFiles({
+      toolArgs: { patch: '*** Update File: src/d.ts\n*** End Patch' }
+    }, root)).toEqual(['src/d.ts']);
   });
 
   it('formats PreToolUse warnings as additionalContext JSON and SessionStart as plain text', () => {
@@ -277,6 +344,17 @@ describe('Claude Code hook I/O', () => {
     expect(JSON.parse(toGeminiHookStdout('SessionEnd', { message: 'done' })!))
       .toEqual({ systemMessage: 'done' });
     expect(toGeminiHookStdout('UnknownEvent', { output: 'x' })).toBeNull();
+  });
+
+  it('formats Copilot hook output with session context and an ask decision for traps', () => {
+    expect(JSON.parse(toCopilotHookStdout('SessionStart', { output: 'context' })!))
+      .toEqual({ additionalContext: 'context' });
+    expect(JSON.parse(toCopilotHookStdout('PreToolUse', { output: 'TRAP!' })!))
+      .toEqual({ permissionDecision: 'ask', permissionDecisionReason: 'TRAP!' });
+    expect(JSON.parse(toCopilotHookStdout('PreToolUse', { message: 'safe' })!)).toEqual({});
+    expect(JSON.parse(toCopilotHookStdout('PreCompact', { message: 'snapshot' })!)).toEqual({});
+    expect(JSON.parse(toCopilotHookStdout('SessionEnd', { message: 'done' })!)).toEqual({});
+    expect(toCopilotHookStdout('UnknownEvent', { output: 'x' })).toBeNull();
   });
 });
 

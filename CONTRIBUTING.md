@@ -72,7 +72,7 @@ Before submitting a PR, verify that your changes adhere to FastrMemory's **7 Cor
 
 | Domain / Focus Area | What Needs Building | Difficulty | Reference Location | Target PR Scope |
 | :--- | :--- | :--- | :--- | :--- |
-| **Agent Hook Installers** | Auto-wire hooks & skills for Windsurf, Roo Code, Continue, OpenCode, and Warp | `good first issue` | [src/installer/setup.ts](src/installer/setup.ts) | `feat(installer)` |
+| **Agent Hook Installers** | Auto-wire hooks & skills for Windsurf, Roo Code, Continue, and Warp | `good first issue` | [src/installer/setup.ts](src/installer/setup.ts) | `feat(installer)` |
 | **Local Embedding Providers** | Optional on-device backends (Ollama, llama.cpp, WebGPU) with air-gapped fallback | Intermediate | [src/search/embeddings.ts](src/search/embeddings.ts) | `feat(embeddings)` |
 | **IDE Extensions** | JetBrains (IntelliJ / WebStorm) and Neovim Lua plugin with status bar pill & trap underlines | Advanced | [extensions/vscode/](extensions/vscode/) | `feat(ide)` |
 | **Benchmark Runners** | LongMemEval-S, LoCoMo, and SWE-bench dataset scenario runners | `good first issue` | [src/bench/benchmark.ts](src/bench/benchmark.ts) | `feat(bench)` |

@@ -13,18 +13,41 @@ export interface HookContext {
 }
 
 /**
- * Collects target file paths from either the CLI payload (`files` / `file`) or the JSON Claude Code
- * sends hooks on stdin (`tool_input.file_path`, always absolute). Paths are made project-relative
- * with forward slashes, matching how `file_links` stores them.
+ * Collects target file paths from CLI payloads (`files` / `file`), Claude's `tool_input`, or
+ * Copilot's `toolArgs` (camelCase `path` / `filePath`). Paths are made project-relative with
+ * forward slashes, matching how `file_links` stores them.
  */
 export function extractTargetFiles(payload: Record<string, any>, projectRoot: string): string[] {
   const raw: string[] = [];
   if (Array.isArray(payload.files)) raw.push(...payload.files);
   if (typeof payload.file === 'string') raw.push(payload.file);
-  const toolInput = payload.tool_input;
+
+  let toolInput = payload.tool_input ?? payload.toolArgs ?? payload.tool_args;
+  if (typeof toolInput === 'string') {
+    try {
+      toolInput = JSON.parse(toolInput);
+    } catch {
+      toolInput = undefined;
+    }
+  }
   if (toolInput && typeof toolInput === 'object') {
-    if (typeof toolInput.file_path === 'string') raw.push(toolInput.file_path);
-    if (typeof toolInput.notebook_path === 'string') raw.push(toolInput.notebook_path);
+    for (const key of ['file_path', 'filePath', 'notebook_path', 'notebookPath', 'path']) {
+      if (typeof toolInput[key] === 'string') raw.push(toolInput[key]);
+    }
+    if (Array.isArray(toolInput.edits)) {
+      for (const edit of toolInput.edits) {
+        if (edit && typeof edit === 'object') {
+          if (typeof edit.file_path === 'string') raw.push(edit.file_path);
+          if (typeof edit.filePath === 'string') raw.push(edit.filePath);
+          if (typeof edit.path === 'string') raw.push(edit.path);
+        }
+      }
+    }
+    if (typeof toolInput.patch === 'string') {
+      for (const match of toolInput.patch.matchAll(/^\*\*\* (?:Add|Update|Delete) File: (.+)$/gm)) {
+        raw.push(match[1].trim());
+      }
+    }
   }
 
   const root = path.resolve(projectRoot);
@@ -87,6 +110,32 @@ export function toGeminiHookStdout(
     case 'precompact':
     case 'sessionend':
       return JSON.stringify(result.message ? { systemMessage: result.message } : {});
+    default:
+      return null;
+  }
+}
+
+/**
+ * Formats a hook result for GitHub Copilot CLI. SessionStart injects `additionalContext`;
+ * preToolUse has no advisory field, so an active trap asks the user before the edit (Copilot
+ * treats `ask` as deny in autopilot/non-interactive mode). Other events are notification-only.
+ */
+export function toCopilotHookStdout(
+  event: string,
+  result: { output?: string; message?: string }
+): string | null {
+  const normalized = event.trim().toLowerCase();
+  const context = result.output?.trim();
+  switch (normalized) {
+    case 'sessionstart':
+      return JSON.stringify(context ? { additionalContext: context } : {});
+    case 'pretooluse':
+      return JSON.stringify(context
+        ? { permissionDecision: 'ask', permissionDecisionReason: context }
+        : {});
+    case 'precompact':
+    case 'sessionend':
+      return JSON.stringify({});
     default:
       return null;
   }

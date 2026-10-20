@@ -47,6 +47,7 @@
     "test": "vitest run",
     "test:isolation": "vitest run tests/isolation.test.ts",
     "smoke:gemini": "npm run build:core && node scripts/smoke-gemini.mjs",
+    "smoke:copilot": "npm run build:core && node scripts/smoke-copilot.mjs",
     "smoke:opencode": "npm run build:core && node scripts/smoke-opencode.mjs",
     "test:crash": "node scripts/crash-test.mjs",
     "check:skills": "node scripts/check-skills.mjs",

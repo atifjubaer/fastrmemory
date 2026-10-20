@@ -3,6 +3,7 @@ import { ClaudeHookSpec, mergeClaudeHooks, updateJsonConfig, upsertMcpServer } f
 import { ensureAgentsDiscipline, resolveMcpCommand } from './setup.js';
 import { installOpenCode } from './opencode.js';
 import { installGemini } from './gemini.js';
+import { installCopilot } from './copilot.js';
 import { buildHookCommand } from './commands.js';
 
 export { buildHookCommand } from './commands.js';
@@ -11,6 +12,7 @@ export interface HookInstallResult {
   claudeCodeUpdated: boolean;
   cursorUpdated: boolean;
   geminiUpdated: boolean;
+  copilotUpdated: boolean;
   openCodeUpdated: boolean;
   agentsMdUpdated: boolean;
   details: string[];
@@ -29,18 +31,21 @@ export function claudeHookSpecs(platform: NodeJS.Platform = process.platform): C
 }
 
 /**
- * Wires FastrMemory into the current project for Claude Code, Cursor, Gemini CLI, and OpenCode.
+ * Wires FastrMemory into the current project for Claude Code, Cursor, Gemini CLI, Copilot CLI,
+ * and OpenCode.
  *
  * Claude Code reads project MCP servers from `.mcp.json` and hooks from `.claude/settings.json`;
- * Gemini CLI reads both from `.gemini/settings.json` (all shareable with the team). Existing
- * servers and hooks are preserved; files are backed up once and written atomically; unparseable
- * files are left untouched and reported.
+ * Gemini CLI reads both from `.gemini/settings.json`; Copilot CLI reads `.github/mcp.json` and
+ * `.github/hooks/*.json` (all shareable with the team). Existing servers and hooks are preserved;
+ * files are backed up once and written atomically; unparseable files are left untouched and
+ * reported.
  */
 export function installAgentHooks(projectRoot: string = process.cwd()): HookInstallResult {
   const details: string[] = [];
   let claudeCodeUpdated = false;
   let cursorUpdated = false;
   let geminiUpdated = false;
+  let copilotUpdated = false;
   let openCodeUpdated = false;
   let agentsMdUpdated = false;
   const mcpEntry = resolveMcpCommand();
@@ -80,7 +85,17 @@ export function installAgentHooks(projectRoot: string = process.cwd()): HookInst
     details.push(`Failed to update Gemini CLI: ${err.message}`);
   }
 
-  // 4. OpenCode V2: project MCP server + auto-loaded context plugin
+  // 4. GitHub Copilot CLI: project MCP config + lifecycle hooks
+  try {
+    const copilot = installCopilot(projectRoot, mcpEntry);
+    details.push(describe('Copilot CLI MCP', copilot.mcp));
+    details.push(describe('Copilot CLI hooks', copilot.hooks));
+    copilotUpdated = copilot.changed;
+  } catch (err: any) {
+    details.push(`Failed to update Copilot CLI: ${err.message}`);
+  }
+
+  // 5. OpenCode V2: project MCP server + auto-loaded context plugin
   try {
     const openCode = installOpenCode(projectRoot, mcpEntry);
     details.push(...openCode.details);
@@ -89,7 +104,7 @@ export function installAgentHooks(projectRoot: string = process.cwd()): HookInst
     details.push(`Failed to update OpenCode: ${err.message}`);
   }
 
-  // 5. Autonomous Memory Discipline in AGENTS.md
+  // 6. Autonomous Memory Discipline in AGENTS.md
   try {
     agentsMdUpdated = ensureAgentsDiscipline(projectRoot) === 'added';
     details.push(agentsMdUpdated
@@ -103,6 +118,7 @@ export function installAgentHooks(projectRoot: string = process.cwd()): HookInst
     claudeCodeUpdated,
     cursorUpdated,
     geminiUpdated,
+    copilotUpdated,
     openCodeUpdated,
     agentsMdUpdated,
     details,

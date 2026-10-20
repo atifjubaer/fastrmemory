@@ -12,7 +12,7 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 
 | Item | Current state | Evidence |
 |---|---|---|
-| Local test gate | **Done:** 250 tests across 45 files | `npm run check:ci` on 2026-10-21 |
+| Local test gate | **Done:** 252 tests across 45 files | `npm run check:ci` on 2026-10-21 |
 | CI matrix | **Done:** 6/6 green at `3fa2bf9` | run `39495621243` |
 | npm distribution | **Blocked:** `npm whoami` E401, `npm view` E404; suspension lifts 2026-10-21 22:42 UTC | `docs/npm-publishing.md` |
 | Package artifact | **GitHub asset attached:** v0.2.1 asset is 591,204 bytes, SHA-256 `78F1535E87A7148272824C0B0D31F21D4AD385D9EEAA2EF8A40D41DCD0ACA63B`; v0.2.0 asset is 571,279 bytes | `npm pack` vs downloaded release asset |
@@ -41,7 +41,7 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 | 3.2 | Local memory import | `fastr import --from <format>` imports Markdown rules and JSONL with dry-run, dedupe, and round-trip test | **Done** |
 | 3.3 | OpenCode hook and MCP parity | Installer writes a tested OpenCode config/plugin path and a smoke check starts the MCP server | **Done** |
 | 3.4 | Gemini CLI hook and MCP parity | Installer writes a tested Gemini config path with idempotent merge | **Done** |
-| 3.5 | Copilot CLI hook and MCP parity | Installer writes a tested Copilot config/instruction path with idempotent merge | Missing |
+| 3.5 | Copilot CLI hook and MCP parity | Installer writes a tested Copilot config/instruction path with idempotent merge | **Done** |
 | 3.6 | Memory envelope resource | `fastr://memory/{id}/envelope` returns metadata, provenance, links, and conflict state | Missing |
 | 3.7 | Memory branch and merge | `fastr branch create/list` and `fastr merge` produce a conflict report and preserve history | Missing |
 | 3.8 | Confidence tiers and 3-bad dormancy | Per-ID confidence tiers and automatic dormancy after three bad outcomes have tests | Partial |
@@ -145,7 +145,7 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 | Per-ID feedback and dormancy | **Partial** | Per-ID feedback exists; explicit confidence tiers and 3-bad dormancy are not implemented. |
 | Conflict detection and structured resolve | **Done** | Conflict-aware recall plus `fastr conflict list` / `fastr conflict resolve`; covered by `tests/ner-and-conflicts.test.ts`. |
 | Cross-tool import | **Done** | `fastr import --from <format>` for JSONL, Markdown, AGENTS.md, Cursor rules, and Claude rules, with dry-run and dedupe; covered by `tests/local-import.test.ts`. |
-| OpenCode, Gemini CLI, and Copilot CLI hooks | **Partial** | OpenCode V2 MCP config/plugin and Gemini CLI MCP/hooks are installed and tested; Copilot CLI is still missing. |
+| OpenCode, Gemini CLI, and Copilot CLI hooks | **Done** | OpenCode V2 MCP config/plugin, Gemini CLI MCP/hooks, and Copilot CLI MCP/hooks are installed and tested. |
 | 12-tool core MCP profile | **Done** | `fastrmemory mcp --profile core` or `FASTR_MCP_PROFILE=core`; `tests/mcp-core-profile.test.ts` and `scripts/smoke-mcp-profile.mjs` assert 12 core tools and the 41-tool full default. |
 | Memory envelope resource | **Missing** | Four resources exist; envelope resource is not implemented. |
 | Branch / merge | **Missing** | Snapshots, replay, and diff exist; branch and merge do not. |
@@ -225,8 +225,8 @@ Do not publish current HEAD as `0.2.0`: current HEAD is now `0.2.1`, its tarball
 1. **P0:** prepare and verify the npm release candidate. **Done** for `0.2.1`; publish remains blocked.
 2. **P0:** run the 10k crash test and commit the report. **Done.**
 3. **P1:** add the 12-tool core profile and its smoke test. **Done.**
-4. **P1:** finish Copilot CLI hook parity. OpenCode/Gemini hook parity, local import, and conflict-aware recall are **Done**; Copilot is **Next**.
-5. **P1:** add the dashboard timeline/diff view and observe a live Memory CI PR comment.
+4. **P1:** add OpenCode/Gemini/Copilot hook parity, local import, and conflict-aware recall. **Done.**
+5. **P1:** add the dashboard timeline/diff view and observe a live Memory CI PR comment. **Next.**
 6. **P2:** add public benchmark harnesses and a pinned external baseline.
 7. **P2:** finish README, migration, security, scorecard, changelog, and launch evidence.
 

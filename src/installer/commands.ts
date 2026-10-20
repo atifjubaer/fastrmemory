@@ -11,13 +11,13 @@ function quoteArg(arg: string): string {
 export function buildHookCommand(
   event: string,
   platform: NodeJS.Platform = process.platform,
-  format: 'claude' | 'gemini' = 'claude'
+  format: 'claude' | 'gemini' | 'copilot' = 'claude'
 ): string {
   const target = resolveMcpCommand(platform);
   // Hook commands run through a shell, so npx needs no `cmd /c` wrapper here.
   const base = target.command === 'cmd' ? target.args.slice(1) : [target.command, ...target.args];
   const withoutMcp = base[base.length - 1] === 'mcp' ? base.slice(0, -1) : base;
   const args = [...withoutMcp, 'hook', 'run', event];
-  if (format === 'gemini') args.push('--format', 'gemini');
+  if (format !== 'claude') args.push('--format', format);
   return args.map(quoteArg).join(' ');
 }
