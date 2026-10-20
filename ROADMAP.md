@@ -12,7 +12,7 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 
 | Item | Current state | Evidence |
 |---|---|---|
-| Local test gate | **Done:** 245 tests across 45 files | `npm run check:ci` on 2026-10-21 |
+| Local test gate | **Done:** 248 tests across 45 files | `npm run check:ci` on 2026-10-21 |
 | CI matrix | **Done:** 6/6 green at `3fa2bf9` | run `39495621243` |
 | npm distribution | **Blocked:** `npm whoami` E401, `npm view` E404; suspension lifts 2026-10-21 22:42 UTC | `docs/npm-publishing.md` |
 | Package artifact | **GitHub asset attached:** v0.2.1 asset is 591,204 bytes, SHA-256 `78F1535E87A7148272824C0B0D31F21D4AD385D9EEAA2EF8A40D41DCD0ACA63B`; v0.2.0 asset is 571,279 bytes | `npm pack` vs downloaded release asset |
@@ -39,7 +39,7 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 |---|---|---|---|
 | 3.1 | Conflict-aware recall plus CLI conflict list/resolve | Recall marks both sides of an open conflict; `fastr conflict list` and `fastr conflict resolve` work; tests and docs updated | **Done** |
 | 3.2 | Local memory import | `fastr import --from <format>` imports Markdown rules and JSONL with dry-run, dedupe, and round-trip test | **Done** |
-| 3.3 | OpenCode hook and MCP parity | Installer writes a tested OpenCode config/plugin path and a smoke check starts the MCP server | Missing |
+| 3.3 | OpenCode hook and MCP parity | Installer writes a tested OpenCode config/plugin path and a smoke check starts the MCP server | **Done** |
 | 3.4 | Gemini CLI hook and MCP parity | Installer writes a tested Gemini config path with idempotent merge | Missing |
 | 3.5 | Copilot CLI hook and MCP parity | Installer writes a tested Copilot config/instruction path with idempotent merge | Missing |
 | 3.6 | Memory envelope resource | `fastr://memory/{id}/envelope` returns metadata, provenance, links, and conflict state | Missing |
@@ -145,7 +145,7 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 | Per-ID feedback and dormancy | **Partial** | Per-ID feedback exists; explicit confidence tiers and 3-bad dormancy are not implemented. |
 | Conflict detection and structured resolve | **Partial** | DB and MCP tools exist; CLI/UI resolve path and conflict-aware recall are missing. |
 | Cross-tool import | **Missing** | No `fastr import` for local memory formats. |
-| OpenCode, Gemini CLI, and Copilot CLI hooks | **Missing** | Installers cover Claude Code and Cursor only. |
+| OpenCode, Gemini CLI, and Copilot CLI hooks | **Partial** | OpenCode V2 MCP config and auto-loaded context/compaction plugin are installed and tested; Gemini CLI and Copilot CLI are still missing. |
 | 12-tool core MCP profile | **Done** | `fastrmemory mcp --profile core` or `FASTR_MCP_PROFILE=core`; `tests/mcp-core-profile.test.ts` and `scripts/smoke-mcp-profile.mjs` assert 12 core tools and the 41-tool full default. |
 | Memory envelope resource | **Missing** | Four resources exist; envelope resource is not implemented. |
 | Branch / merge | **Missing** | Snapshots, replay, and diff exist; branch and merge do not. |

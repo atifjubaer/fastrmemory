@@ -1,10 +1,12 @@
 import * as path from 'node:path';
 import { ClaudeHookSpec, mergeClaudeHooks, updateJsonConfig, upsertMcpServer } from './json-config.js';
 import { ensureAgentsDiscipline, resolveMcpCommand } from './setup.js';
+import { installOpenCode } from './opencode.js';
 
 export interface HookInstallResult {
   claudeCodeUpdated: boolean;
   cursorUpdated: boolean;
+  openCodeUpdated: boolean;
   agentsMdUpdated: boolean;
   details: string[];
 }
@@ -48,6 +50,7 @@ export function installAgentHooks(projectRoot: string = process.cwd()): HookInst
   const details: string[] = [];
   let claudeCodeUpdated = false;
   let cursorUpdated = false;
+  let openCodeUpdated = false;
   let agentsMdUpdated = false;
   const mcpEntry = resolveMcpCommand();
 
@@ -77,7 +80,16 @@ export function installAgentHooks(projectRoot: string = process.cwd()): HookInst
     details.push(`Failed to update Cursor MCP: ${err.message}`);
   }
 
-  // 3. Autonomous Memory Discipline in AGENTS.md
+  // 3. OpenCode V2: project MCP server + auto-loaded context plugin
+  try {
+    const openCode = installOpenCode(projectRoot, mcpEntry);
+    details.push(...openCode.details);
+    openCodeUpdated = openCode.changed;
+  } catch (err: any) {
+    details.push(`Failed to update OpenCode: ${err.message}`);
+  }
+
+  // 4. Autonomous Memory Discipline in AGENTS.md
   try {
     agentsMdUpdated = ensureAgentsDiscipline(projectRoot) === 'added';
     details.push(agentsMdUpdated
@@ -90,6 +102,7 @@ export function installAgentHooks(projectRoot: string = process.cwd()): HookInst
   return {
     claudeCodeUpdated,
     cursorUpdated,
+    openCodeUpdated,
     agentsMdUpdated,
     details,
   };

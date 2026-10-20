@@ -563,7 +563,7 @@ const hookCmd = program.command('hook').description('Autonomous agent lifecycle 
 
 hookCmd
   .command('install')
-  .description('Auto-detect and install FastrMemory hooks into Claude Code, Cursor, and AGENTS.md')
+  .description('Install FastrMemory MCP and hooks into Claude Code, Cursor, OpenCode, and AGENTS.md')
   .action(() => {
     const ctx = createFastrServerContext();
     const res = installAgentHooks(ctx.config.projectRoot);

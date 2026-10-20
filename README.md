@@ -9,7 +9,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.16.0-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Protocol](https://img.shields.io/badge/Protocol-MCP%20v2-7C3AED?style=flat-square)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/Tests-245%20Passed-brightgreen?style=flat-square)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-248%20Passed-brightgreen?style=flat-square)](tests/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-architecture)
 
@@ -81,7 +81,7 @@ Fuses FTS5 BM25 + optional local embeddings + file-graph links. Error traps rece
 
 ## 🤖 Works With MCP- and HTTP-Compatible Agents
 
-FastrMemory exposes one stdio MCP server and one optional local HTTP service. **Native hook/config installers are provided for Claude Code and Cursor** (`fastrmemory hook install`); every other client connects through its own MCP configuration or the REST API. Integration depth varies by client — only the two native installers are covered by tests in this repository.
+FastrMemory exposes one stdio MCP server and one optional local HTTP service. **Native hook/config installers are provided for Claude Code, Cursor, and OpenCode V2** (`fastrmemory hook install`); every other client connects through its own MCP configuration or the REST API. Integration depth varies by client - only the native installers are covered by tests in this repository.
 
 Clients commonly used with FastrMemory include Codex CLI, Gemini CLI, OpenCode, GitHub Copilot CLI, Antigravity, Claude Desktop, Cline, Continue, Roo Code, Goose, Zed, Warp, and Aider. Listing a client does **not** imply a tested native integration.
 
@@ -226,7 +226,7 @@ fastrmemory daemon start
 fastrmemory daemon status
 fastrmemory daemon stop
 
-# Auto-wire autonomous hooks and Planetary Skills into Antigravity, Claude Code, and Cursor:
+# Auto-wire autonomous hooks and Planetary Skills into Antigravity, Claude Code, Cursor, and OpenCode:
 fastrmemory hook install
 fastrmemory setup
 
@@ -285,6 +285,22 @@ Add this JSON block to your agent's MCP settings to enable autonomous memory:
   }
 }
 ```
+
+### OpenCode V2 (`opencode.json`)
+```json
+{
+  "mcp": {
+    "servers": {
+      "fastrmemory": {
+        "type": "local",
+        "command": ["fastrmemory", "mcp"]
+      }
+    }
+  }
+}
+```
+
+`fastrmemory hook install` also writes `.opencode/plugins/fastrmemory/index.ts`, which injects the session-start handoff and critical rules into model context and captures a snapshot before compaction. Existing `opencode.json(c)` settings are preserved; JSONC configs are left untouched and reported for manual wiring.
 
 ---
 
@@ -467,7 +483,7 @@ Run the comprehensive unit test suite:
 npm test
 ```
 
-All **245 tests pass** across **45 test files** covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, replay/diff, Memory CI, conflict-aware recall, local rule import, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, UI loopback security boundaries, and atomic installer configuration safety.
+All **248 tests pass** across **45 test files** covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, replay/diff, Memory CI, conflict-aware recall, local rule import, OpenCode V2 wiring, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, UI loopback security boundaries, and atomic installer configuration safety.
 
 **Crash-safety evidence:** `npm run test:crash` kills the writer at randomized points across 10 runs, then reopens the WAL database. The committed report at [`bench/results/crash-test.json`](bench/results/crash-test.json) records **10,718 acknowledged writes**, **10,727 committed rows**, **0 lost**, **0 duplicate ids/titles**, and `PRAGMA integrity_check = ok`; methodology is in [`docs/audit/2026-10-21-crash-test.md`](docs/audit/2026-10-21-crash-test.md). `npm run check:crash` validates the report during `check:ci`. This is a process-crash test (`taskkill /F`), not a power-loss test; SQLite runs with `synchronous=NORMAL` in WAL mode.
 
@@ -567,7 +583,7 @@ Special thanks to **[@the-arizul](https://github.com/the-arizul)** for architect
 
 | Domain / Focus Area | What Needs Building | Difficulty | Reference Location | Target PR Scope |
 | :--- | :--- | :--- | :--- | :--- |
-| **Agent Hook Installers** | Auto-wire hooks & skills for Windsurf, Roo Code, Continue, OpenCode, and Warp | `good first issue` | [src/installer/setup.ts](src/installer/setup.ts) | `feat(installer)` |
+| **Agent Hook Installers** | Auto-wire hooks & skills for Gemini CLI, Copilot CLI, Windsurf, Roo Code, Continue, and Warp | `good first issue` | [src/installer/setup.ts](src/installer/setup.ts) | `feat(installer)` |
 | **Local Embedding Providers** | Optional on-device backends (Ollama, llama.cpp, WebGPU) with air-gapped fallback | Intermediate | [src/search/embeddings.ts](src/search/embeddings.ts) | `feat(embeddings)` |
 | **IDE Extensions** | JetBrains (IntelliJ / WebStorm) and Neovim Lua plugin with status bar pill & trap underlines | Advanced | [extensions/vscode/](extensions/vscode/) | `feat(ide)` |
 | **Benchmark Runners** | LongMemEval-S, LoCoMo, and SWE-bench dataset scenario runners | `good first issue` | [src/bench/benchmark.ts](src/bench/benchmark.ts) | `feat(bench)` |
@@ -583,7 +599,7 @@ Special thanks to **[@the-arizul](https://github.com/the-arizul)** for architect
    cd fastrmemory
    ```
 
-2. **Install Dependencies & Verify Test Suite (245 Tests Passing)**:
+2. **Install Dependencies & Verify Test Suite (248 Tests Passing)**:
    ```bash
    npm install
    npm test
@@ -616,7 +632,7 @@ Special thanks to **[@the-arizul](https://github.com/the-arizul)** for architect
 Before submitting your PR, verify:
 - [ ] **Strict TypeScript**: `npm run build:all` passes without type errors.
 - [ ] **Zero External Daemons**: Engine runs in-process via Node.js WAL SQLite.
-- [ ] **100% Test Green**: `npm test` passes all 245 unit tests across 45 files.
+- [ ] **100% Test Green**: `npm test` passes all 248 unit tests across 45 files.
 - [ ] **DCO Sign-off**: All commits signed off using `git commit -s` ([Developer Certificate of Origin](https://developercertificate.org/)).
 - [ ] **Pre-Merge Trap Guardian**: Run `fastrmemory guard --strict` to verify no active error traps are violated.
 

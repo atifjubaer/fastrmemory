@@ -10,6 +10,7 @@ import {
   upsertMcpServer,
 } from '../src/installer/json-config.js';
 import { buildHookCommand, claudeHookSpecs, installAgentHooks } from '../src/installer/hooks.js';
+import { installOpenCode } from '../src/installer/opencode.js';
 import { resolveMcpCommand } from '../src/installer/setup.js';
 import { extractTargetFiles, toClaudeHookStdout } from '../src/hooks/runner.js';
 
@@ -102,13 +103,14 @@ describe('Installer config safety', () => {
     expect(target.args).toContain('mcp');
   });
 
-  it('installAgentHooks writes project-scoped .mcp.json and .claude/settings.json only', () => {
+  it('installAgentHooks writes project-scoped MCP config and Claude hooks', () => {
     const settingsPath = path.join(dir, '.claude', 'settings.json');
     fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
     fs.writeFileSync(settingsPath, JSON.stringify({ permissions: { allow: ['Bash(npm test)'] } }));
 
     const res = installAgentHooks(dir);
     expect(res.claudeCodeUpdated).toBe(true);
+    expect(res.openCodeUpdated).toBe(true);
 
     const mcp = JSON.parse(fs.readFileSync(path.join(dir, '.mcp.json'), 'utf-8'));
     expect(mcp.mcpServers.fastrmemory.args).toContain('mcp');
@@ -117,6 +119,69 @@ describe('Installer config safety', () => {
     expect(settings.permissions.allow).toEqual(['Bash(npm test)']);
     expect(settings.mcpServers).toBeUndefined();
     expect(Array.isArray(settings.hooks.SessionStart)).toBe(true);
+
+    const openCode = JSON.parse(fs.readFileSync(path.join(dir, 'opencode.json'), 'utf-8'));
+    expect(openCode.mcp.servers.fastrmemory.command).toContain('mcp');
+    expect(fs.existsSync(path.join(dir, '.opencode', 'plugins', 'fastrmemory', 'index.ts'))).toBe(true);
+
+    const again = installAgentHooks(dir);
+    expect(again.openCodeUpdated).toBe(false);
+  });
+
+  it('writes an OpenCode V2 MCP server and managed plugin without touching other settings', () => {
+    const configPath = path.join(dir, 'opencode.json');
+    fs.writeFileSync(configPath, JSON.stringify({
+      theme: 'dark',
+      plugins: ['company-plugin'],
+      mcp: { servers: { other: { type: 'remote', url: 'https://mcp.example.com' } } }
+    }));
+
+    const res = installOpenCode(dir, { command: 'node', args: ['cli.js', 'mcp'] });
+    expect(res.changed).toBe(true);
+    expect(res.configSkipped).toBeUndefined();
+
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    expect(config.theme).toBe('dark');
+    expect(config.plugins).toEqual(['company-plugin']);
+    expect(config.mcp.servers.other).toEqual({ type: 'remote', url: 'https://mcp.example.com' });
+    expect(config.mcp.servers.fastrmemory).toEqual({
+      type: 'local',
+      command: ['node', 'cli.js', 'mcp']
+    });
+
+    const plugin = fs.readFileSync(path.join(dir, '.opencode', 'plugins', 'fastrmemory', 'index.ts'), 'utf-8');
+    expect(plugin.startsWith('// fastrmemory:managed')).toBe(true);
+    expect(plugin).toContain('ctx.session.hook("context"');
+    expect(plugin).toContain('ctx.session.hook("compaction"');
+    expect(plugin).toContain('"hook", "run", event');
+    expect(plugin).toContain('const FASTR_COMMAND = ["node","cli.js"]');
+    expect(plugin).not.toContain('const FASTR_COMMAND = ["node","cli.js","mcp"]');
+
+    const again = installOpenCode(dir, { command: 'node', args: ['cli.js', 'mcp'] });
+    expect(again.changed).toBe(false);
+  });
+
+  it('does not overwrite a user-owned OpenCode plugin', () => {
+    const pluginPath = path.join(dir, '.opencode', 'plugins', 'fastrmemory', 'index.ts');
+    fs.mkdirSync(path.dirname(pluginPath), { recursive: true });
+    fs.writeFileSync(pluginPath, '// custom user plugin\nexport default {}\n');
+
+    const res = installOpenCode(dir, { command: 'node', args: ['cli.js', 'mcp'] });
+    expect(res.pluginChanged).toBe(false);
+    expect(res.pluginSkipped).toContain('not overwritten');
+    expect(fs.readFileSync(pluginPath, 'utf-8')).toBe('// custom user plugin\nexport default {}\n');
+  });
+
+  it('never rewrites an OpenCode JSONC config it cannot parse', () => {
+    const jsoncPath = path.join(dir, 'opencode.jsonc');
+    const original = '{\n  // keep this comment\n  "theme": "dark"\n}\n';
+    fs.writeFileSync(jsoncPath, original);
+
+    const res = installOpenCode(dir, { command: 'node', args: ['cli.js', 'mcp'] });
+    expect(res.configSkipped).toContain('JSONC');
+    expect(fs.readFileSync(jsoncPath, 'utf-8')).toBe(original);
+    expect(fs.existsSync(path.join(dir, 'opencode.json'))).toBe(false);
+    expect(res.pluginChanged).toBe(true);
   });
 });
 

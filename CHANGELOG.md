@@ -9,6 +9,7 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 - Conflict-aware recall: ranked results mark both sides of an open contradiction with the conflict id and the opposing memory.
 - `fastr conflict list` and `fastr conflict resolve <id> --keep <memory-id> [--forget] [--reason]`.
 - `fastr import --from markdown|agents-md|cursor-rules|claude-md|jsonl` imports local Markdown rules and snapshots with dry-run and exact-duplicate skipping.
+- OpenCode V2 integration: `fastrmemory hook install` writes `opencode.json` `mcp.servers.fastrmemory` and an auto-loaded plugin that injects session-start context and captures pre-compaction snapshots.
 
 ### Fixed
 
