@@ -20,6 +20,7 @@ FastrMemory takes a third path: keep immutable raw events, keep a bi-temporal me
 |---|---|
 | `raw_events` | Immutable event payloads (tool output, errors, commits, prompts) with SHA-256 content hashes |
 | `memories` | Rules/decisions/traps with `valid_from`, `valid_to`, `superseded_by_id`, `status`, `reward_score`, optional embedding |
+| `memory_feedback` | Append-only per-ID outcome events with score before/after, status before/after, confidence tier, and consecutive-bad count |
 | `memories_fts` | FTS5 index over title/module/content (porter + unicode61) |
 | `file_links` | Memory ↔ file/symbol links used by the graph stream |
 | `handoffs` | Cross-agent session milestones |
@@ -89,7 +90,7 @@ Replay is derived from the existing bi-temporal columns, not from a second log:
 - `runMemoryCi()` compares base and head JSONL snapshots, emits Markdown, and optionally exits `1` when the head adds an active trap.
 - `createBranch()` stores an immutable branch pointer to a base and head snapshot. `mergeBranch()` is one-way into the current active set: branch-only memories are added, target-only memories are preserved, and same-identity changes become conflicts. Conflicts block writes by default; `--force` applies additions, and `--force --strategy branch` supersedes the target while keeping the old rows in history. Every non-dry-run attempt is recorded in `memory_branch_merges`.
 
-CLI: `fastr replay`, `fastr diff`, `fastr snapshot export|import`, `fastr branch create|list`, `fastr merge`, `fastr consolidate`, and `fastr memory-ci`. MCP: `fastr_replay` and `fastr_diff`.
+CLI: `fastr replay`, `fastr diff`, `fastr snapshot export|import`, `fastr branch create|list`, `fastr merge`, `fastr feedback`, `fastr consolidate`, and `fastr memory-ci`. MCP: `fastr_replay`, `fastr_diff`, and `fastr_feedback`.
 
 ## 7. MCP surface
 
@@ -106,7 +107,7 @@ The full 41-tool surface is the default. Start the core profile with `fastrmemor
 1. **Never delete facts.** Supersede and tombstone; raw events stay immutable.
 2. **Bi-temporal validity, not time decay.** Active queries require `valid_to IS NULL` and exclude superseded/dormant rows.
 3. **Staging until verified.** Captured memories start as `staging`; tests passing/handoff promotes them.
-4. **Per-ID feedback.** `fastr_feedback` changes one memory's score (+0.2 / −0.5). It becomes `dormant` when the score reaches 0.2 or below — not after a fixed strike count.
+4. **Per-ID feedback and confidence tiers.** `fastr_feedback` changes one memory's score (+0.2 / −0.5) and reports `high` (score >= 1.5), `medium` (>= 0.8), or `low`; inactive rows report `dormant` or `superseded`. Three consecutive bad outcomes set `dormant`, and a good outcome resets the streak. Each event is appended to `memory_feedback`; a low score alone does not set dormancy.
 5. **Two-zone Markdown.** Compiled Truth on top, append-only timeline below, both Git-diffable.
 6. **Local-first.** No network call is required for the default path; embeddings are opt-in.
 7. **Additive consolidation.** A summary is a new linked memory; originals remain queryable and replayable.

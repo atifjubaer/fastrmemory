@@ -187,6 +187,24 @@ CREATE TABLE IF NOT EXISTS memories (
 );
 CREATE INDEX IF NOT EXISTS idx_memories_active ON memories(project_id, module, valid_to, status);
 
+-- 2b. Per-ID Feedback Audit (confidence tiers and 3-consecutive-bad dormancy)
+CREATE TABLE IF NOT EXISTS memory_feedback (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  memory_id TEXT NOT NULL,
+  outcome TEXT NOT NULL CHECK (outcome IN ('good', 'bad')),
+  note TEXT DEFAULT NULL,
+  reward_before REAL NOT NULL,
+  reward_after REAL NOT NULL,
+  status_before TEXT NOT NULL,
+  status_after TEXT NOT NULL,
+  confidence_tier TEXT NOT NULL CHECK (confidence_tier IN ('high', 'medium', 'low', 'dormant', 'superseded')),
+  bad_streak INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_memory_feedback_memory ON memory_feedback(memory_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_memory_feedback_project ON memory_feedback(project_id, created_at DESC);
+
 -- 3. FTS5 Virtual Table for sub-millisecond BM25 keyword search
 CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
   id UNINDEXED,

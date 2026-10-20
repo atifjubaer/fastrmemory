@@ -162,6 +162,31 @@ program
     console.log(`Recorded [${mem.id}] (${mem.kind}) in module "${mem.module}" [${mem.status}].`);
   });
 
+// 5a. Feedback command (per-ID confidence and 3-bad dormancy)
+program
+  .command('feedback <memoryId> <outcome>')
+  .description('Score one memory outcome (good | bad); three consecutive bad outcomes make it dormant')
+  .option('-n, --note <note>', 'Optional explanation for the outcome')
+  .option('--json', 'Print the feedback result as JSON', false)
+  .action((memoryId: string, outcome: string, opts: any) => {
+    if (outcome !== 'good' && outcome !== 'bad') {
+      console.error('Error: outcome must be "good" or "bad".');
+      process.exit(1);
+    }
+    const ctx = createFastrServerContext();
+    const res = ctx.repo.updateFeedback(memoryId, outcome, opts.note);
+    if (opts.json) {
+      console.log(JSON.stringify(res, null, 2));
+      return;
+    }
+    const dormancyText = res.bad_streak >= 3 && res.status === 'dormant'
+      ? ' Dormancy triggered after 3 consecutive bad outcomes.'
+      : '';
+    console.log(
+      `Feedback for [${memoryId}] (${outcome}): reward_score = ${res.reward_score}, confidence = "${res.confidence_tier}", status = "${res.status}", bad_streak = ${res.bad_streak}.${dormancyText}`
+    );
+  });
+
 // 5b. Trap commands (Active Error Trap Management)
 const trapCmd = program.command('trap').description('Manage active [TRAP] error warnings and 2.0x recall boost quarantine');
 

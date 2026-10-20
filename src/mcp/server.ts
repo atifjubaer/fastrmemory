@@ -355,7 +355,7 @@ export function createFastrMcpServer(
   registerTool(
     'fastr_feedback',
     {
-      description: 'Scores outcome on a specific recalled memory (+0.2 good, -0.5 bad). Never penalizes the whole batch.',
+      description: 'Scores outcome on one recalled memory (+0.2 good, -0.5 bad). Three consecutive bad outcomes make it dormant. Never penalizes the whole batch.',
       inputSchema: z.object({
         memoryId: ID.describe('Memory ID (e.g. mem_8f2a1c)'),
         outcome: z.enum(['good', 'bad']).describe('Good (+0.2) or Bad (-0.5) outcome'),
@@ -369,8 +369,11 @@ export function createFastrMcpServer(
       }
       const res = repo.updateFeedback(memoryId, outcome, note);
       const noteText = note ? ` Note: "${note}".` : '';
+      const dormancyText = res.bad_streak >= 3 && res.status === 'dormant'
+        ? ' Dormancy triggered after 3 consecutive bad outcomes.'
+        : '';
       return ok(
-        `Updated feedback for [${memoryId}] (${outcome}): new reward_score = ${res.reward_score}, status = "${res.status}".${noteText}`
+        `Updated feedback for [${memoryId}] (${outcome}): new reward_score = ${res.reward_score}, confidence = "${res.confidence_tier}", status = "${res.status}", bad_streak = ${res.bad_streak}.${dormancyText}${noteText}`
       );
     }
   );
