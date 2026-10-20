@@ -85,6 +85,19 @@ for (const rel of buildOutputs) {
 }
 check(fs.existsSync(path.join(ROOT, 'dist-ui', 'assets')), 'dist-ui/assets is missing (run npm run build:ui)');
 
+// The compiled CLI must report the package version, not a stale literal.
+try {
+  const cliVersion = execSync('node dist/bin/fastr.js --version', {
+    cwd: ROOT,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    timeout: 30_000
+  }).trim();
+  check(cliVersion === pkg.version, `CLI --version reports ${cliVersion}, expected ${pkg.version}`);
+} catch (err) {
+  fail(`CLI --version failed: ${err instanceof Error ? err.message : String(err)}`);
+}
+
 // 5. Inspect the exact npm tarball file list.
 let pack;
 try {

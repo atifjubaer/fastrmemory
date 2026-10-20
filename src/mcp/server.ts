@@ -1,5 +1,6 @@
 import { McpServer, ResourceTemplate } from '@modelcontextprotocol/server';
 import { z } from 'zod';
+import { MCP_SERVER_NAME, PACKAGE_VERSION } from '../version.js';
 import { DatabaseSync } from 'node:sqlite';
 import { FastrRepository } from '../db/repository.js';
 import { SpoolManager } from '../db/spool.js';
@@ -101,8 +102,8 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   const { db, repo, config } = ctx;
 
   const server = new McpServer({
-    name: '@atifjubaer/fastrmemory',
-    version: '0.2.0'
+    name: MCP_SERVER_NAME,
+    version: PACKAGE_VERSION
   });
 
   // ==========================================

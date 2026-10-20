@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
+import { PACKAGE_VERSION } from '../src/version.js';
 import { runStdioServer } from '../src/mcp/stdio.js';
 import { createFastrServerContext } from '../src/mcp/server.js';
 import { searchMemories } from '../src/search/hybrid-rrf.js';
@@ -38,7 +39,7 @@ program
   .name('fastrmemory')
   .alias('fastr')
   .description('FastrMemory: High-Performance Cognitive Agent Memory Engine')
-  .version('0.1.0')
+  .version(PACKAGE_VERSION)
   .addHelpText('before', BANNER)
   .action((_opts, cmd) => {
     // A mistyped subcommand (e.g. `fastrmemory mpc`) must not fall through to setup, which edits global agent configs.
