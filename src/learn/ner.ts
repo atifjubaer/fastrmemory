@@ -1,6 +1,5 @@
 /**
  * Zero-LLM Fast-Path Named Entity Recognition (NER)
- * Extracted and optimized from Memoria (memoria-storage/src/graph/ner.rs)
  * Runs synchronously in <1ms without network or LLM dependencies.
  */
 

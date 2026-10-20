@@ -30,10 +30,10 @@ describe('Installer & MCP Multi-Client Configuration', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fastr-test-mcp-'));
     const configPath = path.join(tmpDir, 'mcp_config.json');
 
-    // Simulate existing config with hippo-memory
+    // Simulate existing config with other-memory
     const existing = {
       mcpServers: {
-        'hippo-memory': { command: 'hippo', args: ['mcp'] },
+        'other-memory': { command: 'other-memory', args: ['mcp'] },
       },
     };
     fs.writeFileSync(configPath, JSON.stringify(existing, null, 2), 'utf-8');
@@ -47,7 +47,7 @@ describe('Installer & MCP Multi-Client Configuration', () => {
     fs.writeFileSync(configPath, JSON.stringify(parsed, null, 2), 'utf-8');
 
     const result = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-    expect(result.mcpServers['hippo-memory']).toBeDefined();
+    expect(result.mcpServers['other-memory']).toBeDefined();
     expect(result.mcpServers['fastrmemory']).toBeDefined();
     expect(result.mcpServers['fastrmemory'].command).toBe('fastrmemory');
 
@@ -73,4 +73,5 @@ describe('Installer & MCP Multi-Client Configuration', () => {
     }
   });
 });
+
 

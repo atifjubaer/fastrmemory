@@ -3,7 +3,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { applySchema } from '../src/db/schema.js';
 import { FastrRepository } from '../src/db/repository.js';
 
-describe('FastrMemory Git-Style Snapshots & Rollback (Memoria Parity)', () => {
+describe('FastrMemory Git-Style Snapshots & Rollback', () => {
   let db: DatabaseSync;
   let repo: FastrRepository;
   const projectId = 'snap_test_proj';

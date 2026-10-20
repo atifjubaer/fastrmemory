@@ -1,6 +1,5 @@
 /**
  * Kahneman Planning Fallacy & Base-Rate Calibrator
- * Inspired by Hippo Memory (src/predictions/planning-fallacy.ts & src/store/predictions.ts)
  * Detects forward-looking estimation claims and calculates reference-class track records.
  */
 

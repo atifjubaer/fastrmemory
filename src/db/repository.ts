@@ -812,7 +812,7 @@ export class FastrRepository {
     };
   }
 
-  // --- SNAPSHOTS & TIME TRAVEL (Memoria parity) ---
+  // --- SNAPSHOTS & TIME TRAVEL ---
 
   createSnapshot(projectId: string, tag: string, description?: string): { id: string; tag: string; memoryCount: number; createdAt: string } {
     const id = `snap_${crypto.randomBytes(4).toString('hex')}`;

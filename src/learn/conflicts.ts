@@ -1,6 +1,5 @@
 /**
  * Proactive Contradiction & Conflict Detection Engine
- * Inspired by Hippo Memory (src/consolidate/conflicts.ts)
  * Automatically detects when two memories make mutually exclusive assertions.
  */
 
