@@ -67,7 +67,7 @@ describe('Obsidian Vault Exporter', () => {
     expect(ruleFiles.length).toBe(1);
     const ruleContent = fs.readFileSync(path.join(tempDir, 'rules', ruleFiles[0]), 'utf-8');
     expect(ruleContent).toContain('---');
-    expect(ruleContent).toContain('id: mem_');
+    expect(ruleContent).toContain('id: "mem_');
     expect(ruleContent).toContain('title: "Enforce JWT Expiration Invariants"');
     // Notice PostgresDB or AuthService is linked if extracted as entity
     expect(ruleContent).toContain('### Linked Code Files');

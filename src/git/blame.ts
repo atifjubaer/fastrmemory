@@ -1,10 +1,11 @@
 import * as path from 'node:path';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { DatabaseSync } from 'node:sqlite';
 import { findProjectRoot, loadConfig } from '../config.js';
 import { initDatabase } from '../db/schema.js';
 import { FastrRepository } from '../db/repository.js';
 import { SpoolManager } from '../db/spool.js';
+import { repoPathMatches } from './paths.js';
 
 export interface CognitiveBlameResult {
   filePath: string;
@@ -53,6 +54,21 @@ export function parseGitBlamePorcelain(blameOutput: string): {
   return { commitHash, author, authorTime, summary, lineContent };
 }
 
+/**
+ * Splits `path:line` targets. The line number is taken from the LAST colon only when
+ * it is purely numeric, so Windows drive letters (`C:\repo\a.ts:42`) survive intact.
+ */
+export function parseBlameTarget(target: string): { filePath: string; line?: number } {
+  const idx = target.lastIndexOf(':');
+  if (idx > 0) {
+    const suffix = target.slice(idx + 1);
+    if (/^\d+$/.test(suffix)) {
+      return { filePath: target.slice(0, idx), line: parseInt(suffix, 10) };
+    }
+  }
+  return { filePath: target };
+}
+
 export function cognitiveBlame(
   target: string,
   lineArg?: number,
@@ -60,16 +76,11 @@ export function cognitiveBlame(
 ): CognitiveBlameResult {
   const root = projectRoot ? path.resolve(projectRoot) : findProjectRoot();
 
-  let targetPath = target;
-  let targetLine = lineArg || 1;
-
-  if (target.includes(':')) {
-    const parts = target.split(':');
-    targetPath = parts[0];
-    const parsedLine = parseInt(parts[1], 10);
-    if (!isNaN(parsedLine)) {
-      targetLine = parsedLine;
-    }
+  const parsedTarget = parseBlameTarget(target);
+  const targetPath = parsedTarget.filePath;
+  const targetLine = lineArg || parsedTarget.line || 1;
+  if (!Number.isInteger(targetLine) || targetLine < 1) {
+    throw new Error(`Invalid line number: ${targetLine}`);
   }
 
   const relativeFile = path.isAbsolute(targetPath)
@@ -79,8 +90,9 @@ export function cognitiveBlame(
   // Run git blame porcelain on the target line
   let blameRaw = '';
   try {
-    blameRaw = execSync(
-      `git blame -L ${targetLine},${targetLine} --porcelain -- "${relativeFile}"`,
+    blameRaw = execFileSync(
+      'git',
+      ['blame', '-L', `${targetLine},${targetLine}`, '--porcelain', '--', relativeFile],
       { cwd: root, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }
     );
   } catch (err: any) {
@@ -101,7 +113,7 @@ export function cognitiveBlame(
     .filter((t) => {
       const files = repo.getFilesForMemory(t.id);
       if (files.length === 0) return false;
-      return files.some((f) => relativeFile.includes(f) || f.includes(relativeFile));
+      return files.some((f) => repoPathMatches(relativeFile, f, root));
     })
     .map((t) => ({ id: t.id, title: t.title, module: t.module }));
 
@@ -110,12 +122,13 @@ export function cognitiveBlame(
   const associatedMemories = activeMemories
     .filter((m) => {
       const files = repo.getFilesForMemory(m.id);
-      const fileMatch = files.some((f) => relativeFile.includes(f) || f.includes(relativeFile));
+      const fileMatch = files.some((f) => repoPathMatches(relativeFile, f, root));
       const contentMatch = summary.length > 4 && m.content.toLowerCase().includes(summary.toLowerCase().slice(0, 15));
       return fileMatch || contentMatch;
     })
     .slice(0, 3)
     .map((m) => ({ id: m.id, title: m.title, kind: m.kind, module: m.module }));
+  db.close();
 
   // 3. Synthesize cognitive rationale
   let cognitiveRationale = `Committed in "${summary}" by ${author}.`;

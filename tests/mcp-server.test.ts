@@ -400,8 +400,13 @@ describe('MCP v2 Server (Tools & Resources)', () => {
   });
 
   it('tags and searches visual screenshots via fastr_vision_tag and fastr_vision_search', async () => {
+    // Vision assets must exist inside the project root
+    const screenshot = path.join(testDir, 'screenshots', 'login-error.png');
+    fs.mkdirSync(path.dirname(screenshot), { recursive: true });
+    fs.writeFileSync(screenshot, 'png');
+
     const tagRes = await callTool('fastr_vision_tag', {
-      filePath: 'screenshots/login-error.png',
+      filePath: screenshot,
       description: 'Modal dialog showing HTTP 401 Unauthorized alert on login',
       ocrText: 'HTTP 401 Unauthorized'
     });
