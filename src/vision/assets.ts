@@ -1,4 +1,5 @@
 import * as crypto from 'node:crypto';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { VisionAsset } from '../db/schema.js';
@@ -16,6 +17,8 @@ export interface TagVisionParams {
   ocrText?: string;
   memoryId?: string;
   taskId?: string;
+  /** Asset must exist inside this directory; relative paths resolve against it. Defaults to process.cwd(). */
+  projectRoot?: string;
 }
 
 export interface VisionSearchResult {
@@ -29,12 +32,37 @@ export interface VisionSearchResult {
   createdAt: string;
 }
 
+/**
+ * Resolves an asset path against the project root and verifies it is an existing
+ * regular file that (after resolving symlinks) lies inside that root.
+ */
+export function resolveProjectAssetPath(filePath: string, projectRoot: string = process.cwd()): string {
+  if (!filePath || typeof filePath !== 'string') {
+    throw new Error('Vision asset filePath is required');
+  }
+  const root = path.resolve(projectRoot);
+  const resolved = path.resolve(root, filePath);
+  if (!fs.existsSync(resolved)) {
+    throw new Error(`Vision asset not found: ${filePath}`);
+  }
+  const realRoot = fs.realpathSync(root);
+  const realFile = fs.realpathSync(resolved);
+  const rel = path.relative(realRoot, realFile);
+  if (!rel || rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
+    throw new Error(`Vision asset must be inside the project root (${root}): ${filePath}`);
+  }
+  if (!fs.statSync(realFile).isFile()) {
+    throw new Error(`Vision asset is not a regular file: ${filePath}`);
+  }
+  return realFile;
+}
+
 export async function tagVisionAsset(
   db: DatabaseSync,
   params: TagVisionParams
 ): Promise<VisionAsset> {
   const id = `img_${crypto.randomBytes(4).toString('hex')}`;
-  const resolvedPath = path.resolve(params.filePath);
+  const resolvedPath = resolveProjectAssetPath(params.filePath, params.projectRoot);
   const now = new Date().toISOString();
 
   // Compute 384-dim embedding over description + OCR text

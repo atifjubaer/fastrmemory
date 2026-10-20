@@ -1,4 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { initDatabase } from '../src/db/schema.js';
 import { FastrRepository } from '../src/db/repository.js';
@@ -8,10 +11,53 @@ describe('Multimodal Visual Memory Engine', () => {
   let db: DatabaseSync;
   let repo: FastrRepository;
   const projectId = 'test-proj-vision';
+  let tmpRoot: string;
 
   beforeEach(() => {
     db = initDatabase(':memory:');
     repo = new FastrRepository(db);
+    tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'fastr-vision-'));
+    fs.mkdirSync(path.join(tmpRoot, 'tests', 'fixtures'), { recursive: true });
+    for (const name of ['modal-error.png', 'login-screen.png', 'architecture-dag.png', 'auth-spec.png', 'db-schema.png']) {
+      fs.writeFileSync(path.join(tmpRoot, 'tests', 'fixtures', name), 'png');
+    }
+  });
+
+  afterEach(() => {
+    db.close();
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  });
+
+  it('rejects missing assets and assets outside the project root', async () => {
+    await expect(tagVisionAsset(db, {
+      projectId,
+      projectRoot: tmpRoot,
+      filePath: 'tests/fixtures/does-not-exist.png',
+      description: 'missing'
+    })).rejects.toThrow(/not found/);
+
+    const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fastr-vision-outside-'));
+    try {
+      const outside = path.join(outsideDir, 'secret.png');
+      fs.writeFileSync(outside, 'png');
+      await expect(tagVisionAsset(db, {
+        projectId,
+        projectRoot: tmpRoot,
+        filePath: outside,
+        description: 'outside'
+      })).rejects.toThrow(/inside the project root/);
+      await expect(tagVisionAsset(db, {
+        projectId,
+        projectRoot: tmpRoot,
+        filePath: path.relative(tmpRoot, outside),
+        description: 'outside via ..'
+      })).rejects.toThrow(/inside the project root/);
+    } finally {
+      fs.rmSync(outsideDir, { recursive: true, force: true });
+    }
+
+    const count = db.prepare('SELECT COUNT(*) AS n FROM vision_assets').get() as any;
+    expect(count.n).toBe(0);
   });
 
   it('tags and persists screenshot with description and OCR text', async () => {
@@ -26,6 +72,7 @@ describe('Multimodal Visual Memory Engine', () => {
 
     const asset = await tagVisionAsset(db, {
       projectId,
+      projectRoot: tmpRoot,
       filePath: 'tests/fixtures/modal-error.png',
       description: 'Modal error dialog showing HTTP 401 Unauthorized alert',
       ocrText: 'HTTP 401 Unauthorized. Access token expired.',
@@ -46,6 +93,7 @@ describe('Multimodal Visual Memory Engine', () => {
   it('performs semantic and keyword visual search across tagged screenshots', async () => {
     await tagVisionAsset(db, {
       projectId,
+      projectRoot: tmpRoot,
       filePath: 'tests/fixtures/login-screen.png',
       description: 'Dark mode user login form with OAuth Google and GitHub buttons',
       ocrText: 'Sign in to FastrMemory'
@@ -53,6 +101,7 @@ describe('Multimodal Visual Memory Engine', () => {
 
     await tagVisionAsset(db, {
       projectId,
+      projectRoot: tmpRoot,
       filePath: 'tests/fixtures/architecture-dag.png',
       description: 'System architectural diagram showing SQLite WAL and MCP protocol stream',
       ocrText: 'Architecture Flowchart Node.js'
@@ -91,6 +140,7 @@ describe('Multimodal Visual Memory Engine', () => {
 
     await tagVisionAsset(db, {
       projectId,
+      projectRoot: tmpRoot,
       filePath: 'tests/fixtures/auth-spec.png',
       description: 'Auth specification wireframe',
       memoryId: mem1.id
@@ -98,6 +148,7 @@ describe('Multimodal Visual Memory Engine', () => {
 
     await tagVisionAsset(db, {
       projectId,
+      projectRoot: tmpRoot,
       filePath: 'tests/fixtures/db-schema.png',
       description: 'Database schema ER diagram',
       memoryId: mem2.id

@@ -1,7 +1,52 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import * as crypto from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { Memory } from '../db/schema.js';
+
+// Device names Windows refuses as file names regardless of extension (con.md, nul.md, ...)
+const WINDOWS_RESERVED_NAMES = /^(?:con|prn|aux|nul|com[0-9]|lpt[0-9])(?:\..*)?$/i;
+
+export function isWindowsReservedName(name: string): boolean {
+  return WINDOWS_RESERVED_NAMES.test(name.trim());
+}
+
+/**
+ * Converts an arbitrary module name into a safe file stem: `[a-z0-9_-]` only, any other
+ * run of characters collapsed to `-`, falling back to `general` when nothing is left.
+ */
+export function slugifyModuleName(name: string): string {
+  const slug = String(name ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^[-_]+|[-_]+$/g, '')
+    .slice(0, 80)
+    .replace(/[-_]+$/g, '');
+  if (!slug) return 'general';
+  return isWindowsReservedName(slug) ? `${slug}-module` : slug;
+}
+
+/** Throws unless `target` resolves to a path strictly inside `dir`. */
+export function assertInsideDir(dir: string, target: string): string {
+  const resolvedDir = path.resolve(dir);
+  const resolvedTarget = path.resolve(resolvedDir, target);
+  const rel = path.relative(resolvedDir, resolvedTarget);
+  if (!rel || rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
+    throw new Error(`Refusing to write outside ${resolvedDir}: ${target}`);
+  }
+  return resolvedTarget;
+}
+
+/** File name for a module page; adds a short hash when slugging changed the name so distinct modules never collide. */
+export function modulePageFileName(moduleName: string): string {
+  const normModule = moduleName.trim().toLowerCase();
+  const slug = slugifyModuleName(normModule);
+  if (slug === normModule) return `${slug}.md`;
+  const hash = crypto.createHash('sha256').update(normModule).digest('hex').slice(0, 6);
+  return `${slug}-${hash}.md`;
+}
 
 export function renderModuleMarkdown(db: DatabaseSync, projectId: string, moduleName: string): string {
   const normModule = moduleName.trim().toLowerCase();
@@ -98,7 +143,7 @@ export function syncModulePage(
   }
 
   const content = renderModuleMarkdown(db, projectId, normModule);
-  const targetFile = path.join(pagesDir, `${normModule}.md`);
+  const targetFile = assertInsideDir(pagesDir, modulePageFileName(normModule));
   fs.writeFileSync(targetFile, content, 'utf-8');
   return targetFile;
 }

@@ -1,8 +1,9 @@
 import * as path from 'node:path';
 import * as fs from 'node:fs';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { DatabaseSync } from 'node:sqlite';
 import { createFastrServerContext } from '../mcp/server.js';
+import { normalizeRepoPath, repoPathMatches } from '../git/paths.js';
 
 export interface GuardianOptions {
   baseBranch?: string;
@@ -31,27 +32,37 @@ export interface GuardianResult {
   markdownReport: string;
 }
 
+export function isSafeGitRef(ref: string): boolean {
+  return typeof ref === 'string' && ref.length > 0 && !ref.startsWith('-') && !/[\s\0]/.test(ref);
+}
+
 export function getChangedFilesFromGit(baseBranch: string = 'origin/main', projectRoot?: string): string[] {
   const cwd = projectRoot || process.cwd();
-  try {
-    // 1. Try three-dot diff against base branch (standard for PRs)
-    const out = execSync(`git diff --name-only ${baseBranch}...HEAD`, { cwd, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] });
-    const files = out.split('\n').map(f => f.trim()).filter(Boolean);
-    if (files.length > 0) return files;
-  } catch {
-    // fallback if origin/main doesn't exist locally
+  const git = (args: string[]) =>
+    execFileSync('git', args, { cwd, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] });
+
+  // Refuse refs git would parse as options (e.g. "--output=/some/file")
+  if (isSafeGitRef(baseBranch)) {
+    try {
+      // 1. Try three-dot diff against base branch (standard for PRs)
+      const out = git(['diff', '--name-only', `${baseBranch}...HEAD`]);
+      const files = out.split('\n').map(f => f.trim()).filter(Boolean);
+      if (files.length > 0) return files;
+    } catch {
+      // fallback if origin/main doesn't exist locally
+    }
   }
 
   try {
     // 2. Try diff against HEAD~1
-    const out = execSync(`git diff --name-only HEAD~1 HEAD`, { cwd, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] });
+    const out = git(['diff', '--name-only', 'HEAD~1', 'HEAD']);
     const files = out.split('\n').map(f => f.trim()).filter(Boolean);
     if (files.length > 0) return files;
   } catch {}
 
   try {
     // 3. Fallback to uncommitted working tree changes
-    const out = execSync(`git status --porcelain`, { cwd, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] });
+    const out = git(['status', '--porcelain']);
     return out
       .split('\n')
       .map(line => line.slice(3).trim())
@@ -118,18 +129,11 @@ export function runTrapGuardian(options: GuardianOptions = {}): GuardianResult {
   const matches: TrapMatch[] = [];
 
   for (const changed of scannedFiles) {
-    const changedNorm = changed.toLowerCase();
-    const changedBase = path.basename(changedNorm);
+    if (!normalizeRepoPath(changed, projectRoot)) continue;
 
     for (const row of rows) {
-      const linkedPath = (row.file_path || '').toLowerCase().replace(/\\/g, '/');
-      const linkedBase = path.basename(linkedPath);
-
-      // Check for exact path match, substring match, or basename match
-      if (
-        (linkedPath && (changedNorm.includes(linkedPath) || linkedPath.includes(changedNorm))) ||
-        (linkedBase && linkedBase === changedBase && linkedBase.length > 3)
-      ) {
+      // Compare normalized full repo-relative paths (never basename or substring)
+      if (row.file_path && repoPathMatches(changed, row.file_path, projectRoot)) {
         // Prevent duplicate match for same trap and file
         if (!matches.some(m => m.trapId === row.id && m.file === changed)) {
           matches.push({

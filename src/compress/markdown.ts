@@ -7,6 +7,8 @@ export interface CompressOptions {
   preserveCodeBlocks?: boolean;
   preserveTables?: boolean;
   dryRun?: boolean;
+  /** compressFile only: files must resolve inside this directory (default: process.cwd()). */
+  projectRoot?: string;
 }
 
 export interface CompressResult {
@@ -99,23 +101,36 @@ export function compressContent(content: string, options: CompressOptions = {}):
   // Process lines with a strict state machine for code fences
   const lines = content.split('\n');
   const cleanedLines: string[] = [];
-  let inCodeBlock = false;
+  // Open fence marker (e.g. "```" or "~~~~") while inside a fenced code block, else null
+  let openFence: string | null = null;
   let prevLine = '';
 
   for (let i = 0; i < lines.length; i++) {
     const rawLine = lines[i];
     const trimmed = rawLine.trim();
 
-    // Check for fenced code block toggle
-    if (trimmed.startsWith('```')) {
-      inCodeBlock = !inCodeBlock;
-      cleanedLines.push(rawLine);
-      prevLine = rawLine;
-      continue;
+    // Fenced code blocks (``` or ~~~, CommonMark rules): a block closes only on a fence
+    // of the same character that is at least as long as the opening one.
+    const fenceMatch = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(rawLine.trimEnd());
+    if (fenceMatch) {
+      const marker = fenceMatch[1];
+      if (openFence === null) {
+        if (!(marker[0] === '`' && fenceMatch[2].includes('`'))) {
+          openFence = marker;
+          cleanedLines.push(rawLine);
+          prevLine = rawLine;
+          continue;
+        }
+      } else if (marker[0] === openFence[0] && marker.length >= openFence.length && fenceMatch[2].trim() === '') {
+        openFence = null;
+        cleanedLines.push(rawLine);
+        prevLine = rawLine;
+        continue;
+      }
     }
 
-    // Inside code block: preserve exactly verbatim
-    if (inCodeBlock) {
+    // Inside code block: preserve exactly verbatim (no filler stripping, dedupe or collapsing)
+    if (openFence !== null) {
       cleanedLines.push(rawLine);
       prevLine = rawLine;
       continue;
@@ -183,20 +198,82 @@ export function compressContent(content: string, options: CompressOptions = {}):
   };
 }
 
+const ALLOWED_COMPRESS_EXTENSIONS = new Set(['.md', '.markdown', '.txt']);
+const MAX_BACKUP_SUFFIX = 1000;
+
+function failure(error: string): CompressResult {
+  return {
+    success: false,
+    originalChars: 0,
+    compressedChars: 0,
+    savingsRatio: 0,
+    content: '',
+    error
+  };
+}
+
+function isInsideDir(child: string, parent: string): boolean {
+  const rel = path.relative(parent, child);
+  return rel !== '' && rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel);
+}
+
+/**
+ * Writes `content` to the first free backup slot (`X.original.md`, `X.original.1.md`, ...).
+ * Uses exclusive-create so an existing backup is never overwritten.
+ */
+function writeBackup(resolved: string, content: string): string {
+  const ext = path.extname(resolved);
+  const base = path.basename(resolved, ext);
+  const dir = path.dirname(resolved);
+
+  for (let i = 0; i <= MAX_BACKUP_SUFFIX; i++) {
+    const suffix = i === 0 ? '' : `.${i}`;
+    const candidate = path.join(dir, `${base}.original${suffix}${ext}`);
+    try {
+      fs.writeFileSync(candidate, content, { encoding: 'utf-8', flag: 'wx' });
+      return candidate;
+    } catch (err: any) {
+      if (err?.code !== 'EEXIST') throw err;
+    }
+  }
+  throw new Error(`Refusing to compress: too many existing backups for ${path.basename(resolved)}`);
+}
+
+/**
+ * Compresses a markdown/text file in place after writing a non-clobbering backup.
+ * The file must be a `.md`, `.markdown` or `.txt` file inside `options.projectRoot`
+ * (defaults to `process.cwd()`); relative paths are resolved against that root.
+ */
 export function compressFile(filePath: string, options: CompressOptions = {}): CompressResult {
-  const resolved = path.resolve(filePath);
-  if (!fs.existsSync(resolved)) {
-    return {
-      success: false,
-      originalChars: 0,
-      compressedChars: 0,
-      savingsRatio: 0,
-      content: '',
-      error: `File not found: ${filePath}`
-    };
+  const root = path.resolve(options.projectRoot || process.cwd());
+  const resolved = path.resolve(root, filePath);
+
+  const ext = path.extname(resolved).toLowerCase();
+  if (!ALLOWED_COMPRESS_EXTENSIONS.has(ext)) {
+    return failure(`Unsupported file type "${ext || '(none)'}": only .md, .markdown and .txt files can be compressed`);
   }
 
-  const original = fs.readFileSync(resolved, 'utf-8');
+  if (!fs.existsSync(resolved)) {
+    return failure(`File not found: ${filePath}`);
+  }
+
+  // Resolve symlinks on both sides so a link inside the root cannot point outside it
+  let realFile: string;
+  let realRoot: string;
+  try {
+    realFile = fs.realpathSync(resolved);
+    realRoot = fs.realpathSync(root);
+  } catch (err: any) {
+    return failure(`Cannot resolve path ${filePath}: ${err.message}`);
+  }
+  if (!isInsideDir(realFile, realRoot)) {
+    return failure(`Refusing to compress ${filePath}: path is outside the project root ${root}`);
+  }
+  if (!fs.statSync(realFile).isFile()) {
+    return failure(`Not a regular file: ${filePath}`);
+  }
+
+  const original = fs.readFileSync(realFile, 'utf-8');
   const result = compressContent(original, options);
 
   if (!result.success) {
@@ -207,14 +284,13 @@ export function compressFile(filePath: string, options: CompressOptions = {}): C
     return result;
   }
 
-  // Create .original.md backup
-  const ext = path.extname(resolved);
-  const base = path.basename(resolved, ext);
-  const backupName = base.endsWith('.original') ? `${base}.backup${ext}` : `${base}.original${ext}`;
-  const backupPath = path.join(path.dirname(resolved), backupName);
-
-  fs.writeFileSync(backupPath, original, 'utf-8');
-  fs.writeFileSync(resolved, result.content, 'utf-8');
+  let backupPath: string;
+  try {
+    backupPath = writeBackup(realFile, original);
+  } catch (err: any) {
+    return failure(err.message);
+  }
+  fs.writeFileSync(realFile, result.content, 'utf-8');
 
   result.backupPath = backupPath;
   return result;

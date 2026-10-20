@@ -1,9 +1,59 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { assertInsideDir, isWindowsReservedName } from '../mirror/markdown-pages.js';
 
-function sanitizeFilename(name: string): string {
-  return name.replace(/[/\\?%*:|"<>]/g, '_').trim().slice(0, 80);
+/**
+ * Turns a title into a safe note file stem (no extension). Keeps spaces and case so
+ * Obsidian wikilinks stay readable, but strips path separators, characters that are
+ * illegal on Windows or meaningful in wikilinks, and Windows device names.
+ */
+export function sanitizeNoteName(name: string): string {
+  let stem = String(name ?? '')
+    .replace(/[\x00-\x1f\x7f]/g, '')
+    .replace(/[/\\?%*:|"<>#^\[\]]/g, '_')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 80)
+    .replace(/[. ]+$/g, '')
+    .replace(/^\.+/, '');
+  if (!stem || /^_+$/.test(stem)) stem = 'untitled';
+  if (isWindowsReservedName(stem)) stem = `_${stem}`;
+  return stem;
+}
+
+/** Quotes a value as a YAML double-quoted scalar (JSON strings are valid YAML). */
+function yamlString(value: unknown): string {
+  return JSON.stringify(value === null || value === undefined ? '' : String(value));
+}
+
+function yamlNumber(value: unknown): string {
+  const n = Number(value);
+  return Number.isFinite(n) ? String(n) : yamlString(value);
+}
+
+/** Display text safe to use as a wikilink alias. */
+function wikilinkAlias(text: string): string {
+  return String(text).replace(/[\[\]|\r\n]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function wikilink(stem: string, display: string): string {
+  const alias = wikilinkAlias(display);
+  return alias && alias !== stem ? `[[${stem}|${alias}]]` : `[[${stem}]]`;
+}
+
+/** Picks a stem not used yet (case-insensitively, since vault links and Windows/macOS are case-insensitive). */
+function uniqueStem(base: string, id: string, used: Set<string>): string {
+  let stem = base;
+  if (used.has(stem.toLowerCase())) {
+    stem = sanitizeNoteName(`${base} (${id})`);
+  }
+  let i = 2;
+  while (used.has(stem.toLowerCase())) {
+    stem = sanitizeNoteName(`${base} (${id}-${i++})`);
+  }
+  used.add(stem.toLowerCase());
+  return stem;
 }
 
 export interface ObsidianExportResult {
@@ -61,17 +111,26 @@ export function exportToObsidianVault(
     }
   }
 
-  const memoryFilenameMap = new Map<string, string>();
+  // Note stems are unique across the whole vault, since wikilinks resolve by file name
+  const usedStems = new Set<string>(['moc']);
+  const entityStemMap = new Map<string, string>();
+  const memoryStemMap = new Map<string, string>();
+
+  for (const ent of entities) {
+    entityStemMap.set(ent.id, uniqueStem(sanitizeNoteName(ent.name), String(ent.id), usedStems));
+  }
+  for (const m of memories) {
+    memoryStemMap.set(m.id, uniqueStem(sanitizeNoteName(m.title), String(m.id), usedStems));
+  }
 
   // Write entity notes
   for (const ent of entities) {
-    const entFilename = `${sanitizeFilename(ent.name)}.md`;
-    const entPath = path.join(targetDir, 'entities', entFilename);
+    const entPath = assertInsideDir(path.join(targetDir, 'entities'), `${entityStemMap.get(ent.id)}.md`);
     const content = (
       `---\n` +
-      `id: ${ent.id}\n` +
-      `type: ${ent.entity_type}\n` +
-      `name: "${ent.name.replace(/"/g, '\\"')}"\n` +
+      `id: ${yamlString(ent.id)}\n` +
+      `type: ${yamlString(ent.entity_type)}\n` +
+      `name: ${yamlString(ent.name)}\n` +
       `---\n\n` +
       `# Entity: ${ent.name}\n\n` +
       `- **Classification**: \`${ent.entity_type}\`\n` +
@@ -80,28 +139,44 @@ export function exportToObsidianVault(
     fs.writeFileSync(entPath, content, 'utf-8');
   }
 
-  // Map titles
-  for (const m of memories) {
-    const filename = `${sanitizeFilename(m.title)}.md`;
-    memoryFilenameMap.set(m.id, filename);
+  // Entity linker: one pass over all names (longest first) so links are never nested
+  const linkable = entities
+    .filter((ent) => typeof ent.name === 'string' && ent.name.length >= 3)
+    .sort((a, b) => b.name.length - a.name.length);
+  const entityByName = new Map<string, any>();
+  for (const ent of linkable) {
+    if (!entityByName.has(ent.name)) entityByName.set(ent.name, ent);
   }
+  const entityRegex = entityByName.size > 0
+    ? new RegExp(`(?<![\\w\\[])(?:${Array.from(entityByName.keys()).map(escapeRegex).join('|')})(?![\\w\\]])`, 'g')
+    : null;
+
+  const linkEntities = (text: string): string => {
+    if (!entityRegex) return text;
+    // Leave existing wikilinks, fenced code and inline code untouched
+    return text
+      .split(/(```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`\n]*`|\[\[[^\]\n]*\]\])/g)
+      .map((segment, idx) => {
+        if (idx % 2 === 1) return segment;
+        return segment.replace(entityRegex, (match) => {
+          const ent = entityByName.get(match);
+          return ent ? wikilink(entityStemMap.get(ent.id)!, ent.name) : match;
+        });
+      })
+      .join('');
+  };
 
   // Write memory markdown notes
   for (const m of memories) {
     const folder = m.kind === 'error_trap' ? 'error_traps' : `${m.kind}s`;
-    const filename = memoryFilenameMap.get(m.id)!;
-    const filePath = path.join(targetDir, folder, filename);
+    const folderDir = assertInsideDir(targetDir, folder);
+    if (!fs.existsSync(folderDir)) {
+      fs.mkdirSync(folderDir, { recursive: true });
+    }
+    const filePath = assertInsideDir(folderDir, `${memoryStemMap.get(m.id)}.md`);
 
     const linkedFiles = memoryFilesMap.get(m.id) || [];
-    let body = m.content;
-
-    // Link recognized entities as [[Entity Name]]
-    for (const ent of entities) {
-      if (ent.name.length >= 3 && body.includes(ent.name)) {
-        const regex = new RegExp(`(?<!\\[\\[)\\b${escapeRegex(ent.name)}\\b(?!\\]\\])`, 'g');
-        body = body.replace(regex, `[[${ent.name}]]`);
-      }
-    }
+    const body = linkEntities(String(m.content ?? ''));
 
     let linksSection = '';
     if (linkedFiles.length > 0) {
@@ -110,13 +185,13 @@ export function exportToObsidianVault(
 
     const doc = (
       `---\n` +
-      `id: ${m.id}\n` +
-      `kind: ${m.kind}\n` +
-      `title: "${m.title.replace(/"/g, '\\"')}"\n` +
-      `module: ${m.module}\n` +
-      `status: ${m.status}\n` +
-      `reward_score: ${m.reward_score}\n` +
-      `created_at: ${m.created_at}\n` +
+      `id: ${yamlString(m.id)}\n` +
+      `kind: ${yamlString(m.kind)}\n` +
+      `title: ${yamlString(m.title)}\n` +
+      `module: ${yamlString(m.module)}\n` +
+      `status: ${yamlString(m.status)}\n` +
+      `reward_score: ${yamlNumber(m.reward_score)}\n` +
+      `created_at: ${yamlString(m.created_at)}\n` +
       `---\n\n` +
       `# ${m.title}\n\n` +
       `> **Module**: \`${m.module}\` | **Kind**: \`${m.kind}\` | **Confidence**: \`${m.reward_score}\`\n\n` +
@@ -137,7 +212,7 @@ export function exportToObsidianVault(
     const folder = k === 'error_trap' ? 'error_traps' : `${k}s`;
     moc += `### ${k.toUpperCase()} (${memsInKind.length})\n`;
     for (const m of memsInKind.slice(0, 30)) {
-      moc += `- [[${m.title}]] — \`${m.module}\` (score: ${m.reward_score})\n`;
+      moc += `- ${wikilink(memoryStemMap.get(m.id)!, m.title)} — \`${m.module}\` (score: ${m.reward_score})\n`;
     }
     if (memsInKind.length > 30) {
       moc += `- *...and ${memsInKind.length - 30} more in \`${folder}/\`*\n`;
@@ -147,7 +222,7 @@ export function exportToObsidianVault(
 
   moc += `## Key Entities & Architecture Symbols\n\n`;
   for (const ent of entities.slice(0, 50)) {
-    moc += `- [[${ent.name}]] (\`${ent.entity_type}\`)\n`;
+    moc += `- ${wikilink(entityStemMap.get(ent.id)!, ent.name)} (\`${ent.entity_type}\`)\n`;
   }
   if (entities.length > 50) {
     moc += `- *...and ${entities.length - 50} more in \`entities/\`*\n`;
