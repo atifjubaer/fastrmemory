@@ -1,6 +1,6 @@
-import * as fs from 'node:fs';
 import * as path from 'node:path';
-import * as os from 'node:os';
+import { ClaudeHookSpec, mergeClaudeHooks, updateJsonConfig, upsertMcpServer } from './json-config.js';
+import { ensureAgentsDiscipline, resolveMcpCommand } from './setup.js';
 
 export interface HookInstallResult {
   claudeCodeUpdated: boolean;
@@ -9,96 +9,80 @@ export interface HookInstallResult {
   details: string[];
 }
 
+function quoteArg(arg: string): string {
+  // Hooks may run under Git Bash on Windows, where unquoted backslashes are eaten. Node accepts
+  // forward slashes on every platform, so normalise paths and always quote them.
+  if (/[\\/]/.test(arg)) return `"${arg.replace(/\\/g, '/').replace(/"/g, '\\"')}"`;
+  return /[\s"]/.test(arg) ? `"${arg.replace(/"/g, '\\"')}"` : arg;
+}
+
+/** Shell command Claude Code runs for a lifecycle event, using the same entry point as the MCP server. */
+export function buildHookCommand(event: string, platform: NodeJS.Platform = process.platform): string {
+  const target = resolveMcpCommand(platform);
+  // Hook commands run through a shell, so npx needs no `cmd /c` wrapper here.
+  const base = target.command === 'cmd' ? target.args.slice(1) : [target.command, ...target.args];
+  const withoutMcp = base[base.length - 1] === 'mcp' ? base.slice(0, -1) : base;
+  return [...withoutMcp, 'hook', 'run', event].map(quoteArg).join(' ');
+}
+
+export function claudeHookSpecs(platform: NodeJS.Platform = process.platform): ClaudeHookSpec[] {
+  return [
+    // Plain stdout from SessionStart is added to Claude's context (prior handoff, frontier tasks).
+    { event: 'SessionStart', command: buildHookCommand('SessionStart', platform) },
+    // Warn about active error traps before Claude edits a file (returned as additionalContext).
+    { event: 'PreToolUse', matcher: 'Edit|Write|MultiEdit|NotebookEdit', command: buildHookCommand('PreToolUse', platform), timeout: 10 },
+    { event: 'PreCompact', command: buildHookCommand('PreCompact', platform), timeout: 15 },
+    // SessionEnd hooks default to a 1.5s timeout; flushing the spool and mirroring pages can take longer.
+    { event: 'SessionEnd', command: buildHookCommand('SessionEnd', platform), timeout: 15 },
+  ];
+}
+
+/**
+ * Wires FastrMemory into the current project for Claude Code and Cursor.
+ *
+ * Claude Code reads project MCP servers from `.mcp.json` and hooks from `.claude/settings.json`
+ * (both shareable with the team). Existing servers and hooks are preserved; files are backed up
+ * once and written atomically; unparseable files are left untouched and reported.
+ */
 export function installAgentHooks(projectRoot: string = process.cwd()): HookInstallResult {
   const details: string[] = [];
   let claudeCodeUpdated = false;
   let cursorUpdated = false;
   let agentsMdUpdated = false;
+  const mcpEntry = resolveMcpCommand();
 
-  const homeDir = os.homedir();
+  const describe = (label: string, res: { filePath: string; changed: boolean; backupPath?: string }) => {
+    const rel = path.relative(projectRoot, res.filePath) || res.filePath;
+    if (!res.changed) return `${label}: already up to date (${rel})`;
+    return `${label}: updated ${rel}${res.backupPath ? ` (backup: ${path.basename(res.backupPath)})` : ''}`;
+  };
 
-  // 1. Claude Code Settings (~/.claude/settings.json or ~/.claude.json)
-  const claudeSettingsPath = path.join(homeDir, '.claude', 'settings.json');
-  const claudeJsonPath = path.join(homeDir, '.claude.json');
-
-  const targetClaudeFile = fs.existsSync(claudeSettingsPath) ? claudeSettingsPath : claudeJsonPath;
+  // 1. Claude Code: project-scoped MCP server + lifecycle hooks
   try {
-    let claudeConfig: any = {};
-    if (fs.existsSync(targetClaudeFile)) {
-      const content = fs.readFileSync(targetClaudeFile, 'utf-8');
-      try { claudeConfig = JSON.parse(content); } catch { claudeConfig = {}; }
-    }
-
-    if (!claudeConfig.mcpServers) {
-      claudeConfig.mcpServers = {};
-    }
-
-    claudeConfig.mcpServers.fastrmemory = {
-      command: 'fastrmemory',
-      args: ['mcp']
-    };
-
-    if (!claudeConfig.hooks) {
-      claudeConfig.hooks = {};
-    }
-    claudeConfig.hooks.SessionStart = 'fastrmemory hook run SessionStart';
-    claudeConfig.hooks.PreCompact = 'fastrmemory hook run PreCompact';
-    claudeConfig.hooks.SessionEnd = 'fastrmemory hook run SessionEnd';
-
-    const dir = path.dirname(targetClaudeFile);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(targetClaudeFile, JSON.stringify(claudeConfig, null, 2), 'utf-8');
-    claudeCodeUpdated = true;
-    details.push(`Wired FastrMemory MCP server and lifecycle hooks into ${targetClaudeFile}`);
+    const mcp = updateJsonConfig(path.join(projectRoot, '.mcp.json'), (config) => upsertMcpServer(config, 'fastrmemory', mcpEntry));
+    details.push(describe('Claude Code MCP server', mcp));
+    const hooks = updateJsonConfig(path.join(projectRoot, '.claude', 'settings.json'), (config) => mergeClaudeHooks(config, claudeHookSpecs()));
+    details.push(describe('Claude Code hooks', hooks));
+    claudeCodeUpdated = mcp.changed || hooks.changed;
   } catch (err: any) {
     details.push(`Failed to update Claude Code: ${err.message}`);
   }
 
   // 2. Cursor MCP Configuration (.cursor/mcp.json)
-  const cursorDir = path.join(projectRoot, '.cursor');
-  const cursorMcpFile = path.join(cursorDir, 'mcp.json');
   try {
-    if (!fs.existsSync(cursorDir)) fs.mkdirSync(cursorDir, { recursive: true });
-    let cursorConfig: any = { mcpServers: {} };
-    if (fs.existsSync(cursorMcpFile)) {
-      try { cursorConfig = JSON.parse(fs.readFileSync(cursorMcpFile, 'utf-8')); } catch {}
-    }
-    if (!cursorConfig.mcpServers) cursorConfig.mcpServers = {};
-    cursorConfig.mcpServers.fastrmemory = {
-      command: 'fastrmemory',
-      args: ['mcp']
-    };
-    fs.writeFileSync(cursorMcpFile, JSON.stringify(cursorConfig, null, 2), 'utf-8');
-    cursorUpdated = true;
-    details.push(`Wired FastrMemory MCP server into .cursor/mcp.json`);
+    const cursor = updateJsonConfig(path.join(projectRoot, '.cursor', 'mcp.json'), (config) => upsertMcpServer(config, 'fastrmemory', mcpEntry));
+    details.push(describe('Cursor MCP server', cursor));
+    cursorUpdated = cursor.changed;
   } catch (err: any) {
     details.push(`Failed to update Cursor MCP: ${err.message}`);
   }
 
-  // 3. Autonomous Memory Discipline in AGENTS.md / CLAUDE.md
-  const agentsMdPath = path.join(projectRoot, 'AGENTS.md');
-  const disciplineBlock = `\n<!-- fastrmemory:start -->
-## ⚡ FastrMemory Autonomous Agent Discipline
-
-Every AI coding agent operating in this repository MUST follow these 3 cognitive rules:
-1. **Pre-Edit Error Check**: Before editing or creating files, call \`fastr_trap_recall\` with your target file paths to check for active \`[TRAP]\` warnings.
-2. **Immediate Trap Logging**: The moment you diagnose a test failure, syntax bug, or library incompatibility, call \`fastr_trap_log\` to save the lesson with a 2.0x recall boost.
-3. **Session Verification**: When milestones are completed, call \`fastr_handoff\` with \`verifyStaging: true\` to graduate staging memories into verified rules.
-<!-- fastrmemory:end -->\n`;
-
+  // 3. Autonomous Memory Discipline in AGENTS.md
   try {
-    let currentContent = '';
-    if (fs.existsSync(agentsMdPath)) {
-      currentContent = fs.readFileSync(agentsMdPath, 'utf-8');
-    }
-
-    if (!currentContent.includes('<!-- fastrmemory:start -->')) {
-      fs.writeFileSync(agentsMdPath, currentContent + disciplineBlock, 'utf-8');
-      agentsMdUpdated = true;
-      details.push(`Appended Autonomous Memory Discipline block to AGENTS.md`);
-    } else {
-      details.push(`AGENTS.md already contains FastrMemory autonomous discipline block`);
-    }
+    agentsMdUpdated = ensureAgentsDiscipline(projectRoot) === 'added';
+    details.push(agentsMdUpdated
+      ? 'Appended Autonomous Memory Discipline block to AGENTS.md'
+      : 'AGENTS.md already contains FastrMemory autonomous discipline block');
   } catch (err: any) {
     details.push(`Failed to update AGENTS.md: ${err.message}`);
   }
@@ -107,6 +91,6 @@ Every AI coding agent operating in this repository MUST follow these 3 cognitive
     claudeCodeUpdated,
     cursorUpdated,
     agentsMdUpdated,
-    details
+    details,
   };
 }
