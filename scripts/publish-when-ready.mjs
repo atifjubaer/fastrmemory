@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 
 /**
- * ⚡ FastrMemory Post-72h NPM Auto-Publisher
+ * ⚡ FastrMemory NPM Publisher
  * 
- * Safely verifies NPM authorization status and publishes @atifjubaer/fastrmemory
- * once the temporary 72-hour cooldown window expires.
- * 
+ * Verifies npm authorization, runs the local publication gate, and publishes
+ * @atifjubaer/fastrmemory only when the account is authenticated. It never
+ * bypasses 2FA or an account suspension.
+ *
  * Usage:
- *   node scripts/publish-when-ready.mjs [--poll]
+ *   node scripts/publish-when-ready.mjs
  */
 
 import { execSync } from 'node:child_process';
@@ -66,7 +67,7 @@ if (livePub.success) {
   console.log('\n🎉 SUCCESS! @atifjubaer/fastrmemory is now live on the public NPM registry.');
   console.log('   Global users can now run: npx @atifjubaer/fastrmemory\n');
 } else {
-  console.log('\n⏳ Cooldown Still Active:');
+  console.log('\n⏳ Publish Blocked:');
   console.log(`   ${livePub.output}`);
   console.log('\n💡 Note: FastrMemory is already live on GitHub:');
   console.log('   npx github:atifjubaer/fastrmemory\n');

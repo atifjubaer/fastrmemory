@@ -1,92 +1,153 @@
-# 📦 FastrMemory NPM Publishing & Architecture Guide
+# FastrMemory NPM Publishing & Architecture Guide
 
-> **Status (2026-10-20): publication is blocked.** `npm view @atifjubaer/fastrmemory version` returns **E404**, so the package has never been published. The npm account has an unresolved security suspension/2FA issue. **Do not bypass npm security checks, 2FA, or the suspension.** Until the account is restored, use the GitHub install path and treat `npx @atifjubaer/fastrmemory` as unavailable. Steps below are a resume plan, not a workaround.
+> **Status (2026-10-20): npm publication is blocked.** `npm whoami` returns **E401 Unauthorized** and `npm view @atifjubaer/fastrmemory version` returns **E404**, so the npm registry package has never been published. The npm account has an unresolved security suspension/2FA issue. **Do not bypass npm security checks, 2FA, or the suspension.** Use the GitHub Release tarball or the GitHub source install until the account is restored.
 
-This document explains why NPM is used in FastrMemory, how package publishing works, and what to do during the temporary 72-hour account cooldown.
+This document explains why npm matters for FastrMemory, how the package is verified, and the exact resume protocol. It is a resume plan, not a workaround.
 
 ---
 
-## 💡 What is NPM and Why is it Required on This Project?
+## What npm provides
 
-NPM (Node Package Manager) serves 5 critical roles for FastrMemory:
+1. **Registry distribution**
+   - `npx @atifjubaer/fastrmemory ui` becomes available only after a successful publish.
+   - The registry hosts the compressed tarball containing the compiled backend (`dist/`) and React dashboard (`dist-ui/`).
 
-1. **Global Package Registry & Distribution**:
-   - Allows any developer or autonomous agent anywhere in the world to execute FastrMemory with zero installation:
-     ```bash
-     npx @atifjubaer/fastrmemory ui
-     ```
-   - When published to the public registry, NPM hosts the compressed tarball containing both the pre-compiled backend (`dist/`) and React dashboard (`dist-ui/`).
-
-2. **Binary CLI Linking**:
-   - In `package.json`, the `"bin"` map registers two shell commands:
+2. **Binary linking**
+   - The `bin` map registers two shell commands:
      ```json
      "bin": {
        "fastrmemory": "dist/bin/fastr.js",
        "fastr": "dist/bin/fastr.js"
      }
      ```
-   - When installed globally (`npm install -g @atifjubaer/fastrmemory`) or linked locally (`npm link`), NPM automatically creates executable symlinks on the user's system `$PATH` (e.g. `C:\Users\ATIF\AppData\Roaming\npm\fastrmemory`).
+   - npm creates the executable links on install.
 
-3. **Standard Model Context Protocol (MCP) Runtime**:
-   - FastrMemory implements the official Model Context Protocol v2 using `@modelcontextprotocol/server`. NPM manages this dependency and ensures version compatibility.
+3. **MCP runtime dependency**
+   - FastrMemory uses the official `@modelcontextprotocol/server` package for the stdio MCP v2 server.
 
-4. **Optional In-Process AI Dependency**:
-   - FastrMemory can compute 384-dimensional semantic embeddings locally using `@huggingface/transformers` without external APIs. The model and its ONNX runtime are an **optional peer**, not part of the default install; install them explicitly when semantic vectors are wanted.
+4. **Optional local model**
+   - `@huggingface/transformers` is an **optional peer**, not a required dependency. It is installed only when local semantic embeddings are wanted.
 
-5. **Build & Test Automation**:
-   - `npm run build`: Bundles the React 19 UI via Vite and compiles TypeScript via `tsc`.
-   - `npm test`: runs the Vitest suite (226 tests across 38 files as of 2026-10-20); it does not enforce a coverage threshold.
+5. **Build and verification**
+   - `npm run build:core` compiles TypeScript.
+   - `npm run build:ui` builds the React dashboard and writes the deterministic `dist-ui/build-manifest.json`.
+   - `npm run check:ci` runs tests, isolation, skills, UI freshness, package-surface, docs, and benchmark checks.
 
 ---
 
-## ⏳ Handling the 72-Hour NPM Cooldown
+## Current interim distribution
 
-NPM occasionally places temporary 72-hour holds on accounts (e.g. after password resets, 2FA reconfigurations, or new organization creation) to prevent unauthorized automated token generation.
-
-### What Works Right Now (Zero NPM Registry Dependency)
-
-Anyone worldwide can run, install, and use FastrMemory immediately via GitHub:
+The verified v0.2.0 tarball is published as a GitHub Release asset:
 
 ```bash
-# 1. Instant execution directly from GitHub:
+# Local project install:
+npm install https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.0/atifjubaer-fastrmemory-0.2.0.tgz
+npx fastr --version
+
+# Global CLI:
+npm install -g https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.0/atifjubaer-fastrmemory-0.2.0.tgz
+fastr --version
+```
+
+Source install remains available:
+
+```bash
 npx github:atifjubaer/fastrmemory setup
 npx github:atifjubaer/fastrmemory ui
-
-# 2. Global installation from GitHub:
 npm install -g git+https://github.com/atifjubaer/fastrmemory.git
-
-# 3. Local machine global access (already active):
-fastrmemory status
-fastrmemory trap list
-fastrmemory ui
 ```
+
+The release tarball is 571,279 bytes with SHA-256
+`12B7D49546D6B904A2296724490E4D6EECE313514DA6C4BFDA6950137F309ED7`.
+The clean-install check reported `npx fastr --version` = `0.2.0`,
+`npx fastrmemory --version` = `0.2.0`, and 16,397,409 bytes in `node_modules`.
+See [CLAIMS.md](../CLAIMS.md) for the evidence rows.
 
 ---
 
-## 🚀 Post-Cooldown Publishing Checklist (Once 72h Expires)
+## Registry block evidence
 
-When the 72-hour hold lifts:
+Run these commands from the repository root:
 
-1. **Log in to your NPM account in your terminal**:
+```powershell
+npm whoami
+npm view @atifjubaer/fastrmemory version
+```
+
+Observed on 2026-10-20:
+
+```text
+npm error code E401
+npm error 401 Unauthorized - GET https://registry.npmjs.org/-/whoami
+
+npm error code E404
+npm error 404 Not Found - GET https://registry.npmjs.org/@atifjubaer%2ffastrmemory - Not found
+```
+
+Do not create an automation token, disable 2FA, or otherwise bypass the account security flow to force a publish. Restore the account first.
+
+---
+
+## Resume protocol
+
+When the npm account is restored:
+
+1. **Authenticate interactively**
    ```powershell
    npm login
    ```
-   *(Enter username, password, and approve the browser OTP notification)*
+   Complete the browser/2FA prompt. Do not use an automation token as a workaround.
 
-2. **Verify your active session**:
+2. **Verify identity**
    ```powershell
    npm whoami
    ```
-   *(Expected output: `atifjubaer`)*
+   Expected output: `atifjubaer`.
 
-3. **Run the automated publisher assistant**:
+3. **Re-run the full local gate**
    ```powershell
-   node scripts/publish-when-ready.mjs
+   npm run check:ci
+   npm run build:core
+   npm run check:dist-ui
+   npm run check:package
    ```
 
-4. **Or publish directly**:
+4. **Publish**
    ```powershell
    npm publish --access public
    ```
+   `prepublishOnly` runs `build:core`, `npm test`, `check:dist-ui`, and
+   `check:package`; it does not rebuild the tracked UI bundle. Run
+   `npm run build:ui` first only when the UI source actually changed.
 
-Once published, FastrMemory will be universally accessible via `npx @atifjubaer/fastrmemory`.
+5. **Verify the registry result**
+   ```powershell
+   npm view @atifjubaer/fastrmemory version
+   npx @atifjubaer/fastrmemory@latest --version
+   ```
+   Both must report `0.2.0` before any npm install claim is published.
+
+The automated assistant is optional:
+
+```powershell
+node scripts/publish-when-ready.mjs
+```
+
+It checks `npm whoami` and runs the same publish flow. It must not bypass 2FA.
+
+---
+
+## Package verification
+
+| Check | Command |
+|---|---|
+| Full local gate | `npm run check:ci` |
+| Package surface | `npm run check:package` |
+| UI freshness | `npm run check:dist-ui` |
+| Tarball contents | `npm pack --dry-run --json --ignore-scripts` |
+| Clean install | `npm install <tarball> --ignore-scripts` in an empty temp project |
+| CLI version | `node dist/bin/fastr.js --version` |
+
+The package check enforces `mcpName`, bin paths, exports, the files allowlist,
+absence of tests/docs/databases, and the 5 MB tarball gate. The UI manifest
+records normalized hashes so Windows and Linux checkouts agree.

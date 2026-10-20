@@ -13,7 +13,7 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-architecture)
 
-> **Status (2026-10-20, benchmark commit `1495622`):** `@atifjubaer/fastrmemory` is **not yet published to npm** (`npm view` returns E404); use the GitHub install below. The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval, and no external engine is measured. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md).
+> **Status (2026-10-20, benchmark commit `1495622`):** `@atifjubaer/fastrmemory` is **not yet published to npm** (`npm view` returns E404); install the **v0.2.0 GitHub Release tarball** or the GitHub source below. The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval, and no external engine is measured. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md). Release notes: [FastrMemory 0.2.0](docs/blog/2026-10-20-fastrmemory-0.2.0.md).
 
 <p align="center">
   <a href="#-overview">Overview</a> &bull;
@@ -91,7 +91,7 @@ Clients commonly used with FastrMemory include Codex CLI, Gemini CLI, OpenCode, 
 
 ### ⚡ Run Without a Global Install
 
-Run immediately via GitHub or NPM:
+Run directly from GitHub. The npm registry package is still unavailable (`npm view` returns E404):
 
 ```bash
 # Instant interactive auto-setup:
@@ -103,13 +103,28 @@ npx github:atifjubaer/fastrmemory ui
 
 ---
 
-### Global Installation
+### Install the v0.2.0 GitHub Release Tarball
 
 ```bash
-# Install globally from GitHub (npm publication is pending; `npm view` returns E404):
+# Local project install from the release asset (verified with the 0.2.0 tarball):
+npm install https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.0/atifjubaer-fastrmemory-0.2.0.tgz
+npx fastr --version
+```
+
+For a global CLI:
+
+```bash
+npm install -g https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.0/atifjubaer-fastrmemory-0.2.0.tgz
+fastr --version
+```
+
+Or install the current default branch:
+
+```bash
 npm install -g git+https://github.com/atifjubaer/fastrmemory.git
 ```
-> Both `fastrmemory` and `fastr` (short alias) are now executable globally in your terminal.
+
+> Both `fastrmemory` and `fastr` (short alias) are executable after installation. The release tarball SHA-256 is recorded in [CLAIMS.md](CLAIMS.md).
 
 ### 2. Verify Database Health
 

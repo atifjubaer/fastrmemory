@@ -2,7 +2,7 @@
 
 This roadmap is evidence-gated. A milestone is done only when its gate passes **on a committed artifact** (a test, a raw JSON result, or a published package), not when the code is written. Estimates assume one focused maintainer and include measurement and documentation time.
 
-Current state (2026-10-20, HEAD `ab88fc9`): 226 tests green locally and **6/6 CI jobs green** (run `39461756204`), npm unpublished (E404), a 240-case synthetic benchmark with a 48-case holdout, and a holdout Hit@1 of 89.6% (0.4 points below the 90% target). The offline hash path is weaker than MiniLM. See [`CLAIMS.md`](CLAIMS.md) for the full ledger.
+Current state (2026-10-20, code HEAD `de4fde3`): 226 tests green locally and **6/6 CI jobs green** (run `39467306362`), a verified v0.2.0 tarball (571,279 bytes; SHA-256 `12B7D49546D6B904A2296724490E4D6EECE313514DA6C4BFDA6950137F309ED7`), npm publication blocked (`npm whoami` E401, `npm view` E404), a 240-case synthetic benchmark with a 48-case holdout, and a holdout Hit@1 of 89.6% (0.4 points below the 90% target). The offline hash path is weaker than MiniLM. See [`CLAIMS.md`](CLAIMS.md) for the full ledger.
 
 ---
 
@@ -32,6 +32,8 @@ Current state (2026-10-20, HEAD `ab88fc9`): 226 tests green locally and **6/6 CI
 - Verify `npm view @atifjubaer/fastrmemory version` and `npx @atifjubaer/fastrmemory@latest --version` in a clean temp directory.
 
 **Evidence gate:** 6/6 CI jobs green; tarball <5 MB; package installs from npm, or publication is explicitly blocked and documented with the resume command.
+
+**Status:** complete for the GitHub Release path. The v0.2.0 tarball is 571,279 bytes (well under 5 MB), the clean install reports CLI `0.2.0`, and six CI jobs pass on `de4fde3` (run `39467306362`). npm publication remains blocked by the account security issue; the exact resume protocol is in [`docs/npm-publishing.md`](docs/npm-publishing.md). The macOS matrix uses Intel `macos-15-intel`; Apple Silicon is not covered.
 
 ---
 

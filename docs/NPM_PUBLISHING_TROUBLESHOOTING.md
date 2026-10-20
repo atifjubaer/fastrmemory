@@ -27,6 +27,11 @@ Follow these 3 steps once you're ready to publish:
 npm login
 npm whoami
 
+# Re-run the local evidence gate before publishing.
+npm run check:ci
+npm run build:core
+npm run check:package
+
 # Publish with public access
 npm publish --access public
 ```
@@ -62,16 +67,7 @@ npm publish --access public
 ### 4. Tarball Bloat (Raw Tests & Local Databases)
 - **Location**: NPM Tarball package contents
 - **Issue**: `npm pack` was bundling `tests/`, `.fastr/fastr.db`, and other non-package files (100 files, ~400 KB).
-- **Fix Applied**: Added `"files"` whitelist to `package.json`:
-  ```json
-  "files": [
-    "dist",
-    "skills",
-    ".claude-plugin",
-    ".cursor"
-  ]
-  ```
-  Package size reduced to **43.1 KB** containing strictly compiled binaries, skills, and plugin manifests.
+- **Fix Applied**: Added a `"files"` allowlist to `package.json` and a package-surface check. The current v0.2.0 dry-run is **557.9 kB packed / 200 files**, containing compiled runtime code, the tracked UI bundle, skills, and plugin manifests. Tests, docs, databases, and local state are excluded.
 
 ---
 
@@ -102,10 +98,11 @@ npm publish --access public
 ## 📦 Distribution Health Verification
 
 Before publishing, this pipeline automatically runs and verifies:
-1. `npm run build` (`tsc` compile with 0 errors)
-2. `npm test` (226 tests across 38 files as of 2026-10-20)
+1. `npm run check:ci` (226 tests across 38 files, isolation, skills, UI freshness, package surface, docs, and benchmarks)
+2. `npm run build:core` (`tsc` with 0 errors)
 3. Whitelisted distribution payload:
    - `dist/` (compiled runtime & CLI)
+   - `dist-ui/` (tracked React dashboard and deterministic manifest)
    - `skills/` (10 agent memory skills)
    - `.claude-plugin/` & `.cursor/` (IDE manifests)
    - `README.md` & `LICENSE` (Apache-2.0)

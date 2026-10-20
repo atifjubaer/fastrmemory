@@ -4,10 +4,10 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 
 - **Ledger date:** 2026-10-20
 - **Benchmark commit:** `1495622` (raw JSON in `bench/results/minilm.json` and `bench/results/hash.json`)
-- **Code inspection:** `1495622` (retrieval and packaging changes in this ledger)
+- **Packaging/CI inspection:** `de4fde3` (package, version, and CI changes in this ledger)
 - **Hardware:** AMD Ryzen 7 7700, 15.1 GB RAM, Windows 10 Pro 19045, Node v24.15.0
 - **Scope:** FastrMemory only. No external memory engine is measured in this repository.
-- **Row provenance:** every row is dated 2026-10-20. Benchmark rows use commit `1495622`; code-inspection rows use `1495622`; `npm view` rows were run on 2026-10-20.
+- **Row provenance:** every row is dated 2026-10-20. Benchmark rows use commit `1495622`; package rows use `2aa4e20`; CI rows use `de4fde3`; `npm view` rows were run on 2026-10-20.
 
 ## A. Distribution and package
 
@@ -15,12 +15,12 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 |---|---|---|---|---|---|---|
 | A1 | Package is `@atifjubaer/fastrmemory` v0.2.0 | `package.json` | Supported | `node -p "require('./package.json').name + ' ' + require('./package.json').version"` | `@atifjubaer/fastrmemory 0.2.0` | Version bump accompanies the retrieval and packaging changes |
 | A2 | Package is published on npm | README | **Blocked** | `npm view @atifjubaer/fastrmemory version` | `E404 Not Found` | Never advertise npm install until this passes |
-| A3 | GitHub source metadata resolves | README | Supported | `npm view github:atifjubaer/fastrmemory version` | `0.1.0` | The GitHub default branch still reports 0.1.0; a full install is not re-run here, and the local tree is 0.2.0 |
-| A4 | Tarball size | README (not claimed) | Supported | `npm pack --dry-run --json --ignore-scripts` | 551.5 kB packed, 2.1 MB unpacked, 195 files | Measured on 2026-10-20; excludes the optional MiniLM model download |
+| A3 | GitHub source metadata resolves | README | Supported | `npm view github:atifjubaer/fastrmemory version` | `0.2.0` | GitHub default branch at `de4fde3`; the npm registry package is still E404 |
+| A4 | Tarball size | README (not claimed) | Supported | `npm pack --dry-run --json --ignore-scripts` | 557.9 kB packed, 2.1 MB unpacked, 200 files | Dry-run on 2026-10-20; the actual tarball is 571,279 bytes with SHA-256 `12B7D49546D6B904A2296724490E4D6EECE313514DA6C4BFDA6950137F309ED7`; generated from the release tree (README install update included); the attached release asset is the canonical artifact; tarball hashes are sensitive to line endings; excludes the optional MiniLM model |
 | A5 | Apache-2.0 license | README, `package.json` | Supported | `node -p "require('./package.json').license"` | `Apache-2.0` | `LICENSE` present |
 | A6 | Node >= 22.16.0 | `package.json` | Supported | `node -p "require('./package.json').engines.node"` | `>=22.16.0` | Local tests run on Node 24.15.0 |
 | A7 | Three required runtime dependencies | README | Supported | `npm ls --depth=0 --omit=dev` | `@modelcontextprotocol/server`, `commander`, `zod` | MiniLM is an optional peer plus a dev dependency |
-| A8 | Clean install stays under 20 MB | README (not claimed) | **Not measured** | `npm ci` in a clean directory | Run after moving MiniLM out of required deps | The optional model download is separate and not counted |
+| A8 | Clean install stays under 20 MB | README (not claimed) | Supported | `npm install <0.2.0 tarball> --ignore-scripts` in an empty temp project, then measure `node_modules` | 1.81 s install; 16,397,409 bytes; `npx fastr --version` and `npx fastrmemory --version` both `0.2.0` | Local Windows run on 2026-10-20; npm cache may affect install time; optional MiniLM model is not installed |
 
 ## B. Architecture and footprint
 
@@ -32,7 +32,7 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 | B4 | Two-zone Git-diffable Markdown mirrors | README | Supported | `npm test -- tests/mirror.test.ts` | Mirror tests pass | Format is covered by snapshots, not byte-for-byte goldens |
 | B5 | Engine-level recall p50 and p95 | README | Supported | `npx tsx scripts/eval-bench.ts --split all --embeddings minilm --out bench/results/minilm.json` | Train 4.04 ms p50 / 5.99 ms p95; holdout 3.65 ms p50 / 5.80 ms p95 | In-process, 240 synthetic cases, excludes Node startup and model load |
 | B6 | Offline recall p50 and p95 | README | Supported | `npx tsx scripts/eval-bench.ts --split all --embeddings hash --out bench/results/hash.json` | Train 0.99 ms p50 / 1.80 ms p95; holdout 1.06 ms p50 / 1.99 ms p95 | Same caveat; hash vectors are lexical |
-| B7 | Runs natively on Windows, macOS, and Linux | README | **Qualified** | Local Windows run; GitHub Actions matrix | Windows local green; CI partially red | macOS Node 24 is red and Windows Node 24 was cancelled; do not claim 6/6 |
+| B7 | Runs natively on Windows, macOS, and Linux | README | Supported | `gh run view 39467306362 --json conclusion,jobs` | 6/6 jobs succeeded: Ubuntu, Windows, and Intel macOS on Node 22.x and 24.x | macOS jobs used `macos-15-intel`; Apple Silicon is not covered by this matrix |
 
 ## C. MCP surface
 
@@ -50,7 +50,7 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 |---|---|---|---|---|---|---|
 | D1 | 226 tests pass across 38 files | README | Supported | `npm test` | `226 passed`, `38 passed` | Local Windows run; CI is separate |
 | D2 | Test suite writes nothing to the real home store | README | Supported | `npm test` then count rows | 60 before, 60 after | The 60 pre-existing rows are documented legacy data |
-| D3 | 6/6 CI matrix green | ROADMAP | Supported | `gh run view 39461756204 --json conclusion,jobs` | 6/6 jobs succeeded: Ubuntu, Windows, and macOS on Node 22.x and 24.x | Run on `ab88fc9`; `fail-fast` disabled; macOS path canonicalization fixed in `9e125e8` |
+| D3 | 6/6 CI matrix green | ROADMAP | Supported | `gh run view 39467306362 --json conclusion,jobs` | 6/6 jobs succeeded: Ubuntu, Windows, and Intel macOS on Node 22.x and 24.x | Run on `de4fde3`; `fail-fast` disabled; macOS jobs use `macos-15-intel`; Apple Silicon is not covered |
 | D4 | Zero data loss in a 10k crash test | Roadmap target | **Not measured** | - | - | Do not claim yet |
 
 ## E. Benchmark

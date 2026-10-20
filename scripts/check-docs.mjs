@@ -31,6 +31,7 @@ function read(rel) {
 const expectedDocs = new Set([
   'docs/ARCHITECTURE.md',
   'docs/benchmark-report.md',
+  'docs/blog/2026-10-20-fastrmemory-0.2.0.md',
   'docs/mcp-registry-submission.md',
   'docs/NPM_PUBLISHING_TROUBLESHOOTING.md',
   'docs/npm-publishing.md',
@@ -79,6 +80,7 @@ const publicDocs = [
   'RELEASE_v0.1.0.md',
   'docs/ARCHITECTURE.md',
   'docs/benchmark-report.md',
+  'docs/blog/2026-10-20-fastrmemory-0.2.0.md',
   'docs/mcp-registry-submission.md',
   'docs/NPM_PUBLISHING_TROUBLESHOOTING.md',
   'docs/npm-publishing.md',
