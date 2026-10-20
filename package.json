@@ -1,6 +1,7 @@
 {
   "name": "@atifjubaer/fastrmemory",
   "version": "0.2.0",
+  "mcpName": "io.github.atifjubaer/fastrmemory",
   "description": "High-Performance Cognitive Agent Memory Engine with Bi-Temporal SQLite and Official MCP v2",
   "type": "module",
   "repository": {
@@ -35,23 +36,25 @@
     "node": ">=22.16.0"
   },
   "scripts": {
-    "prepare": "tsc",
-    "prepublishOnly": "npm run build && npm test",
-    "build:ui": "npm --prefix ui run build",
+    "prepare": "npm run build:core",
+    "prepublishOnly": "npm run build:core && npm test && npm run check:dist-ui && npm run check:package",
+    "build:core": "tsc",
+    "build:ui": "npm --prefix ui run build && node scripts/build-dist-ui-manifest.mjs",
     "build:extension": "tsc -p extensions/vscode",
-    "build": "npm run build:ui && tsc",
+    "build": "npm run build:core && npm run build:ui",
     "build:all": "npm run build && npm run build:extension",
     "watch": "tsc --watch",
     "test": "vitest run",
     "test:isolation": "vitest run tests/isolation.test.ts",
     "check:skills": "node scripts/check-skills.mjs",
+    "check:dist-ui": "node scripts/check-dist-ui.mjs",
     "check:package": "node scripts/check-package.mjs",
     "check:docs": "node scripts/check-docs.mjs",
     "bench": "tsx scripts/eval-bench.ts --split all --embeddings minilm --out bench/results/minilm.json",
     "bench:hash": "tsx scripts/eval-bench.ts --split all --embeddings hash --out bench/results/hash.json",
     "bench:legacy": "tsx scripts/capture-bench.ts",
     "bench:verify": "node scripts/check-bench.mjs",
-    "check:ci": "npm run test && npm run test:isolation && npm run check:skills && npm run check:package && npm run check:docs && npm run bench:verify",
+    "check:ci": "npm run test && npm run test:isolation && npm run check:skills && npm run check:dist-ui && npm run check:package && npm run check:docs && npm run bench:verify",
     "start": "node dist/bin/fastr.js"
   },
   "keywords": [
