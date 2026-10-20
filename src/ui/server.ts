@@ -1139,7 +1139,7 @@ function renderDashboardHtml(projectId: string, projectName: string): string {
     </div>
     <div class="stat-card">
       <div class="stat-val" id="stat-traps" style="color: #fbbf24;">0</div>
-      <div class="stat-lbl">Error Traps (2.0x Boost)</div>
+      <div class="stat-lbl">Error Traps (Conditional Boost)</div>
     </div>
     <div class="stat-card">
       <div class="stat-val" id="stat-frontier" style="color: #f59e0b;">0</div>
@@ -1166,10 +1166,10 @@ function renderDashboardHtml(projectId: string, projectName: string): string {
         <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px;">
           <h2 style="font-size: 18px; margin-bottom: 12px;">Cognitive Memory Architecture</h2>
           <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
-            FastrMemory runs natively inside Node 24 with <b>zero background daemons</b>. Rules, error traps, and decisions are indexed via SQLite WAL mode, mirrored to <code>.fastr/pages/*.md</code> for Git diffs, and fused using Triple-Stream RRF ($k=60$) across full-text, local vectors, and code file graphs.
+            FastrMemory runs natively inside Node 24 with <b>zero background daemons</b>. Rules, error traps, and decisions are indexed via SQLite WAL mode, mirrored to <code>.fastr/pages/*.md</code> for Git diffs, and fused using Triple-Stream RRF ($k=20$) across full-text, local vectors, and code file graphs.
           </p>
           <div style="display: flex; gap: 10px;">
-            <button class="pill active" onclick="switchTab('traps')">Inspect 2.0x Error Traps &rarr;</button>
+            <button class="pill active" onclick="switchTab('traps')">Inspect Error Traps &rarr;</button>
             <button class="pill" onclick="switchTab('graph')">Open Knowledge Graph &rarr;</button>
           </div>
         </div>
@@ -1200,7 +1200,7 @@ function renderDashboardHtml(projectId: string, projectName: string): string {
     <!-- TAB 3: ERROR TRAPS -->
     <div id="tab-traps" class="tab-content">
       <div style="margin-bottom: 16px; color: var(--text-muted); font-size: 13px;">
-        Error traps automatically receive a <b>2.0x boost</b> during recall to prevent AI agents from repeating known bugs.
+        Error traps receive a <b>conditional 2.0x boost</b> during recall when the query has trap intent or targets a linked file, so agents do not repeat known bugs.
       </div>
       <div class="grid" id="traps-grid"></div>
     </div>
@@ -1213,13 +1213,13 @@ function renderDashboardHtml(projectId: string, projectName: string): string {
           <button id="btn-mode-actions" class="pill" onclick="switchGraphMode('actions')">🔀 Action DAG & Frontier</button>
         </div>
         <div id="graph-mode-desc" style="color: var(--text-muted); font-size: 13px;">
-          Visualizing semantic memory nodes, error traps (2.0x boost), code files, and extracted entities.
+          Visualizing semantic memory nodes, error traps (conditional boost), code files, and extracted entities.
         </div>
       </div>
       <div id="graph-container">
         <div class="graph-legend" id="graph-legend">
           <div class="legend-item"><div class="legend-dot" style="background: #10b981;"></div> Code File Node</div>
-          <div class="legend-item"><div class="legend-dot" style="background: #fbbf24;"></div> Error Trap [TRAP] (2.0x)</div>
+          <div class="legend-item"><div class="legend-dot" style="background: #fbbf24;"></div> Error Trap [TRAP] (conditional boost)</div>
           <div class="legend-item"><div class="legend-dot" style="background: #3b82f6;"></div> Verified Rule</div>
           <div class="legend-item"><div class="legend-dot" style="background: #8b5cf6;"></div> Architecture Decision</div>
           <div class="legend-item"><div class="legend-dot" style="background: #ec4899;"></div> Entity Link</div>
@@ -1711,10 +1711,10 @@ function renderDashboardHtml(projectId: string, projectName: string): string {
       const legendEl = document.getElementById('graph-legend');
       
       if (mode === 'knowledge') {
-        if (descEl) descEl.textContent = 'Visualizing semantic memory nodes, error traps (2.0x boost), code files, and extracted entities.';
+        if (descEl) descEl.textContent = 'Visualizing semantic memory nodes, error traps (conditional boost), code files, and extracted entities.';
         if (legendEl) {
           legendEl.innerHTML = '<div class="legend-item"><div class="legend-dot" style="background: #10b981;"></div> Code File Node</div>' +
-            '<div class="legend-item"><div class="legend-dot" style="background: #fbbf24;"></div> Error Trap [TRAP] (2.0x)</div>' +
+            '<div class="legend-item"><div class="legend-dot" style="background: #fbbf24;"></div> Error Trap [TRAP] (conditional boost)</div>' +
             '<div class="legend-item"><div class="legend-dot" style="background: #3b82f6;"></div> Verified Rule</div>' +
             '<div class="legend-item"><div class="legend-dot" style="background: #8b5cf6;"></div> Architecture Decision</div>' +
             '<div class="legend-item"><div class="legend-dot" style="background: #ec4899;"></div> Entity Link</div>';

@@ -101,8 +101,8 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   const { db, repo, config } = ctx;
 
   const server = new McpServer({
-    name: '@fastrsoft/fastrmemory',
-    version: '0.1.0'
+    name: '@atifjubaer/fastrmemory',
+    version: '0.2.0'
   });
 
   // ==========================================
@@ -618,7 +618,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
   server.registerTool(
     'fastr_trap_log',
     {
-      description: 'Immediately logs an error trap diagnosed during a build failure or test error. Receives a 2.0x recall boost.',
+      description: 'Immediately logs an error trap diagnosed during a build failure or test error. Receives a conditional 2.0x recall boost for trap-intent or file-scoped queries.',
       inputSchema: z.object({
         title: TITLE.describe('Clear, imperative rule title (e.g. Never Use Date.now() for JWT Exp)'),
         content: CONTENT.describe('Exact explanation of the error trap and the concrete workaround/fix'),
@@ -650,7 +650,7 @@ export function createFastrMcpServer(context?: ServerContext): McpServer {
         mirrorWarning = `\n\nWarning: trap saved, but Markdown mirror sync failed (${errMessage(err)}). Do not retry the log call.`;
       }
       return ok(
-        `⚠️ **Logged Error Trap [${mem.id}]**: "${mem.title}" linked to ${files.length} file(s) with 2.0x recall boost.${mirrorWarning}`
+        `⚠️ **Logged Error Trap [${mem.id}]**: "${mem.title}" linked to ${files.length} file(s) with a conditional 2.0x recall boost for trap-intent or file-scoped queries.${mirrorWarning}`
       );
     }
   );

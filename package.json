@@ -1,6 +1,6 @@
 {
   "name": "@atifjubaer/fastrmemory",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "High-Performance Cognitive Agent Memory Engine with Bi-Temporal SQLite and Official MCP v2",
   "type": "module",
   "repository": {
@@ -45,6 +45,13 @@
     "test": "vitest run",
     "test:isolation": "vitest run tests/isolation.test.ts",
     "check:skills": "node scripts/check-skills.mjs",
+    "check:package": "node scripts/check-package.mjs",
+    "check:docs": "node scripts/check-docs.mjs",
+    "bench": "tsx scripts/eval-bench.ts --split all --embeddings minilm --out bench/results/minilm.json",
+    "bench:hash": "tsx scripts/eval-bench.ts --split all --embeddings hash --out bench/results/hash.json",
+    "bench:legacy": "tsx scripts/capture-bench.ts",
+    "bench:verify": "node scripts/check-bench.mjs",
+    "check:ci": "npm run test && npm run test:isolation && npm run check:skills && npm run check:package && npm run check:docs && npm run bench:verify",
     "start": "node dist/bin/fastr.js"
   },
   "keywords": [
@@ -60,13 +67,22 @@
   "author": "Fastrsoft",
   "license": "Apache-2.0",
   "dependencies": {
-    "@huggingface/transformers": "^3.8.1",
     "@modelcontextprotocol/server": "^2.3.1",
     "commander": "^13.1.0",
     "zod": "^4.6.7"
   },
+  "peerDependencies": {
+    "@huggingface/transformers": "^3.8.1"
+  },
+  "peerDependenciesMeta": {
+    "@huggingface/transformers": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@huggingface/transformers": "^3.8.1",
     "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
     "typescript": "^5.8.0",
     "vitest": "^3.0.0"
   }

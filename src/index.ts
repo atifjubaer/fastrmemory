@@ -1,4 +1,4 @@
-// Public API exports for @fastrsoft/fastrmemory
+// Public API exports for @atifjubaer/fastrmemory
 
 export * from './db/schema.js';
 export * from './db/spool.js';

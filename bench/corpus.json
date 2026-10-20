@@ -1,0 +1,3991 @@
+{
+  "version": 1,
+  "seed": 20261020,
+  "createdAt": "2026-10-20T00:00:00Z",
+  "kind": "synthetic",
+  "splitRule": "Every fifth case per category is held out (index % 5 === 4); tuning must use train only.",
+  "memories": [
+    {
+      "id": "mem_bench_01",
+      "module": "db",
+      "kind": "error_trap",
+      "title": "Avoid connection pooling trap in db",
+      "content": "Trap: Prefer deterministic defaults when handling connection pooling. Never repeat the old connection pooling mistake. Reference token: zephyr01. Applies to src/db/connection-pooling.ts.",
+      "files": [
+        "src/db/connection-pooling.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_01",
+      "module": "db",
+      "kind": "error_trap",
+      "title": "Legacy connection pooling rule for db",
+      "content": "Old guidance: use the legacy connection pooling approach. Superseded by the active connection pooling standard. Reference token: legacy01. Applies to src/db/connection-pooling.ts.",
+      "files": [
+        "src/db/connection-pooling.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_02",
+      "module": "db",
+      "kind": "error_trap",
+      "title": "Avoid index maintenance trap in db",
+      "content": "Trap: Fail closed on invalid input when handling index maintenance. Never repeat the old index maintenance mistake. Reference token: zephyr02. Applies to src/db/index-maintenance.ts.",
+      "files": [
+        "src/db/index-maintenance.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_02",
+      "module": "db",
+      "kind": "error_trap",
+      "title": "Legacy index maintenance rule for db",
+      "content": "Old guidance: use the legacy index maintenance approach. Superseded by the active index maintenance standard. Reference token: legacy02. Applies to src/db/index-maintenance.ts.",
+      "files": [
+        "src/db/index-maintenance.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_03",
+      "module": "db",
+      "kind": "error_trap",
+      "title": "Avoid migration ordering trap in db",
+      "content": "Trap: Measure before changing the hot path when handling migration ordering. Never repeat the old migration ordering mistake. Reference token: zephyr03. Applies to src/db/migration-ordering.ts.",
+      "files": [
+        "src/db/migration-ordering.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_03",
+      "module": "db",
+      "kind": "error_trap",
+      "title": "Legacy migration ordering rule for db",
+      "content": "Old guidance: use the legacy migration ordering approach. Superseded by the active migration ordering standard. Reference token: legacy03. Applies to src/db/migration-ordering.ts.",
+      "files": [
+        "src/db/migration-ordering.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_04",
+      "module": "db",
+      "kind": "error_trap",
+      "title": "Avoid backup rotation trap in db",
+      "content": "Trap: Keep the rollback path tested when handling backup rotation. Never repeat the old backup rotation mistake. Reference token: zephyr04. Applies to src/db/backup-rotation.ts.",
+      "files": [
+        "src/db/backup-rotation.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_04",
+      "module": "db",
+      "kind": "error_trap",
+      "title": "Legacy backup rotation rule for db",
+      "content": "Old guidance: use the legacy backup rotation approach. Superseded by the active backup rotation standard. Reference token: legacy04. Applies to src/db/backup-rotation.ts.",
+      "files": [
+        "src/db/backup-rotation.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_05",
+      "module": "db",
+      "kind": "error_trap",
+      "title": "Avoid query plan review trap in db",
+      "content": "Trap: Record the decision and its owner when handling query plan review. Never repeat the old query plan review mistake. Reference token: zephyr05. Applies to src/db/query-plan-review.ts.",
+      "files": [
+        "src/db/query-plan-review.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_05",
+      "module": "db",
+      "kind": "error_trap",
+      "title": "Legacy query plan review rule for db",
+      "content": "Old guidance: use the legacy query plan review approach. Superseded by the active query plan review standard. Reference token: legacy05. Applies to src/db/query-plan-review.ts.",
+      "files": [
+        "src/db/query-plan-review.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_06",
+      "module": "auth",
+      "kind": "error_trap",
+      "title": "Avoid token signing trap in auth",
+      "content": "Trap: Prefer deterministic defaults when handling token signing. Never repeat the old token signing mistake. Reference token: zephyr06. Applies to src/auth/token-signing.ts.",
+      "files": [
+        "src/auth/token-signing.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_06",
+      "module": "auth",
+      "kind": "error_trap",
+      "title": "Legacy token signing rule for auth",
+      "content": "Old guidance: use the legacy token signing approach. Superseded by the active token signing standard. Reference token: legacy06. Applies to src/auth/token-signing.ts.",
+      "files": [
+        "src/auth/token-signing.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_07",
+      "module": "auth",
+      "kind": "error_trap",
+      "title": "Avoid session rotation trap in auth",
+      "content": "Trap: Fail closed on invalid input when handling session rotation. Never repeat the old session rotation mistake. Reference token: zephyr07. Applies to src/auth/session-rotation.ts.",
+      "files": [
+        "src/auth/session-rotation.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_07",
+      "module": "auth",
+      "kind": "error_trap",
+      "title": "Legacy session rotation rule for auth",
+      "content": "Old guidance: use the legacy session rotation approach. Superseded by the active session rotation standard. Reference token: legacy07. Applies to src/auth/session-rotation.ts.",
+      "files": [
+        "src/auth/session-rotation.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_08",
+      "module": "auth",
+      "kind": "error_trap",
+      "title": "Avoid password hashing trap in auth",
+      "content": "Trap: Measure before changing the hot path when handling password hashing. Never repeat the old password hashing mistake. Reference token: zephyr08. Applies to src/auth/password-hashing.ts.",
+      "files": [
+        "src/auth/password-hashing.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_08",
+      "module": "auth",
+      "kind": "error_trap",
+      "title": "Legacy password hashing rule for auth",
+      "content": "Old guidance: use the legacy password hashing approach. Superseded by the active password hashing standard. Reference token: legacy08. Applies to src/auth/password-hashing.ts.",
+      "files": [
+        "src/auth/password-hashing.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_09",
+      "module": "auth",
+      "kind": "error_trap",
+      "title": "Avoid scope validation trap in auth",
+      "content": "Trap: Keep the rollback path tested when handling scope validation. Never repeat the old scope validation mistake. Reference token: zephyr09. Applies to src/auth/scope-validation.ts.",
+      "files": [
+        "src/auth/scope-validation.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_09",
+      "module": "auth",
+      "kind": "error_trap",
+      "title": "Legacy scope validation rule for auth",
+      "content": "Old guidance: use the legacy scope validation approach. Superseded by the active scope validation standard. Reference token: legacy09. Applies to src/auth/scope-validation.ts.",
+      "files": [
+        "src/auth/scope-validation.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_10",
+      "module": "auth",
+      "kind": "error_trap",
+      "title": "Avoid key rotation trap in auth",
+      "content": "Trap: Record the decision and its owner when handling key rotation. Never repeat the old key rotation mistake. Reference token: zephyr10. Applies to src/auth/key-rotation.ts.",
+      "files": [
+        "src/auth/key-rotation.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_10",
+      "module": "auth",
+      "kind": "error_trap",
+      "title": "Legacy key rotation rule for auth",
+      "content": "Old guidance: use the legacy key rotation approach. Superseded by the active key rotation standard. Reference token: legacy10. Applies to src/auth/key-rotation.ts.",
+      "files": [
+        "src/auth/key-rotation.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_11",
+      "module": "api",
+      "kind": "error_trap",
+      "title": "Avoid rate limiting trap in api",
+      "content": "Trap: Prefer deterministic defaults when handling rate limiting. Never repeat the old rate limiting mistake. Reference token: zephyr11. Applies to src/api/rate-limiting.ts.",
+      "files": [
+        "src/api/rate-limiting.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_11",
+      "module": "api",
+      "kind": "error_trap",
+      "title": "Legacy rate limiting rule for api",
+      "content": "Old guidance: use the legacy rate limiting approach. Superseded by the active rate limiting standard. Reference token: legacy11. Applies to src/api/rate-limiting.ts.",
+      "files": [
+        "src/api/rate-limiting.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_12",
+      "module": "api",
+      "kind": "error_trap",
+      "title": "Avoid error envelopes trap in api",
+      "content": "Trap: Fail closed on invalid input when handling error envelopes. Never repeat the old error envelopes mistake. Reference token: zephyr12. Applies to src/api/error-envelopes.ts.",
+      "files": [
+        "src/api/error-envelopes.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_12",
+      "module": "api",
+      "kind": "error_trap",
+      "title": "Legacy error envelopes rule for api",
+      "content": "Old guidance: use the legacy error envelopes approach. Superseded by the active error envelopes standard. Reference token: legacy12. Applies to src/api/error-envelopes.ts.",
+      "files": [
+        "src/api/error-envelopes.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_13",
+      "module": "api",
+      "kind": "error_trap",
+      "title": "Avoid request validation trap in api",
+      "content": "Trap: Measure before changing the hot path when handling request validation. Never repeat the old request validation mistake. Reference token: zephyr13. Applies to src/api/request-validation.ts.",
+      "files": [
+        "src/api/request-validation.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_13",
+      "module": "api",
+      "kind": "error_trap",
+      "title": "Legacy request validation rule for api",
+      "content": "Old guidance: use the legacy request validation approach. Superseded by the active request validation standard. Reference token: legacy13. Applies to src/api/request-validation.ts.",
+      "files": [
+        "src/api/request-validation.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_14",
+      "module": "api",
+      "kind": "error_trap",
+      "title": "Avoid pagination defaults trap in api",
+      "content": "Trap: Keep the rollback path tested when handling pagination defaults. Never repeat the old pagination defaults mistake. Reference token: zephyr14. Applies to src/api/pagination-defaults.ts.",
+      "files": [
+        "src/api/pagination-defaults.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_14",
+      "module": "api",
+      "kind": "error_trap",
+      "title": "Legacy pagination defaults rule for api",
+      "content": "Old guidance: use the legacy pagination defaults approach. Superseded by the active pagination defaults standard. Reference token: legacy14. Applies to src/api/pagination-defaults.ts.",
+      "files": [
+        "src/api/pagination-defaults.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_15",
+      "module": "api",
+      "kind": "error_trap",
+      "title": "Avoid idempotency keys trap in api",
+      "content": "Trap: Record the decision and its owner when handling idempotency keys. Never repeat the old idempotency keys mistake. Reference token: zephyr15. Applies to src/api/idempotency-keys.ts.",
+      "files": [
+        "src/api/idempotency-keys.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_15",
+      "module": "api",
+      "kind": "error_trap",
+      "title": "Legacy idempotency keys rule for api",
+      "content": "Old guidance: use the legacy idempotency keys approach. Superseded by the active idempotency keys standard. Reference token: legacy15. Applies to src/api/idempotency-keys.ts.",
+      "files": [
+        "src/api/idempotency-keys.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_16",
+      "module": "search",
+      "kind": "error_trap",
+      "title": "Avoid BM25 weighting trap in search",
+      "content": "Trap: Prefer deterministic defaults when handling BM25 weighting. Never repeat the old BM25 weighting mistake. Reference token: zephyr16. Applies to src/search/bm25-weighting.ts.",
+      "files": [
+        "src/search/bm25-weighting.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_16",
+      "module": "search",
+      "kind": "error_trap",
+      "title": "Legacy BM25 weighting rule for search",
+      "content": "Old guidance: use the legacy BM25 weighting approach. Superseded by the active BM25 weighting standard. Reference token: legacy16. Applies to src/search/bm25-weighting.ts.",
+      "files": [
+        "src/search/bm25-weighting.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_17",
+      "module": "search",
+      "kind": "error_trap",
+      "title": "Avoid vector fallback trap in search",
+      "content": "Trap: Fail closed on invalid input when handling vector fallback. Never repeat the old vector fallback mistake. Reference token: zephyr17. Applies to src/search/vector-fallback.ts.",
+      "files": [
+        "src/search/vector-fallback.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_17",
+      "module": "search",
+      "kind": "error_trap",
+      "title": "Legacy vector fallback rule for search",
+      "content": "Old guidance: use the legacy vector fallback approach. Superseded by the active vector fallback standard. Reference token: legacy17. Applies to src/search/vector-fallback.ts.",
+      "files": [
+        "src/search/vector-fallback.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_18",
+      "module": "search",
+      "kind": "error_trap",
+      "title": "Avoid graph activation trap in search",
+      "content": "Trap: Measure before changing the hot path when handling graph activation. Never repeat the old graph activation mistake. Reference token: zephyr18. Applies to src/search/graph-activation.ts.",
+      "files": [
+        "src/search/graph-activation.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_18",
+      "module": "search",
+      "kind": "error_trap",
+      "title": "Legacy graph activation rule for search",
+      "content": "Old guidance: use the legacy graph activation approach. Superseded by the active graph activation standard. Reference token: legacy18. Applies to src/search/graph-activation.ts.",
+      "files": [
+        "src/search/graph-activation.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_19",
+      "module": "search",
+      "kind": "error_trap",
+      "title": "Avoid result diversification trap in search",
+      "content": "Trap: Keep the rollback path tested when handling result diversification. Never repeat the old result diversification mistake. Reference token: zephyr19. Applies to src/search/result-diversification.ts.",
+      "files": [
+        "src/search/result-diversification.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_19",
+      "module": "search",
+      "kind": "error_trap",
+      "title": "Legacy result diversification rule for search",
+      "content": "Old guidance: use the legacy result diversification approach. Superseded by the active result diversification standard. Reference token: legacy19. Applies to src/search/result-diversification.ts.",
+      "files": [
+        "src/search/result-diversification.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_20",
+      "module": "search",
+      "kind": "error_trap",
+      "title": "Avoid token budgeting trap in search",
+      "content": "Trap: Record the decision and its owner when handling token budgeting. Never repeat the old token budgeting mistake. Reference token: zephyr20. Applies to src/search/token-budgeting.ts.",
+      "files": [
+        "src/search/token-budgeting.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_20",
+      "module": "search",
+      "kind": "error_trap",
+      "title": "Legacy token budgeting rule for search",
+      "content": "Old guidance: use the legacy token budgeting approach. Superseded by the active token budgeting standard. Reference token: legacy20. Applies to src/search/token-budgeting.ts.",
+      "files": [
+        "src/search/token-budgeting.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_21",
+      "module": "ui",
+      "kind": "error_trap",
+      "title": "Avoid optimistic updates trap in ui",
+      "content": "Trap: Prefer deterministic defaults when handling optimistic updates. Never repeat the old optimistic updates mistake. Reference token: zephyr21. Applies to src/ui/optimistic-updates.ts.",
+      "files": [
+        "src/ui/optimistic-updates.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_21",
+      "module": "ui",
+      "kind": "error_trap",
+      "title": "Legacy optimistic updates rule for ui",
+      "content": "Old guidance: use the legacy optimistic updates approach. Superseded by the active optimistic updates standard. Reference token: legacy21. Applies to src/ui/optimistic-updates.ts.",
+      "files": [
+        "src/ui/optimistic-updates.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_22",
+      "module": "ui",
+      "kind": "error_trap",
+      "title": "Avoid error boundaries trap in ui",
+      "content": "Trap: Fail closed on invalid input when handling error boundaries. Never repeat the old error boundaries mistake. Reference token: zephyr22. Applies to src/ui/error-boundaries.ts.",
+      "files": [
+        "src/ui/error-boundaries.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_22",
+      "module": "ui",
+      "kind": "error_trap",
+      "title": "Legacy error boundaries rule for ui",
+      "content": "Old guidance: use the legacy error boundaries approach. Superseded by the active error boundaries standard. Reference token: legacy22. Applies to src/ui/error-boundaries.ts.",
+      "files": [
+        "src/ui/error-boundaries.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_23",
+      "module": "ui",
+      "kind": "error_trap",
+      "title": "Avoid keyboard navigation trap in ui",
+      "content": "Trap: Measure before changing the hot path when handling keyboard navigation. Never repeat the old keyboard navigation mistake. Reference token: zephyr23. Applies to src/ui/keyboard-navigation.ts.",
+      "files": [
+        "src/ui/keyboard-navigation.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_23",
+      "module": "ui",
+      "kind": "error_trap",
+      "title": "Legacy keyboard navigation rule for ui",
+      "content": "Old guidance: use the legacy keyboard navigation approach. Superseded by the active keyboard navigation standard. Reference token: legacy23. Applies to src/ui/keyboard-navigation.ts.",
+      "files": [
+        "src/ui/keyboard-navigation.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_24",
+      "module": "ui",
+      "kind": "error_trap",
+      "title": "Avoid chart rendering trap in ui",
+      "content": "Trap: Keep the rollback path tested when handling chart rendering. Never repeat the old chart rendering mistake. Reference token: zephyr24. Applies to src/ui/chart-rendering.ts.",
+      "files": [
+        "src/ui/chart-rendering.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_24",
+      "module": "ui",
+      "kind": "error_trap",
+      "title": "Legacy chart rendering rule for ui",
+      "content": "Old guidance: use the legacy chart rendering approach. Superseded by the active chart rendering standard. Reference token: legacy24. Applies to src/ui/chart-rendering.ts.",
+      "files": [
+        "src/ui/chart-rendering.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_25",
+      "module": "ui",
+      "kind": "error_trap",
+      "title": "Avoid bundle splitting trap in ui",
+      "content": "Trap: Record the decision and its owner when handling bundle splitting. Never repeat the old bundle splitting mistake. Reference token: zephyr25. Applies to src/ui/bundle-splitting.ts.",
+      "files": [
+        "src/ui/bundle-splitting.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_25",
+      "module": "ui",
+      "kind": "error_trap",
+      "title": "Legacy bundle splitting rule for ui",
+      "content": "Old guidance: use the legacy bundle splitting approach. Superseded by the active bundle splitting standard. Reference token: legacy25. Applies to src/ui/bundle-splitting.ts.",
+      "files": [
+        "src/ui/bundle-splitting.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_26",
+      "module": "ci",
+      "kind": "error_trap",
+      "title": "Avoid matrix fail-fast trap in ci",
+      "content": "Trap: Prefer deterministic defaults when handling matrix fail-fast. Never repeat the old matrix fail-fast mistake. Reference token: zephyr26. Applies to src/ci/matrix-fail-fast.ts.",
+      "files": [
+        "src/ci/matrix-fail-fast.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_26",
+      "module": "ci",
+      "kind": "error_trap",
+      "title": "Legacy matrix fail-fast rule for ci",
+      "content": "Old guidance: use the legacy matrix fail-fast approach. Superseded by the active matrix fail-fast standard. Reference token: legacy26. Applies to src/ci/matrix-fail-fast.ts.",
+      "files": [
+        "src/ci/matrix-fail-fast.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_27",
+      "module": "ci",
+      "kind": "error_trap",
+      "title": "Avoid cache invalidation trap in ci",
+      "content": "Trap: Fail closed on invalid input when handling cache invalidation. Never repeat the old cache invalidation mistake. Reference token: zephyr27. Applies to src/ci/cache-invalidation.ts.",
+      "files": [
+        "src/ci/cache-invalidation.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_27",
+      "module": "ci",
+      "kind": "error_trap",
+      "title": "Legacy cache invalidation rule for ci",
+      "content": "Old guidance: use the legacy cache invalidation approach. Superseded by the active cache invalidation standard. Reference token: legacy27. Applies to src/ci/cache-invalidation.ts.",
+      "files": [
+        "src/ci/cache-invalidation.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_28",
+      "module": "ci",
+      "kind": "error_trap",
+      "title": "Avoid artifact retention trap in ci",
+      "content": "Trap: Measure before changing the hot path when handling artifact retention. Never repeat the old artifact retention mistake. Reference token: zephyr28. Applies to src/ci/artifact-retention.ts.",
+      "files": [
+        "src/ci/artifact-retention.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_28",
+      "module": "ci",
+      "kind": "error_trap",
+      "title": "Legacy artifact retention rule for ci",
+      "content": "Old guidance: use the legacy artifact retention approach. Superseded by the active artifact retention standard. Reference token: legacy28. Applies to src/ci/artifact-retention.ts.",
+      "files": [
+        "src/ci/artifact-retention.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_29",
+      "module": "ci",
+      "kind": "error_trap",
+      "title": "Avoid secret scanning trap in ci",
+      "content": "Trap: Keep the rollback path tested when handling secret scanning. Never repeat the old secret scanning mistake. Reference token: zephyr29. Applies to src/ci/secret-scanning.ts.",
+      "files": [
+        "src/ci/secret-scanning.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_29",
+      "module": "ci",
+      "kind": "error_trap",
+      "title": "Legacy secret scanning rule for ci",
+      "content": "Old guidance: use the legacy secret scanning approach. Superseded by the active secret scanning standard. Reference token: legacy29. Applies to src/ci/secret-scanning.ts.",
+      "files": [
+        "src/ci/secret-scanning.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_30",
+      "module": "ci",
+      "kind": "error_trap",
+      "title": "Avoid flaky test quarantine trap in ci",
+      "content": "Trap: Record the decision and its owner when handling flaky test quarantine. Never repeat the old flaky test quarantine mistake. Reference token: zephyr30. Applies to src/ci/flaky-test-quarantine.ts.",
+      "files": [
+        "src/ci/flaky-test-quarantine.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_30",
+      "module": "ci",
+      "kind": "error_trap",
+      "title": "Legacy flaky test quarantine rule for ci",
+      "content": "Old guidance: use the legacy flaky test quarantine approach. Superseded by the active flaky test quarantine standard. Reference token: legacy30. Applies to src/ci/flaky-test-quarantine.ts.",
+      "files": [
+        "src/ci/flaky-test-quarantine.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_31",
+      "module": "git",
+      "kind": "error_trap",
+      "title": "Avoid commit signing trap in git",
+      "content": "Trap: Prefer deterministic defaults when handling commit signing. Never repeat the old commit signing mistake. Reference token: zephyr31. Applies to src/git/commit-signing.ts.",
+      "files": [
+        "src/git/commit-signing.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_31",
+      "module": "git",
+      "kind": "error_trap",
+      "title": "Legacy commit signing rule for git",
+      "content": "Old guidance: use the legacy commit signing approach. Superseded by the active commit signing standard. Reference token: legacy31. Applies to src/git/commit-signing.ts.",
+      "files": [
+        "src/git/commit-signing.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_32",
+      "module": "git",
+      "kind": "error_trap",
+      "title": "Avoid branch protection trap in git",
+      "content": "Trap: Fail closed on invalid input when handling branch protection. Never repeat the old branch protection mistake. Reference token: zephyr32. Applies to src/git/branch-protection.ts.",
+      "files": [
+        "src/git/branch-protection.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_32",
+      "module": "git",
+      "kind": "error_trap",
+      "title": "Legacy branch protection rule for git",
+      "content": "Old guidance: use the legacy branch protection approach. Superseded by the active branch protection standard. Reference token: legacy32. Applies to src/git/branch-protection.ts.",
+      "files": [
+        "src/git/branch-protection.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_33",
+      "module": "git",
+      "kind": "error_trap",
+      "title": "Avoid merge queue trap in git",
+      "content": "Trap: Measure before changing the hot path when handling merge queue. Never repeat the old merge queue mistake. Reference token: zephyr33. Applies to src/git/merge-queue.ts.",
+      "files": [
+        "src/git/merge-queue.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_33",
+      "module": "git",
+      "kind": "error_trap",
+      "title": "Legacy merge queue rule for git",
+      "content": "Old guidance: use the legacy merge queue approach. Superseded by the active merge queue standard. Reference token: legacy33. Applies to src/git/merge-queue.ts.",
+      "files": [
+        "src/git/merge-queue.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_34",
+      "module": "git",
+      "kind": "error_trap",
+      "title": "Avoid blame attribution trap in git",
+      "content": "Trap: Keep the rollback path tested when handling blame attribution. Never repeat the old blame attribution mistake. Reference token: zephyr34. Applies to src/git/blame-attribution.ts.",
+      "files": [
+        "src/git/blame-attribution.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_34",
+      "module": "git",
+      "kind": "error_trap",
+      "title": "Legacy blame attribution rule for git",
+      "content": "Old guidance: use the legacy blame attribution approach. Superseded by the active blame attribution standard. Reference token: legacy34. Applies to src/git/blame-attribution.ts.",
+      "files": [
+        "src/git/blame-attribution.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_35",
+      "module": "git",
+      "kind": "error_trap",
+      "title": "Avoid release tagging trap in git",
+      "content": "Trap: Record the decision and its owner when handling release tagging. Never repeat the old release tagging mistake. Reference token: zephyr35. Applies to src/git/release-tagging.ts.",
+      "files": [
+        "src/git/release-tagging.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_35",
+      "module": "git",
+      "kind": "error_trap",
+      "title": "Legacy release tagging rule for git",
+      "content": "Old guidance: use the legacy release tagging approach. Superseded by the active release tagging standard. Reference token: legacy35. Applies to src/git/release-tagging.ts.",
+      "files": [
+        "src/git/release-tagging.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_36",
+      "module": "mcp",
+      "kind": "error_trap",
+      "title": "Avoid tool schemas trap in mcp",
+      "content": "Trap: Prefer deterministic defaults when handling tool schemas. Never repeat the old tool schemas mistake. Reference token: zephyr36. Applies to src/mcp/tool-schemas.ts.",
+      "files": [
+        "src/mcp/tool-schemas.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_36",
+      "module": "mcp",
+      "kind": "error_trap",
+      "title": "Legacy tool schemas rule for mcp",
+      "content": "Old guidance: use the legacy tool schemas approach. Superseded by the active tool schemas standard. Reference token: legacy36. Applies to src/mcp/tool-schemas.ts.",
+      "files": [
+        "src/mcp/tool-schemas.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_37",
+      "module": "mcp",
+      "kind": "error_trap",
+      "title": "Avoid resource discovery trap in mcp",
+      "content": "Trap: Fail closed on invalid input when handling resource discovery. Never repeat the old resource discovery mistake. Reference token: zephyr37. Applies to src/mcp/resource-discovery.ts.",
+      "files": [
+        "src/mcp/resource-discovery.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_37",
+      "module": "mcp",
+      "kind": "error_trap",
+      "title": "Legacy resource discovery rule for mcp",
+      "content": "Old guidance: use the legacy resource discovery approach. Superseded by the active resource discovery standard. Reference token: legacy37. Applies to src/mcp/resource-discovery.ts.",
+      "files": [
+        "src/mcp/resource-discovery.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_38",
+      "module": "mcp",
+      "kind": "error_trap",
+      "title": "Avoid prompt routing trap in mcp",
+      "content": "Trap: Measure before changing the hot path when handling prompt routing. Never repeat the old prompt routing mistake. Reference token: zephyr38. Applies to src/mcp/prompt-routing.ts.",
+      "files": [
+        "src/mcp/prompt-routing.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_38",
+      "module": "mcp",
+      "kind": "error_trap",
+      "title": "Legacy prompt routing rule for mcp",
+      "content": "Old guidance: use the legacy prompt routing approach. Superseded by the active prompt routing standard. Reference token: legacy38. Applies to src/mcp/prompt-routing.ts.",
+      "files": [
+        "src/mcp/prompt-routing.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_39",
+      "module": "mcp",
+      "kind": "error_trap",
+      "title": "Avoid transport timeouts trap in mcp",
+      "content": "Trap: Keep the rollback path tested when handling transport timeouts. Never repeat the old transport timeouts mistake. Reference token: zephyr39. Applies to src/mcp/transport-timeouts.ts.",
+      "files": [
+        "src/mcp/transport-timeouts.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_39",
+      "module": "mcp",
+      "kind": "error_trap",
+      "title": "Legacy transport timeouts rule for mcp",
+      "content": "Old guidance: use the legacy transport timeouts approach. Superseded by the active transport timeouts standard. Reference token: legacy39. Applies to src/mcp/transport-timeouts.ts.",
+      "files": [
+        "src/mcp/transport-timeouts.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_40",
+      "module": "mcp",
+      "kind": "error_trap",
+      "title": "Avoid capability negotiation trap in mcp",
+      "content": "Trap: Record the decision and its owner when handling capability negotiation. Never repeat the old capability negotiation mistake. Reference token: zephyr40. Applies to src/mcp/capability-negotiation.ts.",
+      "files": [
+        "src/mcp/capability-negotiation.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z"
+    },
+    {
+      "id": "mem_legacy_40",
+      "module": "mcp",
+      "kind": "error_trap",
+      "title": "Legacy capability negotiation rule for mcp",
+      "content": "Old guidance: use the legacy capability negotiation approach. Superseded by the active capability negotiation standard. Reference token: legacy40. Applies to src/mcp/capability-negotiation.ts.",
+      "files": [
+        "src/mcp/capability-negotiation.ts"
+      ],
+      "status": "superseded",
+      "rewardScore": 0.2,
+      "validFrom": "2025-01-01T00:00:00Z",
+      "validTo": "2026-01-01T00:00:00Z",
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "mem_bench_41",
+      "module": "docs",
+      "kind": "decision",
+      "title": "claims ledger decision for docs",
+      "content": "Prefer deterministic defaults when handling claims ledger. This decision was made during the initial docs design and is registered to AuroraGateway41. Reference token: zephyr41.",
+      "files": [],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2025-01-15T00:00:00Z",
+      "entity": {
+        "id": "ent_aurora_41",
+        "name": "AuroraGateway41",
+        "type": "service"
+      }
+    },
+    {
+      "id": "mem_bridge_41",
+      "module": "docs",
+      "kind": "rule",
+      "title": "Connector memory 41",
+      "content": "Graph connector. Reference token: relay41.",
+      "files": [
+        "src/docs/claims-ledger.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z",
+      "graphEdges": [
+        {
+          "targetId": "mem_bench_41",
+          "edgeType": "association",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "mem_bench_42",
+      "module": "docs",
+      "kind": "decision",
+      "title": "benchmark provenance decision for docs",
+      "content": "Fail closed on invalid input when handling benchmark provenance. This decision was made during the initial docs design and is registered to AuroraGateway42. Reference token: zephyr42.",
+      "files": [],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2025-01-15T00:00:00Z",
+      "entity": {
+        "id": "ent_aurora_42",
+        "name": "AuroraGateway42",
+        "type": "service"
+      }
+    },
+    {
+      "id": "mem_bridge_42",
+      "module": "docs",
+      "kind": "rule",
+      "title": "Connector memory 42",
+      "content": "Graph connector. Reference token: relay42.",
+      "files": [
+        "src/docs/benchmark-provenance.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z",
+      "graphEdges": [
+        {
+          "targetId": "mem_bench_42",
+          "edgeType": "association",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "mem_bench_43",
+      "module": "docs",
+      "kind": "decision",
+      "title": "changelog discipline decision for docs",
+      "content": "Measure before changing the hot path when handling changelog discipline. This decision was made during the initial docs design and is registered to AuroraGateway43. Reference token: zephyr43.",
+      "files": [],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2025-01-15T00:00:00Z",
+      "entity": {
+        "id": "ent_aurora_43",
+        "name": "AuroraGateway43",
+        "type": "service"
+      }
+    },
+    {
+      "id": "mem_bridge_43",
+      "module": "docs",
+      "kind": "rule",
+      "title": "Connector memory 43",
+      "content": "Graph connector. Reference token: relay43.",
+      "files": [
+        "src/docs/changelog-discipline.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z",
+      "graphEdges": [
+        {
+          "targetId": "mem_bench_43",
+          "edgeType": "association",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "mem_bench_44",
+      "module": "docs",
+      "kind": "decision",
+      "title": "link checking decision for docs",
+      "content": "Keep the rollback path tested when handling link checking. This decision was made during the initial docs design and is registered to AuroraGateway44. Reference token: zephyr44.",
+      "files": [],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2025-01-15T00:00:00Z",
+      "entity": {
+        "id": "ent_aurora_44",
+        "name": "AuroraGateway44",
+        "type": "service"
+      }
+    },
+    {
+      "id": "mem_bridge_44",
+      "module": "docs",
+      "kind": "rule",
+      "title": "Connector memory 44",
+      "content": "Graph connector. Reference token: relay44.",
+      "files": [
+        "src/docs/link-checking.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z",
+      "graphEdges": [
+        {
+          "targetId": "mem_bench_44",
+          "edgeType": "association",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "mem_bench_45",
+      "module": "docs",
+      "kind": "decision",
+      "title": "example freshness decision for docs",
+      "content": "Record the decision and its owner when handling example freshness. This decision was made during the initial docs design and is registered to AuroraGateway45. Reference token: zephyr45.",
+      "files": [],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2025-01-15T00:00:00Z",
+      "entity": {
+        "id": "ent_aurora_45",
+        "name": "AuroraGateway45",
+        "type": "service"
+      }
+    },
+    {
+      "id": "mem_bridge_45",
+      "module": "docs",
+      "kind": "rule",
+      "title": "Connector memory 45",
+      "content": "Graph connector. Reference token: relay45.",
+      "files": [
+        "src/docs/example-freshness.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z",
+      "graphEdges": [
+        {
+          "targetId": "mem_bench_45",
+          "edgeType": "association",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "mem_bench_46",
+      "module": "perf",
+      "kind": "decision",
+      "title": "cold start budget decision for perf",
+      "content": "Prefer deterministic defaults when handling cold start budget. This decision was made during the initial perf design and is registered to AuroraGateway46. Reference token: zephyr46.",
+      "files": [],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2025-01-15T00:00:00Z",
+      "entity": {
+        "id": "ent_aurora_46",
+        "name": "AuroraGateway46",
+        "type": "service"
+      }
+    },
+    {
+      "id": "mem_bridge_46",
+      "module": "perf",
+      "kind": "rule",
+      "title": "Connector memory 46",
+      "content": "Graph connector. Reference token: relay46.",
+      "files": [
+        "src/perf/cold-start-budget.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z",
+      "graphEdges": [
+        {
+          "targetId": "mem_bench_46",
+          "edgeType": "association",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "mem_bench_47",
+      "module": "perf",
+      "kind": "decision",
+      "title": "recall latency decision for perf",
+      "content": "Fail closed on invalid input when handling recall latency. This decision was made during the initial perf design and is registered to AuroraGateway47. Reference token: zephyr47.",
+      "files": [],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2025-01-15T00:00:00Z",
+      "entity": {
+        "id": "ent_aurora_47",
+        "name": "AuroraGateway47",
+        "type": "service"
+      }
+    },
+    {
+      "id": "mem_bridge_47",
+      "module": "perf",
+      "kind": "rule",
+      "title": "Connector memory 47",
+      "content": "Graph connector. Reference token: relay47.",
+      "files": [
+        "src/perf/recall-latency.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z",
+      "graphEdges": [
+        {
+          "targetId": "mem_bench_47",
+          "edgeType": "association",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "mem_bench_48",
+      "module": "perf",
+      "kind": "decision",
+      "title": "memory footprint decision for perf",
+      "content": "Measure before changing the hot path when handling memory footprint. This decision was made during the initial perf design and is registered to AuroraGateway48. Reference token: zephyr48.",
+      "files": [],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2025-01-15T00:00:00Z",
+      "entity": {
+        "id": "ent_aurora_48",
+        "name": "AuroraGateway48",
+        "type": "service"
+      }
+    },
+    {
+      "id": "mem_bridge_48",
+      "module": "perf",
+      "kind": "rule",
+      "title": "Connector memory 48",
+      "content": "Graph connector. Reference token: relay48.",
+      "files": [
+        "src/perf/memory-footprint.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z",
+      "graphEdges": [
+        {
+          "targetId": "mem_bench_48",
+          "edgeType": "association",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "mem_bench_49",
+      "module": "perf",
+      "kind": "decision",
+      "title": "SQLite pragmas decision for perf",
+      "content": "Keep the rollback path tested when handling SQLite pragmas. This decision was made during the initial perf design and is registered to AuroraGateway49. Reference token: zephyr49.",
+      "files": [],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2025-01-15T00:00:00Z",
+      "entity": {
+        "id": "ent_aurora_49",
+        "name": "AuroraGateway49",
+        "type": "service"
+      }
+    },
+    {
+      "id": "mem_bridge_49",
+      "module": "perf",
+      "kind": "rule",
+      "title": "Connector memory 49",
+      "content": "Graph connector. Reference token: relay49.",
+      "files": [
+        "src/perf/sqlite-pragmas.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z",
+      "graphEdges": [
+        {
+          "targetId": "mem_bench_49",
+          "edgeType": "association",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "mem_bench_50",
+      "module": "perf",
+      "kind": "decision",
+      "title": "batch insertion decision for perf",
+      "content": "Record the decision and its owner when handling batch insertion. This decision was made during the initial perf design and is registered to AuroraGateway50. Reference token: zephyr50.",
+      "files": [],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2025-01-15T00:00:00Z",
+      "entity": {
+        "id": "ent_aurora_50",
+        "name": "AuroraGateway50",
+        "type": "service"
+      }
+    },
+    {
+      "id": "mem_bridge_50",
+      "module": "perf",
+      "kind": "rule",
+      "title": "Connector memory 50",
+      "content": "Graph connector. Reference token: relay50.",
+      "files": [
+        "src/perf/batch-insertion.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z",
+      "graphEdges": [
+        {
+          "targetId": "mem_bench_50",
+          "edgeType": "association",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "mem_bench_51",
+      "module": "security",
+      "kind": "decision",
+      "title": "secret scrubbing decision for security",
+      "content": "Prefer deterministic defaults when handling secret scrubbing. This decision was made during the initial security design and is registered to AuroraGateway51. Reference token: zephyr51.",
+      "files": [],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2025-01-15T00:00:00Z",
+      "entity": {
+        "id": "ent_aurora_51",
+        "name": "AuroraGateway51",
+        "type": "service"
+      }
+    },
+    {
+      "id": "mem_bridge_51",
+      "module": "security",
+      "kind": "rule",
+      "title": "Connector memory 51",
+      "content": "Graph connector. Reference token: relay51.",
+      "files": [
+        "src/security/secret-scrubbing.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z",
+      "graphEdges": [
+        {
+          "targetId": "mem_bench_51",
+          "edgeType": "association",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "mem_bench_52",
+      "module": "security",
+      "kind": "decision",
+      "title": "input sanitization decision for security",
+      "content": "Fail closed on invalid input when handling input sanitization. This decision was made during the initial security design and is registered to AuroraGateway52. Reference token: zephyr52.",
+      "files": [],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2025-01-15T00:00:00Z",
+      "entity": {
+        "id": "ent_aurora_52",
+        "name": "AuroraGateway52",
+        "type": "service"
+      }
+    },
+    {
+      "id": "mem_bridge_52",
+      "module": "security",
+      "kind": "rule",
+      "title": "Connector memory 52",
+      "content": "Graph connector. Reference token: relay52.",
+      "files": [
+        "src/security/input-sanitization.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z",
+      "graphEdges": [
+        {
+          "targetId": "mem_bench_52",
+          "edgeType": "association",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "mem_bench_53",
+      "module": "security",
+      "kind": "decision",
+      "title": "dependency audits decision for security",
+      "content": "Measure before changing the hot path when handling dependency audits. This decision was made during the initial security design and is registered to AuroraGateway53. Reference token: zephyr53.",
+      "files": [],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2025-01-15T00:00:00Z",
+      "entity": {
+        "id": "ent_aurora_53",
+        "name": "AuroraGateway53",
+        "type": "service"
+      }
+    },
+    {
+      "id": "mem_bridge_53",
+      "module": "security",
+      "kind": "rule",
+      "title": "Connector memory 53",
+      "content": "Graph connector. Reference token: relay53.",
+      "files": [
+        "src/security/dependency-audits.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z",
+      "graphEdges": [
+        {
+          "targetId": "mem_bench_53",
+          "edgeType": "association",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "mem_bench_54",
+      "module": "security",
+      "kind": "decision",
+      "title": "path traversal decision for security",
+      "content": "Keep the rollback path tested when handling path traversal. This decision was made during the initial security design and is registered to AuroraGateway54. Reference token: zephyr54.",
+      "files": [],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2025-01-15T00:00:00Z",
+      "entity": {
+        "id": "ent_aurora_54",
+        "name": "AuroraGateway54",
+        "type": "service"
+      }
+    },
+    {
+      "id": "mem_bridge_54",
+      "module": "security",
+      "kind": "rule",
+      "title": "Connector memory 54",
+      "content": "Graph connector. Reference token: relay54.",
+      "files": [
+        "src/security/path-traversal.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z",
+      "graphEdges": [
+        {
+          "targetId": "mem_bench_54",
+          "edgeType": "association",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "mem_bench_55",
+      "module": "security",
+      "kind": "decision",
+      "title": "token storage decision for security",
+      "content": "Record the decision and its owner when handling token storage. This decision was made during the initial security design and is registered to AuroraGateway55. Reference token: zephyr55.",
+      "files": [],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2025-01-15T00:00:00Z",
+      "entity": {
+        "id": "ent_aurora_55",
+        "name": "AuroraGateway55",
+        "type": "service"
+      }
+    },
+    {
+      "id": "mem_bridge_55",
+      "module": "security",
+      "kind": "rule",
+      "title": "Connector memory 55",
+      "content": "Graph connector. Reference token: relay55.",
+      "files": [
+        "src/security/token-storage.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z",
+      "graphEdges": [
+        {
+          "targetId": "mem_bench_55",
+          "edgeType": "association",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "mem_bench_56",
+      "module": "testing",
+      "kind": "decision",
+      "title": "isolation fixtures decision for testing",
+      "content": "Prefer deterministic defaults when handling isolation fixtures. This decision was made during the initial testing design and is registered to AuroraGateway56. Reference token: zephyr56.",
+      "files": [],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2025-01-15T00:00:00Z",
+      "entity": {
+        "id": "ent_aurora_56",
+        "name": "AuroraGateway56",
+        "type": "service"
+      }
+    },
+    {
+      "id": "mem_bridge_56",
+      "module": "testing",
+      "kind": "rule",
+      "title": "Connector memory 56",
+      "content": "Graph connector. Reference token: relay56.",
+      "files": [
+        "src/testing/isolation-fixtures.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z",
+      "graphEdges": [
+        {
+          "targetId": "mem_bench_56",
+          "edgeType": "association",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "mem_bench_57",
+      "module": "testing",
+      "kind": "decision",
+      "title": "snapshot updates decision for testing",
+      "content": "Fail closed on invalid input when handling snapshot updates. This decision was made during the initial testing design and is registered to AuroraGateway57. Reference token: zephyr57.",
+      "files": [],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2025-01-15T00:00:00Z",
+      "entity": {
+        "id": "ent_aurora_57",
+        "name": "AuroraGateway57",
+        "type": "service"
+      }
+    },
+    {
+      "id": "mem_bridge_57",
+      "module": "testing",
+      "kind": "rule",
+      "title": "Connector memory 57",
+      "content": "Graph connector. Reference token: relay57.",
+      "files": [
+        "src/testing/snapshot-updates.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z",
+      "graphEdges": [
+        {
+          "targetId": "mem_bench_57",
+          "edgeType": "association",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "mem_bench_58",
+      "module": "testing",
+      "kind": "decision",
+      "title": "property tests decision for testing",
+      "content": "Measure before changing the hot path when handling property tests. This decision was made during the initial testing design and is registered to AuroraGateway58. Reference token: zephyr58.",
+      "files": [],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2025-01-15T00:00:00Z",
+      "entity": {
+        "id": "ent_aurora_58",
+        "name": "AuroraGateway58",
+        "type": "service"
+      }
+    },
+    {
+      "id": "mem_bridge_58",
+      "module": "testing",
+      "kind": "rule",
+      "title": "Connector memory 58",
+      "content": "Graph connector. Reference token: relay58.",
+      "files": [
+        "src/testing/property-tests.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z",
+      "graphEdges": [
+        {
+          "targetId": "mem_bench_58",
+          "edgeType": "association",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "mem_bench_59",
+      "module": "testing",
+      "kind": "decision",
+      "title": "coverage thresholds decision for testing",
+      "content": "Keep the rollback path tested when handling coverage thresholds. This decision was made during the initial testing design and is registered to AuroraGateway59. Reference token: zephyr59.",
+      "files": [],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2025-01-15T00:00:00Z",
+      "entity": {
+        "id": "ent_aurora_59",
+        "name": "AuroraGateway59",
+        "type": "service"
+      }
+    },
+    {
+      "id": "mem_bridge_59",
+      "module": "testing",
+      "kind": "rule",
+      "title": "Connector memory 59",
+      "content": "Graph connector. Reference token: relay59.",
+      "files": [
+        "src/testing/coverage-thresholds.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z",
+      "graphEdges": [
+        {
+          "targetId": "mem_bench_59",
+          "edgeType": "association",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "mem_bench_60",
+      "module": "testing",
+      "kind": "decision",
+      "title": "flaky retries decision for testing",
+      "content": "Record the decision and its owner when handling flaky retries. This decision was made during the initial testing design and is registered to AuroraGateway60. Reference token: zephyr60.",
+      "files": [],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2025-01-15T00:00:00Z",
+      "entity": {
+        "id": "ent_aurora_60",
+        "name": "AuroraGateway60",
+        "type": "service"
+      }
+    },
+    {
+      "id": "mem_bridge_60",
+      "module": "testing",
+      "kind": "rule",
+      "title": "Connector memory 60",
+      "content": "Graph connector. Reference token: relay60.",
+      "files": [
+        "src/testing/flaky-retries.ts"
+      ],
+      "status": "verified",
+      "rewardScore": 1,
+      "validFrom": "2026-06-01T00:00:00Z",
+      "validTo": null,
+      "createdAt": "2026-06-01T00:00:00Z",
+      "graphEdges": [
+        {
+          "targetId": "mem_bench_60",
+          "edgeType": "association",
+          "weight": 1
+        }
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "id": "case_exact_01",
+      "category": "exact_keyword",
+      "query": "zephyr01 connection pooling db standard",
+      "expectedMemoryId": "mem_bench_01",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_01",
+      "category": "semantic_paraphrase",
+      "query": "database connection reuse in the db module",
+      "expectedMemoryId": "mem_bench_01",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_01",
+      "category": "file_trap",
+      "query": "Before editing src/db/connection-pooling.ts, which connection pooling trap should I check?",
+      "file": "src/db/connection-pooling.ts",
+      "expectedMemoryId": "mem_bench_01",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_01",
+      "category": "bitemporal_superseded",
+      "query": "What is the current connection pooling standard for db?",
+      "expectedMemoryId": "mem_bench_01",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_02",
+      "category": "exact_keyword",
+      "query": "zephyr02 index maintenance db standard",
+      "expectedMemoryId": "mem_bench_02",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_02",
+      "category": "semantic_paraphrase",
+      "query": "keeping database indexes healthy in the db module",
+      "expectedMemoryId": "mem_bench_02",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_02",
+      "category": "file_trap",
+      "query": "Before editing src/db/index-maintenance.ts, which index maintenance trap should I check?",
+      "file": "src/db/index-maintenance.ts",
+      "expectedMemoryId": "mem_bench_02",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_02",
+      "category": "bitemporal_superseded",
+      "query": "What is the current index maintenance standard for db?",
+      "expectedMemoryId": "mem_bench_02",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_03",
+      "category": "exact_keyword",
+      "query": "zephyr03 migration ordering db standard",
+      "expectedMemoryId": "mem_bench_03",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_03",
+      "category": "semantic_paraphrase",
+      "query": "schema change sequence in the db module",
+      "expectedMemoryId": "mem_bench_03",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_03",
+      "category": "file_trap",
+      "query": "Before editing src/db/migration-ordering.ts, which migration ordering trap should I check?",
+      "file": "src/db/migration-ordering.ts",
+      "expectedMemoryId": "mem_bench_03",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_03",
+      "category": "bitemporal_superseded",
+      "query": "What is the current migration ordering standard for db?",
+      "expectedMemoryId": "mem_bench_03",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_04",
+      "category": "exact_keyword",
+      "query": "zephyr04 backup rotation db standard",
+      "expectedMemoryId": "mem_bench_04",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_04",
+      "category": "semantic_paraphrase",
+      "query": "snapshot cycling in the db module",
+      "expectedMemoryId": "mem_bench_04",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_04",
+      "category": "file_trap",
+      "query": "Before editing src/db/backup-rotation.ts, which backup rotation trap should I check?",
+      "file": "src/db/backup-rotation.ts",
+      "expectedMemoryId": "mem_bench_04",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_04",
+      "category": "bitemporal_superseded",
+      "query": "What is the current backup rotation standard for db?",
+      "expectedMemoryId": "mem_bench_04",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_05",
+      "category": "exact_keyword",
+      "query": "zephyr05 query plan review db standard",
+      "expectedMemoryId": "mem_bench_05",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_paraphrase_05",
+      "category": "semantic_paraphrase",
+      "query": "SQL execution plan inspection in the db module",
+      "expectedMemoryId": "mem_bench_05",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_file_trap_05",
+      "category": "file_trap",
+      "query": "Before editing src/db/query-plan-review.ts, which query plan review trap should I check?",
+      "file": "src/db/query-plan-review.ts",
+      "expectedMemoryId": "mem_bench_05",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_bitemporal_05",
+      "category": "bitemporal_superseded",
+      "query": "What is the current query plan review standard for db?",
+      "expectedMemoryId": "mem_bench_05",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_exact_06",
+      "category": "exact_keyword",
+      "query": "zephyr06 token signing auth standard",
+      "expectedMemoryId": "mem_bench_06",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_06",
+      "category": "semantic_paraphrase",
+      "query": "credential signature generation in the auth module",
+      "expectedMemoryId": "mem_bench_06",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_06",
+      "category": "file_trap",
+      "query": "Before editing src/auth/token-signing.ts, which token signing trap should I check?",
+      "file": "src/auth/token-signing.ts",
+      "expectedMemoryId": "mem_bench_06",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_06",
+      "category": "bitemporal_superseded",
+      "query": "What is the current token signing standard for auth?",
+      "expectedMemoryId": "mem_bench_06",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_07",
+      "category": "exact_keyword",
+      "query": "zephyr07 session rotation auth standard",
+      "expectedMemoryId": "mem_bench_07",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_07",
+      "category": "semantic_paraphrase",
+      "query": "login state renewal in the auth module",
+      "expectedMemoryId": "mem_bench_07",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_07",
+      "category": "file_trap",
+      "query": "Before editing src/auth/session-rotation.ts, which session rotation trap should I check?",
+      "file": "src/auth/session-rotation.ts",
+      "expectedMemoryId": "mem_bench_07",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_07",
+      "category": "bitemporal_superseded",
+      "query": "What is the current session rotation standard for auth?",
+      "expectedMemoryId": "mem_bench_07",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_08",
+      "category": "exact_keyword",
+      "query": "zephyr08 password hashing auth standard",
+      "expectedMemoryId": "mem_bench_08",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_08",
+      "category": "semantic_paraphrase",
+      "query": "credential digest storage in the auth module",
+      "expectedMemoryId": "mem_bench_08",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_08",
+      "category": "file_trap",
+      "query": "Before editing src/auth/password-hashing.ts, which password hashing trap should I check?",
+      "file": "src/auth/password-hashing.ts",
+      "expectedMemoryId": "mem_bench_08",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_08",
+      "category": "bitemporal_superseded",
+      "query": "What is the current password hashing standard for auth?",
+      "expectedMemoryId": "mem_bench_08",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_09",
+      "category": "exact_keyword",
+      "query": "zephyr09 scope validation auth standard",
+      "expectedMemoryId": "mem_bench_09",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_09",
+      "category": "semantic_paraphrase",
+      "query": "permission boundary checks in the auth module",
+      "expectedMemoryId": "mem_bench_09",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_09",
+      "category": "file_trap",
+      "query": "Before editing src/auth/scope-validation.ts, which scope validation trap should I check?",
+      "file": "src/auth/scope-validation.ts",
+      "expectedMemoryId": "mem_bench_09",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_09",
+      "category": "bitemporal_superseded",
+      "query": "What is the current scope validation standard for auth?",
+      "expectedMemoryId": "mem_bench_09",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_10",
+      "category": "exact_keyword",
+      "query": "zephyr10 key rotation auth standard",
+      "expectedMemoryId": "mem_bench_10",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_paraphrase_10",
+      "category": "semantic_paraphrase",
+      "query": "secret rollover in the auth module",
+      "expectedMemoryId": "mem_bench_10",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_file_trap_10",
+      "category": "file_trap",
+      "query": "Before editing src/auth/key-rotation.ts, which key rotation trap should I check?",
+      "file": "src/auth/key-rotation.ts",
+      "expectedMemoryId": "mem_bench_10",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_bitemporal_10",
+      "category": "bitemporal_superseded",
+      "query": "What is the current key rotation standard for auth?",
+      "expectedMemoryId": "mem_bench_10",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_exact_11",
+      "category": "exact_keyword",
+      "query": "zephyr11 rate limiting api standard",
+      "expectedMemoryId": "mem_bench_11",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_11",
+      "category": "semantic_paraphrase",
+      "query": "request throttling in the api module",
+      "expectedMemoryId": "mem_bench_11",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_11",
+      "category": "file_trap",
+      "query": "Before editing src/api/rate-limiting.ts, which rate limiting trap should I check?",
+      "file": "src/api/rate-limiting.ts",
+      "expectedMemoryId": "mem_bench_11",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_11",
+      "category": "bitemporal_superseded",
+      "query": "What is the current rate limiting standard for api?",
+      "expectedMemoryId": "mem_bench_11",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_12",
+      "category": "exact_keyword",
+      "query": "zephyr12 error envelopes api standard",
+      "expectedMemoryId": "mem_bench_12",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_12",
+      "category": "semantic_paraphrase",
+      "query": "failure response shape in the api module",
+      "expectedMemoryId": "mem_bench_12",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_12",
+      "category": "file_trap",
+      "query": "Before editing src/api/error-envelopes.ts, which error envelopes trap should I check?",
+      "file": "src/api/error-envelopes.ts",
+      "expectedMemoryId": "mem_bench_12",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_12",
+      "category": "bitemporal_superseded",
+      "query": "What is the current error envelopes standard for api?",
+      "expectedMemoryId": "mem_bench_12",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_13",
+      "category": "exact_keyword",
+      "query": "zephyr13 request validation api standard",
+      "expectedMemoryId": "mem_bench_13",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_13",
+      "category": "semantic_paraphrase",
+      "query": "input checking in the api module",
+      "expectedMemoryId": "mem_bench_13",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_13",
+      "category": "file_trap",
+      "query": "Before editing src/api/request-validation.ts, which request validation trap should I check?",
+      "file": "src/api/request-validation.ts",
+      "expectedMemoryId": "mem_bench_13",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_13",
+      "category": "bitemporal_superseded",
+      "query": "What is the current request validation standard for api?",
+      "expectedMemoryId": "mem_bench_13",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_14",
+      "category": "exact_keyword",
+      "query": "zephyr14 pagination defaults api standard",
+      "expectedMemoryId": "mem_bench_14",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_14",
+      "category": "semantic_paraphrase",
+      "query": "paging default values in the api module",
+      "expectedMemoryId": "mem_bench_14",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_14",
+      "category": "file_trap",
+      "query": "Before editing src/api/pagination-defaults.ts, which pagination defaults trap should I check?",
+      "file": "src/api/pagination-defaults.ts",
+      "expectedMemoryId": "mem_bench_14",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_14",
+      "category": "bitemporal_superseded",
+      "query": "What is the current pagination defaults standard for api?",
+      "expectedMemoryId": "mem_bench_14",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_15",
+      "category": "exact_keyword",
+      "query": "zephyr15 idempotency keys api standard",
+      "expectedMemoryId": "mem_bench_15",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_paraphrase_15",
+      "category": "semantic_paraphrase",
+      "query": "retry-safe identifiers in the api module",
+      "expectedMemoryId": "mem_bench_15",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_file_trap_15",
+      "category": "file_trap",
+      "query": "Before editing src/api/idempotency-keys.ts, which idempotency keys trap should I check?",
+      "file": "src/api/idempotency-keys.ts",
+      "expectedMemoryId": "mem_bench_15",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_bitemporal_15",
+      "category": "bitemporal_superseded",
+      "query": "What is the current idempotency keys standard for api?",
+      "expectedMemoryId": "mem_bench_15",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_exact_16",
+      "category": "exact_keyword",
+      "query": "zephyr16 BM25 weighting search standard",
+      "expectedMemoryId": "mem_bench_16",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_16",
+      "category": "semantic_paraphrase",
+      "query": "lexical scoring boosts in the search module",
+      "expectedMemoryId": "mem_bench_16",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_16",
+      "category": "file_trap",
+      "query": "Before editing src/search/bm25-weighting.ts, which BM25 weighting trap should I check?",
+      "file": "src/search/bm25-weighting.ts",
+      "expectedMemoryId": "mem_bench_16",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_16",
+      "category": "bitemporal_superseded",
+      "query": "What is the current BM25 weighting standard for search?",
+      "expectedMemoryId": "mem_bench_16",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_17",
+      "category": "exact_keyword",
+      "query": "zephyr17 vector fallback search standard",
+      "expectedMemoryId": "mem_bench_17",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_17",
+      "category": "semantic_paraphrase",
+      "query": "embedding backup path in the search module",
+      "expectedMemoryId": "mem_bench_17",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_17",
+      "category": "file_trap",
+      "query": "Before editing src/search/vector-fallback.ts, which vector fallback trap should I check?",
+      "file": "src/search/vector-fallback.ts",
+      "expectedMemoryId": "mem_bench_17",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_17",
+      "category": "bitemporal_superseded",
+      "query": "What is the current vector fallback standard for search?",
+      "expectedMemoryId": "mem_bench_17",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_18",
+      "category": "exact_keyword",
+      "query": "zephyr18 graph activation search standard",
+      "expectedMemoryId": "mem_bench_18",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_18",
+      "category": "semantic_paraphrase",
+      "query": "link spreading in the search module",
+      "expectedMemoryId": "mem_bench_18",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_18",
+      "category": "file_trap",
+      "query": "Before editing src/search/graph-activation.ts, which graph activation trap should I check?",
+      "file": "src/search/graph-activation.ts",
+      "expectedMemoryId": "mem_bench_18",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_18",
+      "category": "bitemporal_superseded",
+      "query": "What is the current graph activation standard for search?",
+      "expectedMemoryId": "mem_bench_18",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_19",
+      "category": "exact_keyword",
+      "query": "zephyr19 result diversification search standard",
+      "expectedMemoryId": "mem_bench_19",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_19",
+      "category": "semantic_paraphrase",
+      "query": "output variety in the search module",
+      "expectedMemoryId": "mem_bench_19",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_19",
+      "category": "file_trap",
+      "query": "Before editing src/search/result-diversification.ts, which result diversification trap should I check?",
+      "file": "src/search/result-diversification.ts",
+      "expectedMemoryId": "mem_bench_19",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_19",
+      "category": "bitemporal_superseded",
+      "query": "What is the current result diversification standard for search?",
+      "expectedMemoryId": "mem_bench_19",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_20",
+      "category": "exact_keyword",
+      "query": "zephyr20 token budgeting search standard",
+      "expectedMemoryId": "mem_bench_20",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_paraphrase_20",
+      "category": "semantic_paraphrase",
+      "query": "context allocation in the search module",
+      "expectedMemoryId": "mem_bench_20",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_file_trap_20",
+      "category": "file_trap",
+      "query": "Before editing src/search/token-budgeting.ts, which token budgeting trap should I check?",
+      "file": "src/search/token-budgeting.ts",
+      "expectedMemoryId": "mem_bench_20",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_bitemporal_20",
+      "category": "bitemporal_superseded",
+      "query": "What is the current token budgeting standard for search?",
+      "expectedMemoryId": "mem_bench_20",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_exact_21",
+      "category": "exact_keyword",
+      "query": "zephyr21 optimistic updates ui standard",
+      "expectedMemoryId": "mem_bench_21",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_21",
+      "category": "semantic_paraphrase",
+      "query": "instant interface changes in the ui module",
+      "expectedMemoryId": "mem_bench_21",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_21",
+      "category": "file_trap",
+      "query": "Before editing src/ui/optimistic-updates.ts, which optimistic updates trap should I check?",
+      "file": "src/ui/optimistic-updates.ts",
+      "expectedMemoryId": "mem_bench_21",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_21",
+      "category": "bitemporal_superseded",
+      "query": "What is the current optimistic updates standard for ui?",
+      "expectedMemoryId": "mem_bench_21",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_22",
+      "category": "exact_keyword",
+      "query": "zephyr22 error boundaries ui standard",
+      "expectedMemoryId": "mem_bench_22",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_22",
+      "category": "semantic_paraphrase",
+      "query": "failure guards in the ui module",
+      "expectedMemoryId": "mem_bench_22",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_22",
+      "category": "file_trap",
+      "query": "Before editing src/ui/error-boundaries.ts, which error boundaries trap should I check?",
+      "file": "src/ui/error-boundaries.ts",
+      "expectedMemoryId": "mem_bench_22",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_22",
+      "category": "bitemporal_superseded",
+      "query": "What is the current error boundaries standard for ui?",
+      "expectedMemoryId": "mem_bench_22",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_23",
+      "category": "exact_keyword",
+      "query": "zephyr23 keyboard navigation ui standard",
+      "expectedMemoryId": "mem_bench_23",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_23",
+      "category": "semantic_paraphrase",
+      "query": "hotkey movement in the ui module",
+      "expectedMemoryId": "mem_bench_23",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_23",
+      "category": "file_trap",
+      "query": "Before editing src/ui/keyboard-navigation.ts, which keyboard navigation trap should I check?",
+      "file": "src/ui/keyboard-navigation.ts",
+      "expectedMemoryId": "mem_bench_23",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_23",
+      "category": "bitemporal_superseded",
+      "query": "What is the current keyboard navigation standard for ui?",
+      "expectedMemoryId": "mem_bench_23",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_24",
+      "category": "exact_keyword",
+      "query": "zephyr24 chart rendering ui standard",
+      "expectedMemoryId": "mem_bench_24",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_24",
+      "category": "semantic_paraphrase",
+      "query": "graph drawing in the ui module",
+      "expectedMemoryId": "mem_bench_24",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_24",
+      "category": "file_trap",
+      "query": "Before editing src/ui/chart-rendering.ts, which chart rendering trap should I check?",
+      "file": "src/ui/chart-rendering.ts",
+      "expectedMemoryId": "mem_bench_24",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_24",
+      "category": "bitemporal_superseded",
+      "query": "What is the current chart rendering standard for ui?",
+      "expectedMemoryId": "mem_bench_24",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_25",
+      "category": "exact_keyword",
+      "query": "zephyr25 bundle splitting ui standard",
+      "expectedMemoryId": "mem_bench_25",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_paraphrase_25",
+      "category": "semantic_paraphrase",
+      "query": "package division in the ui module",
+      "expectedMemoryId": "mem_bench_25",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_file_trap_25",
+      "category": "file_trap",
+      "query": "Before editing src/ui/bundle-splitting.ts, which bundle splitting trap should I check?",
+      "file": "src/ui/bundle-splitting.ts",
+      "expectedMemoryId": "mem_bench_25",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_bitemporal_25",
+      "category": "bitemporal_superseded",
+      "query": "What is the current bundle splitting standard for ui?",
+      "expectedMemoryId": "mem_bench_25",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_exact_26",
+      "category": "exact_keyword",
+      "query": "zephyr26 matrix fail-fast ci standard",
+      "expectedMemoryId": "mem_bench_26",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_26",
+      "category": "semantic_paraphrase",
+      "query": "grid stop-early behavior in the ci module",
+      "expectedMemoryId": "mem_bench_26",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_26",
+      "category": "file_trap",
+      "query": "Before editing src/ci/matrix-fail-fast.ts, which matrix fail-fast trap should I check?",
+      "file": "src/ci/matrix-fail-fast.ts",
+      "expectedMemoryId": "mem_bench_26",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_26",
+      "category": "bitemporal_superseded",
+      "query": "What is the current matrix fail-fast standard for ci?",
+      "expectedMemoryId": "mem_bench_26",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_27",
+      "category": "exact_keyword",
+      "query": "zephyr27 cache invalidation ci standard",
+      "expectedMemoryId": "mem_bench_27",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_27",
+      "category": "semantic_paraphrase",
+      "query": "cache clearing in the ci module",
+      "expectedMemoryId": "mem_bench_27",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_27",
+      "category": "file_trap",
+      "query": "Before editing src/ci/cache-invalidation.ts, which cache invalidation trap should I check?",
+      "file": "src/ci/cache-invalidation.ts",
+      "expectedMemoryId": "mem_bench_27",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_27",
+      "category": "bitemporal_superseded",
+      "query": "What is the current cache invalidation standard for ci?",
+      "expectedMemoryId": "mem_bench_27",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_28",
+      "category": "exact_keyword",
+      "query": "zephyr28 artifact retention ci standard",
+      "expectedMemoryId": "mem_bench_28",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_28",
+      "category": "semantic_paraphrase",
+      "query": "build output storage in the ci module",
+      "expectedMemoryId": "mem_bench_28",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_28",
+      "category": "file_trap",
+      "query": "Before editing src/ci/artifact-retention.ts, which artifact retention trap should I check?",
+      "file": "src/ci/artifact-retention.ts",
+      "expectedMemoryId": "mem_bench_28",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_28",
+      "category": "bitemporal_superseded",
+      "query": "What is the current artifact retention standard for ci?",
+      "expectedMemoryId": "mem_bench_28",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_29",
+      "category": "exact_keyword",
+      "query": "zephyr29 secret scanning ci standard",
+      "expectedMemoryId": "mem_bench_29",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_29",
+      "category": "semantic_paraphrase",
+      "query": "credential detection in the ci module",
+      "expectedMemoryId": "mem_bench_29",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_29",
+      "category": "file_trap",
+      "query": "Before editing src/ci/secret-scanning.ts, which secret scanning trap should I check?",
+      "file": "src/ci/secret-scanning.ts",
+      "expectedMemoryId": "mem_bench_29",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_29",
+      "category": "bitemporal_superseded",
+      "query": "What is the current secret scanning standard for ci?",
+      "expectedMemoryId": "mem_bench_29",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_30",
+      "category": "exact_keyword",
+      "query": "zephyr30 flaky test quarantine ci standard",
+      "expectedMemoryId": "mem_bench_30",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_paraphrase_30",
+      "category": "semantic_paraphrase",
+      "query": "unstable check isolation in the ci module",
+      "expectedMemoryId": "mem_bench_30",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_file_trap_30",
+      "category": "file_trap",
+      "query": "Before editing src/ci/flaky-test-quarantine.ts, which flaky test quarantine trap should I check?",
+      "file": "src/ci/flaky-test-quarantine.ts",
+      "expectedMemoryId": "mem_bench_30",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_bitemporal_30",
+      "category": "bitemporal_superseded",
+      "query": "What is the current flaky test quarantine standard for ci?",
+      "expectedMemoryId": "mem_bench_30",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_exact_31",
+      "category": "exact_keyword",
+      "query": "zephyr31 commit signing git standard",
+      "expectedMemoryId": "mem_bench_31",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_31",
+      "category": "semantic_paraphrase",
+      "query": "change signature in the git module",
+      "expectedMemoryId": "mem_bench_31",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_31",
+      "category": "file_trap",
+      "query": "Before editing src/git/commit-signing.ts, which commit signing trap should I check?",
+      "file": "src/git/commit-signing.ts",
+      "expectedMemoryId": "mem_bench_31",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_31",
+      "category": "bitemporal_superseded",
+      "query": "What is the current commit signing standard for git?",
+      "expectedMemoryId": "mem_bench_31",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_32",
+      "category": "exact_keyword",
+      "query": "zephyr32 branch protection git standard",
+      "expectedMemoryId": "mem_bench_32",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_32",
+      "category": "semantic_paraphrase",
+      "query": "line guard in the git module",
+      "expectedMemoryId": "mem_bench_32",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_32",
+      "category": "file_trap",
+      "query": "Before editing src/git/branch-protection.ts, which branch protection trap should I check?",
+      "file": "src/git/branch-protection.ts",
+      "expectedMemoryId": "mem_bench_32",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_32",
+      "category": "bitemporal_superseded",
+      "query": "What is the current branch protection standard for git?",
+      "expectedMemoryId": "mem_bench_32",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_33",
+      "category": "exact_keyword",
+      "query": "zephyr33 merge queue git standard",
+      "expectedMemoryId": "mem_bench_33",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_33",
+      "category": "semantic_paraphrase",
+      "query": "integration line in the git module",
+      "expectedMemoryId": "mem_bench_33",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_33",
+      "category": "file_trap",
+      "query": "Before editing src/git/merge-queue.ts, which merge queue trap should I check?",
+      "file": "src/git/merge-queue.ts",
+      "expectedMemoryId": "mem_bench_33",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_33",
+      "category": "bitemporal_superseded",
+      "query": "What is the current merge queue standard for git?",
+      "expectedMemoryId": "mem_bench_33",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_34",
+      "category": "exact_keyword",
+      "query": "zephyr34 blame attribution git standard",
+      "expectedMemoryId": "mem_bench_34",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_34",
+      "category": "semantic_paraphrase",
+      "query": "author attribution in the git module",
+      "expectedMemoryId": "mem_bench_34",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_34",
+      "category": "file_trap",
+      "query": "Before editing src/git/blame-attribution.ts, which blame attribution trap should I check?",
+      "file": "src/git/blame-attribution.ts",
+      "expectedMemoryId": "mem_bench_34",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_34",
+      "category": "bitemporal_superseded",
+      "query": "What is the current blame attribution standard for git?",
+      "expectedMemoryId": "mem_bench_34",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_35",
+      "category": "exact_keyword",
+      "query": "zephyr35 release tagging git standard",
+      "expectedMemoryId": "mem_bench_35",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_paraphrase_35",
+      "category": "semantic_paraphrase",
+      "query": "version labeling in the git module",
+      "expectedMemoryId": "mem_bench_35",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_file_trap_35",
+      "category": "file_trap",
+      "query": "Before editing src/git/release-tagging.ts, which release tagging trap should I check?",
+      "file": "src/git/release-tagging.ts",
+      "expectedMemoryId": "mem_bench_35",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_bitemporal_35",
+      "category": "bitemporal_superseded",
+      "query": "What is the current release tagging standard for git?",
+      "expectedMemoryId": "mem_bench_35",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_exact_36",
+      "category": "exact_keyword",
+      "query": "zephyr36 tool schemas mcp standard",
+      "expectedMemoryId": "mem_bench_36",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_36",
+      "category": "semantic_paraphrase",
+      "query": "function definitions in the mcp module",
+      "expectedMemoryId": "mem_bench_36",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_36",
+      "category": "file_trap",
+      "query": "Before editing src/mcp/tool-schemas.ts, which tool schemas trap should I check?",
+      "file": "src/mcp/tool-schemas.ts",
+      "expectedMemoryId": "mem_bench_36",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_36",
+      "category": "bitemporal_superseded",
+      "query": "What is the current tool schemas standard for mcp?",
+      "expectedMemoryId": "mem_bench_36",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_37",
+      "category": "exact_keyword",
+      "query": "zephyr37 resource discovery mcp standard",
+      "expectedMemoryId": "mem_bench_37",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_37",
+      "category": "semantic_paraphrase",
+      "query": "asset finding in the mcp module",
+      "expectedMemoryId": "mem_bench_37",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_37",
+      "category": "file_trap",
+      "query": "Before editing src/mcp/resource-discovery.ts, which resource discovery trap should I check?",
+      "file": "src/mcp/resource-discovery.ts",
+      "expectedMemoryId": "mem_bench_37",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_37",
+      "category": "bitemporal_superseded",
+      "query": "What is the current resource discovery standard for mcp?",
+      "expectedMemoryId": "mem_bench_37",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_38",
+      "category": "exact_keyword",
+      "query": "zephyr38 prompt routing mcp standard",
+      "expectedMemoryId": "mem_bench_38",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_38",
+      "category": "semantic_paraphrase",
+      "query": "instruction dispatch in the mcp module",
+      "expectedMemoryId": "mem_bench_38",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_38",
+      "category": "file_trap",
+      "query": "Before editing src/mcp/prompt-routing.ts, which prompt routing trap should I check?",
+      "file": "src/mcp/prompt-routing.ts",
+      "expectedMemoryId": "mem_bench_38",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_38",
+      "category": "bitemporal_superseded",
+      "query": "What is the current prompt routing standard for mcp?",
+      "expectedMemoryId": "mem_bench_38",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_39",
+      "category": "exact_keyword",
+      "query": "zephyr39 transport timeouts mcp standard",
+      "expectedMemoryId": "mem_bench_39",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_39",
+      "category": "semantic_paraphrase",
+      "query": "channel limits in the mcp module",
+      "expectedMemoryId": "mem_bench_39",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_file_trap_39",
+      "category": "file_trap",
+      "query": "Before editing src/mcp/transport-timeouts.ts, which transport timeouts trap should I check?",
+      "file": "src/mcp/transport-timeouts.ts",
+      "expectedMemoryId": "mem_bench_39",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_bitemporal_39",
+      "category": "bitemporal_superseded",
+      "query": "What is the current transport timeouts standard for mcp?",
+      "expectedMemoryId": "mem_bench_39",
+      "isTrap": true,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_40",
+      "category": "exact_keyword",
+      "query": "zephyr40 capability negotiation mcp standard",
+      "expectedMemoryId": "mem_bench_40",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_paraphrase_40",
+      "category": "semantic_paraphrase",
+      "query": "feature agreement in the mcp module",
+      "expectedMemoryId": "mem_bench_40",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_file_trap_40",
+      "category": "file_trap",
+      "query": "Before editing src/mcp/capability-negotiation.ts, which capability negotiation trap should I check?",
+      "file": "src/mcp/capability-negotiation.ts",
+      "expectedMemoryId": "mem_bench_40",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_bitemporal_40",
+      "category": "bitemporal_superseded",
+      "query": "What is the current capability negotiation standard for mcp?",
+      "expectedMemoryId": "mem_bench_40",
+      "isTrap": true,
+      "split": "holdout"
+    },
+    {
+      "id": "case_exact_41",
+      "category": "exact_keyword",
+      "query": "zephyr41 claims ledger docs standard",
+      "expectedMemoryId": "mem_bench_41",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_41",
+      "category": "semantic_paraphrase",
+      "query": "assertion record in the docs module",
+      "expectedMemoryId": "mem_bench_41",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_multi_hop_41",
+      "category": "multi_hop",
+      "query": "Which docs decision about claims ledger connects src/docs/claims-ledger.ts to AuroraGateway41?",
+      "file": "src/docs/claims-ledger.ts",
+      "expectedMemoryId": "mem_bench_41",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_long_horizon_41",
+      "category": "long_horizon",
+      "query": "What did we decide about claims ledger during the initial docs design?",
+      "expectedMemoryId": "mem_bench_41",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_42",
+      "category": "exact_keyword",
+      "query": "zephyr42 benchmark provenance docs standard",
+      "expectedMemoryId": "mem_bench_42",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_42",
+      "category": "semantic_paraphrase",
+      "query": "measurement origin in the docs module",
+      "expectedMemoryId": "mem_bench_42",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_multi_hop_42",
+      "category": "multi_hop",
+      "query": "Which docs decision about benchmark provenance connects src/docs/benchmark-provenance.ts to AuroraGateway42?",
+      "file": "src/docs/benchmark-provenance.ts",
+      "expectedMemoryId": "mem_bench_42",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_long_horizon_42",
+      "category": "long_horizon",
+      "query": "What did we decide about benchmark provenance during the initial docs design?",
+      "expectedMemoryId": "mem_bench_42",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_43",
+      "category": "exact_keyword",
+      "query": "zephyr43 changelog discipline docs standard",
+      "expectedMemoryId": "mem_bench_43",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_43",
+      "category": "semantic_paraphrase",
+      "query": "release notes process in the docs module",
+      "expectedMemoryId": "mem_bench_43",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_multi_hop_43",
+      "category": "multi_hop",
+      "query": "Which docs decision about changelog discipline connects src/docs/changelog-discipline.ts to AuroraGateway43?",
+      "file": "src/docs/changelog-discipline.ts",
+      "expectedMemoryId": "mem_bench_43",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_long_horizon_43",
+      "category": "long_horizon",
+      "query": "What did we decide about changelog discipline during the initial docs design?",
+      "expectedMemoryId": "mem_bench_43",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_44",
+      "category": "exact_keyword",
+      "query": "zephyr44 link checking docs standard",
+      "expectedMemoryId": "mem_bench_44",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_44",
+      "category": "semantic_paraphrase",
+      "query": "URL validation in the docs module",
+      "expectedMemoryId": "mem_bench_44",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_multi_hop_44",
+      "category": "multi_hop",
+      "query": "Which docs decision about link checking connects src/docs/link-checking.ts to AuroraGateway44?",
+      "file": "src/docs/link-checking.ts",
+      "expectedMemoryId": "mem_bench_44",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_long_horizon_44",
+      "category": "long_horizon",
+      "query": "What did we decide about link checking during the initial docs design?",
+      "expectedMemoryId": "mem_bench_44",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_45",
+      "category": "exact_keyword",
+      "query": "zephyr45 example freshness docs standard",
+      "expectedMemoryId": "mem_bench_45",
+      "isTrap": false,
+      "split": "holdout"
+    },
+    {
+      "id": "case_paraphrase_45",
+      "category": "semantic_paraphrase",
+      "query": "sample currency in the docs module",
+      "expectedMemoryId": "mem_bench_45",
+      "isTrap": false,
+      "split": "holdout"
+    },
+    {
+      "id": "case_multi_hop_45",
+      "category": "multi_hop",
+      "query": "Which docs decision about example freshness connects src/docs/example-freshness.ts to AuroraGateway45?",
+      "file": "src/docs/example-freshness.ts",
+      "expectedMemoryId": "mem_bench_45",
+      "isTrap": false,
+      "split": "holdout"
+    },
+    {
+      "id": "case_long_horizon_45",
+      "category": "long_horizon",
+      "query": "What did we decide about example freshness during the initial docs design?",
+      "expectedMemoryId": "mem_bench_45",
+      "isTrap": false,
+      "split": "holdout"
+    },
+    {
+      "id": "case_exact_46",
+      "category": "exact_keyword",
+      "query": "zephyr46 cold start budget perf standard",
+      "expectedMemoryId": "mem_bench_46",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_46",
+      "category": "semantic_paraphrase",
+      "query": "startup limit in the perf module",
+      "expectedMemoryId": "mem_bench_46",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_multi_hop_46",
+      "category": "multi_hop",
+      "query": "Which perf decision about cold start budget connects src/perf/cold-start-budget.ts to AuroraGateway46?",
+      "file": "src/perf/cold-start-budget.ts",
+      "expectedMemoryId": "mem_bench_46",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_long_horizon_46",
+      "category": "long_horizon",
+      "query": "What did we decide about cold start budget during the initial perf design?",
+      "expectedMemoryId": "mem_bench_46",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_47",
+      "category": "exact_keyword",
+      "query": "zephyr47 recall latency perf standard",
+      "expectedMemoryId": "mem_bench_47",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_47",
+      "category": "semantic_paraphrase",
+      "query": "retrieval delay in the perf module",
+      "expectedMemoryId": "mem_bench_47",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_multi_hop_47",
+      "category": "multi_hop",
+      "query": "Which perf decision about recall latency connects src/perf/recall-latency.ts to AuroraGateway47?",
+      "file": "src/perf/recall-latency.ts",
+      "expectedMemoryId": "mem_bench_47",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_long_horizon_47",
+      "category": "long_horizon",
+      "query": "What did we decide about recall latency during the initial perf design?",
+      "expectedMemoryId": "mem_bench_47",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_48",
+      "category": "exact_keyword",
+      "query": "zephyr48 memory footprint perf standard",
+      "expectedMemoryId": "mem_bench_48",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_48",
+      "category": "semantic_paraphrase",
+      "query": "RAM usage in the perf module",
+      "expectedMemoryId": "mem_bench_48",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_multi_hop_48",
+      "category": "multi_hop",
+      "query": "Which perf decision about memory footprint connects src/perf/memory-footprint.ts to AuroraGateway48?",
+      "file": "src/perf/memory-footprint.ts",
+      "expectedMemoryId": "mem_bench_48",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_long_horizon_48",
+      "category": "long_horizon",
+      "query": "What did we decide about memory footprint during the initial perf design?",
+      "expectedMemoryId": "mem_bench_48",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_49",
+      "category": "exact_keyword",
+      "query": "zephyr49 SQLite pragmas perf standard",
+      "expectedMemoryId": "mem_bench_49",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_49",
+      "category": "semantic_paraphrase",
+      "query": "database settings in the perf module",
+      "expectedMemoryId": "mem_bench_49",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_multi_hop_49",
+      "category": "multi_hop",
+      "query": "Which perf decision about SQLite pragmas connects src/perf/sqlite-pragmas.ts to AuroraGateway49?",
+      "file": "src/perf/sqlite-pragmas.ts",
+      "expectedMemoryId": "mem_bench_49",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_long_horizon_49",
+      "category": "long_horizon",
+      "query": "What did we decide about SQLite pragmas during the initial perf design?",
+      "expectedMemoryId": "mem_bench_49",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_50",
+      "category": "exact_keyword",
+      "query": "zephyr50 batch insertion perf standard",
+      "expectedMemoryId": "mem_bench_50",
+      "isTrap": false,
+      "split": "holdout"
+    },
+    {
+      "id": "case_paraphrase_50",
+      "category": "semantic_paraphrase",
+      "query": "bulk writes in the perf module",
+      "expectedMemoryId": "mem_bench_50",
+      "isTrap": false,
+      "split": "holdout"
+    },
+    {
+      "id": "case_multi_hop_50",
+      "category": "multi_hop",
+      "query": "Which perf decision about batch insertion connects src/perf/batch-insertion.ts to AuroraGateway50?",
+      "file": "src/perf/batch-insertion.ts",
+      "expectedMemoryId": "mem_bench_50",
+      "isTrap": false,
+      "split": "holdout"
+    },
+    {
+      "id": "case_long_horizon_50",
+      "category": "long_horizon",
+      "query": "What did we decide about batch insertion during the initial perf design?",
+      "expectedMemoryId": "mem_bench_50",
+      "isTrap": false,
+      "split": "holdout"
+    },
+    {
+      "id": "case_exact_51",
+      "category": "exact_keyword",
+      "query": "zephyr51 secret scrubbing security standard",
+      "expectedMemoryId": "mem_bench_51",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_51",
+      "category": "semantic_paraphrase",
+      "query": "credential removal in the security module",
+      "expectedMemoryId": "mem_bench_51",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_multi_hop_51",
+      "category": "multi_hop",
+      "query": "Which security decision about secret scrubbing connects src/security/secret-scrubbing.ts to AuroraGateway51?",
+      "file": "src/security/secret-scrubbing.ts",
+      "expectedMemoryId": "mem_bench_51",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_long_horizon_51",
+      "category": "long_horizon",
+      "query": "What did we decide about secret scrubbing during the initial security design?",
+      "expectedMemoryId": "mem_bench_51",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_52",
+      "category": "exact_keyword",
+      "query": "zephyr52 input sanitization security standard",
+      "expectedMemoryId": "mem_bench_52",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_52",
+      "category": "semantic_paraphrase",
+      "query": "user data cleaning in the security module",
+      "expectedMemoryId": "mem_bench_52",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_multi_hop_52",
+      "category": "multi_hop",
+      "query": "Which security decision about input sanitization connects src/security/input-sanitization.ts to AuroraGateway52?",
+      "file": "src/security/input-sanitization.ts",
+      "expectedMemoryId": "mem_bench_52",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_long_horizon_52",
+      "category": "long_horizon",
+      "query": "What did we decide about input sanitization during the initial security design?",
+      "expectedMemoryId": "mem_bench_52",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_53",
+      "category": "exact_keyword",
+      "query": "zephyr53 dependency audits security standard",
+      "expectedMemoryId": "mem_bench_53",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_53",
+      "category": "semantic_paraphrase",
+      "query": "package checks in the security module",
+      "expectedMemoryId": "mem_bench_53",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_multi_hop_53",
+      "category": "multi_hop",
+      "query": "Which security decision about dependency audits connects src/security/dependency-audits.ts to AuroraGateway53?",
+      "file": "src/security/dependency-audits.ts",
+      "expectedMemoryId": "mem_bench_53",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_long_horizon_53",
+      "category": "long_horizon",
+      "query": "What did we decide about dependency audits during the initial security design?",
+      "expectedMemoryId": "mem_bench_53",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_54",
+      "category": "exact_keyword",
+      "query": "zephyr54 path traversal security standard",
+      "expectedMemoryId": "mem_bench_54",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_54",
+      "category": "semantic_paraphrase",
+      "query": "route escape in the security module",
+      "expectedMemoryId": "mem_bench_54",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_multi_hop_54",
+      "category": "multi_hop",
+      "query": "Which security decision about path traversal connects src/security/path-traversal.ts to AuroraGateway54?",
+      "file": "src/security/path-traversal.ts",
+      "expectedMemoryId": "mem_bench_54",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_long_horizon_54",
+      "category": "long_horizon",
+      "query": "What did we decide about path traversal during the initial security design?",
+      "expectedMemoryId": "mem_bench_54",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_55",
+      "category": "exact_keyword",
+      "query": "zephyr55 token storage security standard",
+      "expectedMemoryId": "mem_bench_55",
+      "isTrap": false,
+      "split": "holdout"
+    },
+    {
+      "id": "case_paraphrase_55",
+      "category": "semantic_paraphrase",
+      "query": "credential persistence in the security module",
+      "expectedMemoryId": "mem_bench_55",
+      "isTrap": false,
+      "split": "holdout"
+    },
+    {
+      "id": "case_multi_hop_55",
+      "category": "multi_hop",
+      "query": "Which security decision about token storage connects src/security/token-storage.ts to AuroraGateway55?",
+      "file": "src/security/token-storage.ts",
+      "expectedMemoryId": "mem_bench_55",
+      "isTrap": false,
+      "split": "holdout"
+    },
+    {
+      "id": "case_long_horizon_55",
+      "category": "long_horizon",
+      "query": "What did we decide about token storage during the initial security design?",
+      "expectedMemoryId": "mem_bench_55",
+      "isTrap": false,
+      "split": "holdout"
+    },
+    {
+      "id": "case_exact_56",
+      "category": "exact_keyword",
+      "query": "zephyr56 isolation fixtures testing standard",
+      "expectedMemoryId": "mem_bench_56",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_56",
+      "category": "semantic_paraphrase",
+      "query": "separated test data in the testing module",
+      "expectedMemoryId": "mem_bench_56",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_multi_hop_56",
+      "category": "multi_hop",
+      "query": "Which testing decision about isolation fixtures connects src/testing/isolation-fixtures.ts to AuroraGateway56?",
+      "file": "src/testing/isolation-fixtures.ts",
+      "expectedMemoryId": "mem_bench_56",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_long_horizon_56",
+      "category": "long_horizon",
+      "query": "What did we decide about isolation fixtures during the initial testing design?",
+      "expectedMemoryId": "mem_bench_56",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_57",
+      "category": "exact_keyword",
+      "query": "zephyr57 snapshot updates testing standard",
+      "expectedMemoryId": "mem_bench_57",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_57",
+      "category": "semantic_paraphrase",
+      "query": "baseline changes in the testing module",
+      "expectedMemoryId": "mem_bench_57",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_multi_hop_57",
+      "category": "multi_hop",
+      "query": "Which testing decision about snapshot updates connects src/testing/snapshot-updates.ts to AuroraGateway57?",
+      "file": "src/testing/snapshot-updates.ts",
+      "expectedMemoryId": "mem_bench_57",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_long_horizon_57",
+      "category": "long_horizon",
+      "query": "What did we decide about snapshot updates during the initial testing design?",
+      "expectedMemoryId": "mem_bench_57",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_58",
+      "category": "exact_keyword",
+      "query": "zephyr58 property tests testing standard",
+      "expectedMemoryId": "mem_bench_58",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_58",
+      "category": "semantic_paraphrase",
+      "query": "invariant checks in the testing module",
+      "expectedMemoryId": "mem_bench_58",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_multi_hop_58",
+      "category": "multi_hop",
+      "query": "Which testing decision about property tests connects src/testing/property-tests.ts to AuroraGateway58?",
+      "file": "src/testing/property-tests.ts",
+      "expectedMemoryId": "mem_bench_58",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_long_horizon_58",
+      "category": "long_horizon",
+      "query": "What did we decide about property tests during the initial testing design?",
+      "expectedMemoryId": "mem_bench_58",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_59",
+      "category": "exact_keyword",
+      "query": "zephyr59 coverage thresholds testing standard",
+      "expectedMemoryId": "mem_bench_59",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_paraphrase_59",
+      "category": "semantic_paraphrase",
+      "query": "range limits in the testing module",
+      "expectedMemoryId": "mem_bench_59",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_multi_hop_59",
+      "category": "multi_hop",
+      "query": "Which testing decision about coverage thresholds connects src/testing/coverage-thresholds.ts to AuroraGateway59?",
+      "file": "src/testing/coverage-thresholds.ts",
+      "expectedMemoryId": "mem_bench_59",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_long_horizon_59",
+      "category": "long_horizon",
+      "query": "What did we decide about coverage thresholds during the initial testing design?",
+      "expectedMemoryId": "mem_bench_59",
+      "isTrap": false,
+      "split": "train"
+    },
+    {
+      "id": "case_exact_60",
+      "category": "exact_keyword",
+      "query": "zephyr60 flaky retries testing standard",
+      "expectedMemoryId": "mem_bench_60",
+      "isTrap": false,
+      "split": "holdout"
+    },
+    {
+      "id": "case_paraphrase_60",
+      "category": "semantic_paraphrase",
+      "query": "unstable repeats in the testing module",
+      "expectedMemoryId": "mem_bench_60",
+      "isTrap": false,
+      "split": "holdout"
+    },
+    {
+      "id": "case_multi_hop_60",
+      "category": "multi_hop",
+      "query": "Which testing decision about flaky retries connects src/testing/flaky-retries.ts to AuroraGateway60?",
+      "file": "src/testing/flaky-retries.ts",
+      "expectedMemoryId": "mem_bench_60",
+      "isTrap": false,
+      "split": "holdout"
+    },
+    {
+      "id": "case_long_horizon_60",
+      "category": "long_horizon",
+      "query": "What did we decide about flaky retries during the initial testing design?",
+      "expectedMemoryId": "mem_bench_60",
+      "isTrap": false,
+      "split": "holdout"
+    }
+  ]
+}
