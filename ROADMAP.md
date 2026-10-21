@@ -83,7 +83,7 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 |---|---|---|---|
 | 5.1 | Query-plan evidence | Top-10 query plans recorded with `EXPLAIN QUERY PLAN` | **Done** - `scripts/check-query-plans.ts`, `docs/QUERY_PLANS.md`, raw JSON at `bench/results/query-plans.json`; 10/10 pass with no large-table scans |
 | 5.2 | Backup command and gate | `fastr backup` writes a restorable snapshot with provenance | **Done** - `src/replay/backup.ts`, CLI create/verify/restore, sidecar manifest, 4 tests; scope is memories/events/links/conflicts |
-| 5.3 | Latency and install-size CI gates | CI fails above the documented install-size and recall-latency ceilings | **Done** - local 10k recall p95 16.09-16.13 ms, install 16,750,800-16,751,385 bytes / 1,842-1,874 ms; canonical CI run `39529344409` p95 19.26 ms and install 1,409 ms; both run in `check:ci`, with `FASTR_PERF_GATE=0` on non-canonical matrix jobs |
+| 5.3 | Latency and install-size CI gates | CI fails above the documented install-size and recall-latency ceilings | **Done** - local 10k recall p95 16.09-16.13 ms, install 16,750,800-16,751,385 bytes / 1,842-1,874 ms; canonical CI run `39531624894` p95 18.2 ms and install 1,251 ms; both run in `check:ci`, with `FASTR_PERF_GATE=0` on non-canonical matrix jobs |
 | 5.4 | Apple Silicon CI | Matrix adds an Apple Silicon runner and passes | Missing |
 | 5.5 | Legacy row cleanup | 60 pre-existing rows removed with explicit approval and before/after counts | Partial |
 
@@ -178,7 +178,7 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 |---|---|---|
 | Optional local model; three runtime dependencies | **Done** | `package.json`; `scripts/check-package.mjs` |
 | SQLite pragmas and query-plan review | **Done** | `scripts/check-query-plans.ts`; 10/10 plans pass with no large-table scans; `docs/QUERY_PLANS.md`; `bench/results/query-plans.json`. |
-| Clean install under 20 MB / 10 s | **Pass (0.3.0 branch)** | Local 16,750,800-16,751,110 bytes / 1.842-1.874 s; canonical CI run `39529344409` 1,409 ms; v0.2.1 is 16,493,075 bytes / 1.93 s. |
+| Clean install under 20 MB / 10 s | **Pass (0.3.0 branch)** | Local 16,750,800-16,751,385 bytes / 1.842-1.874 s; canonical CI run `39531624894` 1,251 ms; v0.2.1 is 16,493,075 bytes / 1.93 s. |
 | 10k crash test, 10/10 runs, 0 lost / 0 duplicates | **Done** | 10,718 acknowledged writes, 10,727 committed rows, 0 missing, 0 duplicate ids/titles, integrity `ok`; `bench/results/crash-test.json`; `CLAIMS.md` D4. |
 | Export/import/backup with provenance | **Done** | `fastr backup` writes JSONL plus a sidecar manifest with SHA-256, content hash, record counts, tool/environment, and source integrity; `--verify`, `--restore`, `--dry-run`; `tests/backup.test.ts`. |
 | CI size and latency gates | **Done** | `check:install-size`, `check:recall-latency`, and `check:query-plans` run in `check:ci`; canonical CI job enforces them, with `FASTR_PERF_GATE=0` on non-canonical matrix jobs. |
@@ -204,9 +204,9 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 | Gate | Pass condition | Current |
 |---|---|---|
 | Truth | No false/stale claims; `CLAIMS.md` covers every public claim | **Pass** — README trace enforced by `check:docs`; specification, release notes, and npm docs aligned |
-| Tests | 6/6 OS × Node green on the release commit; isolation green | **Pass** - local 274 green / 51 files; 6/6 at `3fa2bf9` and 6/6 at `fe87e22` in run `39529344409` |
+| Tests | 6/6 OS × Node green on the release commit; isolation green | **Pass** - local 274 green / 51 files; 6/6 at `3fa2bf9` and 6/6 at `47e4d08` in run `39531624894` |
 | Package | npm published or explicitly blocked and documented; `npx` works | **Partial** — v0.2.1 GitHub asset attached and release-URL install verified; npm still blocked |
-| Footprint | Default install under 20 MB; install under 10 s | **Pass (0.3.0 branch)** - local 16,750,800-16,751,385 bytes, 1.842-1.874 s; canonical CI `1,409 ms`; v0.2.1 is 16,493,075 bytes, 1.93 s |
+| Footprint | Default install under 20 MB; install under 10 s | **Pass (0.3.0 branch)** - local 16,750,800-16,751,385 bytes, 1.842-1.874 s; canonical CI `1,251 ms`; v0.2.1 is 16,493,075 bytes, 1.93 s |
 | Benchmark | 240+ cases; held-out; raw JSON committed | **Done** |
 | Retrieval | Hit@1 ≥90%; Hit@5 ≥98%; external baseline +5pp Hit@5; tokens ≤0.5× | **Partial** — synthetic targets pass; LongMemEval +10.4pp / +11.0pp, LoCoMo +4.4pp / +2.3pp; LoCoMo misses |
 | Integrity | 0 lost/0 duplicates in 10k crash test; replay exact | **Done (process crash)** — 10/10 runs, 0 lost, 0 duplicates; replay exact; power loss not tested |

@@ -1,7 +1,7 @@
 # Scorecard
 
 **Evidence date:** 2026-10-21
-**Code evidence:** `fe87e22` (local `npm run check:ci` and remote CI run `39529344409`); roadmap status in this docs commit
+**Code evidence:** `47e4d08` (local `npm run check:ci` and remote CI run `39531624894`); roadmap status in this docs commit
 **Documentation evidence:** `MIGRATION.md`, `SECURITY.md`, `CLAIMS.md`, and this scorecard in this docs commit
 **Target:** `9.2 / 10`
 
@@ -12,9 +12,9 @@ This is a release-readiness score, not a marketing score. Each gate is scored `1
 | # | Gate | Score | Evidence | Remaining gap |
 |---:|---|---:|---|---|
 | 1 | Truth | 1.0 | README launch status table, release-vs-branch banner, and 0.2.1 post added; `CLAIMS.md` now has A1-A11, C1-C8, E1-E16, F11-F15, H20, and J1-J2 plus a section-by-section README trace; `npm run check:docs` enforces the trace, the 41-tool catalog, and the prompt/resource counts; `docs/SPECIFICATION.md`, `RELEASE_v0.1.0.md`, and `docs/npm-publishing.md` carry current-count and historical qualifiers | The trace is section-level; it does not semantically test every sentence |
-| 2 | Tests | 1.0 | `npm run check:ci` at `fe87e22`: 274 tests / 51 files; remote CI run `39529344409` is 6/6 green; release commit `3fa2bf9` is 6/6 green in CI run `39495621243` | None for the six-job matrix; Apple Silicon remains uncovered under Phase 5.4 |
+| 2 | Tests | 1.0 | `npm run check:ci` at `47e4d08`: 274 tests / 51 files; remote CI run `39531624894` is 6/6 green; release commit `3fa2bf9` is 6/6 green in CI run `39495621243` | None for the six-job matrix; Apple Silicon remains uncovered under Phase 5.4 |
 | 3 | Package and distribution | 0.5 | v0.2.1 GitHub asset is 591,204 bytes, SHA-256 `78F1535E87A7148272824C0B0D31F21D4AD385D9EEAA2EF8A40D41DCD0ACA63B`; release-URL install verified; npm is explicitly blocked and documented | npm publication is blocked until `2026-10-21 22:42 UTC`; `npm view` returns E404 |
-| 4 | Footprint | 1.0 | v0.2.1 default install: 16,493,075 bytes, 1.93 s; current `0.3.0` local gate: 16,750,800-16,751,385 bytes, 1,842-1,874 ms; canonical CI run `39529344409`: 645,846 bytes packed / 2,588,454 unpacked, 1,409 ms; `check:package`: 268 files, 631.1 kB packed, 2.5 MB unpacked, 3 runtime dependencies | None for the documented gate |
+| 4 | Footprint | 1.0 | v0.2.1 default install: 16,493,075 bytes, 1.93 s; current `0.3.0` local gate: 16,750,800-16,751,385 bytes, 1,842-1,874 ms; canonical CI run `39531624894`: 645,924 bytes packed / 2,588,728 unpacked, 1,251 ms; `check:package`: 268 files, 631.1 kB packed, 2.5 MB unpacked, 3 runtime dependencies | None for the documented gate |
 | 5 | Benchmark | 1.0 | 240 deterministic cases (192 train / 48 holdout); raw JSON at `bench/results/minilm.json` and `hash.json`; `npm run bench:verify` passes | None for the synthetic benchmark gate |
 | 6 | Retrieval | 0.5 | Synthetic holdout meets Hit@1/5, MRR, and token targets. LongMemEval external: +10.4pp / +11.0pp Hit@5. LoCoMo external: +4.4pp / +2.3pp | LoCoMo misses the `+5pp` target; Hit@1 is 0.1pp below the MCP adapter; frozen-holdout rerun (2.3) is Partial |
 | 7 | Integrity | 1.0 | Crash test: 10/10 runs, 10,718 acknowledged writes, 10,727 committed rows, 0 lost, 0 duplicates, integrity `ok`; replay/diff gates pass | Process-kill only; not power-loss; `synchronous=NORMAL` |
@@ -31,7 +31,7 @@ The largest gaps are:
 2. LoCoMo misses the external `+5pp Hit@5` target.
 3. Launch evidence still depends on npm publication.
 
-Remote CI evidence is green at `fe87e22` in run `39529344409`. The Phase 6/0 documentation commit passed the full local `check:ci` and is re-verified by remote CI after push. Phase 5 operational gaps remain (Apple Silicon coverage and the pending legacy-cleanup approval), but they do not change the current gate scores.
+Remote CI evidence is green at `47e4d08` in run `39531624894`. The Phase 6/0 documentation commit passed the full local `check:ci` and the six-job remote matrix. Phase 5 operational gaps remain (Apple Silicon coverage and the pending legacy-cleanup approval), but they do not change the current gate scores.
 
 If the three remaining 0.5-point gates close without regressing the passing gates, the provisional total would reach `9.0 / 9 = 10.0 / 10`. That is a forecast, not a result.
 
