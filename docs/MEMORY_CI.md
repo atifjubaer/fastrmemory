@@ -136,4 +136,10 @@ npm test -- tests/memory-ci.test.ts
 
 ## Current evidence boundary
 
-The workflow and its comment-update logic are committed, and the CLI path is covered by `tests/memory-ci.test.ts` and `npm run verify:replay`. A live same-repository test PR that demonstrates the first comment and the re-run update is still pending; `ROADMAP.md` tracks that observation as Phase 4.2.
+The same-repository path was exercised on 2026-10-21 with draft PR [#12](https://github.com/atifjubaer/fastrmemory/pull/12). Its branches contain synthetic snapshots with one base rule and two head rules; no product data is present.
+
+- First run [`39519088805`](https://github.com/atifjubaer/fastrmemory/actions/runs/39519088805) completed successfully and created comment `6304608575` with `Added (1)`.
+- Re-running the same workflow kept exactly one marked comment with the same id.
+- Head commit `252f29e` triggered run [`39519253601`](https://github.com/atifjubaer/fastrmemory/actions/runs/39519253601), which updated comment `6304608575` to `Added (2)` at `2026-10-21T00:06:33Z`. The marker comment count remained `1`.
+
+The CLI path is covered by `tests/memory-ci.test.ts` and `npm run verify:replay`. Fork PRs use the job summary only; the read-only token guard is code-reviewed but has not been exercised by a live fork PR.
