@@ -60,6 +60,7 @@
     "bench:hash": "tsx scripts/eval-bench.ts --split all --embeddings hash --out bench/results/hash.json",
     "bench:legacy": "tsx scripts/capture-bench.ts",
     "bench:public": "tsx scripts/eval-public.ts",
+    "bench:external": "tsx scripts/eval-external.ts",
     "bench:verify": "node scripts/check-bench.mjs",
     "verify:replay": "tsx scripts/verify-replay.ts",
     "check:ci": "npm run test && npm run test:isolation && npm run check:skills && npm run check:dist-ui && npm run check:package && npm run verify:replay && npm run check:hygiene && npm run check:docs && npm run check:crash && npm run bench:verify",
