@@ -134,12 +134,11 @@ When the npm account is restored:
    ```
    Expected output: `atifjubaer`.
 
-4. **Re-run the full local gate on the frozen tree**
+4. **Install and re-run the full local gate on the frozen tree**
    ```powershell
+   npm ci
+   npm --prefix ui ci
    npm run check:ci
-   npm run build:core
-   npm run check:dist-ui
-   npm run check:package
    ```
 
 5. **Publish from the frozen tree**
