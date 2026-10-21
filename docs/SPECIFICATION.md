@@ -153,7 +153,7 @@ Registered via `server.registerTool(...)` using `@modelcontextprotocol/server` v
 
 ---
 
-## 3. MCP Resources (current: 4)
+## 3. MCP Resources (current: 5; 3 static + 2 templates)
 
 Registered via `server.registerResource(...)`:
 
@@ -165,6 +165,8 @@ Registered via `server.registerResource(...)`:
    Latest cross-agent session handoff snapshot.
 4. `fastr://memory/{id}` (resource template)
    Full JSON for one memory, including linked files and its validity window.
+5. `fastr://memory/{id}/envelope` (resource template)
+   Metadata, cryptographic provenance, file/graph links, and open/resolved/ignored conflict state for one memory.
 
 The server also registers **2 prompts**: `pre-edit-check` and `session-wrap-up`.
 

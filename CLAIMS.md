@@ -54,6 +54,7 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 | ID | Claim | Where | Status | Evidence command | Raw output | Caveat |
 |---|---|---|---|---|---|---|
 | D1 | Historical v0.2.0 count: 226 tests, 38 files | v0.2.0 release notes | Historical | `npm test` | `226 passed`, `38 passed` | Historical v0.2.0 result; current suite is D1b |
+| D1a | v0.2.1 release count: 235 tests, 43 files | README launch status, release notes | Supported | `npm test` at `3fa2bf9` | `235 passed`, `43 passed` | Clean worktree rerun on 2026-10-21 01:16 UTC; current suite is D1b |
 | D1b | 270 tests pass across 50 files | Current HEAD | Supported | `npm test` | `270 passed`, `50 passed` | Run on 2026-10-21 after the public benchmark harness tests; local Windows run; CI is separate |
 | D2 | Test suite writes nothing to the real home store | README | Supported | `npm test` then count rows | 60 before, 60 after | The 60 pre-existing rows are documented legacy data |
 | D3 | 6/6 CI matrix green | ROADMAP | Supported | `gh run view 39495621243 --json conclusion,jobs` | 6/6 jobs succeeded: Ubuntu, Windows, and Intel macOS on Node 22.x and 24.x | Run on `3fa2bf9`; `fail-fast` disabled; macOS jobs use `macos-15-intel`; Apple Silicon is not covered |

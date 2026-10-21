@@ -73,6 +73,7 @@ What changes:
 - Per-ID confidence tiers and append-only feedback: `fastr feedback <memory-id> <good|bad>`.
 - `fastr hygiene` reports orphaned, duplicate, and stale rows.
 - The dashboard adds `/replay` with snapshot and diff views.
+- The MCP resource surface grows to 5 with `fastr://memory/{id}/envelope`.
 
 Schema additions are automatic. No manual SQL is required. Branch pointers and merge logs are additive; merging is one-way into the current active set.
 

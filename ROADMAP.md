@@ -187,13 +187,13 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 
 | Item | Status | Evidence / remaining work |
 |---|---|---|
-| README rewritten around measured claims | **Partial** | Truth reset is done: counts, benchmark table, and registry status now match current evidence. Full launch rewrite remains. |
+| README rewritten around measured claims | **Done** | Launch status table, release-vs-branch banner, corrected latency/resource/test counts, release paths, and 0.3.0 labels. Full claim trace remains a gate-level gap. |
 | `BENCHMARKS.md` and `CLAIMS.md` | **Done** | Both present and checked. |
 | `MIGRATION.md` | **Done** | Upgrade and rollback paths for 0.1.x → 0.2.x → 0.3.0; physical and logical backup steps. |
 | `SECURITY.md` | **Done** | Threat model, local data boundaries, secret handling, loopback dashboard controls, and private reporting path. |
 | `SCORECARD.md` | **Done** | Nine gates scored from evidence; provisional `7.8 / 10`, below the `9.2` target. |
 | `CHANGELOG.md` | **Done** | `CHANGELOG.md` covers 0.1.0 through v0.2.1. |
-| Launch post with one command per number | **Partial** | Blog post exists; README/npm launch path is not complete. |
+| Launch post with one command per number | **Done** | `docs/blog/2026-10-21-fastrmemory-0.2.1.md`; every number has a command and caveat. npm publication remains a separate blocked gate. |
 
 **Gate:** 100% of README claims traced; docs checks green; every launch number reproducible. Current result: **Partial**.
 

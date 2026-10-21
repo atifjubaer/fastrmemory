@@ -11,8 +11,8 @@ This is a release-readiness score, not a marketing score. Each gate is scored `1
 
 | # | Gate | Score | Evidence | Remaining gap |
 |---:|---|---:|---|---|
-| 1 | Truth | 0.5 | README counts and benchmark status were refreshed; `CLAIMS.md` covers E1–E15 and A1–A10; `npm run check:docs` passes | Full claim coverage is not complete; README launch rewrite remains |
-| 2 | Tests | 1.0 | `npm run check:ci` at `36b112b`: 270 tests / 50 files; `test:isolation` passes; release commit `3fa2bf9` is 6/6 green in CI run `39495621243` | Current HEAD `380bba0` has no remote CI run yet |
+| 1 | Truth | 0.5 | README launch status table, release-vs-branch banner, and 0.2.1 post added; `CLAIMS.md` covers E1–E15 and A1–A10; `npm run check:docs` passes | Full claim coverage is not complete; some reference sections remain untraced |
+| 2 | Tests | 1.0 | `npm run check:ci` at `36b112b`: 270 tests / 50 files; `test:isolation` passes; release commit `3fa2bf9` is 6/6 green in CI run `39495621243` | Current docs-only HEAD has no remote CI run yet |
 | 3 | Package and distribution | 0.5 | v0.2.1 GitHub asset is 591,204 bytes, SHA-256 `78F1535E87A7148272824C0B0D31F21D4AD385D9EEAA2EF8A40D41DCD0ACA63B`; release-URL install verified; npm is explicitly blocked and documented | npm publication is blocked until `2026-10-21 22:42 UTC`; `npm view` returns E404 |
 | 4 | Footprint | 1.0 | v0.2.1 default install: 16,493,075 bytes, 1.93 s; current `check:package`: 264 files, 625.4 kB packed, 2.4 MB unpacked, 3 runtime dependencies | None for the documented gate |
 | 5 | Benchmark | 1.0 | 240 deterministic cases (192 train / 48 holdout); raw JSON at `bench/results/minilm.json` and `hash.json`; `npm run bench:verify` passes | None for the synthetic benchmark gate |

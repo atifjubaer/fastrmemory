@@ -6,6 +6,7 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ### Added
 
+- `docs/blog/2026-10-21-fastrmemory-0.2.1.md` launch post with one reproducible command per release number; npm publication remains blocked.
 - Conflict-aware recall: ranked results mark both sides of an open contradiction with the conflict id and the opposing memory.
 - `fastr conflict list` and `fastr conflict resolve <id> --keep <memory-id> [--forget] [--reason]`.
 - `fastr import --from markdown|agents-md|cursor-rules|claude-md|jsonl` imports local Markdown rules and snapshots with dry-run and exact-duplicate skipping.

@@ -13,7 +13,7 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-architecture)
 
-> **Status (2026-10-21, v0.2.1):** Registry availability is verified with `npm view @atifjubaer/fastrmemory version`. If it returns `0.2.1`, install from npm. If it returns E404, use the **v0.2.1 GitHub Release tarball** or the GitHub source below. The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval. Public LongMemEval, LoCoMo, and self-repository retrieval-only results plus pinned external baselines are in [BENCHMARKS.md](BENCHMARKS.md); no QA-leaderboard parity is claimed. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md). Release notes: [CHANGELOG.md](CHANGELOG.md).
+> **Status (2026-10-21):** The latest GitHub release is **v0.2.1**; npm publication remains blocked. At `2026-10-21 01:02 UTC`, `npm whoami` returned `E401` and `npm view @atifjubaer/fastrmemory version` returned `E404`. This README tracks the unreleased **0.3.0** branch, so features marked **0.3.0** are not in the v0.2.1 asset. If `npm view` later returns `0.2.1`, install from npm; otherwise use the **v0.2.1 GitHub Release tarball** or the GitHub source below. The exact release surface is in [CHANGELOG.md](CHANGELOG.md); the release post is [docs/blog/2026-10-21-fastrmemory-0.2.1.md](docs/blog/2026-10-21-fastrmemory-0.2.1.md). The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval. Public LongMemEval, LoCoMo, and self-repository retrieval-only results plus pinned external baselines are in [BENCHMARKS.md](BENCHMARKS.md); no QA-leaderboard parity is claimed. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md).
 
 <p align="center">
   <a href="#-overview">Overview</a> &bull;
@@ -35,6 +35,21 @@
 
 ---
 
+## Launch Status at a Glance
+
+| Claim | Current result | Evidence |
+|---|---|---|
+| Install path | GitHub release `v0.2.1`; npm is `E404` | `npm view @atifjubaer/fastrmemory version`; `npx --yes github:atifjubaer/fastrmemory --version` -> `0.2.1` |
+| Synthetic retrieval | Holdout `95.8%` Hit@1, `100%` Hit@5, MRR `0.969` | `npx tsx scripts/eval-bench.ts --split all --embeddings minilm --out bench/results/minilm.json` |
+| Test suite | `270` tests across `50` files on the `0.3.0` branch; v0.2.1 is `235` / `43` | `npm test` |
+| Crash safety | 10/10 runs, 0 lost, 0 duplicate ids/titles | `npm run test:crash`; `bench/results/crash-test.json` |
+| Public retrieval (0.3.0 branch) | LongMemEval `+10.4pp` / `+11.0pp` Hit@5; LoCoMo `+4.4pp` / `+2.3pp` (target missed) | [docs/EXTERNAL_BASELINE.md](docs/EXTERNAL_BASELINE.md) |
+| Release score | Provisional `7.8 / 10`; `9.2` target not met | [SCORECARD.md](SCORECARD.md) |
+
+The synthetic table is not SWE-bench or LongMemEval. Public numbers are retrieval-only and are not QA-leaderboard results. Full provenance is in [CLAIMS.md](CLAIMS.md).
+
+---
+
 ## 💡 Overview
 
 AI coding agents (Claude Code, Cursor, Windsurf, Codex, Antigravity) degrade on long-running codebases when project memory is lossy or operationally heavy. Common designs make one of three trade-offs:
@@ -42,14 +57,14 @@ AI coding agents (Claude Code, Cursor, Windsurf, Codex, Antigravity) degrade on 
 - **Run a daemon or external database**, which adds ports, containers, and setup failure modes.
 - **Dump a static context file**, which grows without bound and is not queryable.
 
-**FastrMemory** keeps a verbatim event log, bi-temporal memory history, and a replayable Git mirror in a **single zero-daemon TypeScript engine** (3 runtime dependencies; local embeddings are optional):
+**FastrMemory** keeps a verbatim event log, bi-temporal memory history, and a replayable Git mirror in a **single in-process TypeScript engine** (3 runtime dependencies; local embeddings and the daemon are optional):
 
 <table>
 <tr>
 <td width="33%" align="center">
 
 ### ⚡ Zero Daemon Overhead
-Pure Node 22+ built-in `node:sqlite` in WAL mode. On the 240-case suite, engine-level recall is **0.99 ms p50 / 1.80 ms p95** with hash embeddings and **4.04 ms p50 / 5.99 ms p95** with MiniLM on the train split (CLI startup measured separately). Zero background daemons, zero open ports; native on Windows, macOS, and Linux - CI matrix status is reported in [Actions](https://github.com/atifjubaer/fastrmemory/actions).
+Pure Node 22+ built-in `node:sqlite` in WAL mode. On the 240-case suite, engine-level recall is **0.95 ms p50 / 1.60 ms p95** with hash embeddings and **3.30 ms p50 / 5.11 ms p95** with MiniLM on the train split (CLI startup measured separately). The default CLI/MCP path has no background daemon and no open port; `daemon start` is optional. Native on Windows, macOS, and Linux (the current CI matrix uses Intel macOS; Apple Silicon is not covered); CI matrix status is reported in [Actions](https://github.com/atifjubaer/fastrmemory/actions).
 
 </td>
 <td width="33%" align="center">
@@ -74,7 +89,7 @@ Fuses FTS5 BM25 + optional local embeddings + file-graph links. Error traps rece
 | Principle | Implementation |
 | :--- | :--- |
 | **Lossless by default** | Raw events, bi-temporal `valid_from` / `valid_to`, and supersession chains are retained. Nothing is destroyed by consolidation. |
-| **Zero daemon** | One Node 22+ process uses built-in `node:sqlite` in WAL mode. No open ports, containers, or background services. |
+| **Zero daemon by default** | One Node 22+ process uses built-in `node:sqlite` in WAL mode. The default CLI/MCP path opens no ports or background services; `daemon start` is optional. |
 | **Replayable** | Git-diffable Markdown mirrors plus snapshots and rollback keep history inspectable. |
 | **Measured, not asserted** | Public claims are tied to committed benchmark JSON with a 20% holdout; simulated baselines are labeled as simulations. |
 
@@ -84,7 +99,7 @@ Fuses FTS5 BM25 + optional local embeddings + file-graph links. Error traps rece
 
 ## 🤖 Works With MCP- and HTTP-Compatible Agents
 
-FastrMemory exposes one stdio MCP server and one optional local HTTP service. **Native hook/config installers are provided for Claude Code, Cursor, Gemini CLI, GitHub Copilot CLI, and OpenCode V2** (`fastrmemory hook install`); every other client connects through its own MCP configuration or the REST API. Integration depth varies by client - only the native installers are covered by tests in this repository.
+FastrMemory exposes one stdio MCP server and optional local HTTP services (dashboard and daemon). **Native hook/config installers are provided for Claude Code and Cursor, with 0.3.0 support for Gemini CLI, GitHub Copilot CLI, and OpenCode V2** (`fastrmemory hook install`); every other client connects through its own MCP configuration or the REST API. Integration depth varies by client - only the native installers are covered by tests in this repository.
 
 Clients commonly used with FastrMemory include Codex CLI, Gemini CLI, OpenCode, GitHub Copilot CLI, Antigravity, Claude Desktop, Cline, Continue, Roo Code, Goose, Zed, Warp, and Aider. Listing a client does **not** imply a tested native integration.
 
@@ -94,7 +109,7 @@ Clients commonly used with FastrMemory include Codex CLI, Gemini CLI, OpenCode, 
 
 ### ⚡ Run Without a Global Install
 
-Run directly from GitHub (this works while npm publication is pending):
+Run directly from GitHub (verified with `npx --yes github:atifjubaer/fastrmemory --version` -> `0.2.1` on 2026-10-21):
 
 ```bash
 # Instant interactive auto-setup:
@@ -134,7 +149,7 @@ npm install -g https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.
 fastr --version
 ```
 
-Or install the current default branch:
+Or install the current default branch for development (not the frozen release tag):
 
 ```bash
 npm install -g git+https://github.com/atifjubaer/fastrmemory.git
@@ -180,7 +195,7 @@ Output:
 JWT exp claims expect integer seconds. Always use Math.floor(Date.now() / 1000).
 ```
 
-Open contradictions are marked on both sides of the recall result instead of being silently mixed into context:
+Open contradictions are marked on both sides of the recall result instead of being silently mixed into context (**0.3.0**):
 
 ```bash
 # Inspect unresolved contradictions:
@@ -190,7 +205,7 @@ fastrmemory conflict list
 fastrmemory conflict resolve 1 --keep mem_009e4a7d --forget --reason "Seconds are the project standard"
 ```
 
-#### Import Existing Local Rules
+#### Import Existing Local Rules (**0.3.0**)
 
 Bring `AGENTS.md`, `CLAUDE.md`, or `.cursor/rules/*.mdc` content into memory without hand-copying every section. Level 2+ headings become memories; bullet lists and paragraphs are fallbacks. Re-importing the same file skips exact duplicates.
 
@@ -216,7 +231,7 @@ fastrmemory blame src/auth/jwt.ts:42
 fastrmemory commit
 ```
 
-### 5. Git Snapshots, Branches, Rollback & Background Daemon
+### 5. Git Snapshots, Branches, Rollback & Background Daemon (branches are **0.3.0**)
 
 ```bash
 # Point-in-time memory snapshot (Git for Agent Memory):
@@ -257,7 +272,7 @@ fastrmemory diagnose
 # Auto-repair FTS5 indices, orphaned file links, and WAL fragmentation:
 fastrmemory heal
 
-# Report orphaned records, duplicate active memories, and stale rows:
+# 0.3.0: Report orphaned records, duplicate active memories, and stale rows:
 fastrmemory hygiene
 fastrmemory hygiene --stale-days 30 --json --fail-on-issues
 
@@ -303,7 +318,7 @@ Add this JSON block to your agent's MCP settings to enable autonomous memory:
 }
 ```
 
-### Gemini CLI (`.gemini/settings.json`)
+### Gemini CLI (`.gemini/settings.json`, 0.3.0)
 ```json
 {
   "mcpServers": {
@@ -315,9 +330,9 @@ Add this JSON block to your agent's MCP settings to enable autonomous memory:
 }
 ```
 
-`fastrmemory hook install` also merges `SessionStart`, `BeforeTool` (`write_file|replace`), `PreCompress`, and `SessionEnd` hooks into the same project settings file. Gemini CLI requires strict JSON on hook stdout, so the generated commands pass `--format gemini`. Google replaced Gemini CLI with Antigravity CLI for unpaid and Google One users on 2026-06-18; this integration targets the still-documented `.gemini/settings.json` contract.
+`fastrmemory hook install` also merges `SessionStart`, `BeforeTool` (`write_file|replace`), `PreCompress`, and `SessionEnd` hooks into the same project settings file. Gemini CLI requires strict JSON on hook stdout, so the generated commands pass `--format gemini`. Google is transitioning users from Gemini CLI to Antigravity CLI; this integration targets the still-documented `.gemini/settings.json` contract.
 
-### GitHub Copilot CLI (`.github/mcp.json`)
+### GitHub Copilot CLI (`.github/mcp.json`, 0.3.0)
 ```json
 {
   "mcpServers": {
@@ -332,7 +347,7 @@ Add this JSON block to your agent's MCP settings to enable autonomous memory:
 
 `fastrmemory hook install` also merges `.github/hooks/fastrmemory.json` with `sessionStart`, `preToolUse` (`edit|create|str_replace_editor|apply_patch`), `preCompact`, and `sessionEnd` hooks. Copilot has no model-facing advisory field for `preToolUse`, so an active trap returns `permissionDecision: "ask"` with the warning; autopilot/non-interactive mode treats `ask` as deny. The shared `AGENTS.md` written by the installer supplies repository instructions.
 
-### OpenCode V2 (`opencode.json`)
+### OpenCode V2 (`opencode.json`, 0.3.0)
 ```json
 {
   "mcp": {
@@ -352,7 +367,7 @@ Add this JSON block to your agent's MCP settings to enable autonomous memory:
 
 ## 🛠️ MCP Server: Tools & Resources
 
-Built using the official **v2 `@modelcontextprotocol/server`** SDK:
+Built using the official **v2 `@modelcontextprotocol/server`** SDK. The tool list below describes the **0.3.0** branch; the v0.2.1 release has 4 resources.
 
 ### 41 MCP Tools
 
@@ -417,14 +432,14 @@ The default **full profile** exposes all 41 tools. For a smaller schema, start t
 
 #### Multimodal Visual Memory
 40. `fastr_vision_tag`: Tags screenshots, UI diagrams, and wireframes with OCR and semantic descriptions with 384-dim embeddings.
-41. `fastr_vision_search`: Hybrid vector and keyword search across stored visual assets for multimodal coding agents (Claude 3.7 Sonnet, Gemini 2.5).
+41. `fastr_vision_search`: Hybrid vector and keyword search across stored visual assets for multimodal coding agents.
 
 ### 2 MCP Prompt Templates
 
 - `pre-edit-check`: Given file paths, instructs the agent to check traps and relevant rules before editing.
 - `session-wrap-up`: End-of-session checklist for logging traps, superseding stale rules, scoring memories, and saving a handoff.
 
-### 5 MCP Resources
+### 5 MCP Resources (0.3.0; v0.2.1 has 4)
 
 - `fastr://project/overview`: L0 project summary containing active counts and storage location.
 - `fastr://project/traps`: All active `[TRAP]` warnings for immediate bug avoidance.
@@ -530,7 +545,7 @@ Run the comprehensive unit test suite:
 npm test
 ```
 
-All **270 tests pass** across **50 test files** covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, branch merge conflict reports, replay/diff, memory envelopes, confidence tiers and 3-bad dormancy, memory hygiene checks, Memory CI, conflict-aware recall, local rule import, OpenCode V2, Gemini CLI, and Copilot CLI wiring, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, UI loopback security boundaries, and atomic installer configuration safety.
+All **270 tests pass** across **50 test files** on the 0.3.0 branch (the v0.2.1 release has **235 tests / 43 files**) covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, branch merge conflict reports, replay/diff, memory envelopes, confidence tiers and 3-bad dormancy, memory hygiene checks, Memory CI, conflict-aware recall, local rule import, OpenCode V2, Gemini CLI, and Copilot CLI wiring, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, UI loopback security boundaries, and atomic installer configuration safety.
 
 **Crash-safety evidence:** `npm run test:crash` kills the writer at randomized points across 10 runs, then reopens the WAL database. The committed report at [`bench/results/crash-test.json`](bench/results/crash-test.json) records **10,718 acknowledged writes**, **10,727 committed rows**, **0 lost**, **0 duplicate ids/titles**, and `PRAGMA integrity_check = ok`; methodology is in [`docs/audit/2026-10-21-crash-test.md`](docs/audit/2026-10-21-crash-test.md). `npm run check:crash` validates the report during `check:ci`. This is a process-crash test (`taskkill /F`), not a power-loss test; SQLite runs with `synchronous=NORMAL` in WAL mode.
 
@@ -558,15 +573,15 @@ npx tsx scripts/eval-bench.ts --split all --embeddings hash   --out bench/result
 
 ## 🖥️ Local Web Dashboard v2 & 3D Brain Observatory
 
-Visualize active rules, error traps, timeline audits, and interactive 3D memory constellations directly in your browser with zero external dependencies:
+Visualize active rules, error traps, timeline audits, and interactive 3D memory constellations directly in your browser from bundled UI assets (no external service or database):
 
 ```bash
 fastrmemory ui
 ```
 
 - **Live URL**: `http://localhost:4242`
-- **Dashboard v2 Architecture**: Built with modern **shadcn/ui**, **Tailwind CSS v4**, and **TanStack Query** with automated cross-process live sync (via `BroadcastChannel` & SSE stream).
-- **12 Focused Route Workspaces**:
+- **Dashboard v2 Architecture**: Built with **shadcn/ui**, **Tailwind CSS v4**, and **TanStack Query**, with SSE updates plus version polling for cross-process writes.
+- **12 Focused Route Workspaces (0.3.0 adds `/replay`)**:
   - `/`: Real-time system vitals, active trap alerts, recent memory feed, and quick-action shortcuts.
   - `/memories`: Search, filter, and inspect memories with the slide-out **Memory Detail Sheet**, status toggles, pin, and 1-click forget.
   - `/traps`: Dedicated **Error Trap Quarantine** displaying governing files, conditional boost conditions, and verified mitigation lessons.
@@ -576,14 +591,12 @@ fastrmemory ui
   - `/observatory`: High-performance **Three.js 3D Constellation Galaxy** with a smooth lerp camera, celestial star dust, glowing amber trap halos, and memory inspect modals.
   - `/treemap`: Interactive high-DPI squarified treemap visualising memory strength bands and module density.
   - `/search`: **Search Lab** evaluating triple-stream RRF retrieval with latency waterfall breakdown (BM25 vs Vector vs Graph).
-  - `/replay`: **Replay & Diff** workspace reconstructing the active set at two timestamps with snapshot metrics and added/superseded/changed/conflict review.
+  - `/replay` (**0.3.0**): **Replay & Diff** workspace reconstructing the active set at two timestamps with snapshot metrics and added/superseded/changed/conflict review.
   - `/health`: Autonomous SQLite self-healing Doctor with 1-click integrity diagnosis, FTS5 rebuild, and vacuum.
   - `/settings`: Live database path, project configuration, and export controls.
-- **Command Palette (`⌘K` / `Ctrl+K`)**: Instant keyboard navigation to any page, memory, or action.
 - **Memory CI**: The PR diff workflow and comment lifecycle are documented in [docs/MEMORY_CI.md](docs/MEMORY_CI.md).
-- **Vim & Keyboard Navigation**: Full keyboard control (`j`/`k` row navigation, `Enter` to open inspector, `Escape` to close).
-- **Dual Theme Support**: Beautiful dark/light mode with native system preference detection.
-- **Zero Daemons**: Powered entirely by native Node.js HTTP server and embedded SQLite WAL mode.
+- **Dual Theme Support**: Light, dark, and system-preference modes.
+- **Default Zero-Daemon Path**: The dashboard is served by the in-process Node.js HTTP server and embedded SQLite WAL mode; `fastrmemory daemon start` is an optional local REST/SSE service.
 
 ---
 
@@ -635,7 +648,7 @@ Special thanks to **[@the-arizul](https://github.com/the-arizul)** for architect
 | **Agent Hook Installers** | Auto-wire hooks & skills for Windsurf, Roo Code, Continue, and Warp | `good first issue` | [src/installer/setup.ts](src/installer/setup.ts) | `feat(installer)` |
 | **Local Embedding Providers** | Optional on-device backends (Ollama, llama.cpp, WebGPU) with air-gapped fallback | Intermediate | [src/search/embeddings.ts](src/search/embeddings.ts) | `feat(embeddings)` |
 | **IDE Extensions** | JetBrains (IntelliJ / WebStorm) and Neovim Lua plugin with status bar pill & trap underlines | Advanced | [extensions/vscode/](extensions/vscode/) | `feat(ide)` |
-| **Benchmark Runners** | LongMemEval-S, LoCoMo, and SWE-bench dataset scenario runners | `good first issue` | [src/bench/benchmark.ts](src/bench/benchmark.ts) | `feat(bench)` |
+| **Benchmark Runners** | SWE-bench and additional public QA scenario runners; LongMemEval and LoCoMo retrieval harnesses already exist | `good first issue` | [src/bench/benchmark.ts](src/bench/benchmark.ts) | `feat(bench)` |
 | **UI Visualizations** | Custom Three.js shaders, Treemap color palettes, and SVG/PNG graph exports | Intermediate | [ui/src/components/](ui/src/components/) | `feat(ui)` |
 
 ---
