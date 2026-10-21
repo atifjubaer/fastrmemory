@@ -106,6 +106,10 @@ function round(value: number): number {
 }
 
 async function main(): Promise<void> {
+  if (process.env.FASTR_PERF_GATE === '0') {
+    console.log('Recall-latency gate skipped (FASTR_PERF_GATE=0; non-canonical CI runner).');
+    return;
+  }
   const options = parseOptions();
   const db = initDatabase(':memory:');
   try {

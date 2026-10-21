@@ -52,6 +52,11 @@ function formatBytes(bytes) {
   return `${bytes.toLocaleString('en-US')} bytes (${(bytes / 1024 / 1024).toFixed(2)} MiB)`;
 }
 
+if (process.env.FASTR_PERF_GATE === '0') {
+  console.log('Install gate skipped (FASTR_PERF_GATE=0; non-canonical CI runner).');
+  process.exit(0);
+}
+
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'fastr-install-gate-'));
 const packDir = path.join(work, 'pack');
 const installDir = path.join(work, 'install');

@@ -284,6 +284,10 @@ function isLargeTableScan(detail: string): boolean {
 }
 
 function main(): void {
+  if (process.env.FASTR_PERF_GATE === '0') {
+    console.log('Query-plan gate skipped (FASTR_PERF_GATE=0; non-canonical CI runner).');
+    return;
+  }
   const outIndex = process.argv.indexOf('--out');
   const out = outIndex >= 0 ? path.resolve(process.argv[outIndex + 1] ?? '') : null;
   const atIndex = process.argv.indexOf('--at');

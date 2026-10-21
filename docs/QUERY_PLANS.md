@@ -36,6 +36,7 @@ All ten shapes pass. The full raw output, including the SQL and bound-parameter 
 ## Caveats
 
 - The SQL is a representative copy of the production statement, not generated from an ORM; the bound parameter values are recorded in the raw JSON.
+- CI runs this gate on the canonical Ubuntu/Node 24 job. Other matrix jobs set `FASTR_PERF_GATE=0` so runner-specific timing does not turn functional coverage into a flaky performance test.
 - `SCAN f VIRTUAL TABLE INDEX` is FTS5 reading its own index. It is not a full table scan of `memories`.
 - `SCAN (subquery-1)` is the outer co-routine over the already-limited FTS candidate set.
 - `graph-edges` uses the `(project_id, target_id)` index with only the project prefix, then filters the `OR` predicate. It avoids a full table scan, but it is not a two-index `OR` plan. The 10k fixture is small enough that this remains fast; a future optimization can split the `OR` into two indexed branches.
