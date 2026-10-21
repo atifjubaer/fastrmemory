@@ -83,7 +83,7 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 |---|---|---|---|
 | 5.1 | Query-plan evidence | Top-10 query plans recorded with `EXPLAIN QUERY PLAN` | **Done** - `scripts/check-query-plans.ts`, `docs/QUERY_PLANS.md`, raw JSON at `bench/results/query-plans.json`; 10/10 pass with no large-table scans |
 | 5.2 | Backup command and gate | `fastr backup` writes a restorable snapshot with provenance | **Done** - `src/replay/backup.ts`, CLI create/verify/restore, sidecar manifest, 4 tests; scope is memories/events/links/conflicts |
-| 5.3 | Latency and install-size CI gates | CI fails above the documented install-size and recall-latency ceilings | **Done** - 10k recall p95 16.13 ms under 50 ms; installed 16,750,800-16,751,110 bytes and 1,842-1,874 ms across local runs, under 20 MB/10 s; both run in `check:ci`; CI runs timing gates on the canonical Ubuntu/Node 24 job and sets `FASTR_PERF_GATE=0` elsewhere |
+| 5.3 | Latency and install-size CI gates | CI fails above the documented install-size and recall-latency ceilings | **Done** - local 10k recall p95 16.13 ms, install 16,750,800-16,751,110 bytes / 1,842-1,874 ms; canonical CI run `39529344409` p95 19.26 ms and install 1,409 ms; both run in `check:ci`, with `FASTR_PERF_GATE=0` on non-canonical matrix jobs |
 | 5.4 | Apple Silicon CI | Matrix adds an Apple Silicon runner and passes | Missing |
 | 5.5 | Legacy row cleanup | 60 pre-existing rows removed with explicit approval and before/after counts | Partial |
 
@@ -104,7 +104,7 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 | Item | Status | Evidence / remaining work |
 |---|---|---|
 | Remove stale benchmark claims | **Done** | `README.md` now uses the `562f461` run and states 235 tests / 43 files / 41 tools; `docs/benchmark-report.md` and `BENCHMARKS.md` match. |
-| Correct competitor and dependency claims | **Partial** | `CLAIMS.md` records removed claims; the full README rewrite and launch copy remain. |
+| Correct competitor and dependency claims | **Done** | `CLAIMS.md` records removed claims; README launch table, release-vs-branch banner, and 0.2.1 post are in place. Full claim coverage remains a separate Truth-gate item. |
 | `CLAIMS.md` with command, output, date, commit, caveat | **Done** | `CLAIMS.md` |
 | Baseline audit | **Done** | `docs/audit/2026-10-20-baseline.md` |
 | Align specification, release notes, npm docs | **Partial** | `docs/SPECIFICATION.md` and `RELEASE_v0.1.0.md` still need a final pass against current counts. |
@@ -204,9 +204,9 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 | Gate | Pass condition | Current |
 |---|---|---|
 | Truth | No false/stale claims; `CLAIMS.md` covers every public claim | **Partial** — README counts are current; full CLAIMS coverage is not |
-| Tests | 6/6 OS × Node green on the release commit; isolation green | **Pass** — local 274 green / 51 files; 6/6 at `3fa2bf9`; current HEAD CI run pending |
+| Tests | 6/6 OS × Node green on the release commit; isolation green | **Pass** - local 274 green / 51 files; 6/6 at `3fa2bf9` and 6/6 at `fe87e22` in run `39529344409` |
 | Package | npm published or explicitly blocked and documented; `npx` works | **Partial** — v0.2.1 GitHub asset attached and release-URL install verified; npm still blocked |
-| Footprint | Default install under 20 MB; install under 10 s | **Pass (0.3.0 branch)** - 16,750,800-16,751,110 bytes, 1.842-1.874 s warm-cache; v0.2.1 is 16,493,075 bytes, 1.93 s |
+| Footprint | Default install under 20 MB; install under 10 s | **Pass (0.3.0 branch)** - local 16,750,800-16,751,110 bytes, 1.842-1.874 s; canonical CI `1,409 ms`; v0.2.1 is 16,493,075 bytes, 1.93 s |
 | Benchmark | 240+ cases; held-out; raw JSON committed | **Done** |
 | Retrieval | Hit@1 ≥90%; Hit@5 ≥98%; external baseline +5pp Hit@5; tokens ≤0.5× | **Partial** — synthetic targets pass; LongMemEval +10.4pp / +11.0pp, LoCoMo +4.4pp / +2.3pp; LoCoMo misses |
 | Integrity | 0 lost/0 duplicates in 10k crash test; replay exact | **Done (process crash)** — 10/10 runs, 0 lost, 0 duplicates; replay exact; power loss not tested |
@@ -232,7 +232,7 @@ Do not publish current HEAD as `0.2.0` or `0.2.1`: the frozen v0.2.1 tag is `3fa
 4. **P1:** add OpenCode/Gemini/Copilot hook parity, local import, and conflict-aware recall. **Done.**
 5. **P1:** add the dashboard timeline/diff view. **Done.** Observe a live Memory CI PR comment. **Done.**
 6. **P2:** add public benchmark harnesses and a pinned external baseline. Both **Done**; LoCoMo retrieval target remains Partial.
-7. **P2:** finish README, migration, security, scorecard, changelog, and launch evidence. Migration, security, and scorecard **Done**; README launch rewrite **Next**.
+7. **P2:** finish README, migration, security, scorecard, changelog, and launch evidence. Migration, security, scorecard, README launch rewrite, and launch post **Done**; full claim tracing remains **Partial**.
 
 Estimated remaining effort: **6–10 focused days**, not one session. The `0.2.1` GitHub release is attached and verified; npm publication remains blocked. The full prompt cannot be completed and evidenced before 2026-10-22 without skipping gates.
 
