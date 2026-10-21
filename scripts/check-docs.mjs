@@ -78,6 +78,34 @@ if (badge && ledger && badge[1] !== ledger[1]) {
   fail(`README badge says ${badge[1]} tests, CLAIMS.md says ${ledger[1]}`);
 }
 
+// The README tool catalog must match the server registrations, not just the count.
+const toolSectionStart = readme.indexOf('### 41 MCP Tools');
+const toolSectionEnd = readme.indexOf('### 2 MCP Prompt Templates');
+if (toolSectionStart < 0 || toolSectionEnd < 0 || toolSectionEnd < toolSectionStart) {
+  fail('README.md is missing the MCP tool or prompt sections');
+} else {
+  const section = readme.slice(toolSectionStart, toolSectionEnd);
+  const readmeTools = [...section.matchAll(/^\d+\. `(fastr_[a-z_]+)`/gm)].map((match) => match[1]);
+  const serverSource = read('src/mcp/server.ts');
+  const serverTools = [...serverSource.matchAll(/registerTool\(\s*['"](fastr_[a-z_]+)['"]/g)].map((match) => match[1]);
+  const readmeToolSet = new Set(readmeTools);
+  const serverToolSet = new Set(serverTools);
+
+  if (readmeToolSet.size !== 41) fail(`README.md lists ${readmeToolSet.size} tools, expected 41`);
+  if (serverToolSet.size !== 41) fail(`src/mcp/server.ts registers ${serverToolSet.size} tools, expected 41`);
+  for (const name of readmeToolSet) {
+    if (!serverToolSet.has(name)) fail(`README.md lists ${name}, but the server does not register it`);
+  }
+  for (const name of serverToolSet) {
+    if (!readmeToolSet.has(name)) fail(`src/mcp/server.ts registers ${name}, but README.md does not list it`);
+  }
+
+  const promptCount = (serverSource.match(/registerPrompt\(/g) || []).length;
+  const resourceCount = (serverSource.match(/registerResource\(/g) || []).length;
+  if (promptCount !== 2) fail(`src/mcp/server.ts registers ${promptCount} prompts, expected 2`);
+  if (resourceCount !== 5) fail(`src/mcp/server.ts registers ${resourceCount} resources, expected 5`);
+}
+
 const publicDocs = [
   'README.md',
   'CLAIMS.md',
@@ -113,6 +141,54 @@ for (const rel of publicDocs) {
   for (const match of text.matchAll(/bench\/results\/[A-Za-z0-9._-]+\.json/g)) {
     if (!fs.existsSync(path.join(ROOT, match[0]))) {
       fail(`${rel} references missing artifact ${match[0]}`);
+    }
+  }
+}
+
+// Every README H2 section must have a row in the CLAIMS.md trace block, and every
+// referenced claim ID must exist. Headings inside fenced code blocks are ignored.
+const traceStartMarker = '<!-- README_TRACE_START -->';
+const traceEndMarker = '<!-- README_TRACE_END -->';
+const traceStart = claims.indexOf(traceStartMarker);
+const traceEnd = claims.indexOf(traceEndMarker);
+if (traceStart < 0 || traceEnd < 0 || traceEnd < traceStart) {
+  fail('CLAIMS.md is missing the README claim trace block');
+} else {
+  const normalizeHeading = (value) => value.replace(/^[^\p{L}\p{N}]+/u, '').trim();
+  const traceBlock = claims.slice(traceStart + traceStartMarker.length, traceEnd);
+  const traceRows = traceBlock.split(/\r?\n/).filter((line) => line.trim().startsWith('|'));
+  const trace = new Map();
+  for (const row of traceRows.slice(2)) {
+    const cells = row.split('|').map((cell) => cell.trim());
+    if (cells.length < 3) continue;
+    const heading = normalizeHeading(cells[1].replace(/`/g, ''));
+    const ids = cells[2].match(/[A-J]\d+[a-z]?/g) || [];
+    if (heading) trace.set(heading, ids);
+  }
+
+  const headings = [];
+  let inFence = false;
+  for (const line of readme.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('```')) {
+      inFence = !inFence;
+      continue;
+    }
+    if (!inFence && line.startsWith('## ')) headings.push(normalizeHeading(line.slice(3)));
+  }
+
+  for (const heading of headings) {
+    if (!trace.has(heading)) fail(`README heading is not traced in CLAIMS.md: ${heading}`);
+    else if (trace.get(heading).length === 0) fail(`README heading has no claim IDs in CLAIMS.md: ${heading}`);
+  }
+  for (const heading of trace.keys()) {
+    if (!headings.includes(heading)) fail(`CLAIMS.md trace row does not match a README heading: ${heading}`);
+  }
+
+  const claimIds = new Set([...claims.matchAll(/^\| ([A-J]\d+[a-z]?) \|/gm)].map((match) => match[1]));
+  for (const [heading, ids] of trace) {
+    for (const id of ids) {
+      if (!claimIds.has(id)) fail(`CLAIMS.md trace for "${heading}" references missing claim ${id}`);
     }
   }
 }

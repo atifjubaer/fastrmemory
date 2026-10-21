@@ -1,11 +1,11 @@
 # FastrMemory Technical Specification
 
-> **Status (2026-10-21): historical design reference, partially stale.** Schema details below describe the v0.1.0 design. The current full profile registers **41 tools, 2 prompts, and 5 resources** (3 static resources plus the `fastr://memory/{id}` and `fastr://memory/{id}/envelope` templates); the optional core profile exposes 12 tools. Verify counts against `src/mcp/server.ts` before citing them.
+> **Status (2026-10-21): historical design reference, partially stale.** The schema tables below describe the v0.1.0 design. The current `0.3.0` branch registers **41 tools, 2 prompts, and 5 resources** (3 static resources plus the `fastr://memory/{id}` and `fastr://memory/{id}/envelope` templates), exposes **12 tools** in the optional core profile, and ships **10 Agent Skills**. The current suite is **274 tests across 51 files**. Newer tables for branches, merges, conflicts, actions, slots, snapshots, entities, graph edges, predictions, and vision assets live in `src/db/schema.ts` and are covered by the tests. Verify counts with `npm run check:docs` before citing them.
 >
 > **Package**: `@atifjubaer/fastrmemory`
-> **Schema Version**: `1.0.0`
+> **Schema reference version**: `1.0.0` (v0.1.0 snapshot; see `src/db/schema.ts` for the live schema)
 > **SDK**: `@modelcontextprotocol/server` (MCP v2) + `zod` v4
-> **Database Engine**: Node.js 22+ built-in `node:sqlite` (`DatabaseSync`)
+> **Database Engine**: Node.js 22.16+ built-in `node:sqlite` (`DatabaseSync`)
 
 ---
 

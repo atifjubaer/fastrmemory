@@ -13,7 +13,7 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-architecture)
 
-> **Status (2026-10-21):** The latest GitHub release is **v0.2.1**; npm publication remains blocked. At `2026-10-21 01:51 UTC`, `npm whoami` returned `E401` and `npm view @atifjubaer/fastrmemory version` returned `E404`. This README tracks the unreleased **0.3.0** branch, so features marked **0.3.0** are not in the v0.2.1 asset. If `npm view` later returns `0.2.1`, install from npm; otherwise use the **v0.2.1 GitHub Release tarball** or the GitHub source below. The exact release surface is in [CHANGELOG.md](CHANGELOG.md); the release post is [docs/blog/2026-10-21-fastrmemory-0.2.1.md](docs/blog/2026-10-21-fastrmemory-0.2.1.md). The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval. Public LongMemEval, LoCoMo, and self-repository retrieval-only results plus pinned external baselines are in [BENCHMARKS.md](BENCHMARKS.md); no QA-leaderboard parity is claimed. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md).
+> **Status (2026-10-21):** The latest GitHub release is **v0.2.1**; npm publication remains blocked. At `2026-10-21 01:51 UTC`, `npm whoami` returned `E401` and `npm view @atifjubaer/fastrmemory version` returned `E404`. This README tracks the unreleased **0.3.0** branch, so features marked **0.3.0** are not in the v0.2.1 asset. If `npm view` later returns `0.2.1`, install from npm; otherwise use the **v0.2.1 GitHub Release tarball** or the GitHub source below. The exact release surface is in [CHANGELOG.md](CHANGELOG.md); the release post is [docs/blog/2026-10-21-fastrmemory-0.2.1.md](docs/blog/2026-10-21-fastrmemory-0.2.1.md). The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval. Public LongMemEval, LoCoMo, and self-repository retrieval-only results plus pinned external baselines are in [BENCHMARKS.md](BENCHMARKS.md); no QA-leaderboard parity is claimed. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); every README section is mapped to claim IDs in the README claim trace at the end of that ledger. Methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md).
 
 <p align="center">
   <a href="#-overview">Overview</a> &bull;
@@ -99,7 +99,7 @@ Fuses FTS5 BM25 + optional local embeddings + file-graph links. Error traps rece
 
 ## 🤖 Works With MCP- and HTTP-Compatible Agents
 
-FastrMemory exposes one stdio MCP server and optional local HTTP services (dashboard and daemon). **Native hook/config installers are provided for Claude Code and Cursor, with 0.3.0 support for Gemini CLI, GitHub Copilot CLI, and OpenCode V2** (`fastrmemory hook install`); every other client connects through its own MCP configuration or the REST API. Integration depth varies by client - only the native installers are covered by tests in this repository.
+FastrMemory exposes one stdio MCP server and optional local HTTP services (dashboard and daemon). **Native installers wire Claude Code (MCP config plus lifecycle hooks), Cursor (MCP config plus skills), and, on 0.3.0, Gemini CLI, GitHub Copilot CLI, and OpenCode V2** (`fastrmemory hook install`); `fastrmemory setup` also writes MCP configs for Antigravity, Claude Desktop, and Windsurf. Every other client connects through its own MCP configuration or the REST API. Integration depth varies by client - only the native installers are covered by tests in this repository.
 
 Clients commonly used with FastrMemory include Codex CLI, Gemini CLI, OpenCode, GitHub Copilot CLI, Antigravity, Claude Desktop, Cline, Continue, Roo Code, Goose, Zed, Warp, and Aider. Listing a client does **not** imply a tested native integration.
 
@@ -255,7 +255,8 @@ fastrmemory daemon start
 fastrmemory daemon status
 fastrmemory daemon stop
 
-# Auto-wire autonomous hooks and Planetary Skills into Antigravity, Claude Code, Cursor, Gemini CLI, GitHub Copilot CLI, and OpenCode:
+# Auto-wire MCP configs, lifecycle hooks, and Planetary Skills into Claude Code, Cursor,
+# Gemini CLI, GitHub Copilot CLI, and OpenCode; setup also wires Antigravity, Claude Desktop, and Windsurf:
 fastrmemory hook install
 fastrmemory setup
 
