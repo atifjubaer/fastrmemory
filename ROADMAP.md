@@ -189,9 +189,9 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 |---|---|---|
 | README rewritten around measured claims | **Partial** | Truth reset is done: counts, benchmark table, and registry status now match current evidence. Full launch rewrite remains. |
 | `BENCHMARKS.md` and `CLAIMS.md` | **Done** | Both present and checked. |
-| `MIGRATION.md` | **Missing** | Not present. |
-| `SECURITY.md` | **Missing** | Not present. |
-| `SCORECARD.md` | **Missing** | Not present. |
+| `MIGRATION.md` | **Done** | Upgrade and rollback paths for 0.1.x → 0.2.x → 0.3.0; physical and logical backup steps. |
+| `SECURITY.md` | **Done** | Threat model, local data boundaries, secret handling, loopback dashboard controls, and private reporting path. |
+| `SCORECARD.md` | **Done** | Nine gates scored from evidence; provisional `7.8 / 10`, below the `9.2` target. |
 | `CHANGELOG.md` | **Done** | `CHANGELOG.md` covers 0.1.0 through v0.2.1. |
 | Launch post with one command per number | **Partial** | Blog post exists; README/npm launch path is not complete. |
 
@@ -209,11 +209,11 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 | Retrieval | Hit@1 ≥90%; Hit@5 ≥98%; external baseline +5pp Hit@5; tokens ≤0.5× | **Partial** — synthetic targets pass; LongMemEval +10.4pp / +11.0pp, LoCoMo +4.4pp / +2.3pp; LoCoMo misses |
 | Integrity | 0 lost/0 duplicates in 10k crash test; replay exact | **Done (process crash)** — 10/10 runs, 0 lost, 0 duplicates; replay exact; power loss not tested |
 | Moat | Replay + Memory CI demo works end to end | **Done** — replay CLI/UI and the same-repository Memory CI comment lifecycle are verified |
-| Score | ≥9.2 / 10 | **Not computed** |
+| Score | ≥9.2 / 10 | **Not met** — provisional `7.8 / 10`; see `SCORECARD.md` |
 
 ## Immediate release path (npm)
 
-1. **Done:** choose `0.2.1` from current HEAD, because current HEAD includes the corrected MCP server name and the 41-tool surface.
+1. **Done:** choose `0.2.1` from release commit `3fa2bf9`, which includes the corrected MCP server name and the 41-tool surface.
 2. **Done locally:** version, README, `CLAIMS.md`, `CHANGELOG.md`, and skills metadata updated; core rebuilt and tarball packed.
 3. **Done:** `npm run check:ci` green; tarball is 591,204 bytes with SHA-256 `78F1535E87A7148272824C0B0D31F21D4AD385D9EEAA2EF8A40D41DCD0ACA63B`.
 4. **Done:** pushed `3fa2bf9`; CI run `39495621243` is 6/6 green; GitHub release `v0.2.1` and its asset are attached.
@@ -230,7 +230,7 @@ Do not publish current HEAD as `0.2.0` or `0.2.1`: the frozen v0.2.1 tag is `3fa
 4. **P1:** add OpenCode/Gemini/Copilot hook parity, local import, and conflict-aware recall. **Done.**
 5. **P1:** add the dashboard timeline/diff view. **Done.** Observe a live Memory CI PR comment. **Done.**
 6. **P2:** add public benchmark harnesses and a pinned external baseline. Both **Done**; LoCoMo retrieval target remains Partial.
-7. **P2:** finish README, migration, security, scorecard, changelog, and launch evidence. **Next.**
+7. **P2:** finish README, migration, security, scorecard, changelog, and launch evidence. Migration, security, and scorecard **Done**; README launch rewrite **Next**.
 
 Estimated remaining effort: **6–10 focused days**, not one session. The `0.2.1` GitHub release is attached and verified; npm publication remains blocked. The full prompt cannot be completed and evidenced before 2026-10-22 without skipping gates.
 

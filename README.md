@@ -25,6 +25,9 @@
   <a href="#-mcp-server-tools--resources">MCP Tools</a> &bull;
   <a href="#-architecture">Architecture</a> &bull;
   <a href="ROADMAP.md">Roadmap</a> &bull;
+  <a href="MIGRATION.md">Migration</a> &bull;
+  <a href="SECURITY.md">Security</a> &bull;
+  <a href="SCORECARD.md">Scorecard</a> &bull;
   <a href="#-contributing">Contributing</a>
 </p>
 
