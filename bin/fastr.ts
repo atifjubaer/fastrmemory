@@ -25,6 +25,7 @@ import { tagVisionAsset, searchVisionAssets } from '../src/vision/assets.js';
 import { runTrapGuardian } from '../src/ci/guardian.js';
 import { diffSnapshots, formatDiffMarkdown, replayAt } from '../src/replay/snapshot.js';
 import { exportSnapshotJsonl, importSnapshotFile, snapshotFromJsonl } from '../src/replay/jsonl.js';
+import { createBackup, defaultBackupPath, restoreBackup, verifyBackup } from '../src/replay/backup.js';
 import { createBranch, listBranches, mergeBranch, formatBranchMergeMarkdown } from '../src/branch/manager.js';
 import { importMarkdownFile } from '../src/import/local.js';
 import type { LocalImportKind } from '../src/import/local.js';
@@ -366,6 +367,74 @@ program
       }
       console.log(`${result.dryRun ? 'Would import' : 'Imported'} ${result.imported} of ${result.total} sections from ${target}`);
       console.log(`Skipped duplicates: ${result.skipped}${result.dryRun ? ' (dry run)' : ''}`);
+    } catch (err: any) {
+      console.error(`Error: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+// 7b. Backup command with sidecar provenance manifest and verified restore
+program
+  .command('backup [file]')
+  .description('Create, verify, or restore a portable memory backup with a provenance manifest')
+  .option('--at <iso>', 'Snapshot timestamp (defaults to now)')
+  .option('-f, --force', 'Overwrite an existing backup and manifest', false)
+  .option('--json', 'Print machine-readable output', false)
+  .option('--verify <file>', 'Verify a backup file and its sidecar manifest')
+  .option('--restore <file>', 'Verify and restore a backup into the current database')
+  .option('--dry-run', 'Report restore counts without writing', false)
+  .action((file: string | undefined, opts: any) => {
+    if (opts.verify && opts.restore) {
+      console.error('Error: use either --verify or --restore, not both.');
+      process.exit(1);
+    }
+    try {
+      if (opts.verify) {
+        const result = verifyBackup(path.resolve(opts.verify));
+        if (opts.json) {
+          console.log(JSON.stringify(result.manifest, null, 2));
+        } else {
+          console.log(`Verified backup: ${result.backupPath}`);
+          console.log(`Manifest:        ${result.manifestPath}`);
+          console.log(`Project:         ${result.manifest.projectId}`);
+          console.log(`Records:         ${result.manifest.backup.records}`);
+          console.log(`Content hash:    ${result.header.contentHash}`);
+        }
+        return;
+      }
+
+      const ctx = createFastrServerContext();
+      if (opts.restore) {
+        const result = restoreBackup(ctx.db, path.resolve(opts.restore), { dryRun: opts.dryRun });
+        if (!result.dryRun) {
+          syncAllModulePages(ctx.db, ctx.config.projectRoot, ctx.config.projectId);
+        }
+        if (opts.json) {
+          console.log(JSON.stringify(result, null, 2));
+        } else {
+          console.log(`${result.dryRun ? 'Verified' : 'Restored'} ${result.backupPath}`);
+          console.log(`Memories: ${result.memories} | Events: ${result.events} | File links: ${result.fileLinks} | Conflicts: ${result.conflicts} | Skipped: ${result.skipped}`);
+          console.log(`Content hash: ${result.contentHash}`);
+        }
+        return;
+      }
+
+      const at = opts.at ? new Date(opts.at).toISOString() : new Date().toISOString();
+      const target = file ? path.resolve(file) : defaultBackupPath(ctx.config.projectRoot, at);
+      const result = createBackup(ctx.db, ctx.config.projectId, target, {
+        at,
+        force: Boolean(opts.force),
+        sourceDbPath: ctx.config.dbPath
+      });
+      if (opts.json) {
+        console.log(JSON.stringify(result.manifest, null, 2));
+      } else {
+        console.log(`Backup written: ${result.backupPath}`);
+        console.log(`Manifest:       ${result.manifestPath}`);
+        console.log(`Records:        ${result.manifest.backup.records} (${result.manifest.backup.memories} memories, ${result.manifest.backup.events} events, ${result.manifest.backup.fileLinks} links, ${result.manifest.backup.conflicts} conflicts)`);
+        console.log(`SHA-256:        ${result.manifest.backup.sha256}`);
+        console.log(`Content hash:   ${result.manifest.backup.contentHash}`);
+      }
     } catch (err: any) {
       console.error(`Error: ${err.message}`);
       process.exit(1);

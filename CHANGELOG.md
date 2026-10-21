@@ -21,6 +21,10 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 - Per-ID confidence tiers: active memories report `high`, `medium`, or `low` from `reward_score`; inactive rows report `dormant` or `superseded`. `fastr feedback <memory-id> <good|bad>` exposes the same update from the CLI.
 - Three consecutive bad outcomes automatically move a memory to `dormant`; good outcomes reset the streak. Feedback events are stored in the append-only `memory_feedback` audit table.
 - `fastr hygiene` reports orphaned file link, conflict, and feedback rows; duplicate active memories by normalized title or exact content; and stale unpinned active memories (default 90 days). `npm run check:hygiene` seeds a deterministic fixture inside `check:ci` and asserts the raw counts.
+- `fastr backup [file]` writes a portable JSONL snapshot plus a sidecar provenance manifest; `--verify` checks the file SHA-256 and content hash, and `--restore` verifies before importing with an optional `--dry-run`. The manifest records scope, record counts, tool/environment, source integrity, and provenance-hash count.
+- `npm run check:query-plans` records ten `EXPLAIN QUERY PLAN` shapes against a 10k-memory fixture and fails on full table scans of large tables. Raw evidence is in `bench/results/query-plans.json`; methodology is in `docs/QUERY_PLANS.md`.
+- `npm run check:recall-latency` seeds 10k memories and fails when default recall p95 reaches 50 ms. Raw evidence is in `bench/results/recall-latency-10k.json`.
+- `npm run check:install-size` packs the current tree, installs it into an empty temporary project with scripts disabled, and fails above 20 MB installed or 10 seconds with a warm npm cache.
 - Dashboard Replay & Diff workspace at `/replay`: pick two timestamps, inspect both replay snapshots, and review added, superseded, changed, still-active, and open-conflict sections from the new `/api/replay` endpoint.
 - `docs/MEMORY_CI.md` documents the PR workflow inputs, outputs, permissions, fork behavior, sample comment, local reproduction, and troubleshooting.
 - Memory CI live evidence: same-repository draft PR #12 produced one marker comment, kept it through a re-run, and updated the same comment in place when a new head commit changed the diff from `Added (1)` to `Added (2)`.
@@ -31,6 +35,7 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 ### Changed
 
 - Dormancy now requires three consecutive bad outcomes instead of a low reward score alone.
+- Added indexes for project/time raw-event replay and project/embedded candidate scans; the query-plan gate verifies they are selected.
 
 ### Fixed
 

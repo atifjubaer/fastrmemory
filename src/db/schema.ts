@@ -160,6 +160,7 @@ CREATE TABLE IF NOT EXISTS raw_events (
 );
 CREATE INDEX IF NOT EXISTS idx_raw_events_session ON raw_events(project_id, session_id);
 CREATE INDEX IF NOT EXISTS idx_raw_events_hash ON raw_events(content_hash);
+CREATE INDEX IF NOT EXISTS idx_raw_events_project_created ON raw_events(project_id, created_at);
 
 -- 2. Structured memories with Bi-Temporal Validity Windows & Outcome Multipliers
 CREATE TABLE IF NOT EXISTS memories (
@@ -186,6 +187,7 @@ CREATE TABLE IF NOT EXISTS memories (
   provenance_hash TEXT DEFAULT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_memories_active ON memories(project_id, module, valid_to, status);
+CREATE INDEX IF NOT EXISTS idx_memories_embedded ON memories(project_id, embedded);
 
 -- 2b. Per-ID Feedback Audit (confidence tiers and 3-consecutive-bad dormancy)
 CREATE TABLE IF NOT EXISTS memory_feedback (

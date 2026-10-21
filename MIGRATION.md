@@ -24,6 +24,13 @@ fastr status
 fastr snapshot export ("fastr-backup-" + (Get-Date -Format "yyyyMMdd-HHmmss") + ".jsonl")
 ```
 
+On a `0.3.0` build, prefer the backup command. It writes the same portable JSONL plus a sidecar manifest with the file SHA-256, content hash, record counts, tool version, environment, and source integrity:
+
+```bash
+fastr backup fastr-backup.jsonl
+fastr backup --verify fastr-backup.jsonl
+```
+
 The JSONL export is a portable, content-hashed logical backup. It is safe to commit only if your memory content is safe to commit; it is not encrypted. For a physical backup, stop all processes and copy these three files together:
 
 - `.fastr/fastr.db`
@@ -61,7 +68,8 @@ After installing a `0.3.0` build:
 ```bash
 fastr status
 fastr hygiene
-fastr snapshot export fastr-post-upgrade.jsonl
+fastr backup fastr-post-upgrade.jsonl
+fastr backup --verify fastr-post-upgrade.jsonl
 ```
 
 What changes:
@@ -72,6 +80,7 @@ What changes:
 - Immutable branches: `fastr branch create`, `fastr branch list`, `fastr merge`.
 - Per-ID confidence tiers and append-only feedback: `fastr feedback <memory-id> <good|bad>`.
 - `fastr hygiene` reports orphaned, duplicate, and stale rows.
+- `fastr backup [file]` writes a portable snapshot plus a provenance manifest; `--verify` checks the manifest and file hash, and `--restore` verifies before importing.
 - The dashboard adds `/replay` with snapshot and diff views.
 - The MCP resource surface grows to 5 with `fastr://memory/{id}/envelope`.
 
@@ -82,11 +91,12 @@ Schema additions are automatic. No manual SQL is required. Branch pointers and m
 ```bash
 fastr status
 fastr hygiene
-fastr snapshot export fastr-verify.jsonl
-fastr snapshot import fastr-verify.jsonl --dry-run
+fastr backup fastr-verify.jsonl
+fastr backup --verify fastr-verify.jsonl
+fastr backup --restore fastr-verify.jsonl --dry-run
 ```
 
-Expected result: status reports database health, hygiene reports raw counts without deleting anything, the export reports a content hash, and the dry-run import verifies the hash without writing.
+Expected result: status reports database health, hygiene reports raw counts without deleting anything, the backup writes a manifest with a file SHA-256 and content hash, verification checks both, and the dry-run restore reports counts without writing.
 
 For a full round-trip on a scratch project, import the backup into a new project and compare counts before touching the original database.
 
@@ -118,6 +128,10 @@ npm run build
 3. Restore the pre-upgrade database files, or create a fresh database and import the JSONL backup:
 
 ```bash
+# 0.3.0: verify the manifest and restore
+fastr backup --restore fastr-backup.jsonl
+
+# v0.2.1 and earlier: import the JSONL directly
 fastr snapshot import fastr-backup-YYYYMMDD-HHMMSS.jsonl
 ```
 
@@ -135,6 +149,7 @@ Do not assume that an older binary can read a database written by a newer binary
 ## 7. Known limits
 
 - There is no automatic database downgrade command.
-- `fastr snapshot export` is logical and does not include the SQLite WAL file.
+- `fastr backup` and `fastr snapshot export` are logical and do not include the SQLite WAL file. The backup scope is memories, raw events, file links, and conflicts; it does not include feedback history, snapshots, branches, action DAG rows, or vision assets. Use the physical `.fastr/fastr.db*` copy for a complete database backup.
+- `fastr backup --restore` verifies the sidecar manifest and file hash before writing; the import runs in one SQLite transaction, but stop other writers first.
 - npm installation remains blocked by the registry account suspension; use the GitHub Release tarball.
 - `0.3.0` is unreleased. Do not describe it as a published upgrade.

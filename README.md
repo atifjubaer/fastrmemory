@@ -9,7 +9,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.16.0-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Protocol](https://img.shields.io/badge/Protocol-MCP%20v2-7C3AED?style=flat-square)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/Tests-270%20Passed-brightgreen?style=flat-square)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-274%20Passed-brightgreen?style=flat-square)](tests/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-architecture)
 
@@ -41,7 +41,7 @@
 |---|---|---|
 | Install path | GitHub release `v0.2.1`; npm is `E404` | `npm view @atifjubaer/fastrmemory version`; `npx --yes github:atifjubaer/fastrmemory --version` -> `0.2.1` |
 | Synthetic retrieval | Holdout `95.8%` Hit@1, `100%` Hit@5, MRR `0.969` | `npx tsx scripts/eval-bench.ts --split all --embeddings minilm --out bench/results/minilm.json` |
-| Test suite | `270` tests across `50` files on the `0.3.0` branch; v0.2.1 is `235` / `43` | `npm test` |
+| Test suite | `274` tests across `51` files on the `0.3.0` branch; v0.2.1 is `235` / `43` | `npm test` |
 | Crash safety | 10/10 runs, 0 lost, 0 duplicate ids/titles | `npm run test:crash`; `bench/results/crash-test.json` |
 | Public retrieval (0.3.0 branch) | LongMemEval `+10.4pp` / `+11.0pp` Hit@5; LoCoMo `+4.4pp` / `+2.3pp` (target missed) | [docs/EXTERNAL_BASELINE.md](docs/EXTERNAL_BASELINE.md) |
 | Release score | Provisional `7.8 / 10`; `9.2` target not met | [SCORECARD.md](SCORECARD.md) |
@@ -239,6 +239,11 @@ fastrmemory snapshot create "pre-refactor-checkpoint"
 fastrmemory snapshot list
 fastrmemory snapshot rollback "pre-refactor-checkpoint"
 
+# 0.3.0: Portable backup with a sidecar provenance manifest:
+fastrmemory backup backups/pre-upgrade.jsonl
+fastrmemory backup --verify backups/pre-upgrade.jsonl
+fastrmemory backup --restore backups/pre-upgrade.jsonl --dry-run
+
 # Immutable memory branch and one-way merge with a conflict report:
 fastrmemory branch create feature/auth
 fastrmemory branch list
@@ -259,6 +264,8 @@ fastrmemory learn -n 30 --days 90
 ```
 
 Branches are immutable snapshot pointers. `merge` is one-way into the current active set: branch-only memories are added, target-only memories are preserved, and same-identity changes are reported as conflicts. Conflicts block writes by default; `--force` applies non-conflicting additions, and `--force --strategy branch` supersedes the target while keeping old rows in history. Branch checkout or a mutable branch working tree is not implemented.
+
+`backup` writes the portable JSONL snapshot plus `<file>.manifest.json` with the file SHA-256, content hash, record counts, tool version, environment, and source integrity. `--restore` verifies both hashes before importing; `--dry-run` reports counts without writing. The backup scope is memories, raw events, file links, and conflicts, not a physical SQLite/WAL copy. See [MIGRATION.md](MIGRATION.md) for the full backup and rollback path.
 
 ### 6. Token Compression, Database Doctor & Vision Search
 
@@ -545,7 +552,7 @@ Run the comprehensive unit test suite:
 npm test
 ```
 
-All **270 tests pass** across **50 test files** on the 0.3.0 branch (the v0.2.1 release has **235 tests / 43 files**) covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, branch merge conflict reports, replay/diff, memory envelopes, confidence tiers and 3-bad dormancy, memory hygiene checks, Memory CI, conflict-aware recall, local rule import, OpenCode V2, Gemini CLI, and Copilot CLI wiring, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, UI loopback security boundaries, and atomic installer configuration safety.
+All **274 tests pass** across **51 test files** on the 0.3.0 branch (the v0.2.1 release has **235 tests / 43 files**) covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, branch merge conflict reports, replay/diff, memory envelopes, confidence tiers and 3-bad dormancy, memory hygiene checks, Memory CI, conflict-aware recall, portable backup manifests and verified restore, local rule import, OpenCode V2, Gemini CLI, and Copilot CLI wiring, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, UI loopback security boundaries, and atomic installer configuration safety.
 
 **Crash-safety evidence:** `npm run test:crash` kills the writer at randomized points across 10 runs, then reopens the WAL database. The committed report at [`bench/results/crash-test.json`](bench/results/crash-test.json) records **10,718 acknowledged writes**, **10,727 committed rows**, **0 lost**, **0 duplicate ids/titles**, and `PRAGMA integrity_check = ok`; methodology is in [`docs/audit/2026-10-21-crash-test.md`](docs/audit/2026-10-21-crash-test.md). `npm run check:crash` validates the report during `check:ci`. This is a process-crash test (`taskkill /F`), not a power-loss test; SQLite runs with `synchronous=NORMAL` in WAL mode.
 
@@ -661,7 +668,7 @@ Special thanks to **[@the-arizul](https://github.com/the-arizul)** for architect
    cd fastrmemory
    ```
 
-2. **Install Dependencies & Verify Test Suite (270 Tests Passing)**:
+2. **Install Dependencies & Verify Test Suite (274 Tests Passing)**:
    ```bash
    npm install
    npm test
@@ -694,7 +701,7 @@ Special thanks to **[@the-arizul](https://github.com/the-arizul)** for architect
 Before submitting your PR, verify:
 - [ ] **Strict TypeScript**: `npm run build:all` passes without type errors.
 - [ ] **Zero External Daemons**: Engine runs in-process via Node.js WAL SQLite.
-- [ ] **100% Test Green**: `npm test` passes all 270 unit tests across 50 files.
+- [ ] **100% Test Green**: `npm test` passes all 274 unit tests across 51 files.
 - [ ] **DCO Sign-off**: All commits signed off using `git commit -s` ([Developer Certificate of Origin](https://developercertificate.org/)).
 - [ ] **Pre-Merge Trap Guardian**: Run `fastrmemory guard --strict` to verify no active error traps are violated.
 

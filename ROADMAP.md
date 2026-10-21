@@ -81,11 +81,13 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 
 | ID | Task | Acceptance gate | Status |
 |---|---|---|---|
-| 5.1 | Query-plan evidence | Top-10 query plans recorded with `EXPLAIN QUERY PLAN` | Partial |
-| 5.2 | Backup command and gate | `fastr backup` writes a restorable snapshot with provenance | Missing |
-| 5.3 | Latency and install-size CI gates | CI fails above the documented install-size and recall-latency ceilings | Partial |
+| 5.1 | Query-plan evidence | Top-10 query plans recorded with `EXPLAIN QUERY PLAN` | **Done** - `scripts/check-query-plans.ts`, `docs/QUERY_PLANS.md`, raw JSON at `bench/results/query-plans.json`; 10/10 pass with no large-table scans |
+| 5.2 | Backup command and gate | `fastr backup` writes a restorable snapshot with provenance | **Done** - `src/replay/backup.ts`, CLI create/verify/restore, sidecar manifest, 4 tests; scope is memories/events/links/conflicts |
+| 5.3 | Latency and install-size CI gates | CI fails above the documented install-size and recall-latency ceilings | **Done** - 10k recall p95 15.54 ms under 50 ms; installed 16,750,752 bytes and 1,885 ms under 20 MB/10 s; both run in `check:ci` |
 | 5.4 | Apple Silicon CI | Matrix adds an Apple Silicon runner and passes | Missing |
 | 5.5 | Legacy row cleanup | 60 pre-existing rows removed with explicit approval and before/after counts | Partial |
+
+**Gate:** query plans, backup, and size/latency gates are green; Apple Silicon coverage and the approved legacy cleanup remain. Current result: **Partial**.
 
 ### Phase 0 and release gate
 
@@ -116,7 +118,7 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 |---|---|---|
 | Hermetic tests and `FASTR_HOME` isolation | **Done** | `tests/isolation.test.ts`; `tests/setup.ts` |
 | Clean the 60 legacy test rows | **Partial** | `scripts/clean-test-junk.mjs` exists; `--apply --yes` has not been run and needs explicit approval. |
-| Package surface, build split, tarball gate | **Done** | `scripts/check-package.mjs`; v0.2.1 asset: 591,204 bytes / 220 files (577.3 KiB). Current `0.3.0` `check:ci`: 264 files, 625.4 kB packed, 2.4 MB unpacked. |
+| Package surface, build split, tarball gate | **Done** | `scripts/check-package.mjs`; v0.2.1 asset: 591,204 bytes / 220 files (577.3 KiB). Current `0.3.0` `check:ci`: 268 files, 630.9 kB packed, 2.5 MB unpacked. |
 | Prepare v0.2.1 release candidate | **Done** | Version, README, `CLAIMS.md`, `CHANGELOG.md`, skills metadata; `npm run check:ci`; tarball SHA-256 recorded |
 | Publish v0.2.1 to npm | **Blocked** | npm account suspension; resume protocol documented |
 | Attach v0.2.1 GitHub Release asset | **Done** | Release `v0.2.1` at `https://github.com/atifjubaer/fastrmemory/releases/tag/v0.2.1`; downloaded asset is 591,204 bytes with matching SHA-256; release-URL install verified. |
@@ -202,9 +204,9 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 | Gate | Pass condition | Current |
 |---|---|---|
 | Truth | No false/stale claims; `CLAIMS.md` covers every public claim | **Partial** — README counts are current; full CLAIMS coverage is not |
-| Tests | 6/6 OS × Node green on the release commit; isolation green | **Pass** — local 270 green / 50 files; 6/6 at `3fa2bf9`; current HEAD CI run pending |
+| Tests | 6/6 OS × Node green on the release commit; isolation green | **Pass** — local 274 green / 51 files; 6/6 at `3fa2bf9`; current HEAD CI run pending |
 | Package | npm published or explicitly blocked and documented; `npx` works | **Partial** — v0.2.1 GitHub asset attached and release-URL install verified; npm still blocked |
-| Footprint | Default install under 20 MB; install under 10 s | **Pass (v0.2.1)** — 16,493,075 bytes, 1.93 s |
+| Footprint | Default install under 20 MB; install under 10 s | **Pass (0.3.0 branch)** - 16,750,752 bytes, 1.885 s warm-cache; v0.2.1 is 16,493,075 bytes, 1.93 s |
 | Benchmark | 240+ cases; held-out; raw JSON committed | **Done** |
 | Retrieval | Hit@1 ≥90%; Hit@5 ≥98%; external baseline +5pp Hit@5; tokens ≤0.5× | **Partial** — synthetic targets pass; LongMemEval +10.4pp / +11.0pp, LoCoMo +4.4pp / +2.3pp; LoCoMo misses |
 | Integrity | 0 lost/0 duplicates in 10k crash test; replay exact | **Done (process crash)** — 10/10 runs, 0 lost, 0 duplicates; replay exact; power loss not tested |

@@ -63,8 +63,11 @@
     "bench:external": "tsx scripts/eval-external.ts",
     "bench:verify": "node scripts/check-bench.mjs",
     "verify:replay": "tsx scripts/verify-replay.ts",
-    "check:ci": "npm run test && npm run test:isolation && npm run check:skills && npm run check:dist-ui && npm run check:package && npm run verify:replay && npm run check:hygiene && npm run check:docs && npm run check:crash && npm run bench:verify",
-    "start": "node dist/bin/fastr.js"
+    "check:ci": "npm run test && npm run test:isolation && npm run check:skills && npm run check:dist-ui && npm run check:package && npm run check:query-plans && npm run check:recall-latency && npm run check:install-size && npm run verify:replay && npm run check:hygiene && npm run check:docs && npm run check:crash && npm run bench:verify",
+    "start": "node dist/bin/fastr.js",
+    "check:query-plans": "tsx scripts/check-query-plans.ts",
+    "check:recall-latency": "tsx scripts/check-recall-latency.ts",
+    "check:install-size": "node scripts/check-install-size.mjs"
   },
   "keywords": [
     "ai",
