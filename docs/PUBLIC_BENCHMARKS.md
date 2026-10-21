@@ -1,9 +1,10 @@
 # Public Retrieval Benchmarks
 
 **Run date:** 2026-10-21
-**Code commit:** `d708e3a` (harness), retrieval defaults unchanged
-**Raw JSON:** [`bench/results/longmemeval.json`](../bench/results/longmemeval.json), [`bench/results/locomo.json`](../bench/results/locomo.json), [`bench/results/repo-history.json`](../bench/results/repo-history.json)
-**Command:** `npx tsx scripts/eval-public.ts <dataset> --embeddings hash`
+**Code commit:** `d708e3a` (internal harness), retrieval defaults unchanged
+**External baseline commit:** `b220067` (pinned external harness)
+**Raw JSON:** [`bench/results/longmemeval.json`](../bench/results/longmemeval.json), [`bench/results/locomo.json`](../bench/results/locomo.json), [`bench/results/repo-history.json`](../bench/results/repo-history.json), [`bench/results/external-minisearch-longmemeval.json`](../bench/results/external-minisearch-longmemeval.json), [`bench/results/external-mcp-longmemeval.json`](../bench/results/external-mcp-longmemeval.json), [`bench/results/external-minisearch-locomo.json`](../bench/results/external-minisearch-locomo.json), [`bench/results/external-mcp-locomo.json`](../bench/results/external-mcp-locomo.json)
+**Command:** `npx tsx scripts/eval-public.ts <dataset> --embeddings hash`; external baselines use `npx tsx scripts/eval-external.ts <dataset> --engine <minisearch|mcp-memory>`
 
 These harnesses measure **ranked retrieval only**. They do not generate answers, judge answer correctness, or reproduce the official QA scores of either dataset. Do not compare the numbers below with published LongMemEval or LoCoMo QA leaderboards.
 
@@ -90,6 +91,23 @@ The query is the commit subject and the gold set is the files changed by that co
 
 The revision contains 291 tracked files, 280 of which are indexed text files under the extension and size limits. The 114 cases come from 115 commits; 168 changed files were outside the index and are counted as missing gold, not silently dropped.
 
+### Pinned external baselines
+
+Two pinned external engines were run on LongMemEval and LoCoMo: **MiniSearch `7.2.0`**, a generic full-text engine, and the **official MCP reference memory server `2.0.0`**, driven over stdio. The internal row is the default BM25-only configuration.
+
+| Dataset | Engine | Cases | Hit@1 | Hit@5 | Hit@10 | MRR | Tokens | p50 | p95 |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| LongMemEval | FastrMemory BM25-only | 500 | 87.8% | 97.6% | 99.0% | 0.920 | 31,459 | 70.86 ms | 82.68 ms |
+| LongMemEval | MiniSearch 7.2.0 | 500 | 61.8% | 87.2% | 94.0% | 0.727 | 36,816 | 1.85 ms | 4.41 ms |
+| LongMemEval | MCP memory 2.0.0 | 500 | 67.2% | 86.6% | 92.4% | 0.752 | 33,031 | 38.42 ms | 58.02 ms |
+| LoCoMo | FastrMemory BM25-only | 1,981 | 33.0% | 56.0% | 64.9% | 0.428 | 579 | 3.11 ms | 5.59 ms |
+| LoCoMo | MiniSearch 7.2.0 | 1,981 | 31.1% | 51.6% | 59.9% | 0.399 | 549 | 0.67 ms | 1.98 ms |
+| LoCoMo | MCP memory 2.0.0 | 1,981 | 33.1% | 53.7% | 62.0% | 0.419 | 479 | 9.83 ms | 16.67 ms |
+
+FastrMemory clears the `+5pp Hit@5` target on LongMemEval (`+10.4pp` vs MiniSearch, `+11.0pp` vs MCP) but **misses it on LoCoMo** (`+4.4pp` vs MiniSearch, `+2.3pp` vs MCP). On LoCoMo, FastrMemory Hit@1 is 0.1pp below the MCP adapter. The external comparison is not uniform superiority.
+
+The MCP adapter is keyword-coverage ranking over the server's substring search, not a native relevance score. Full adapter rules, pins, install commands, and caveats are in [`docs/EXTERNAL_BASELINE.md`](EXTERNAL_BASELINE.md). The self-repository runner was not repeated against an external engine.
+
 ## Environment
 
 - CPU: AMD Ryzen 7 7700, 8 cores / 16 threads
@@ -107,7 +125,8 @@ The revision contains 291 tracked files, 280 of which are indexed text files und
 4. **LoCoMo turn granularity.** Turns are short and lexically sparse, so absolute scores are lower than session-level retrieval. The official LoCoMo protocol also includes answer generation and adversarial handling.
 5. **Self-repository bias.** The repository runner is demonstrated on FastrMemory's own history. It has not been run on an external project.
 6. **No tuning on these sets.** The public harness uses the existing default retrieval configurations. No weight, threshold, or budget was changed after seeing these results, and the frozen 48-case synthetic holdout was not reused or tuned.
-7. **Provenance.** Raw JSON records the code commit `d708e3a`, dataset revisions, hashes, hardware, and per-case retrieved and gold ids. A rerun on the same commit and files should reproduce the tables.
+7. **Provenance.** Internal raw JSON records the code commit `d708e3a`; external raw JSON records `b220067`. Both record dataset revisions, hashes, hardware, and per-case retrieved and gold ids. A rerun on the same commits and files should reproduce the tables.
+8. **External latency is retrieval-only.** It excludes index build and MCP server startup. The MCP engine uses one fresh process per project, so its real session startup cost is not represented.
 
 ## Reproduction
 

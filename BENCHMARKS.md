@@ -1,16 +1,18 @@
 # Benchmark Methodology
 
 **Last run:** 2026-10-21 local; raw JSON generated 2026-10-20T18:25Z
+**External baseline run:** 2026-10-21 local; raw JSON generated 2026-10-21T00:45Z–00:47Z
 **Benchmark commit:** `562f461` (module-scope backfill fix)
+**External baseline commit:** `b220067` (pinned external harness)
 **Command:** `npx tsx scripts/eval-bench.ts --split all --embeddings minilm --out bench/results/minilm.json`
-**Raw JSON:** [`bench/results/minilm.json`](bench/results/minilm.json), [`bench/results/hash.json`](bench/results/hash.json)
+**Raw JSON:** [`bench/results/minilm.json`](bench/results/minilm.json), [`bench/results/hash.json`](bench/results/hash.json), [`bench/results/external-minisearch-longmemeval.json`](bench/results/external-minisearch-longmemeval.json), [`bench/results/external-mcp-longmemeval.json`](bench/results/external-mcp-longmemeval.json), [`bench/results/external-minisearch-locomo.json`](bench/results/external-minisearch-locomo.json), [`bench/results/external-mcp-locomo.json`](bench/results/external-mcp-locomo.json)
 **Corpus size:** 240 deterministic synthetic cases (192 train / 48 holdout)
 
 The README table and the numbers below are generated from the current post-fix run at `562f461`. The earlier v0.2.0 snapshot at `1495622` is preserved as [`bench/results/minilm-1495622.json`](bench/results/minilm-1495622.json) for comparison.
 
 ## Public retrieval benchmarks
 
-Three retrieval-only harnesses run outside the synthetic corpus. They measure ranked retrieval, not answer generation, and they were not used to tune the default configuration.
+Three internal retrieval-only harnesses run outside the synthetic corpus. They measure ranked retrieval, not answer generation, and they were not used to tune the default configuration.
 
 | Dataset | Cases | Engine | Hit@1 | Hit@5 | MRR | Raw JSON |
 |---|---:|---|---:|---:|---:|---|
@@ -19,6 +21,17 @@ Three retrieval-only harnesses run outside the synthetic corpus. They measure ra
 | Real repository (self) | 114 | BM25-only | 54.4% | 86.0% | 0.676 | [`bench/results/repo-history.json`](bench/results/repo-history.json) |
 
 The pinned revisions, SHA-256 hashes, per-category results, both engine variants, and caveats are in [`docs/PUBLIC_BENCHMARKS.md`](docs/PUBLIC_BENCHMARKS.md). These numbers are not comparable to published LongMemEval or LoCoMo QA leaderboards because no answers are generated or judged.
+
+### Pinned external baselines
+
+| Dataset | Engine | Cases | Hit@1 | Hit@5 | MRR | Raw JSON |
+|---|---|---:|---:|---:|---:|---|
+| LongMemEval | MiniSearch 7.2.0 | 500 | 61.8% | 87.2% | 0.727 | [`external-minisearch-longmemeval.json`](bench/results/external-minisearch-longmemeval.json) |
+| LongMemEval | MCP memory 2.0.0 | 500 | 67.2% | 86.6% | 0.752 | [`external-mcp-longmemeval.json`](bench/results/external-mcp-longmemeval.json) |
+| LoCoMo | MiniSearch 7.2.0 | 1,981 | 31.1% | 51.6% | 0.399 | [`external-minisearch-locomo.json`](bench/results/external-minisearch-locomo.json) |
+| LoCoMo | MCP memory 2.0.0 | 1,981 | 33.1% | 53.7% | 0.419 | [`external-mcp-locomo.json`](bench/results/external-mcp-locomo.json) |
+
+FastrMemory's BM25-only default clears the `+5pp Hit@5` target on LongMemEval (`+10.4pp` vs MiniSearch, `+11.0pp` vs MCP) but misses it on LoCoMo (`+4.4pp` vs MiniSearch, `+2.3pp` vs MCP). The external engines are retrieval-only; adapter rules, pins, and caveats are in [`docs/EXTERNAL_BASELINE.md`](docs/EXTERNAL_BASELINE.md).
 
 ## Corpus
 
@@ -113,7 +126,7 @@ The graph stream does not improve Hit@1 on this corpus because every file-scoped
 ## Caveats
 
 1. **Synthetic corpus.** These cases are generated for this repository, not SWE-bench, LongMemEval, or LoCoMo. They test defined retrieval behaviors, not general coding-agent competence.
-2. **No external engine is measured.** The static-dump row is a simulation implemented in `src/bench/harness.ts`. It is labeled as a simulation and must never be cited as an external project's result.
+2. **The static dump is simulated; the external baselines are separate.** The static-dump row is a simulation implemented in `src/bench/harness.ts` and must never be cited as an external project's result. The pinned MiniSearch and MCP memory baselines are measured separately in [`docs/EXTERNAL_BASELINE.md`](docs/EXTERNAL_BASELINE.md).
 3. **Small holdout.** Forty-eight holdout cases give a wide Wilson Hit@1 interval (86.0-98.9%). Treat the point estimate as directional, not precise.
 4. **Token counts are estimates** from `estimateTokens()`, not a tokenizer-exact count.
 5. **Latency is in-process.** CLI cold start is measured separately in `docs/audit/2026-10-20-baseline.md`.

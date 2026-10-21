@@ -5,11 +5,12 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 - **Ledger date:** 2026-10-21
 - **Benchmark commit:** `562f461` (raw JSON in `bench/results/minilm.json` and `bench/results/hash.json`)
 - **Public benchmark commit:** `d708e3a` (raw JSON in `bench/results/longmemeval.json`, `bench/results/locomo.json`, and `bench/results/repo-history.json`)
+- **External baseline commit:** `b220067` (raw JSON in `bench/results/external-minisearch-longmemeval.json`, `bench/results/external-mcp-longmemeval.json`, `bench/results/external-minisearch-locomo.json`, and `bench/results/external-mcp-locomo.json`)
 - **Phase 3/4 evidence commit:** `a91ad6d` (replay, JSONL, consolidation, Memory CI)
 - **Packaging/CI inspection:** `3fa2bf9` (v0.2.1 release commit; package and CI rows in this ledger)
 - **Hardware:** AMD Ryzen 7 7700, 15.1 GB RAM, Windows 10 Pro 19045, Node v24.15.0
-- **Scope:** FastrMemory only. No external memory engine is measured in this repository.
-- **Row provenance:** benchmark rows use commit `562f461`; public retrieval rows use `d708e3a`; Phase 3/4 rows use `a91ad6d`; package and CI rows use `3fa2bf9`; `npm view` rows were run on 2026-10-21. The README table is the current `562f461` run; the earlier v0.2.0 snapshot at `1495622` is preserved as `bench/results/minilm-1495622.json` for comparison.
+- **Scope:** FastrMemory plus two pinned external retrieval baselines. No unverified competitor or QA-leaderboard comparison is claimed.
+- **Row provenance:** benchmark rows use commit `562f461`; public retrieval rows use `d708e3a`; external baseline rows use `b220067`; Phase 3/4 rows use `a91ad6d`; package and CI rows use `3fa2bf9`; `npm view` rows were run on 2026-10-21. The README table is the current `562f461` run; the earlier v0.2.0 snapshot at `1495622` is preserved as `bench/results/minilm-1495622.json` for comparison.
 
 ## A. Distribution and package
 
@@ -75,6 +76,8 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 | E11 | LongMemEval session retrieval | BENCHMARKS, docs/PUBLIC_BENCHMARKS | Supported | `npx tsx scripts/eval-public.ts longmemeval --out bench/results/longmemeval.json` | BM25-only 500 cases: Hit@1 87.8%, Hit@5 97.6%, Hit@10 99.0%, MRR 0.920, evidence recall@5 0.926, full recall@5 86.0%; full+hash: 83.6% / 97.6% / 99.0%, MRR 0.893 | Retrieval only, not QA accuracy; `longmemeval_s` revision `2ec2a557...`, SHA-256 `08D8DAD4...`; 23,882 sessions; session-level gold; zero skipped cases; hash vectors duplicate BM25 |
 | E12 | LoCoMo dialogue-turn retrieval | BENCHMARKS, docs/PUBLIC_BENCHMARKS | Supported | `npx tsx scripts/eval-public.ts locomo --out bench/results/locomo.json` | BM25-only 1,981 cases: Hit@1 33.0%, Hit@5 56.0%, Hit@10 64.9%, MRR 0.428, evidence recall@5 0.510, full recall@5 46.9%; full+hash: 32.7% / 55.8% / 64.8%, MRR 0.425 | Retrieval only, not official QA F1; revision `3eb6f2c5...`, SHA-256 `79FA87E9...`; 5 skipped questions and 4 missing evidence ids; turn-level, short-turn retrieval |
 | E13 | Real-repository file retrieval | BENCHMARKS, docs/PUBLIC_BENCHMARKS | Supported | `npx tsx scripts/eval-public.ts repo --revision HEAD --max-cases 200 --out bench/results/repo-history.json` | BM25-only 114 cases: Hit@1 54.4%, Hit@5 86.0%, Hit@10 91.2%, MRR 0.676, evidence recall@5 0.519, full recall@5 32.5%; full+hash: 52.6% / 86.0% / 91.2%, MRR 0.668 | Self-repository at `d708e3a`; 280 indexed files, 114 commit subjects; 168 changed files outside the index; file-level retrieval, not issue resolution or line-level gold |
+| E14 | Pinned external retrieval baselines | docs/EXTERNAL_BASELINE, BENCHMARKS, docs/PUBLIC_BENCHMARKS | Supported | `npx tsx scripts/eval-external.ts longmemeval --engine minisearch`; `--engine mcp-memory`; same for `locomo` | LongMemEval MiniSearch 500 cases: 61.8% / 87.2% / 94.0%, MRR 0.727; MCP memory 67.2% / 86.6% / 92.4%, MRR 0.752. LoCoMo MiniSearch 1,981 cases: 31.1% / 51.6% / 59.9%, MRR 0.399; MCP memory 33.1% / 53.7% / 62.0%, MRR 0.419 | MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0`; both retrieval-only; MCP adapter uses keyword-coverage ranking over substring search; latency excludes index build and server startup; raw JSON at `b220067` |
+| E15 | FastrMemory `+5pp Hit@5` over a pinned external baseline | ROADMAP, docs/EXTERNAL_BASELINE | **Partial** | Compare E11/E12 internal BM25-only rows with E14 external rows | LongMemEval: +10.4pp vs MiniSearch, +11.0pp vs MCP. LoCoMo: +4.4pp vs MiniSearch, +2.3pp vs MCP; Hit@1 33.0% vs MCP 33.1% | Target met on LongMemEval, missed on LoCoMo; no tuning on either public set; do not claim uniform retrieval superiority |
 
 ## F. Retrieval mechanics
 
@@ -104,7 +107,7 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 | G7 | "Sub-millisecond retrieval" | **Qualified** | Hash path p50 0.95-0.97 ms; MiniLM path is 3.30-3.41 ms |
 | G8 | `npm install -g @atifjubaer/fastrmemory` | **Removed** | npm E404 |
 | G9 | "12 real-world SWE-bench and LongMemEval cases" | **Removed** | Cases are synthetic |
-| G10 | Named external-engine comparisons | **Removed** | Unverified and against the naming policy |
+| G10 | Named external-engine comparisons | **Qualified** | Ad-hoc or unverified comparisons remain removed. The pinned, reproducible MiniSearch and MCP memory baselines in `docs/EXTERNAL_BASELINE.md` are allowed; no competitor marketing or QA-leaderboard comparison is claimed. |
 | G11 | "Spool fallback in <5ms" | **Removed** | No latency measurement |
 | G12 | "5-Minute Pull Request Workflow" | **Removed** | No timing study |
 

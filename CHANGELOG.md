@@ -24,6 +24,7 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 - `docs/MEMORY_CI.md` documents the PR workflow inputs, outputs, permissions, fork behavior, sample comment, local reproduction, and troubleshooting.
 - Memory CI live evidence: same-repository draft PR #12 produced one marker comment, kept it through a re-run, and updated the same comment in place when a new head commit changed the diff from `Added (1)` to `Added (2)`.
 - Public retrieval harnesses for LongMemEval, LoCoMo, and real-repository history: pinned dataset revisions, SHA-256 checks, per-case raw JSON, and retrieval-only metrics in `docs/PUBLIC_BENCHMARKS.md`.
+- Pinned external retrieval baselines: MiniSearch `7.2.0` and the official MCP reference memory server `2.0.0`, with raw JSON, adapter rules, and caveats in `docs/EXTERNAL_BASELINE.md`. The `+5pp Hit@5` target is met on LongMemEval but missed on LoCoMo (`+4.4pp` vs MiniSearch, `+2.3pp` vs MCP).
 
 ### Changed
 
@@ -66,7 +67,7 @@ GitHub release attached from the post-0.2.0 fixes. npm publication remains block
 ### Known limitations
 
 - npm publication is blocked until the registry account is restored.
-- The benchmark corpus is synthetic; no external memory engine is measured.
+- At v0.2.1, the benchmark corpus was synthetic and no external memory engine was measured; the Unreleased section adds pinned external retrieval baselines.
 - Apple Silicon macOS is not in the 6-job CI matrix.
 - The crash test kills the process (`taskkill /F`); it is not an OS-crash or power-loss test, and SQLite uses `synchronous=NORMAL` in WAL mode.
 

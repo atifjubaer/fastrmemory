@@ -13,7 +13,7 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-architecture)
 
-> **Status (2026-10-21, v0.2.1):** Registry availability is verified with `npm view @atifjubaer/fastrmemory version`. If it returns `0.2.1`, install from npm. If it returns E404, use the **v0.2.1 GitHub Release tarball** or the GitHub source below. The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval, and no external engine is measured. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md). Release notes: [CHANGELOG.md](CHANGELOG.md).
+> **Status (2026-10-21, v0.2.1):** Registry availability is verified with `npm view @atifjubaer/fastrmemory version`. If it returns `0.2.1`, install from npm. If it returns E404, use the **v0.2.1 GitHub Release tarball** or the GitHub source below. The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval. Public LongMemEval, LoCoMo, and self-repository retrieval-only results plus pinned external baselines are in [BENCHMARKS.md](BENCHMARKS.md); no QA-leaderboard parity is claimed. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md). Release notes: [CHANGELOG.md](CHANGELOG.md).
 
 <p align="center">
   <a href="#-overview">Overview</a> &bull;
@@ -551,7 +551,7 @@ npx tsx scripts/eval-bench.ts --split all --embeddings hash   --out bench/result
 | Static dump - simulated baseline | Train | 192 | 2.1% | 6.3% | 8.3% | 0.055 | 0.081 | 3652 | 0.00 ms |
 | Static dump - simulated baseline | Holdout | 48 | 0.0% | 0.0% | 8.3% | 0.025 | 0.056 | 3652 | 0.00 ms |
 
-> **Caveats:** this is a deterministic synthetic corpus, not SWE-bench or LongMemEval. No external memory engine is measured. The static-dump row is a simulation implemented in this repository, not an external project. Context tokens are the compact prompt text under a 250-token budget; the ranked result objects retain full memory content. Methodology, per-category breakdowns, ablations, and confidence intervals are in [BENCHMARKS.md](BENCHMARKS.md) and [docs/benchmark-report.md](docs/benchmark-report.md).
+> **Caveats:** this is a deterministic synthetic corpus, not SWE-bench or LongMemEval. The static-dump row is a simulation implemented in this repository, not an external project. Separate public retrieval-only external baselines are documented in [docs/EXTERNAL_BASELINE.md](docs/EXTERNAL_BASELINE.md); the synthetic table does not measure them. Context tokens are the compact prompt text under a 250-token budget; the ranked result objects retain full memory content. Methodology, per-category breakdowns, ablations, and confidence intervals are in [BENCHMARKS.md](BENCHMARKS.md) and [docs/benchmark-report.md](docs/benchmark-report.md).
 
 ## 🖥️ Local Web Dashboard v2 & 3D Brain Observatory
 

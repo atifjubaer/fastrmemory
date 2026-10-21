@@ -3,7 +3,7 @@
 > **Package:** `@atifjubaer/fastrmemory` (CLI: `fastr` / `fastrmemory`)
 > **Runtime:** Node.js >= 22.16.0, ESM, built-in `node:sqlite` in WAL mode
 > **Protocol:** MCP v2 via `@modelcontextprotocol/server`
-> **Status:** `feat/0.3.0` code state as of 2026-10-21 (`4639f27`). Known gaps are listed at the end and are not hidden.
+> **Status:** `feat/0.3.0` code state as of 2026-10-21 (`b220067`). Known gaps are listed at the end and are not hidden.
 
 ## 1. What problem it solves
 
@@ -64,8 +64,8 @@ Results are sorted, capped at 3 per source session, then packed into a token bud
 
 Known retrieval gaps (tracked in `ROADMAP.md`):
 
-- The 240-case benchmark is synthetic; real-repository retrieval is not measured.
-- No external memory engine is measured.
+- The 240-case benchmark is synthetic; it is separate from the public LongMemEval, LoCoMo, and self-repository retrieval-only harnesses.
+- External baselines are limited to two pinned retrieval engines: MiniSearch `7.2.0` and the MCP reference memory server `2.0.0`. No unverified competitor or QA-leaderboard comparison is claimed.
 - The 48-case holdout leaves a wide Hit@1 interval, and semantic paraphrase is the weakest category.
 - The graph stream is not exercised beyond cases that are already rank 1 on this corpus.
 - A reranker for title-concept collisions is not implemented.
@@ -119,7 +119,7 @@ The full 41-tool surface is the default. Start the core profile with `fastrmemor
 ## 9. Not implemented yet
 
 - Prompt-cache `skipUnchanged` behavior (no byte-identical block suppression in the current hook runner).
-- A pinned external baseline (the synthetic held-out benchmark and the retrieval-only public harnesses exist, including a self-repository runner; see [`BENCHMARKS.md`](../BENCHMARKS.md) and [`docs/PUBLIC_BENCHMARKS.md`](PUBLIC_BENCHMARKS.md)).
+- An end-to-end external agent-memory workflow comparison. The pinned external baselines are retrieval-only and do not exercise extraction, consolidation, or agent workflows; see [`docs/EXTERNAL_BASELINE.md`](EXTERNAL_BASELINE.md).
 - Branch checkout or a mutable branch working tree; branches are immutable snapshot pointers merged one-way into the current active set.
 - A live fork PR run of the Memory CI comment path (same-repository PRs are verified; fork PRs are job-summary-only by design).
 

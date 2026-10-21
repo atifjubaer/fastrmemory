@@ -62,8 +62,10 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 | ID | Task | Acceptance gate | Status |
 |---|---|---|---|
 | 2.1 | Public benchmark harnesses | LongMemEval, LoCoMo, and a real-repository runner produce raw JSON with pinned dataset revisions | **Done** |
-| 2.2 | Pinned external baseline | One external memory engine runs from a pinned version; raw output and caveats recorded | Missing |
+| 2.2 | Pinned external baseline | One external memory engine runs from a pinned version; raw output and caveats recorded | **Done** |
 | 2.3 | Frozen-holdout rerun | Rerun is reproducibility-only; no tuning on the 48 holdout cases; claims updated | Partial |
+
+Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0` on LongMemEval and LoCoMo. Raw JSON and adapter rules are in [`docs/EXTERNAL_BASELINE.md`](docs/EXTERNAL_BASELINE.md).
 
 ### Phase 6 — Evidence and launch (P1/P2, 1–1.5 days)
 
@@ -93,7 +95,7 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 | 0.2 | Remove stale specification text | No stale counts in `docs/SPECIFICATION.md` or `RELEASE_v0.1.0.md` | Partial |
 | 1.1 | Publish 0.3.0 | CI 6/6 green, package gate green, npm publish, clean `npx` install | Not started |
 
-**Estimated remaining effort:** 7–12 focused days. Phase 3 is the next executable phase; the npm publish gate is time-blocked independently.
+**Estimated remaining effort:** 6–10 focused days. Phase 6 is the next executable phase; the npm publish gate is time-blocked independently.
 
 ## Phase 0 — Truth reset
 
@@ -132,10 +134,10 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 | 240+ case corpus with fixed 20% holdout | **Done** | `bench/corpus.json`; 192 train / 48 holdout |
 | Metrics, CIs, raw JSON, generated report | **Done** | `bench/results/minilm.json`, `bench/results/hash.json`, `BENCHMARKS.md` |
 | Public LongMemEval / LoCoMo / real-repository harnesses | **Done** | `scripts/eval-public.ts`; pinned revisions and raw JSON in `docs/PUBLIC_BENCHMARKS.md` |
-| Real pinned external baseline | **Missing** | Current baselines are internal and the static dump is simulated; no external CLI measurement. |
-| Retrieval targets | **Partial** | Synthetic holdout meets Hit@1/5, MRR, and token targets; the external comparison gate is unmeasured. |
+| Real pinned external baseline | **Done** | MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0` on LongMemEval and LoCoMo; raw JSON at `b220067`; caveats in `docs/EXTERNAL_BASELINE.md`. |
+| Retrieval targets | **Partial** | Synthetic holdout meets Hit@1/5, MRR, and token targets. External `+5pp Hit@5` target: LongMemEval +10.4pp vs MiniSearch and +11.0pp vs MCP; LoCoMo +4.4pp and +2.3pp, so LoCoMo misses. |
 
-**Gate:** 240+ cases, raw JSON, held-out results, no simulated baseline labeled as a real project, and an external pinned baseline. Current result: **Partial** because the pinned external baseline is still missing.
+**Gate:** 240+ cases, raw JSON, held-out results, no simulated baseline labeled as a real project, and an external pinned baseline. Current result: **Partial** because the LoCoMo `+5pp Hit@5` target is missed and 2.3 remains Partial; the external baseline itself is Done.
 
 ## Phase 3 — Integration parity and import paths
 
