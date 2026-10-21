@@ -117,13 +117,24 @@ When the npm account is restored:
    ```
    Complete the browser/2FA prompt. Do not use an automation token as a workaround.
 
-2. **Verify identity**
+2. **Check out the frozen release tree**
+   ```powershell
+   git worktree add ..\fastrmemory-v0.2.1 v0.2.1
+   Set-Location ..\fastrmemory-v0.2.1
+   git rev-parse --short HEAD
+   git status --porcelain
+   ```
+   Expected: `3fa2bf9` and an empty status. Do not publish from
+   `feat/0.3.0`; its code is unreleased even though `package.json` still
+   says `0.2.1`.
+
+3. **Verify identity**
    ```powershell
    npm whoami
    ```
    Expected output: `atifjubaer`.
 
-3. **Re-run the full local gate**
+4. **Re-run the full local gate on the frozen tree**
    ```powershell
    npm run check:ci
    npm run build:core
@@ -131,7 +142,7 @@ When the npm account is restored:
    npm run check:package
    ```
 
-4. **Publish**
+5. **Publish from the frozen tree**
    ```powershell
    npm publish --access public
    ```
@@ -139,14 +150,14 @@ When the npm account is restored:
    `check:package`; it does not rebuild the tracked UI bundle. Run
    `npm run build:ui` first only when the UI source actually changed.
 
-5. **Verify the registry result**
+6. **Verify the registry result**
    ```powershell
    npm view @atifjubaer/fastrmemory version
    npx @atifjubaer/fastrmemory@latest --version
    ```
    Both must report `0.2.1` before any npm install claim is published.
 
-The automated assistant is optional:
+The automated assistant is optional and must be run from the same frozen tree:
 
 ```powershell
 node scripts/publish-when-ready.mjs
