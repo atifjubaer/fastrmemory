@@ -116,7 +116,7 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 |---|---|---|
 | Hermetic tests and `FASTR_HOME` isolation | **Done** | `tests/isolation.test.ts`; `tests/setup.ts` |
 | Clean the 60 legacy test rows | **Partial** | `scripts/clean-test-junk.mjs` exists; `--apply --yes` has not been run and needs explicit approval. |
-| Package surface, build split, tarball gate | **Done** | `scripts/check-package.mjs`; 591,204 bytes / 220 files (577.3 KiB) at `check:ci` |
+| Package surface, build split, tarball gate | **Done** | `scripts/check-package.mjs`; v0.2.1 asset: 591,204 bytes / 220 files (577.3 KiB). Current `0.3.0` `check:ci`: 264 files, 625.4 kB packed, 2.4 MB unpacked. |
 | Prepare v0.2.1 release candidate | **Done** | Version, README, `CLAIMS.md`, `CHANGELOG.md`, skills metadata; `npm run check:ci`; tarball SHA-256 recorded |
 | Publish v0.2.1 to npm | **Blocked** | npm account suspension; resume protocol documented |
 | Attach v0.2.1 GitHub Release asset | **Done** | Release `v0.2.1` at `https://github.com/atifjubaer/fastrmemory/releases/tag/v0.2.1`; downloaded asset is 591,204 bytes with matching SHA-256; release-URL install verified. |
@@ -202,11 +202,11 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 | Gate | Pass condition | Current |
 |---|---|---|
 | Truth | No false/stale claims; `CLAIMS.md` covers every public claim | **Partial** — README counts are current; full CLAIMS coverage is not |
-| Tests | 6/6 OS × Node green on the release commit; isolation green | **Pass** — local 235 green; 6/6 at `3fa2bf9` |
+| Tests | 6/6 OS × Node green on the release commit; isolation green | **Pass** — local 270 green / 50 files; 6/6 at `3fa2bf9`; current HEAD CI run pending |
 | Package | npm published or explicitly blocked and documented; `npx` works | **Partial** — v0.2.1 GitHub asset attached and release-URL install verified; npm still blocked |
 | Footprint | Default install under 20 MB; install under 10 s | **Pass (v0.2.1)** — 16,493,075 bytes, 1.93 s |
 | Benchmark | 240+ cases; held-out; raw JSON committed | **Done** |
-| Retrieval | Hit@1 ≥90%; Hit@5 ≥98%; external baseline +5pp Hit@5; tokens ≤0.5× | **Partial** — synthetic targets pass; external gate missing |
+| Retrieval | Hit@1 ≥90%; Hit@5 ≥98%; external baseline +5pp Hit@5; tokens ≤0.5× | **Partial** — synthetic targets pass; LongMemEval +10.4pp / +11.0pp, LoCoMo +4.4pp / +2.3pp; LoCoMo misses |
 | Integrity | 0 lost/0 duplicates in 10k crash test; replay exact | **Done (process crash)** — 10/10 runs, 0 lost, 0 duplicates; replay exact; power loss not tested |
 | Moat | Replay + Memory CI demo works end to end | **Done** — replay CLI/UI and the same-repository Memory CI comment lifecycle are verified |
 | Score | ≥9.2 / 10 | **Not computed** |
@@ -217,10 +217,10 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 2. **Done locally:** version, README, `CLAIMS.md`, `CHANGELOG.md`, and skills metadata updated; core rebuilt and tarball packed.
 3. **Done:** `npm run check:ci` green; tarball is 591,204 bytes with SHA-256 `78F1535E87A7148272824C0B0D31F21D4AD385D9EEAA2EF8A40D41DCD0ACA63B`.
 4. **Done:** pushed `3fa2bf9`; CI run `39495621243` is 6/6 green; GitHub release `v0.2.1` and its asset are attached.
-5. **Pending:** after the npm suspension lifts, run `npm login`, `npm whoami`, and `npm publish --access public`.
+5. **Blocked until 2026-10-21 22:42 UTC:** after the npm suspension lifts, run `npm login`, `npm whoami`, and `npm publish --access public` from tag `3fa2bf9`.
 6. **Pending:** verify `npm view` and `npx` from a clean temp directory; update the claims ledger from Blocked to Supported.
 
-Do not publish current HEAD as `0.2.0`: current HEAD is now `0.2.1`, its tarball is 591,204 bytes, and the existing GitHub v0.2.0 asset is 571,279 bytes.
+Do not publish current HEAD as `0.2.0` or `0.2.1`: the frozen v0.2.1 tag is `3fa2bf9`, its tarball is 591,204 bytes, and the existing GitHub v0.2.0 asset is 571,279 bytes. Publish `0.2.1` only from the tag, never from the `0.3.0` work.
 
 ## Work order
 
@@ -229,10 +229,10 @@ Do not publish current HEAD as `0.2.0`: current HEAD is now `0.2.1`, its tarball
 3. **P1:** add the 12-tool core profile and its smoke test. **Done.**
 4. **P1:** add OpenCode/Gemini/Copilot hook parity, local import, and conflict-aware recall. **Done.**
 5. **P1:** add the dashboard timeline/diff view. **Done.** Observe a live Memory CI PR comment. **Done.**
-6. **P2:** add public benchmark harnesses and a pinned external baseline. Public harnesses **Done**; external baseline **Next**.
-7. **P2:** finish README, migration, security, scorecard, changelog, and launch evidence.
+6. **P2:** add public benchmark harnesses and a pinned external baseline. Both **Done**; LoCoMo retrieval target remains Partial.
+7. **P2:** finish README, migration, security, scorecard, changelog, and launch evidence. **Next.**
 
-Estimated remaining effort: **7–12 focused days**, not one session. The `0.2.1` GitHub release is attached and verified; npm publication remains blocked. The full prompt cannot be completed and evidenced before 2026-10-22 without skipping gates.
+Estimated remaining effort: **6–10 focused days**, not one session. The `0.2.1` GitHub release is attached and verified; npm publication remains blocked. The full prompt cannot be completed and evidenced before 2026-10-22 without skipping gates.
 
 ## Reporting contract
 
