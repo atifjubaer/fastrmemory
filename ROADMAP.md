@@ -177,13 +177,13 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 | Item | Status | Evidence / remaining work |
 |---|---|---|
 | Optional local model; three runtime dependencies | **Done** | `package.json`; `scripts/check-package.mjs` |
-| SQLite pragmas and query-plan review | **Partial** | Pragmas exist; top-10 query-plan evidence is not documented as a gate. |
-| Clean install under 20 MB / 10 s | **Pass (v0.2.1)** | 16,493,075 bytes, 1.93 s; `CLAIMS.md` A8. |
+| SQLite pragmas and query-plan review | **Done** | `scripts/check-query-plans.ts`; 10/10 plans pass with no large-table scans; `docs/QUERY_PLANS.md`; `bench/results/query-plans.json`. |
+| Clean install under 20 MB / 10 s | **Pass (0.3.0 branch)** | Local 16,750,800-16,751,110 bytes / 1.842-1.874 s; canonical CI run `39529344409` 1,409 ms; v0.2.1 is 16,493,075 bytes / 1.93 s. |
 | 10k crash test, 10/10 runs, 0 lost / 0 duplicates | **Done** | 10,718 acknowledged writes, 10,727 committed rows, 0 missing, 0 duplicate ids/titles, integrity `ok`; `bench/results/crash-test.json`; `CLAIMS.md` D4. |
-| Export/import/backup with provenance | **Partial** | JSONL export/import exists; a dedicated backup command and gate are missing. |
-| CI size and latency gates | **Partial** | Package size gate exists; latency and install-size gates are not enforced. |
+| Export/import/backup with provenance | **Done** | `fastr backup` writes JSONL plus a sidecar manifest with SHA-256, content hash, record counts, tool/environment, and source integrity; `--verify`, `--restore`, `--dry-run`; `tests/backup.test.ts`. |
+| CI size and latency gates | **Done** | `check:install-size`, `check:recall-latency`, and `check:query-plans` run in `check:ci`; canonical CI job enforces them, with `FASTR_PERF_GATE=0` on non-canonical matrix jobs. |
 
-**Gate:** clean install under 20 MB and 10 s; crash report committed; export/import round-trip; recall p95 under 50 ms at 10k. Current result: **Partial**.
+**Gate:** clean install under 20 MB and 10 s; crash report committed; export/import round-trip; recall p95 under 50 ms at 10k. Current result: **Done** for the listed gate; Apple Silicon coverage and legacy cleanup remain Phase 1 gaps.
 
 ## Phase 6 — Evidence and launch
 
