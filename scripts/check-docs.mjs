@@ -36,6 +36,7 @@ const expectedDocs = new Set([
   'docs/MEMORY_CI.md',
   'docs/NPM_PUBLISHING_TROUBLESHOOTING.md',
   'docs/npm-publishing.md',
+  'docs/PUBLIC_BENCHMARKS.md',
   'docs/SPECIFICATION.md',
   'docs/audit/2026-10-20-baseline.md',
   'docs/audit/2026-10-20-recall-latency.json',
@@ -87,6 +88,7 @@ const publicDocs = [
   'docs/MEMORY_CI.md',
   'docs/NPM_PUBLISHING_TROUBLESHOOTING.md',
   'docs/npm-publishing.md',
+  'docs/PUBLIC_BENCHMARKS.md',
   'docs/SPECIFICATION.md',
   'docs/audit/2026-10-20-baseline.md'
 ];

@@ -4,11 +4,12 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 
 - **Ledger date:** 2026-10-21
 - **Benchmark commit:** `562f461` (raw JSON in `bench/results/minilm.json` and `bench/results/hash.json`)
+- **Public benchmark commit:** `d708e3a` (raw JSON in `bench/results/longmemeval.json`, `bench/results/locomo.json`, and `bench/results/repo-history.json`)
 - **Phase 3/4 evidence commit:** `a91ad6d` (replay, JSONL, consolidation, Memory CI)
 - **Packaging/CI inspection:** `3fa2bf9` (v0.2.1 release commit; package and CI rows in this ledger)
 - **Hardware:** AMD Ryzen 7 7700, 15.1 GB RAM, Windows 10 Pro 19045, Node v24.15.0
 - **Scope:** FastrMemory only. No external memory engine is measured in this repository.
-- **Row provenance:** benchmark rows use commit `562f461`; Phase 3/4 rows use `a91ad6d`; package and CI rows use `3fa2bf9`; `npm view` rows were run on 2026-10-21. The README table is the current `562f461` run; the earlier v0.2.0 snapshot at `1495622` is preserved as `bench/results/minilm-1495622.json` for comparison.
+- **Row provenance:** benchmark rows use commit `562f461`; public retrieval rows use `d708e3a`; Phase 3/4 rows use `a91ad6d`; package and CI rows use `3fa2bf9`; `npm view` rows were run on 2026-10-21. The README table is the current `562f461` run; the earlier v0.2.0 snapshot at `1495622` is preserved as `bench/results/minilm-1495622.json` for comparison.
 
 ## A. Distribution and package
 
@@ -52,7 +53,7 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 | ID | Claim | Where | Status | Evidence command | Raw output | Caveat |
 |---|---|---|---|---|---|---|
 | D1 | Historical v0.2.0 count: 226 tests, 38 files | v0.2.0 release notes | Historical | `npm test` | `226 passed`, `38 passed` | Historical v0.2.0 result; current suite is D1b |
-| D1b | 266 tests pass across 49 files | Current HEAD | Supported | `npm test` | `266 passed`, `49 passed` | Run on 2026-10-21 after the replay workspace and component tests; local Windows run; CI is separate |
+| D1b | 270 tests pass across 50 files | Current HEAD | Supported | `npm test` | `270 passed`, `50 passed` | Run on 2026-10-21 after the public benchmark harness tests; local Windows run; CI is separate |
 | D2 | Test suite writes nothing to the real home store | README | Supported | `npm test` then count rows | 60 before, 60 after | The 60 pre-existing rows are documented legacy data |
 | D3 | 6/6 CI matrix green | ROADMAP | Supported | `gh run view 39495621243 --json conclusion,jobs` | 6/6 jobs succeeded: Ubuntu, Windows, and Intel macOS on Node 22.x and 24.x | Run on `3fa2bf9`; `fail-fast` disabled; macOS jobs use `macos-15-intel`; Apple Silicon is not covered |
 | D4 | Zero data loss in a 10k crash test | README, Roadmap | Supported | `npm run test:crash`; `npm run check:crash` | 10/10 runs; 10,718 acknowledged writes; 10,727 committed rows; 0 missing; 0 duplicate ids; 0 duplicate titles; `PRAGMA integrity_check` = `ok` | Local Windows run on 2026-10-21; kill is `taskkill /F`, not a power-loss test; `synchronous=NORMAL` in WAL mode; report at `bench/results/crash-test.json` |
@@ -69,8 +70,11 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 | E6 | Static dump is a simulated baseline | README, BENCHMARKS | Supported | same | 2.1% train / 0% holdout Hit@1 | Simulation implemented in this repository |
 | E7 | Hit@1 >= 90% and Hit@5 >= 98% | Roadmap target | **Supported** | same | Train 96.4/100; holdout 95.8/100 | Holdout n=48; publish the Wilson interval and do not over-read the point estimate |
 | E8 | 240+ benchmark cases | Roadmap target | Supported | same | 240 | Met |
-| E9 | Real-world benchmark beyond synthetic data | Roadmap target | **Not measured** | - | - | Do not claim SWE-bench/LongMemEval parity |
+| E9 | Public retrieval benchmarks beyond synthetic data | Roadmap target | **Qualified** | `npx tsx scripts/eval-public.ts longmemeval`, `locomo`, `repo` | LongMemEval 500 cases, LoCoMo 1,981 cases, repository 114 cases; all produce raw JSON with pinned revisions | Retrieval only; this is not LongMemEval or LoCoMo QA parity, and the repository run is the FastrMemory repository itself |
 | E10 | Semantic paraphrase gate >= 75% Hit@1 | Roadmap target | **Supported** | same | Train 85.4% Hit@1 / 95.8% Hit@3; holdout 83.3% Hit@1 / 91.7% Hit@3 | 48 train / 12 holdout paraphrase cases; holdout target fixed before tuning |
+| E11 | LongMemEval session retrieval | BENCHMARKS, docs/PUBLIC_BENCHMARKS | Supported | `npx tsx scripts/eval-public.ts longmemeval --out bench/results/longmemeval.json` | BM25-only 500 cases: Hit@1 87.8%, Hit@5 97.6%, Hit@10 99.0%, MRR 0.920, evidence recall@5 0.926, full recall@5 86.0%; full+hash: 83.6% / 97.6% / 99.0%, MRR 0.893 | Retrieval only, not QA accuracy; `longmemeval_s` revision `2ec2a557...`, SHA-256 `08D8DAD4...`; 23,882 sessions; session-level gold; zero skipped cases; hash vectors duplicate BM25 |
+| E12 | LoCoMo dialogue-turn retrieval | BENCHMARKS, docs/PUBLIC_BENCHMARKS | Supported | `npx tsx scripts/eval-public.ts locomo --out bench/results/locomo.json` | BM25-only 1,981 cases: Hit@1 33.0%, Hit@5 56.0%, Hit@10 64.9%, MRR 0.428, evidence recall@5 0.510, full recall@5 46.9%; full+hash: 32.7% / 55.8% / 64.8%, MRR 0.425 | Retrieval only, not official QA F1; revision `3eb6f2c5...`, SHA-256 `79FA87E9...`; 5 skipped questions and 4 missing evidence ids; turn-level, short-turn retrieval |
+| E13 | Real-repository file retrieval | BENCHMARKS, docs/PUBLIC_BENCHMARKS | Supported | `npx tsx scripts/eval-public.ts repo --revision HEAD --max-cases 200 --out bench/results/repo-history.json` | BM25-only 114 cases: Hit@1 54.4%, Hit@5 86.0%, Hit@10 91.2%, MRR 0.676, evidence recall@5 0.519, full recall@5 32.5%; full+hash: 52.6% / 86.0% / 91.2%, MRR 0.668 | Self-repository at `d708e3a`; 280 indexed files, 114 commit subjects; 168 changed files outside the index; file-level retrieval, not issue resolution or line-level gold |
 
 ## F. Retrieval mechanics
 

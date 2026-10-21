@@ -119,7 +119,7 @@ The full 41-tool surface is the default. Start the core profile with `fastrmemor
 ## 9. Not implemented yet
 
 - Prompt-cache `skipUnchanged` behavior (no byte-identical block suppression in the current hook runner).
-- A real-repository benchmark and a pinned external baseline (the 240-case synthetic held-out benchmark exists; see [`BENCHMARKS.md`](../BENCHMARKS.md)).
+- A pinned external baseline (the synthetic held-out benchmark and the retrieval-only public harnesses exist, including a self-repository runner; see [`BENCHMARKS.md`](../BENCHMARKS.md) and [`docs/PUBLIC_BENCHMARKS.md`](PUBLIC_BENCHMARKS.md)).
 - Branch checkout or a mutable branch working tree; branches are immutable snapshot pointers merged one-way into the current active set.
 - A live fork PR run of the Memory CI comment path (same-repository PRs are verified; fork PRs are job-summary-only by design).
 

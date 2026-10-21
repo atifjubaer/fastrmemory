@@ -202,10 +202,10 @@ function buildRepoDataset(repoRoot: string, revision: string, maxCases: number):
   return {
     dataset,
     pin: {
-      file: `${path.basename(repoRoot)}@${resolved}`,
+      file: `repo@${resolved}`,
       revision: resolved,
       sha256: '',
-      url: repoRoot,
+      url: 'local repository',
       source: 'git:local-repository'
     },
     details: {

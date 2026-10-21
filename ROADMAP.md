@@ -61,7 +61,7 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 
 | ID | Task | Acceptance gate | Status |
 |---|---|---|---|
-| 2.1 | Public benchmark harnesses | LongMemEval, LoCoMo, and a real-repository runner produce raw JSON with pinned dataset revisions | Missing |
+| 2.1 | Public benchmark harnesses | LongMemEval, LoCoMo, and a real-repository runner produce raw JSON with pinned dataset revisions | **Done** |
 | 2.2 | Pinned external baseline | One external memory engine runs from a pinned version; raw output and caveats recorded | Missing |
 | 2.3 | Frozen-holdout rerun | Rerun is reproducibility-only; no tuning on the 48 holdout cases; claims updated | Partial |
 
@@ -131,11 +131,11 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 | Hash vectors off by default; MiniLM opt-in | **Done** | `src/search/hybrid-rrf.ts`, `src/search/embeddings.ts` |
 | 240+ case corpus with fixed 20% holdout | **Done** | `bench/corpus.json`; 192 train / 48 holdout |
 | Metrics, CIs, raw JSON, generated report | **Done** | `bench/results/minilm.json`, `bench/results/hash.json`, `BENCHMARKS.md` |
-| Public LongMemEval / LoCoMo / real-repository harnesses | **Missing** | No runner or raw output in the repository. |
+| Public LongMemEval / LoCoMo / real-repository harnesses | **Done** | `scripts/eval-public.ts`; pinned revisions and raw JSON in `docs/PUBLIC_BENCHMARKS.md` |
 | Real pinned external baseline | **Missing** | Current baselines are internal and the static dump is simulated; no external CLI measurement. |
 | Retrieval targets | **Partial** | Synthetic holdout meets Hit@1/5, MRR, and token targets; the external comparison gate is unmeasured. |
 
-**Gate:** 240+ cases, raw JSON, held-out results, no simulated baseline labeled as a real project, and an external pinned baseline. Current result: **Partial** because the public and external comparisons are missing.
+**Gate:** 240+ cases, raw JSON, held-out results, no simulated baseline labeled as a real project, and an external pinned baseline. Current result: **Partial** because the pinned external baseline is still missing.
 
 ## Phase 3 — Integration parity and import paths
 
@@ -227,7 +227,7 @@ Do not publish current HEAD as `0.2.0`: current HEAD is now `0.2.1`, its tarball
 3. **P1:** add the 12-tool core profile and its smoke test. **Done.**
 4. **P1:** add OpenCode/Gemini/Copilot hook parity, local import, and conflict-aware recall. **Done.**
 5. **P1:** add the dashboard timeline/diff view. **Done.** Observe a live Memory CI PR comment. **Done.**
-6. **P2:** add public benchmark harnesses and a pinned external baseline. **Next.**
+6. **P2:** add public benchmark harnesses and a pinned external baseline. Public harnesses **Done**; external baseline **Next**.
 7. **P2:** finish README, migration, security, scorecard, changelog, and launch evidence.
 
 Estimated remaining effort: **7–12 focused days**, not one session. The `0.2.1` GitHub release is attached and verified; npm publication remains blocked. The full prompt cannot be completed and evidenced before 2026-10-22 without skipping gates.
