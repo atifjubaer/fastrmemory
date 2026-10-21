@@ -167,7 +167,7 @@ function round(value: number, digits: number): number {
   return Number(value.toFixed(digits));
 }
 
-function metricsFromCases(cases: PublicCaseResult[]): PublicMetrics {
+export function metricsFromCases(cases: PublicCaseResult[]): PublicMetrics {
   const count = cases.length;
   if (count === 0) {
     return {
@@ -198,7 +198,7 @@ function metricsFromCases(cases: PublicCaseResult[]): PublicMetrics {
   };
 }
 
-function caseResult(
+export function caseResult(
   item: PublicCase,
   retrieved: string[],
   tokens: number,
