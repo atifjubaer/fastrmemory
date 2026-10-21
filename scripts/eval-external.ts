@@ -111,6 +111,7 @@ interface ExternalOutput {
     examples: number;
     skippedCases: number;
     memories: number;
+    uniqueMemories: number;
     projects: number;
   };
   engine: EngineRun;
@@ -209,6 +210,17 @@ function sha256File(file: string): string {
   return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex').toUpperCase();
 }
 
+/**
+ * The public parsers preserve duplicate session ids when the source dataset repeats them.
+ * The internal harness writes with INSERT OR REPLACE, so the last row wins. External indexes
+ * reject duplicate document ids, so collapse them the same way before indexing.
+ */
+function dedupeMemories(memories: PublicMemory[]): PublicMemory[] {
+  const byId = new Map<string, PublicMemory>();
+  for (const memory of memories) byId.set(memory.id, memory);
+  return Array.from(byId.values());
+}
+
 function groupBy<T>(values: T[], key: (value: T) => string): Map<string, T[]> {
   const groups = new Map<string, T[]>();
   for (const value of values) {
@@ -256,6 +268,7 @@ function engineInfoForMiniSearch(): EngineRun {
       combineWith: 'OR',
       limit: 10,
       tokenization: 'engine default',
+      duplicateIds: 'last occurrence wins (matches the internal INSERT OR REPLACE harness)',
       note: 'Generic full-text engine; no memory extraction, consolidation, or graph scoring.'
     }
   };
@@ -286,6 +299,7 @@ function engineInfoForMcp(serverEntry: string): EngineRun {
       query: 'unique content tokens, max 8, stopwords removed',
       ranking: 'distinct-token coverage, then first-seen order',
       limit: 10,
+      duplicateIds: 'last occurrence wins (matches the internal INSERT OR REPLACE harness)',
       note: 'The server search is substring-based and has no relevance score; the adapter only aggregates its matches.'
     },
     server: {
@@ -469,7 +483,7 @@ async function evaluateMiniSearch(
   const results: PublicCaseResult[] = [];
 
   for (const [projectId, cases] of casesByProject) {
-    const memories = memoriesByProject.get(projectId) ?? [];
+    const memories = dedupeMemories(memoriesByProject.get(projectId) ?? []);
     const contentById = new Map(memories.map((memory) => [memory.id, memory.content]));
     const index = new MiniSearch<{ id: string; title: string; content: string }>({
       fields: ['title', 'content'],
@@ -518,7 +532,7 @@ async function evaluateMcp(
 
   try {
     for (const [projectId, cases] of casesByProject) {
-      const memories = memoriesByProject.get(projectId) ?? [];
+      const memories = dedupeMemories(memoriesByProject.get(projectId) ?? []);
       const contentById = new Map(memories.map((memory) => [memory.id, memory.content]));
       const memoryFile = path.join(tempDir, `${projectId.replace(/[^a-zA-Z0-9._-]/g, '_')}.jsonl`);
       const client = new McpClient(serverEntry, memoryFile, timeoutMs);
@@ -589,7 +603,8 @@ async function main(): Promise<void> {
     : engineInfoForMcp(args.server);
 
   console.log(
-    `${dataset.name}: ${dataset.cases.length} cases, ${dataset.memories.length} memories, ` +
+    `${dataset.name}: ${dataset.cases.length} cases, ${dataset.memories.length} memory rows ` +
+      `(${new Set(dataset.memories.map((memory) => memory.id)).size} unique), ` +
       `${new Set(dataset.cases.map((item) => item.projectId)).size} projects`
   );
   console.log(`Engine: ${engine.name} ${engine.version}`);
@@ -615,6 +630,7 @@ async function main(): Promise<void> {
       examples: dataset.examples,
       skippedCases: dataset.skippedCases,
       memories: dataset.memories.length,
+      uniqueMemories: new Set(dataset.memories.map((memory) => memory.id)).size,
       projects: new Set(dataset.cases.map((item) => item.projectId)).size
     },
     engine,
