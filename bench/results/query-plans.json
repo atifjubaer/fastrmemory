@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "capturedAt": "2026-10-21T01:26:33.397Z",
-  "commit": "1bf94b6e7b02b7a0843977971ca182eb273822ef",
+  "capturedAt": "2026-10-21T01:37:58.428Z",
+  "commit": "2afded29dab79d5f262652427fe6cbed1493b445",
   "project": "proj_query_plans",
   "seed": {
     "memories": 10000,

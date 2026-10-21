@@ -7,11 +7,11 @@ Phase 5.1 records `EXPLAIN QUERY PLAN` output for the ten query shapes that driv
 ```bash
 npx tsx scripts/check-query-plans.ts \
   --out bench/results/query-plans.json \
-  --at 2026-10-21T01:26:33.397Z
+  --at 2026-10-21T01:37:58.428Z
 ```
 
-- Captured: `2026-10-21T01:26:33.397Z`
-- Code commit: `1bf94b6` (the Phase 5 implementation commit is the next commit)
+- Captured: `2026-10-21T01:37:58.428Z`
+- Code commit: `2afded2`
 - Raw evidence: `bench/results/query-plans.json`
 - Fixture: in-memory SQLite, 10,000 memories, 1,000 embedded memories, 1,000 raw events, 1,000 file links, 1,000 graph edges, 100 conflicts, 100 feedback rows, one snapshot, one branch.
 - Gate: no `SCAN` on `memories`, `raw_events`, `file_links`, `graph_edges`, `memory_conflicts`, `memory_feedback`, or `memory_branches`; every shape must use an index or an FTS virtual table.
