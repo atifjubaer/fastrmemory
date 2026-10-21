@@ -162,7 +162,7 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 | Hashed JSONL export/import | **Done** | `fastr snapshot export/import`; round-trip hash `a3119d...` |
 | MCP replay/diff tools | **Done** | `fastr_replay`, `fastr_diff`; 41-tool catalog |
 | UI replay timeline and diff view | **Done** | `/replay` route, `/api/replay`, empty/populated component tests, and rebuilt `dist-ui` bundle. |
-| Memory CI workflow | **Done** | Same-repository draft PR #12: run `39519088805` created comment `6304608575`; a re-run kept one comment; run `39519253601` updated the same comment to `Added (2)`. |
+| Memory CI workflow | **Done** | Same-repository draft PR #12 (now closed, branches retained): run `39519088805` created comment `6304608575`; a re-run kept one comment; run `39519253601` updated the same comment to `Added (2)`. |
 | `docs/MEMORY_CI.md` | **Done** | Inputs, outputs, permissions, fork behavior, sample comment, local reproduction, and troubleshooting are documented. |
 | Exact replay/CI tests | **Done** | `npm run verify:replay`; `tests/memory-ci.test.ts` |
 

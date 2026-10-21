@@ -136,7 +136,7 @@ npm test -- tests/memory-ci.test.ts
 
 ## Current evidence boundary
 
-The same-repository path was exercised on 2026-10-21 with draft PR [#12](https://github.com/atifjubaer/fastrmemory/pull/12). Its branches contain synthetic snapshots with one base rule and two head rules; no product data is present.
+The same-repository path was exercised on 2026-10-21 with draft PR [#12](https://github.com/atifjubaer/fastrmemory/pull/12), now closed; its test branches are retained for reproducibility. The branches contain synthetic snapshots with one base rule and two head rules; no product data is present.
 
 - First run [`39519088805`](https://github.com/atifjubaer/fastrmemory/actions/runs/39519088805) completed successfully and created comment `6304608575` with `Added (1)`.
 - Re-running the same workflow kept exactly one marked comment with the same id.
