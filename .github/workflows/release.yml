@@ -22,7 +22,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # npm publishing uses GitHub OIDC trusted publishing; no long-lived npm token.
       GH_TOKEN: ${{ github.token }}
       FASTR_PERF_GATE: '1'
     steps:
