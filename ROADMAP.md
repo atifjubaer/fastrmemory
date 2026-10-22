@@ -13,7 +13,7 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 | Item | Current state | Evidence |
 |---|---|---|
 | Local test gate | **Done:** 276 tests across 51 files | `npm test` at `50a7d8f` on 2026-10-23 during the publish gate |
-| CI matrix | **Done:** 6/6 green at `50a7d8f` | run `39831793263`; historical v0.2.1 release `3fa2bf9` is 6/6 in run `39495621243` |
+| CI matrix | **Done:** 6/6 green at `4164a9c` | run `39847701573`; run `39831793263` at `50a7d8f`; historical v0.2.1 release `3fa2bf9` is 6/6 in run `39495621243` |
 | npm distribution | **Done:** canonical `fastrmemory@0.3.0` published 2026-10-22 18:32 UTC; `npm view fastrmemory version` returns `0.3.0`; `latest` is `0.3.0`; clean global and `npx` installs return `0.3.0`; old scoped entries removed 2026-10-23 | `docs/npm-publishing.md`; `CLAIMS.md` A2a, A2b |
 | npm package rename (0.3.0) | **Done:** unscoped `fastrmemory@0.3.0` is published and `latest`; generated MCP/hook configs pin it and reject the GitHub default branch | `package.json`; `CLAIMS.md` A1a, A1b, A2a |
 | Package artifact | **0.3.0 npm tarball:** 647,903 bytes packed / 2,598,164 bytes unpacked / 270 files, shasum `e17af4f854bd9231e1f4b3a8efb04d3e5b65f8e2`; historical v0.2.1 asset is 591,204 bytes, SHA-256 `78F1535E87A7148272824C0B0D31F21D4AD385D9EEAA2EF8A40D41DCD0ACA63B`; v0.2.0 asset is 571,279 bytes | `npm pack --dry-run`; registry metadata; `npm publish` output |
@@ -205,7 +205,7 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 | Gate | Pass condition | Current |
 |---|---|---|
 | Truth | No false/stale claims; `CLAIMS.md` covers every public claim | **Pass** — README trace enforced by `check:docs`; specification, release notes, and npm docs aligned |
-| Tests | 6/6 OS × Node green on the release commit; isolation green | **Pass** - local 276 green / 51 files; 6/6 at `50a7d8f` in run `39831793263`; docs HEAD `573b83c` is 6/6 in run `39835543041` |
+| Tests | 6/6 OS × Node green on the release commit; isolation green | **Pass** - local 276 green / 51 files; 6/6 at `50a7d8f` in run `39831793263`; docs HEAD `4164a9c` is 6/6 in run `39847701573` |
 | Package | npm published or explicitly blocked and documented; `npx` works | **Pass** — canonical `fastrmemory@0.3.0` is published and public; `npm view` and `npx` return `0.3.0`; old scoped npm entries are removed; the v0.2.1 GitHub asset remains historical |
 | Footprint | Default install under 20 MB; install under 10 s | **Pass (0.3.0)** - local 16,756,937 bytes, 1.806 s; canonical CI `1,251 ms`; v0.2.1 was 16,493,075 bytes, 1.93 s |
 | Benchmark | 240+ cases; held-out; raw JSON committed | **Done** |
