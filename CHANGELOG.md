@@ -34,6 +34,7 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ### Changed
 
+- Removed 60 legacy `Global Security Invariant` rows from the global store with explicit approval; a timestamped database backup was written first, and the post-cleanup dry run reported 0 matching rows.
 - Dormancy now requires three consecutive bad outcomes instead of a low reward score alone.
 - Added indexes for project/time raw-event replay and project/embedded candidate scans; the query-plan gate verifies they are selected.
 

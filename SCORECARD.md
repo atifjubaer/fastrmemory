@@ -30,7 +30,7 @@ The remaining retrieval gap is:
 
 1. LoCoMo misses the external `+5pp Hit@5` target (`+4.4pp` vs MiniSearch and `+2.3pp` vs MCP memory); Hit@1 is `0.1pp` below the MCP adapter.
 
-Remote CI evidence is green at `d6f3662` in run `39532273797` (6/6 jobs). The npm publish ran the full release gate at `3fa2bf9` (235 tests / 43 files) and the registry is live. Phase 5 operational gaps remain (Apple Silicon coverage and the pending legacy-cleanup approval), but they do not change the gate scores.
+Remote CI evidence is green at `d6f3662` in run `39532273797` (6/6 jobs). The npm publish ran the full release gate at `3fa2bf9` (235 tests / 43 files) and the registry is live. Phase 5's legacy-row cleanup is complete; Apple Silicon coverage remains, but it does not change the gate scores.
 
 If Retrieval closes without regressing the passing gates, the provisional total would reach `9.0 / 9 = 10.0 / 10`. That is a forecast, not a result; the `9.2` target is already met at `9.4`.
 

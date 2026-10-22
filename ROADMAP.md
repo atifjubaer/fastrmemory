@@ -85,9 +85,9 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 | 5.2 | Backup command and gate | `fastr backup` writes a restorable snapshot with provenance | **Done** - `src/replay/backup.ts`, CLI create/verify/restore, sidecar manifest, 4 tests; scope is memories/events/links/conflicts |
 | 5.3 | Latency and install-size CI gates | CI fails above the documented install-size and recall-latency ceilings | **Done** - local 10k recall p95 16.09-17.31 ms, install 16,750,800-16,751,875 bytes / 1,842-2,154 ms; canonical CI run `39531624894` p95 18.2 ms and install 1,251 ms; both run in `check:ci`, with `FASTR_PERF_GATE=0` on non-canonical matrix jobs |
 | 5.4 | Apple Silicon CI | Matrix adds an Apple Silicon runner and passes | Missing |
-| 5.5 | Legacy row cleanup | 60 pre-existing rows removed with explicit approval and before/after counts | Partial |
+| 5.5 | Legacy row cleanup | 60 pre-existing rows removed with explicit approval and before/after counts | **Done** - 2026-10-22: dry-run listed 60/60 matching rows in `~/.fastr/global.db`; backup `~/.fastr/backup-20261022-232531/global.db` is 286,720 bytes with SHA-256 `F0D6165AC8B4BF850E9FC8FB6D22F5BE6FCCB01664A7B0977E90AA69F5C9FCA8`; `--apply --yes` reported `Deleted 60 rows and their dependent links.`; post-run dry-run reported total `0` / matching `0` |
 
-**Gate:** query plans, backup, and size/latency gates are green; Apple Silicon coverage and the approved legacy cleanup remain. Current result: **Partial**.
+**Gate:** query plans, backup, and size/latency gates are green; Apple Silicon coverage remains. Current result: **Partial** because 5.4 is Missing.
 
 ### Phase 0 and release gate
 
@@ -97,7 +97,7 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 | 0.2 | Remove stale specification text | No stale counts in `docs/SPECIFICATION.md` or `RELEASE_v0.1.0.md` | **Done** |
 | 1.1 | Publish 0.3.0 | CI 6/6 green, package gate green, npm publish, clean `npx` install | Not started — 0.2.1 is published; 0.3.0 remains unreleased |
 
-**Estimated remaining effort:** the npm publish gate is complete; Apple Silicon coverage and the approved legacy cleanup remain.
+**Estimated remaining effort:** the npm publish gate is complete; Apple Silicon coverage remains; LoCoMo retrieval is still Partial.
 
 ## Phase 0 — Truth reset
 
@@ -117,8 +117,8 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 | Item | Status | Evidence / remaining work |
 |---|---|---|
 | Hermetic tests and `FASTR_HOME` isolation | **Done** | `tests/isolation.test.ts`; `tests/setup.ts` |
-| Clean the 60 legacy test rows | **Partial** | `scripts/clean-test-junk.mjs` exists; `--apply --yes` has not been run and needs explicit approval. |
-| Package surface, build split, tarball gate | **Done** | `scripts/check-package.mjs`; v0.2.1 asset: 591,204 bytes / 220 files (577.3 KiB). Current `0.3.0` `check:ci`: 268 files, 631.1 kB packed, 2.5 MB unpacked. |
+| Clean the 60 legacy test rows | **Done** | `scripts/clean-test-junk.mjs` dry-run found 60/60 matching rows; approved `--apply --yes` deleted 60 rows and their dependent links; post-run count 0; backup `~/.fastr/backup-20261022-232531/global.db` (286,720 bytes, SHA-256 `F0D6165AC8B4BF850E9FC8FB6D22F5BE6FCCB01664A7B0977E90AA69F5C9FCA8`). |
+| Package surface, build split, tarball gate | **Done** | `scripts/check-package.mjs`; v0.2.1 asset: 591,204 bytes / 220 files (577.3 KiB). Current `0.3.0` `check:ci`: 268 files, 631.2 kB packed, 2.5 MB unpacked. |
 | Prepare v0.2.1 release candidate | **Done** | Version, README, `CLAIMS.md`, `CHANGELOG.md`, skills metadata; `npm run check:ci`; tarball SHA-256 recorded |
 | Publish v0.2.1 to npm | **Done** | Published 2026-10-22 16:51 UTC from `3fa2bf9`; `npm view @atifjubaer/fastrmemory version` = `0.2.1`; registry tarball shasum `352abba135ce1b0921cacbcdf9b7efd2abfc4802`; `npx` = `0.2.1`; access status `public`. |
 | Attach v0.2.1 GitHub Release asset | **Done** | Release `v0.2.1` at `https://github.com/atifjubaer/fastrmemory/releases/tag/v0.2.1`; downloaded asset is 591,204 bytes with matching SHA-256; release-URL install verified. |
@@ -183,7 +183,7 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 | Export/import/backup with provenance | **Done** | `fastr backup` writes JSONL plus a sidecar manifest with SHA-256, content hash, record counts, tool/environment, and source integrity; `--verify`, `--restore`, `--dry-run`; `tests/backup.test.ts`. |
 | CI size and latency gates | **Done** | `check:install-size`, `check:recall-latency`, and `check:query-plans` run in `check:ci`; canonical CI job enforces them, with `FASTR_PERF_GATE=0` on non-canonical matrix jobs. |
 
-**Gate:** clean install under 20 MB and 10 s; crash report committed; export/import round-trip; recall p95 under 50 ms at 10k. Current result: **Done** for the listed gate; Apple Silicon coverage and legacy cleanup remain Phase 1 gaps.
+**Gate:** clean install under 20 MB and 10 s; crash report committed; export/import round-trip; recall p95 under 50 ms at 10k. Current result: **Done** for the listed gate; Apple Silicon coverage remains a Phase 5 gap and the legacy cleanup is done.
 
 ## Phase 6 — Evidence and launch
 
@@ -234,7 +234,7 @@ Do not publish current HEAD as `0.2.0` or `0.2.1`: the frozen v0.2.1 tag is `3fa
 6. **P2:** add public benchmark harnesses and a pinned external baseline. Both **Done**; LoCoMo retrieval target remains Partial.
 7. **P2:** finish README, migration, security, scorecard, changelog, and launch evidence. Migration, security, scorecard, README launch rewrite, launch post, and the section-level claim trace are **Done**.
 
-Estimated remaining effort: Apple Silicon coverage and the approved legacy cleanup remain; LoCoMo retrieval is still Partial. The npm `0.2.1` package and the `v0.2.1` GitHub release are attached and verified. `0.3.0` is not published.
+Estimated remaining effort: Apple Silicon coverage remains; LoCoMo retrieval is still Partial. The npm `0.2.1` package and the `v0.2.1` GitHub release are attached and verified. `0.3.0` is not published.
 
 ## Reporting contract
 
