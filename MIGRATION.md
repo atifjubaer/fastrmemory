@@ -1,7 +1,7 @@
 # Migration Guide
 
-**Current published release:** `0.2.1` (GitHub Release and npm)
-**Next release:** `0.3.0` (unreleased)
+**Current published release:** `0.3.0` (unscoped npm package, `latest`)
+**Previous published release:** `0.2.1` (scoped npm package and GitHub Release, frozen)
 **Applies to:** `0.1.x` → `0.2.x` → `0.3.0`
 
 FastrMemory stores memory in a local SQLite database. Schema setup is additive: new tables are created with `CREATE TABLE IF NOT EXISTS`, and the `provenance_hash` column is added when missing. There is no destructive schema rewrite. That does not replace a backup. Stop every agent, hook, daemon, and dashboard before upgrading or rolling back.
@@ -41,7 +41,7 @@ Copying only `fastr.db` while a WAL file exists can lose recent writes.
 
 ## 2. Upgrade from 0.1.x to 0.2.x
 
-`0.2.1` is the supported 0.2.x release. Install it from npm; the GitHub Release tarball remains a byte-verified fallback:
+`0.2.1` is the frozen 0.2.x release. Install it from npm; the GitHub Release tarball remains a byte-verified fallback:
 
 ```bash
 npm install -g @atifjubaer/fastrmemory@0.2.1
@@ -57,7 +57,7 @@ npm install -g https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.
 What changes:
 
 - MCP `serverInfo.name` is `fastrmemory`. Reconnect MCP clients after upgrading.
-- The default MCP surface is 41 tools, 2 prompts, and 4 resources. The unreleased 0.3.0 branch adds a fifth resource template.
+- The default MCP surface is 41 tools, 2 prompts, and 4 resources. The 0.3.0 release adds a fifth resource template.
 - `fastrmemory mcp --profile core` or `FASTR_MCP_PROFILE=core` exposes the 12-tool daily-loop profile. The full surface remains the default.
 - Replay, diff, snapshots, Memory CI, non-lossy consolidation, and the 240-case benchmark are available.
 - The optional local embedding model is not downloaded unless embeddings are enabled.
@@ -66,9 +66,16 @@ Existing memories remain readable. The first `fastr status` opens the database a
 
 ## 3. Upgrade from 0.2.x to 0.3.0
 
-`0.3.0` is not published. These steps describe the branch behavior and are not a registry upgrade path yet. The package name changes from `@atifjubaer/fastrmemory` to unscoped `fastrmemory`; the `fastr` and `fastrmemory` bin names stay the same. The scoped `0.2.1` package remains available.
+`0.3.0` is published as the canonical unscoped package. Install the exact release:
 
-After installing a `0.3.0` build:
+```bash
+npm install -g fastrmemory@0.3.0
+fastr --version
+```
+
+The package name changed from `@atifjubaer/fastrmemory` to unscoped `fastrmemory`; the `fastr` and `fastrmemory` bin names stay the same. The scoped `0.2.1` package remains available and frozen.
+
+After installing `0.3.0`:
 
 ```bash
 fastr status
@@ -161,5 +168,5 @@ Do not assume that an older binary can read a database written by a newer binary
 - There is no automatic database downgrade command.
 - `fastr backup` and `fastr snapshot export` are logical and do not include the SQLite WAL file. The backup scope is memories, raw events, file links, and conflicts; it does not include feedback history, snapshots, branches, action DAG rows, or vision assets. Use the physical `.fastr/fastr.db*` copy for a complete database backup.
 - `fastr backup --restore` verifies the sidecar manifest and file hash before writing; the import runs in one SQLite transaction, but stop other writers first.
-- npm `0.2.1` is published; the GitHub Release tarball remains available when a byte-verified asset is required.
-- `0.3.0` is unreleased. Do not describe it as a published upgrade.
+- npm `0.3.0` is published and is `latest`; npm `0.2.1` and its GitHub Release tarball remain available for rollback.
+- The registry also lists `0.0.0-stage`; pin `0.3.0` for reproducible installs.

@@ -6,7 +6,7 @@
 **Zero Daemon • Native Node 22+ `node:sqlite` • Bi-Temporal Git Sync • Triple-Stream RRF • Official MCP v2**
 
 [![CI](https://github.com/atifjubaer/fastrmemory/actions/workflows/ci.yml/badge.svg)](https://github.com/atifjubaer/fastrmemory/actions)
-[![npm](https://img.shields.io/npm/v/@atifjubaer/fastrmemory?style=flat-square&logo=npm&label=npm)](https://www.npmjs.com/package/@atifjubaer/fastrmemory)
+[![npm](https://img.shields.io/npm/v/fastrmemory?style=flat-square&logo=npm&label=npm)](https://www.npmjs.com/package/fastrmemory)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.16.0-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Protocol](https://img.shields.io/badge/Protocol-MCP%20v2-7C3AED?style=flat-square)](https://modelcontextprotocol.io)
@@ -14,7 +14,7 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-architecture)
 
-> **Status (2026-10-23):** The published release is `@atifjubaer/fastrmemory@0.2.1`; `npm view @atifjubaer/fastrmemory version` returns `0.2.1`. The unreleased **0.3.0** branch renames the canonical package to unscoped **`fastrmemory`** and pins generated MCP/hook configs to `fastrmemory@0.3.0`; do not publish from this branch until the release gate passes. The latest GitHub release is **v0.2.1**. This README tracks **0.3.0**, so features marked **0.3.0** are not in the v0.2.1 package. Install `@0.2.1` for the current release; use the **v0.2.1 GitHub Release tarball** as a byte-verified fallback. The exact release surface is in [CHANGELOG.md](CHANGELOG.md); the release post is [docs/blog/2026-10-21-fastrmemory-0.2.1.md](docs/blog/2026-10-21-fastrmemory-0.2.1.md). The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval. Public LongMemEval, LoCoMo, and self-repository retrieval-only results plus pinned external baselines are in [BENCHMARKS.md](BENCHMARKS.md); no QA-leaderboard parity is claimed. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); every README section is mapped to claim IDs in the README claim trace at the end of that ledger. Methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md).
+> **Status (2026-10-23):** The canonical package is **`fastrmemory@0.3.0`**, published to npm on **2026-10-22 18:32 UTC** from tag `v0.3.0` (`50a7d8f`). `npm view fastrmemory version` returns `0.3.0` and `latest` is `0.3.0`; `npm install -g fastrmemory` installs the published package, and `npx -y fastrmemory@0.3.0 --version` returns `0.3.0`. The scoped **`@atifjubaer/fastrmemory@0.2.1`** remains published and frozen at `3fa2bf9`. This README tracks **0.3.0**. Use the exact `0.3.0` version for reproducibility; the registry also lists a `0.0.0-stage` placeholder. The **v0.2.1 GitHub Release tarball** remains the byte-verified fallback for the scoped 0.2.1 release, and its release post is [docs/blog/2026-10-21-fastrmemory-0.2.1.md](docs/blog/2026-10-21-fastrmemory-0.2.1.md). The exact release surface is in [CHANGELOG.md](CHANGELOG.md). The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval. Public LongMemEval, LoCoMo, and self-repository retrieval-only results plus pinned external baselines are in [BENCHMARKS.md](BENCHMARKS.md); no QA-leaderboard parity is claimed. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); every README section is mapped to claim IDs in the README claim trace at the end of that ledger. Methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md).
 
 <p align="center">
   <a href="#-overview">Overview</a> &bull;
@@ -40,11 +40,11 @@
 
 | Claim | Current result | Evidence |
 |---|---|---|
-| Install path | Published `@atifjubaer/fastrmemory@0.2.1`; the 0.3.0 branch package is unscoped `fastrmemory` (unreleased) | `npm view @atifjubaer/fastrmemory version` -> `0.2.1`; `node -p "require('./package.json').name + ' ' + require('./package.json').version"` -> `fastrmemory 0.3.0` |
+| Install path | Published canonical `fastrmemory@0.3.0`; scoped `@atifjubaer/fastrmemory@0.2.1` remains available | `npm view fastrmemory version` -> `0.3.0`; `npm install -g fastrmemory@0.3.0`; `fastr --version` -> `0.3.0` |
 | Synthetic retrieval | Holdout `95.8%` Hit@1, `100%` Hit@5, MRR `0.969` | `npx tsx scripts/eval-bench.ts --split all --embeddings minilm --out bench/results/minilm.json` |
-| Test suite | `276` tests across `51` files on the `0.3.0` branch; v0.2.1 is `235` / `43` | `npm test` |
+| Test suite | `276` tests across `51` files in `0.3.0`; v0.2.1 is `235` / `43` | `npm test` |
 | Crash safety | 10/10 runs, 0 lost, 0 duplicate ids/titles | `npm run test:crash`; `bench/results/crash-test.json` |
-| Public retrieval (0.3.0 branch) | LongMemEval `+10.4pp` / `+11.0pp` Hit@5; LoCoMo `+4.4pp` / `+2.3pp` (target missed) | [docs/EXTERNAL_BASELINE.md](docs/EXTERNAL_BASELINE.md) |
+| Public retrieval (0.3.0) | LongMemEval `+10.4pp` / `+11.0pp` Hit@5; LoCoMo `+4.4pp` / `+2.3pp` (target missed) | [docs/EXTERNAL_BASELINE.md](docs/EXTERNAL_BASELINE.md) |
 | Release score | Provisional `9.4 / 10`; `9.2` target met; Retrieval remains Partial | [SCORECARD.md](SCORECARD.md) |
 
 The synthetic table is not SWE-bench or LongMemEval. Public numbers are retrieval-only and are not QA-leaderboard results. Full provenance is in [CLAIMS.md](CLAIMS.md).
@@ -110,17 +110,17 @@ Clients commonly used with FastrMemory include Codex CLI, Gemini CLI, OpenCode, 
 
 ### ⚡ Run Without a Global Install
 
-The 0.3.0 branch package is unscoped `fastrmemory`. It is not on the registry until the 0.3.0 release gate passes; the published 0.2.1 package remains available under its scoped name.
+The canonical package is published as unscoped `fastrmemory@0.3.0`. The scoped `@atifjubaer/fastrmemory@0.2.1` remains available for the prior release.
 
 ```bash
-# 0.3.0 command (after release):
+# Canonical one-shot (pins the exact release):
 npx -y fastrmemory@0.3.0 setup
-
-# Published 0.2.1 release:
-npx -y @atifjubaer/fastrmemory@0.2.1 setup
 
 # Or launch the local Web UI:
 npx -y fastrmemory@0.3.0 ui
+
+# Prior scoped release:
+npx -y @atifjubaer/fastrmemory@0.2.1 setup
 ```
 
 The GitHub source path remains available for development only: `npx github:atifjubaer/fastrmemory setup`. Do not use it in generated MCP or hook configs; those must pin the npm package version.
@@ -130,12 +130,15 @@ The GitHub source path remains available for development only: `npx github:atifj
 ### Install from npm
 
 ```bash
-# 0.3.0 branch (after release):
+# Canonical install (latest is 0.3.0):
+npm install -g fastrmemory
+fastr --version
+
+# Exact release:
 npm install -g fastrmemory@0.3.0
 
-# Current published release:
+# Prior scoped release:
 npm install -g @atifjubaer/fastrmemory@0.2.1
-fastr --version
 ```
 
 For a one-shot run without a global install:
@@ -144,7 +147,7 @@ For a one-shot run without a global install:
 npx -y fastrmemory@0.3.0 --version
 ```
 
-The 0.2.1 package is public. The first `npm view` after the 2026-10-22 publish returned E404 for about two minutes during registry propagation; use the exact `0.2.1` version for reproducibility. The 0.3.0 package is unreleased; do not treat the `fastrmemory` install command as available until the release gate passes.
+`0.3.0` was published on 2026-10-22 18:32 UTC; the registry tarball shasum is `e17af4f854bd9231e1f4b3a8efb04d3e5b65f8e2`, and `latest` is `0.3.0`. The registry also lists `0.0.0-stage`; pin `0.3.0` for reproducibility. The scoped `0.2.1` package remains published and frozen at `3fa2bf9`; the first `npm view` after its 2026-10-22 publish returned E404 for about two minutes during registry propagation.
 
 ### Install the v0.2.1 GitHub Release Tarball
 
@@ -167,7 +170,7 @@ Or install the current default branch for development (not the frozen release ta
 npm install -g git+https://github.com/atifjubaer/fastrmemory.git
 ```
 
-> Both `fastrmemory` and `fastr` (short alias) are executable after installation. The 0.3.0 branch renames the package to `fastrmemory`; the bin names stay the same. The GitHub asset is the byte-verified fallback for the v0.2.1 release and is not byte-identical to the registry tarball. The release tarball SHA-256 is recorded in [CLAIMS.md](CLAIMS.md).
+> Both `fastrmemory` and `fastr` (short alias) are executable after installation. The canonical package is unscoped `fastrmemory@0.3.0`; the scoped `@atifjubaer/fastrmemory@0.2.1` release remains available. The GitHub asset is the byte-verified fallback for the v0.2.1 release and is not byte-identical to the registry tarball. The release tarball SHA-256 is recorded in [CLAIMS.md](CLAIMS.md).
 
 ### 2. Verify Database Health
 
@@ -387,7 +390,7 @@ Add this JSON block to your agent's MCP settings to enable autonomous memory:
 
 ## 🛠️ MCP Server: Tools & Resources
 
-Built using the official **v2 `@modelcontextprotocol/server`** SDK. The tool list below describes the **0.3.0** branch; the v0.2.1 release has 4 resources.
+Built using the official **v2 `@modelcontextprotocol/server`** SDK. The tool list below describes **0.3.0**; the v0.2.1 release has 4 resources.
 
 ### 41 MCP Tools
 
@@ -565,7 +568,7 @@ Run the comprehensive unit test suite:
 npm test
 ```
 
-All **276 tests pass** across **51 test files** on the 0.3.0 branch (the v0.2.1 release has **235 tests / 43 files**) covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, branch merge conflict reports, replay/diff, memory envelopes, confidence tiers and 3-bad dormancy, memory hygiene checks, Memory CI, conflict-aware recall, portable backup manifests and verified restore, local rule import, OpenCode V2, Gemini CLI, and Copilot CLI wiring, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, UI loopback security boundaries, and atomic installer configuration safety.
+All **276 tests pass** across **51 test files** in 0.3.0 (the v0.2.1 release has **235 tests / 43 files**) covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, branch merge conflict reports, replay/diff, memory envelopes, confidence tiers and 3-bad dormancy, memory hygiene checks, Memory CI, conflict-aware recall, portable backup manifests and verified restore, local rule import, OpenCode V2, Gemini CLI, and Copilot CLI wiring, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, UI loopback security boundaries, and atomic installer configuration safety.
 
 **CI performance gates:** `check:query-plans`, `check:recall-latency`, and `check:install-size` run inside `check:ci`. CI executes them on the canonical Ubuntu/Node 24 job; other matrix jobs set `FASTR_PERF_GATE=0` because timing is runner-sensitive, while functional tests still run on every matrix entry.
 

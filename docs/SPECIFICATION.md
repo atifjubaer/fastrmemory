@@ -1,8 +1,8 @@
 # FastrMemory Technical Specification
 
-> **Status (2026-10-22): historical design reference, partially stale.** The schema tables below describe the v0.1.0 design. The published release is npm `@atifjubaer/fastrmemory@0.2.1`; the counts below describe the unreleased `0.3.0` branch. The `0.3.0` branch registers **41 tools, 2 prompts, and 5 resources** (3 static resources plus the `fastr://memory/{id}` and `fastr://memory/{id}/envelope` templates), exposes **12 tools** in the optional core profile, and ships **10 Agent Skills**. The current suite is **276 tests across 51 files**. Newer tables for branches, merges, conflicts, actions, slots, snapshots, entities, graph edges, predictions, and vision assets live in `src/db/schema.ts` and are covered by the tests. Verify counts with `npm run check:docs` before citing them.
+> **Status (2026-10-23): historical design reference, partially stale.** The schema tables below describe the v0.1.0 design. The canonical published release is npm `fastrmemory@0.3.0`; the counts below describe that release. `0.3.0` registers **41 tools, 2 prompts, and 5 resources** (3 static resources plus the `fastr://memory/{id}` and `fastr://memory/{id}/envelope` templates), exposes **12 tools** in the optional core profile, and ships **10 Agent Skills**. The current suite is **276 tests across 51 files**. Newer tables for branches, merges, conflicts, actions, slots, snapshots, entities, graph edges, predictions, and vision assets live in `src/db/schema.ts` and are covered by the tests. Verify counts with `npm run check:docs` before citing them.
 >
-> **Package**: `fastrmemory` on the 0.3.0 branch; the published 0.2.1 release is `@atifjubaer/fastrmemory`
+> **Package**: published `fastrmemory@0.3.0`; the frozen 0.2.1 release is `@atifjubaer/fastrmemory`
 > **Schema reference version**: `1.0.0` (v0.1.0 snapshot; see `src/db/schema.ts` for the live schema)
 > **SDK**: `@modelcontextprotocol/server` (MCP v2) + `zod` v4
 > **Database Engine**: Node.js 22.16+ built-in `node:sqlite` (`DatabaseSync`)

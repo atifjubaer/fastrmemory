@@ -2,8 +2,8 @@
 
 This roadmap is evidence-gated. A phase is complete only when its gate passes on a committed artifact (test, raw JSON, CI run, or installable package), not when code exists.
 
-- **Roadmap date:** 2026-10-22
-- **Code HEAD:** `feat/0.3.0` branch (release tag `v0.2.1` = `3fa2bf9`)
+- **Roadmap date:** 2026-10-23
+- **Code HEAD:** `main` at `50a7d8f` (release tag `v0.3.0`; historical `v0.2.1` = `3fa2bf9`)
 - **Source:** the full 2026-10-20 mission prompt, not the earlier summary.
 - **Status legend:** **Done**, **Partial**, **Missing**, **Blocked**.
 - **Rule:** do not call the project complete while any gate below is Partial, Missing, or Blocked.
@@ -12,14 +12,14 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 
 | Item | Current state | Evidence |
 |---|---|---|
-| Local test gate | **Done:** 276 tests across 51 files | `npm test` on 2026-10-23 on the package-identity branch |
-| CI matrix | **Done:** 6/6 green at `d6f3662` | run `39532273797`; release `3fa2bf9` is 6/6 in run `39495621243` |
-| npm distribution | **Done:** `@atifjubaer/fastrmemory@0.2.1` published 2026-10-22 16:51 UTC; `npm view` and `npx` return `0.2.1`; access status is `public` | `docs/npm-publishing.md`; `CLAIMS.md` A2 |
-| npm package rename (0.3.0) | **In progress:** branch package is unscoped `fastrmemory@0.3.0`; not published; generated MCP/hook configs pin it and reject the GitHub default branch | `package.json`; `CLAIMS.md` A1a, A1b |
-| Package artifact | **GitHub asset and npm tarball:** v0.2.1 asset is 591,204 bytes, SHA-256 `78F1535E87A7148272824C0B0D31F21D4AD385D9EEAA2EF8A40D41DCD0ACA63B`; npm reports 591.4 kB packed / 2.3 MB unpacked / 220 files, shasum `352abba135ce1b0921cacbcdf9b7efd2abfc4802`; v0.2.0 asset is 571,279 bytes | `npm pack` vs downloaded release asset; `npm publish` output |
+| Local test gate | **Done:** 276 tests across 51 files | `npm test` at `50a7d8f` on 2026-10-23 during the publish gate |
+| CI matrix | **Done:** 6/6 green at `50a7d8f` | run `39831793263`; historical v0.2.1 release `3fa2bf9` is 6/6 in run `39495621243` |
+| npm distribution | **Done:** canonical `fastrmemory@0.3.0` published 2026-10-22 18:32 UTC; `npm view fastrmemory version` returns `0.3.0`; `latest` is `0.3.0`; clean global and `npx` installs return `0.3.0` | `docs/npm-publishing.md`; `CLAIMS.md` A2a |
+| npm package rename (0.3.0) | **Done:** unscoped `fastrmemory@0.3.0` is published and `latest`; generated MCP/hook configs pin it and reject the GitHub default branch | `package.json`; `CLAIMS.md` A1a, A1b, A2a |
+| Package artifact | **0.3.0 npm tarball:** 647,903 bytes packed / 2,598,164 bytes unpacked / 270 files, shasum `e17af4f854bd9231e1f4b3a8efb04d3e5b65f8e2`; historical v0.2.1 asset is 591,204 bytes, SHA-256 `78F1535E87A7148272824C0B0D31F21D4AD385D9EEAA2EF8A40D41DCD0ACA63B`; v0.2.0 asset is 571,279 bytes | `npm pack --dry-run`; registry metadata; `npm publish` output |
 | Benchmark | **Done for the synthetic gate:** 240 cases, 192/48 split; holdout 95.8% Hit@1, 100% Hit@5, 209 tokens | `bench/results/minilm.json` |
 | Replay and snapshots | **Done:** exact at three timestamps; JSONL round-trip hash stable | `bench/results/replay-evidence.json` |
-| Default install | **Pass (v0.2.1):** 16,493,075 bytes, 1.93 s, three runtime dependencies | `CLAIMS.md` A8 |
+| Default install | **Pass (0.3.0):** local gate 16,756,937 bytes / 1.806 s; published `npm install -g fastrmemory@0.3.0` added 5 packages in 2 s; three runtime dependencies | `CLAIMS.md` A2a, I4; historical v0.2.1 measurement in A8 |
 | Crash test | **Done:** 10/10 runs, 10,718 acknowledged writes, 0 lost, 0 duplicates, integrity `ok` | `bench/results/crash-test.json`; `CLAIMS.md` D4 |
 
 ## 0.3.0 execution plan
@@ -29,8 +29,8 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 **Release isolation:**
 
 - `v0.2.1` stays frozen at tag `v0.2.1` and code commit `3fa2bf9`.
-- Publish `0.2.1` from that tag, never from the `feat/0.3.0` branch.
-- Every 0.3.0 task lands on `feat/0.3.0` with its own tests and evidence row.
+- `0.3.0` was published from `main` at `50a7d8f`, tagged `v0.3.0`; do not republish it.
+- Every 0.3.0 task landed on `feat/0.3.0` with its own tests and evidence row before the release merge.
 
 **Execution order:** Phase 3 → Phase 4 → Phase 2 → Phase 6 → Phase 5 → Phase 0 → Phase 1 release gate.
 
@@ -96,7 +96,7 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 |---|---|---|---|
 | 0.1 | Finish CLAIMS coverage | Every README and launch claim has a row with command, output, date, commit, caveat | **Done** - README trace enforced by `check:docs` |
 | 0.2 | Remove stale specification text | No stale counts in `docs/SPECIFICATION.md` or `RELEASE_v0.1.0.md` | **Done** |
-| 1.1 | Publish 0.3.0 | CI 6/6 green, package gate green, npm publish, clean `npx` install | Not started — 0.2.1 is published; 0.3.0 remains unreleased |
+| 1.1 | Publish 0.3.0 | CI 6/6 green, package gate green, npm publish, clean `npx` install | **Done** — CI run `39831793263` is 6/6 at `50a7d8f`; `npm publish` succeeded; global and `npx` installs return `0.3.0`; evidence in `CLAIMS.md` A2a |
 
 **Estimated remaining effort:** the npm publish gate is complete; Apple Silicon coverage remains; LoCoMo retrieval is still Partial.
 
@@ -105,7 +105,7 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 | Item | Status | Evidence / remaining work |
 |---|---|---|
 | Remove stale benchmark claims | **Done** | `README.md` uses the `562f461` run and states the current 276 tests / 51 files / 41 tools; `docs/benchmark-report.md` and `BENCHMARKS.md` match. |
-| Correct competitor and dependency claims | **Done** | `CLAIMS.md` records removed claims; README launch table, release-vs-branch banner, and 0.2.1 post are in place; the README claim trace maps every H2 section. |
+| Correct competitor and dependency claims | **Done** | `CLAIMS.md` records removed claims; README launch table, release status banner, and 0.2.1 post are in place; the README claim trace maps every H2 section. |
 | `CLAIMS.md` with command, output, date, commit, caveat | **Done** | `CLAIMS.md`; `npm run check:docs` enforces the trace and catalog counts |
 | Baseline audit | **Done** | `docs/audit/2026-10-20-baseline.md` |
 | Align specification, release notes, npm docs | **Done** | `docs/SPECIFICATION.md` now carries current 41/2/5, 10-skill, 276/51 counts and points to the live schema; `RELEASE_v0.1.0.md` marks k=60 as historical, qualifies the 2.0× boost, and corrects the tarball-tracking claim; `docs/npm-publishing.md` records the successful 2026-10-22 publish and preserves the earlier E401/E404 block as history. |
@@ -179,7 +179,7 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 |---|---|---|
 | Optional local model; three runtime dependencies | **Done** | `package.json`; `scripts/check-package.mjs` |
 | SQLite pragmas and query-plan review | **Done** | `scripts/check-query-plans.ts`; 10/10 plans pass with no large-table scans; `docs/QUERY_PLANS.md`; `bench/results/query-plans.json`. |
-| Clean install under 20 MB / 10 s | **Pass (0.3.0 branch)** | Local 16,750,800-16,751,875 bytes / 1.842-2.154 s; canonical CI run `39531624894` 1,251 ms; v0.2.1 is 16,493,075 bytes / 1.93 s. |
+| Clean install under 20 MB / 10 s | **Pass (0.3.0)** | Local 16,750,800-16,751,875 bytes / 1.842-2.154 s; canonical CI run `39531624894` 1,251 ms; v0.2.1 is 16,493,075 bytes / 1.93 s. |
 | 10k crash test, 10/10 runs, 0 lost / 0 duplicates | **Done** | 10,718 acknowledged writes, 10,727 committed rows, 0 missing, 0 duplicate ids/titles, integrity `ok`; `bench/results/crash-test.json`; `CLAIMS.md` D4. |
 | Export/import/backup with provenance | **Done** | `fastr backup` writes JSONL plus a sidecar manifest with SHA-256, content hash, record counts, tool/environment, and source integrity; `--verify`, `--restore`, `--dry-run`; `tests/backup.test.ts`. |
 | CI size and latency gates | **Done** | `check:install-size`, `check:recall-latency`, and `check:query-plans` run in `check:ci`; canonical CI job enforces them, with `FASTR_PERF_GATE=0` on non-canonical matrix jobs. |
@@ -190,7 +190,7 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 
 | Item | Status | Evidence / remaining work |
 |---|---|---|
-| README rewritten around measured claims | **Done** | Launch status table, release-vs-branch banner, corrected latency/resource/test counts, release paths, and 0.3.0 labels; the section-by-section trace in `CLAIMS.md` is enforced by `check:docs`. |
+| README rewritten around measured claims | **Done** | Launch status table, release status banner, corrected latency/resource/test counts, release paths, and 0.3.0 labels; the section-by-section trace in `CLAIMS.md` is enforced by `check:docs`. |
 | `BENCHMARKS.md` and `CLAIMS.md` | **Done** | Both present and checked; `CLAIMS.md` includes the README trace, dashboard/extension rows, and BM25 sub-millisecond evidence. |
 | `MIGRATION.md` | **Done** | Upgrade and rollback paths for 0.1.x → 0.2.x → 0.3.0; physical and logical backup steps. |
 | `SECURITY.md` | **Done** | Threat model, local data boundaries, secret handling, loopback dashboard controls, and private reporting path. |
@@ -207,7 +207,7 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 | Truth | No false/stale claims; `CLAIMS.md` covers every public claim | **Pass** — README trace enforced by `check:docs`; specification, release notes, and npm docs aligned |
 | Tests | 6/6 OS × Node green on the release commit; isolation green | **Pass** - local 276 green / 51 files; 6/6 at `3fa2bf9` in run `39495621243` and 6/6 at `d6f3662` in run `39532273797` |
 | Package | npm published or explicitly blocked and documented; `npx` works | **Pass** — npm `@atifjubaer/fastrmemory@0.2.1` is published and public; `npm view` and `npx` return `0.2.1`; v0.2.1 GitHub asset is attached and release-URL install verified |
-| Footprint | Default install under 20 MB; install under 10 s | **Pass (0.3.0 branch)** - local 16,750,800-16,751,875 bytes, 1.842-2.154 s; canonical CI `1,251 ms`; v0.2.1 is 16,493,075 bytes, 1.93 s |
+| Footprint | Default install under 20 MB; install under 10 s | **Pass (0.3.0)** - local 16,750,800-16,751,875 bytes, 1.842-2.154 s; canonical CI `1,251 ms`; v0.2.1 is 16,493,075 bytes, 1.93 s |
 | Benchmark | 240+ cases; held-out; raw JSON committed | **Done** |
 | Retrieval | Hit@1 ≥90%; Hit@5 ≥98%; external baseline +5pp Hit@5; tokens ≤0.5× | **Partial** — synthetic targets pass; LongMemEval +10.4pp / +11.0pp, LoCoMo +4.4pp / +2.3pp; LoCoMo misses |
 | Integrity | 0 lost/0 duplicates in 10k crash test; replay exact | **Done (process crash)** — 10/10 runs, 0 lost, 0 duplicates; replay exact; power loss not tested |
@@ -227,7 +227,7 @@ Do not publish current HEAD as `0.2.0` or `0.2.1`: the frozen v0.2.1 tag is `3fa
 
 ## Work order
 
-1. **P0:** prepare, verify, and publish the npm release candidate. **Done** for `0.2.1`; the registry package is live.
+1. **P0:** prepare, verify, and publish the npm release candidate. **Done** for `0.2.1` and `0.3.0`; `latest` is `0.3.0`.
 2. **P0:** run the 10k crash test and commit the report. **Done.**
 3. **P1:** add the 12-tool core profile and its smoke test. **Done.**
 4. **P1:** add OpenCode/Gemini/Copilot hook parity, local import, and conflict-aware recall. **Done.**
@@ -235,7 +235,7 @@ Do not publish current HEAD as `0.2.0` or `0.2.1`: the frozen v0.2.1 tag is `3fa
 6. **P2:** add public benchmark harnesses and a pinned external baseline. Both **Done**; LoCoMo retrieval target remains Partial.
 7. **P2:** finish README, migration, security, scorecard, changelog, and launch evidence. Migration, security, scorecard, README launch rewrite, launch post, and the section-level claim trace are **Done**.
 
-Estimated remaining effort: Apple Silicon coverage remains; LoCoMo retrieval is still Partial. The npm `0.2.1` package and the `v0.2.1` GitHub release are attached and verified. `0.3.0` is not published.
+Estimated remaining effort: Apple Silicon coverage remains; LoCoMo retrieval is still Partial. The canonical npm `0.3.0` package is published and verified; the frozen `0.2.1` npm package and GitHub release remain available.
 
 ## Reporting contract
 

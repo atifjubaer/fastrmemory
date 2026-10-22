@@ -1,8 +1,8 @@
 # Security Policy
 
-**Last reviewed:** 2026-10-21
-**Supported release:** `0.2.1`
-**Pre-release:** `0.3.0` is unreleased and receives no security support claim.
+**Last reviewed:** 2026-10-23
+**Supported release:** `0.3.0` (canonical unscoped package, `latest`)
+**Previous release:** `0.2.1` remains available for rollback but is superseded.
 
 FastrMemory is a local-first memory engine. It stores plaintext SQLite and Markdown files, runs as the current OS user, and does not provide multi-user authentication. The security model assumes a trusted local account and treats repository content, imported files, and recalled memories as untrusted data.
 

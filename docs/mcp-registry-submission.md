@@ -1,6 +1,6 @@
 # Official Model Context Protocol Registry Submission
 
-> **Status (2026-10-23): draft for 0.3.0.** The published release remains `@atifjubaer/fastrmemory@0.2.1` (`npm view` returns `0.2.1`; access status `public`). The unscoped `fastrmemory@0.3.0` package is not on the registry yet. Submit this entry only after the 0.3.0 release gate passes and root `server.json` matches the published package.
+> **Status (2026-10-23): ready to submit for 0.3.0.** The canonical unscoped `fastrmemory@0.3.0` is published (`npm view fastrmemory version` returns `0.3.0`; `latest` is `0.3.0`), and root `server.json` pins that version. The scoped `@atifjubaer/fastrmemory@0.2.1` remains published and frozen. This entry has not been submitted to the MCP registry yet.
 
 Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers) under the **Memory & Cognitive Engines** section.
 
@@ -53,4 +53,4 @@ Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://gi
 }
 ```
 
-> Version note: pin `fastrmemory@0.3.0` and submit only after that version is published. The full 41-tool surface is the default; pass `--profile core` for the 12-tool daily loop.
+> Version note: pin `fastrmemory@0.3.0`; it is published and is the current `latest`. The full 41-tool surface is the default; pass `--profile core` for the 12-tool daily loop.

@@ -2,7 +2,9 @@
 
 All notable changes to FastrMemory are recorded here. Versions follow semantic versioning.
 
-## [Unreleased]
+## [0.3.0] - 2026-10-22
+
+Published as canonical unscoped `fastrmemory@0.3.0` on 2026-10-22 18:32 UTC from tag `v0.3.0` (`50a7d8f`). `npm view fastrmemory version` returns `0.3.0`; `latest` is `0.3.0`; registry tarball shasum `e17af4f854bd9231e1f4b3a8efb04d3e5b65f8e2`. The scoped `@atifjubaer/fastrmemory@0.2.1` remains published and frozen at `3fa2bf9`. The registry also lists `0.0.0-stage`; pin `0.3.0` for reproducible installs. See [docs/npm-publishing.md](docs/npm-publishing.md).
 
 ### Added
 
@@ -35,7 +37,7 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ### Changed
 
-- Package identity moves to unscoped `fastrmemory@0.3.0`; generated MCP and hook configs pin `fastrmemory@0.3.0` instead of the GitHub default branch. The scoped `@atifjubaer/fastrmemory@0.2.1` release remains available.
+- Package identity is now unscoped `fastrmemory@0.3.0`, published and `latest`; generated MCP and hook configs pin `fastrmemory@0.3.0` instead of the GitHub default branch. The scoped `@atifjubaer/fastrmemory@0.2.1` release remains available.
 - Removed 60 legacy `Global Security Invariant` rows from the global store with explicit approval; a timestamped database backup was written first, and the post-cleanup dry run reported 0 matching rows.
 - Dormancy now requires three consecutive bad outcomes instead of a low reward score alone.
 - Added indexes for project/time raw-event replay and project/embedded candidate scans; the query-plan gate verifies they are selected.
@@ -63,7 +65,7 @@ GitHub release attached and npm package published from the post-0.2.0 fixes. `@a
 ### Changed
 
 - MCP `serverInfo.name` is now `fastrmemory`; registry identity remains `io.github.atifjubaer/fastrmemory`.
-- MCP surface is 41 tools, 2 prompts, and 4 resources. The unreleased 0.3.0 branch adds a fifth resource template.
+- MCP surface is 41 tools, 2 prompts, and 4 resources. The 0.3.0 release adds a fifth resource template.
 - Retrieval uses weighted FTS5 `bm25`, configurable RRF (`k = 20` by default), per-stream weights, conditional trap boosting, and graph seeding disabled by default.
 - Semantic embeddings are optional; deterministic hash vectors are not the default semantic path.
 - Test suite is 235 tests across 43 files.
@@ -77,7 +79,7 @@ GitHub release attached and npm package published from the post-0.2.0 fixes. `@a
 ### Known limitations
 
 - The npm registry also lists `0.0.0-stage`; use `@0.2.1` for reproducible installs.
-- At v0.2.1, the benchmark corpus was synthetic and no external memory engine was measured; the Unreleased section adds pinned external retrieval baselines.
+- At v0.2.1, the benchmark corpus was synthetic and no external memory engine was measured; the 0.3.0 release adds pinned external retrieval baselines.
 - Apple Silicon macOS is not in the 6-job CI matrix.
 - The crash test kills the process (`taskkill /F`); it is not an OS-crash or power-loss test, and SQLite uses `synchronous=NORMAL` in WAL mode.
 

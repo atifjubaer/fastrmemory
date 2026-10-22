@@ -7,6 +7,8 @@
 
 FastrMemory 0.2.1 is the replay and reliability release. It adds exact memory replay, portable JSONL snapshots, Memory CI, non-lossy consolidation, and a 12-tool core MCP profile. The GitHub Release tarball is attached and installable, and the npm registry package is now published at `0.2.1`.
 
+> **Update (2026-10-23):** The canonical unscoped `fastrmemory@0.3.0` is now published and is `latest`. The "0.3.0 is not published" statements below describe the 0.2.1 release date; see [docs/npm-publishing.md](../npm-publishing.md).
+
 ## Install
 
 ```bash
@@ -62,7 +64,7 @@ The benchmark uses **240 deterministic synthetic cases with a 48-case frozen hol
 ## Caveats
 
 - The npm registry tarball and GitHub asset are not byte-identical; both report `0.2.1`. Use the exact version for reproducible installs.
-- `0.3.0` is not published; it remains an unreleased branch.
+- At the 0.2.1 release date, `0.3.0` was unpublished. It is now published as `fastrmemory@0.3.0`; see [docs/npm-publishing.md](../npm-publishing.md).
 - The benchmark corpus is synthetic; it is not a QA leaderboard result.
 - The macOS CI jobs use Intel `macos-15-intel`; Apple Silicon is not covered.
 - Memory CI comment updates are verified for same-repository PRs; fork PRs are job-summary-only because their token is read-only.
@@ -73,4 +75,4 @@ The benchmark uses **240 deterministic synthetic cases with a 48-case frozen hol
 
 ## Next
 
-The `0.3.0` branch adds conflict-aware recall, local rule import, OpenCode V2/Gemini CLI/Copilot CLI hooks, immutable branches, confidence tiers, feedback, hygiene, and the dashboard Replay & Diff workspace. It is not published. The `0.2.1` npm publish completed on 2026-10-22 from tag `3fa2bf9`; for future releases, rerun the documented publish protocol and verify `npm view` and `npx` from a neutral directory.
+The `0.3.0` release adds conflict-aware recall, local rule import, OpenCode V2/Gemini CLI/Copilot CLI hooks, immutable branches, confidence tiers, feedback, hygiene, and the dashboard Replay & Diff workspace. It is published as `fastrmemory@0.3.0`. The `0.2.1` npm publish completed on 2026-10-22 from tag `3fa2bf9`; for future releases, rerun the documented publish protocol and verify `npm view` and `npx` from a neutral directory.
