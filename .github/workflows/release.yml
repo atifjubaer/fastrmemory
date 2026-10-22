@@ -78,7 +78,7 @@ jobs:
           echo "Installed tarball reports $INSTALLED_VERSION"
 
       - name: Publish to npm with provenance
-        run: npm publish "${{ steps.pack.outputs.tarball }}" --provenance --access public
+        run: npm publish "$(pwd)/${{ steps.pack.outputs.tarball }}" --provenance --access public
 
       - name: Verify registry publication
         run: |
