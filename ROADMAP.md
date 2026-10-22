@@ -3,7 +3,7 @@
 This roadmap is evidence-gated. A phase is complete only when its gate passes on a committed artifact (test, raw JSON, CI run, or installable package), not when code exists.
 
 - **Roadmap date:** 2026-10-23
-- **Code HEAD:** `main` at `50a7d8f` (release tag `v0.3.0`; historical `v0.2.1` = `3fa2bf9`)
+- **Release code HEAD:** `50a7d8f` (tag `v0.3.0`; historical `v0.2.1` = `3fa2bf9`); post-release documentation updates follow on `main`
 - **Source:** the full 2026-10-20 mission prompt, not the earlier summary.
 - **Status legend:** **Done**, **Partial**, **Missing**, **Blocked**.
 - **Rule:** do not call the project complete while any gate below is Partial, Missing, or Blocked.
