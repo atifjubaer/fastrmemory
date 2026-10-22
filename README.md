@@ -14,7 +14,7 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-architecture)
 
-> **Status (2026-10-23):** The canonical package is **`fastrmemory@0.3.0`**, published to npm on **2026-10-22 18:32 UTC** from tag `v0.3.0` (`50a7d8f`). `npm view fastrmemory version` returns `0.3.0` and `latest` is `0.3.0`; `npm install -g fastrmemory` installs the published package, and `npx -y fastrmemory@0.3.0 --version` returns `0.3.0`. The scoped **`@atifjubaer/fastrmemory@0.2.1`** remains published and frozen at `3fa2bf9`. This README tracks **0.3.0**. Use the exact `0.3.0` version for reproducibility; the registry also lists a `0.0.0-stage` placeholder. The **v0.2.1 GitHub Release tarball** remains the byte-verified fallback for the scoped 0.2.1 release, and its release post is [docs/blog/2026-10-21-fastrmemory-0.2.1.md](docs/blog/2026-10-21-fastrmemory-0.2.1.md). The exact release surface is in [CHANGELOG.md](CHANGELOG.md). The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval. Public LongMemEval, LoCoMo, and self-repository retrieval-only results plus pinned external baselines are in [BENCHMARKS.md](BENCHMARKS.md); no QA-leaderboard parity is claimed. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); every README section is mapped to claim IDs in the README claim trace at the end of that ledger. Methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md).
+> **Status (2026-10-23):** The canonical package is **`fastrmemory@0.3.0`**, published to npm on **2026-10-22 18:32 UTC** from tag `v0.3.0` (`50a7d8f`). `npm view fastrmemory version` returns `0.3.0` and `latest` is `0.3.0`; `npm install -g fastrmemory` installs the published package, and `npx -y fastrmemory@0.3.0 --version` returns `0.3.0`. The old scoped npm entries (`@atifjubaer/fastrmemory` and `fastrmemory@0.0.0-stage`) were removed on 2026-10-23; the GitHub `v0.2.1` tag and release remain as history. This README tracks **0.3.0**. Use the exact `0.3.0` version for reproducibility. The release post for 0.2.1 remains at [docs/blog/2026-10-21-fastrmemory-0.2.1.md](docs/blog/2026-10-21-fastrmemory-0.2.1.md). The exact release surface is in [CHANGELOG.md](CHANGELOG.md). The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval. Public LongMemEval, LoCoMo, and self-repository retrieval-only results plus pinned external baselines are in [BENCHMARKS.md](BENCHMARKS.md); no QA-leaderboard parity is claimed. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); every README section is mapped to claim IDs in the README claim trace at the end of that ledger. Methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md).
 
 <p align="center">
   <a href="#-overview">Overview</a> &bull;
@@ -40,7 +40,7 @@
 
 | Claim | Current result | Evidence |
 |---|---|---|
-| Install path | Published canonical `fastrmemory@0.3.0`; scoped `@atifjubaer/fastrmemory@0.2.1` remains available | `npm view fastrmemory version` -> `0.3.0`; `npm install -g fastrmemory@0.3.0`; `fastr --version` -> `0.3.0` |
+| Install path | Published canonical `fastrmemory@0.3.0`; old scoped npm entries removed | `npm view fastrmemory version` -> `0.3.0`; `npm install -g fastrmemory@0.3.0`; `fastr --version` -> `0.3.0` |
 | Synthetic retrieval | Holdout `95.8%` Hit@1, `100%` Hit@5, MRR `0.969` | `npx tsx scripts/eval-bench.ts --split all --embeddings minilm --out bench/results/minilm.json` |
 | Test suite | `276` tests across `51` files in `0.3.0`; v0.2.1 is `235` / `43` | `npm test` |
 | Crash safety | 10/10 runs, 0 lost, 0 duplicate ids/titles | `npm run test:crash`; `bench/results/crash-test.json` |
@@ -110,7 +110,7 @@ Clients commonly used with FastrMemory include Codex CLI, Gemini CLI, OpenCode, 
 
 ### ⚡ Run Without a Global Install
 
-The canonical package is published as unscoped `fastrmemory@0.3.0`. The scoped `@atifjubaer/fastrmemory@0.2.1` remains available for the prior release.
+The canonical package is published as unscoped `fastrmemory@0.3.0`. The old scoped npm entries were removed on 2026-10-23.
 
 ```bash
 # Canonical one-shot (pins the exact release):
@@ -118,12 +118,9 @@ npx -y fastrmemory@0.3.0 setup
 
 # Or launch the local Web UI:
 npx -y fastrmemory@0.3.0 ui
-
-# Prior scoped release:
-npx -y @atifjubaer/fastrmemory@0.2.1 setup
 ```
 
-The GitHub source path remains available for development only: `npx github:atifjubaer/fastrmemory setup`. Do not use it in generated MCP or hook configs; those must pin the npm package version.
+The GitHub source path remains available for development only: `npx github:atifjubaer/fastrmemory setup`. For a reproducible source install, pin the tag: `npx github:atifjubaer/fastrmemory#v0.3.0 setup`. Do not use either GitHub form in generated MCP or hook configs; those must pin the npm package version.
 
 ---
 
@@ -136,9 +133,6 @@ fastr --version
 
 # Exact release:
 npm install -g fastrmemory@0.3.0
-
-# Prior scoped release:
-npm install -g @atifjubaer/fastrmemory@0.2.1
 ```
 
 For a one-shot run without a global install:
@@ -147,30 +141,25 @@ For a one-shot run without a global install:
 npx -y fastrmemory@0.3.0 --version
 ```
 
-`0.3.0` was published on 2026-10-22 18:32 UTC; the registry tarball shasum is `e17af4f854bd9231e1f4b3a8efb04d3e5b65f8e2`, and `latest` is `0.3.0`. The registry also lists `0.0.0-stage`; pin `0.3.0` for reproducibility. The scoped `0.2.1` package remains published and frozen at `3fa2bf9`; the first `npm view` after its 2026-10-22 publish returned E404 for about two minutes during registry propagation.
+`0.3.0` was published on 2026-10-22 18:32 UTC; the registry tarball shasum is `e17af4f854bd9231e1f4b3a8efb04d3e5b65f8e2`, and `latest` is `0.3.0`. The old scoped npm entries were removed on 2026-10-23; `npm view fastrmemory versions --json` now returns only `0.3.0`.
 
-### Install the v0.2.1 GitHub Release Tarball
+### Install from GitHub
+
+For a one-shot source run, pin the release tag:
 
 ```bash
-# Local project install from the release asset (verified with the 0.2.1 tarball):
-npm install https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.1/atifjubaer-fastrmemory-0.2.1.tgz
+npx --yes github:atifjubaer/fastrmemory#v0.3.0 --version
+npx --yes github:atifjubaer/fastrmemory#v0.3.0 setup
+```
+
+For a local project install, pin the release tag:
+
+```bash
+npm install --no-save git+https://github.com/atifjubaer/fastrmemory.git#v0.3.0
 npx fastr --version
 ```
 
-For a global CLI:
-
-```bash
-npm install -g https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.1/atifjubaer-fastrmemory-0.2.1.tgz
-fastr --version
-```
-
-Or install the current default branch for development (not the frozen release tag):
-
-```bash
-npm install -g git+https://github.com/atifjubaer/fastrmemory.git
-```
-
-> Both `fastrmemory` and `fastr` (short alias) are executable after installation. The canonical package is unscoped `fastrmemory@0.3.0`; the scoped `@atifjubaer/fastrmemory@0.2.1` release remains available. The GitHub asset is the byte-verified fallback for the v0.2.1 release and is not byte-identical to the registry tarball. The release tarball SHA-256 is recorded in [CLAIMS.md](CLAIMS.md).
+> Git installs build from source and are slower than the npm tarball; use `npm install -g fastrmemory` for a global CLI. Both `fastrmemory` and `fastr` (short alias) are executable after installation. The canonical package is unscoped `fastrmemory@0.3.0`; the old scoped npm entries are gone. Use npm for generated MCP and hook configs so installs stay reproducible.
 
 ### 2. Verify Database Health
 

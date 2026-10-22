@@ -1,7 +1,7 @@
 # Migration Guide
 
 **Current published release:** `0.3.0` (unscoped npm package, `latest`)
-**Previous published release:** `0.2.1` (scoped npm package and GitHub Release, frozen)
+**Historical release:** `0.2.1` (GitHub Release; npm entry removed 2026-10-23)
 **Applies to:** `0.1.x` → `0.2.x` → `0.3.0`
 
 FastrMemory stores memory in a local SQLite database. Schema setup is additive: new tables are created with `CREATE TABLE IF NOT EXISTS`, and the `provenance_hash` column is added when missing. There is no destructive schema rewrite. That does not replace a backup. Stop every agent, hook, daemon, and dashboard before upgrading or rolling back.
@@ -41,17 +41,12 @@ Copying only `fastr.db` while a WAL file exists can lose recent writes.
 
 ## 2. Upgrade from 0.1.x to 0.2.x
 
-`0.2.1` is the frozen 0.2.x release. Install it from npm; the GitHub Release tarball remains a byte-verified fallback:
+`0.2.1` is the frozen 0.2.x release. Its npm entry was removed on 2026-10-23; the GitHub Release tarball remains the historical fallback:
 
-```bash
-npm install -g @atifjubaer/fastrmemory@0.2.1
-fastr --version
-fastr status
-```
-
-If you need the exact GitHub asset:
 ```bash
 npm install -g https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.1/atifjubaer-fastrmemory-0.2.1.tgz
+fastr --version
+fastr status
 ```
 
 What changes:
@@ -73,7 +68,7 @@ npm install -g fastrmemory@0.3.0
 fastr --version
 ```
 
-The package name changed from `@atifjubaer/fastrmemory` to unscoped `fastrmemory`; the `fastr` and `fastrmemory` bin names stay the same. The scoped `0.2.1` package remains available and frozen.
+The package name changed from `@atifjubaer/fastrmemory` to unscoped `fastrmemory`; the `fastr` and `fastrmemory` bin names stay the same. The scoped `0.2.1` npm entry was removed on 2026-10-23; the GitHub `v0.2.1` tag/release remains historical.
 
 After installing `0.3.0`:
 
@@ -116,17 +111,14 @@ For a full round-trip on a scratch project, import the backup into a new project
 
 ### Code rollback
 
-Install the previous release again:
+Install the previous release again from the GitHub Release tarball:
 
 ```bash
-npm install -g @atifjubaer/fastrmemory@0.2.1
+npm install -g https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.1/atifjubaer-fastrmemory-0.2.1.tgz
 fastr --version
 ```
 
-The byte-verified GitHub fallback is:
-```bash
-npm install -g https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.1/atifjubaer-fastrmemory-0.2.1.tgz
-```
+The old scoped npm entry was removed on 2026-10-23; do not use it for rollback.
 
 For source installs, check out tag `v0.2.1` and rebuild:
 
@@ -168,5 +160,5 @@ Do not assume that an older binary can read a database written by a newer binary
 - There is no automatic database downgrade command.
 - `fastr backup` and `fastr snapshot export` are logical and do not include the SQLite WAL file. The backup scope is memories, raw events, file links, and conflicts; it does not include feedback history, snapshots, branches, action DAG rows, or vision assets. Use the physical `.fastr/fastr.db*` copy for a complete database backup.
 - `fastr backup --restore` verifies the sidecar manifest and file hash before writing; the import runs in one SQLite transaction, but stop other writers first.
-- npm `0.3.0` is published and is `latest`; npm `0.2.1` and its GitHub Release tarball remain available for rollback.
-- The registry also lists `0.0.0-stage`; pin `0.3.0` for reproducible installs.
+- npm `0.3.0` is published and is `latest`; the `0.2.1` npm entry was removed, but its GitHub Release tarball remains for rollback.
+- Only `0.3.0` is on npm; pin `0.3.0` for reproducible installs.

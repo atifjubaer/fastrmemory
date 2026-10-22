@@ -1,6 +1,6 @@
 # FastrMemory NPM Publishing & Troubleshooting Guide
 
-> **Status (2026-10-23): resolved and published.** The canonical `fastrmemory@0.3.0` is live on npm (`npm view fastrmemory version` returns **0.3.0**; `latest` is **0.3.0**), and the frozen scoped `@atifjubaer/fastrmemory@0.2.1` remains live. **Do not disable account 2FA or bypass npm security.** The steps below are a historical incident log from the temporary suspension; they are not a workaround. The current publish protocol is in [npm-publishing.md](npm-publishing.md).
+> **Status (2026-10-23): resolved and published.** The canonical `fastrmemory@0.3.0` is live on npm (`npm view fastrmemory version` returns **0.3.0**; `latest` is **0.3.0**). The old scoped `@atifjubaer/fastrmemory@0.2.1` npm entry was removed on 2026-10-23; its GitHub release remains historical. **Do not disable account 2FA or bypass npm security.** The steps below are a historical incident log from the temporary suspension; they are not a workaround. The current publish protocol is in [npm-publishing.md](npm-publishing.md).
 
 > Reference guide documenting all publishing errors, root causes, fixes applied, and the historical resume protocol for `@atifjubaer/fastrmemory`.
 
@@ -21,7 +21,7 @@ The 0.2.1 publish completed with these steps. Keep them for future releases:
 2. Complete the security challenge npm asks for. **Do not create an automation token to bypass 2FA.**
 3. If npm requires a token, use a short-lived granular token scoped to this package and revoke it after publishing.
 
-### Step 3: Publish from Terminal (completed for 0.2.1)
+### Step 3: Publish from Terminal (historical 0.2.1 run)
 ```powershell
 # Authenticate interactively; complete the 2FA prompt when npm asks.
 npm login
@@ -35,7 +35,7 @@ npm run check:package
 # Publish with public access
 npm publish --access public
 
-# Verify from a neutral directory; the first check may lag 2-3 minutes.
+# Historical 0.2.1 verification; this npm entry was removed on 2026-10-23.
 npm view @atifjubaer/fastrmemory version
 npx --yes --package @atifjubaer/fastrmemory@0.2.1 fastr --version
 
@@ -117,6 +117,6 @@ The 0.2.1 publish ran and verified:
    - `skills/` (10 agent memory skills)
    - `.claude-plugin/` & `.cursor/` (IDE manifests)
    - `README.md` & `LICENSE` (Apache-2.0)
-4. Registry verification: `npm view @atifjubaer/fastrmemory version` = `0.2.1`; `npm access get status` = `public`; registry shasum `352abba135ce1b0921cacbcdf9b7efd2abfc4802`; `npx` = `0.2.1`.
+4. Historical registry verification: `npm view @atifjubaer/fastrmemory version` was `0.2.1`; `npm access get status` was `public`; registry shasum `352abba135ce1b0921cacbcdf9b7efd2abfc4802`; `npx` returned `0.2.1`. The npm entry was removed on 2026-10-23.
 
-The earlier 2026-10-20 E404 state is historical. The package has been public since 2026-10-22 16:51 UTC.
+The earlier 2026-10-20 E404 state is historical. The 0.2.1 package was public from 2026-10-22 16:51 UTC until its removal on 2026-10-23.

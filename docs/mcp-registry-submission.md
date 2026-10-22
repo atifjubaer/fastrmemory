@@ -1,6 +1,6 @@
 # Official Model Context Protocol Registry Submission
 
-> **Status (2026-10-23): ready to submit for 0.3.0.** The canonical unscoped `fastrmemory@0.3.0` is published (`npm view fastrmemory version` returns `0.3.0`; `latest` is `0.3.0`), and root `server.json` pins that version. The scoped `@atifjubaer/fastrmemory@0.2.1` remains published and frozen. This entry has not been submitted to the MCP registry yet.
+> **Status (2026-10-23): ready to submit for 0.3.0.** The canonical unscoped `fastrmemory@0.3.0` is published (`npm view fastrmemory version` returns `0.3.0`; `latest` is `0.3.0`), and root `server.json` pins that version. The old scoped `@atifjubaer/fastrmemory@0.2.1` npm entry was removed on 2026-10-23. This entry has not been submitted to the MCP registry yet.
 
 Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers) under the **Memory & Cognitive Engines** section.
 

@@ -1,6 +1,6 @@
 # FastrMemory 0.2.0: a verified tarball, a deterministic UI, and an honest CI gate
 
-> **Historical note (2026-10-23):** This post describes the 0.2.0 release, when npm was blocked. `@atifjubaer/fastrmemory@0.2.1` is published and frozen, and the canonical `fastrmemory@0.3.0` is now `latest`. The 0.2.0 registry status below is preserved as history; current install instructions are in [the 0.2.1 post](2026-10-21-fastrmemory-0.2.1.md) and [npm-publishing.md](../npm-publishing.md).
+> **Historical note (2026-10-23):** This post describes the 0.2.0 release, when npm was blocked. `@atifjubaer/fastrmemory@0.2.1` was published later and removed on 2026-10-23; the canonical `fastrmemory@0.3.0` is now `latest`. The 0.2.0 registry status below is preserved as history; current install instructions are in [the 0.2.1 post](2026-10-21-fastrmemory-0.2.1.md) and [npm-publishing.md](../npm-publishing.md).
 
 **Date:** 2026-10-20  
 **Code commit:** `de4fde3`  

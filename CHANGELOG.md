@@ -4,11 +4,11 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ## [0.3.0] - 2026-10-22
 
-Published as canonical unscoped `fastrmemory@0.3.0` on 2026-10-22 18:32 UTC from tag `v0.3.0` (`50a7d8f`). `npm view fastrmemory version` returns `0.3.0`; `latest` is `0.3.0`; registry tarball shasum `e17af4f854bd9231e1f4b3a8efb04d3e5b65f8e2`. The scoped `@atifjubaer/fastrmemory@0.2.1` remains published and frozen at `3fa2bf9`. The registry also lists `0.0.0-stage`; pin `0.3.0` for reproducible installs. See [docs/npm-publishing.md](docs/npm-publishing.md).
+Published as canonical unscoped `fastrmemory@0.3.0` on 2026-10-22 18:32 UTC from tag `v0.3.0` (`50a7d8f`). `npm view fastrmemory version` returns `0.3.0`; `latest` is `0.3.0`; registry tarball shasum `e17af4f854bd9231e1f4b3a8efb04d3e5b65f8e2`. The old scoped npm entries (`@atifjubaer/fastrmemory` and `fastrmemory@0.0.0-stage`) were removed on 2026-10-23; the GitHub `v0.2.1` tag/release remains as history. See [docs/npm-publishing.md](docs/npm-publishing.md).
 
 ### Added
 
-- `docs/blog/2026-10-21-fastrmemory-0.2.1.md` launch post with one reproducible command per release number; npm `0.2.1` is published.
+- `docs/blog/2026-10-21-fastrmemory-0.2.1.md` launch post with one reproducible command per release number; npm `0.2.1` was published on 2026-10-22 and removed on 2026-10-23.
 - Conflict-aware recall: ranked results mark both sides of an open contradiction with the conflict id and the opposing memory.
 - `fastr conflict list` and `fastr conflict resolve <id> --keep <memory-id> [--forget] [--reason]`.
 - `fastr import --from markdown|agents-md|cursor-rules|claude-md|jsonl` imports local Markdown rules and snapshots with dry-run and exact-duplicate skipping.
@@ -37,7 +37,7 @@ Published as canonical unscoped `fastrmemory@0.3.0` on 2026-10-22 18:32 UTC from
 
 ### Changed
 
-- Package identity is now unscoped `fastrmemory@0.3.0`, published and `latest`; generated MCP and hook configs pin `fastrmemory@0.3.0` instead of the GitHub default branch. The scoped `@atifjubaer/fastrmemory@0.2.1` release remains available.
+- Package identity is now unscoped `fastrmemory@0.3.0`, published and `latest`; generated MCP and hook configs pin `fastrmemory@0.3.0` instead of the GitHub default branch. The old scoped npm package was removed on 2026-10-23.
 - Removed 60 legacy `Global Security Invariant` rows from the global store with explicit approval; a timestamped database backup was written first, and the post-cleanup dry run reported 0 matching rows.
 - Dormancy now requires three consecutive bad outcomes instead of a low reward score alone.
 - Added indexes for project/time raw-event replay and project/embedded candidate scans; the query-plan gate verifies they are selected.
@@ -48,7 +48,7 @@ Published as canonical unscoped `fastrmemory@0.3.0` on 2026-10-22 18:32 UTC from
 
 ## [0.2.1] - 2026-10-21
 
-GitHub release attached and npm package published from the post-0.2.0 fixes. `@atifjubaer/fastrmemory@0.2.1` went live on 2026-10-22 16:51 UTC from `3fa2bf9`; see [docs/npm-publishing.md](docs/npm-publishing.md).
+GitHub release attached and npm package published from the post-0.2.0 fixes. `@atifjubaer/fastrmemory@0.2.1` went live on 2026-10-22 16:51 UTC from `3fa2bf9` and was removed from npm on 2026-10-23; the GitHub release remains. See [docs/npm-publishing.md](docs/npm-publishing.md).
 
 ### Added
 
@@ -78,7 +78,7 @@ GitHub release attached and npm package published from the post-0.2.0 fixes. `@a
 
 ### Known limitations
 
-- The npm registry also lists `0.0.0-stage`; use `@0.2.1` for reproducible installs.
+- At the time of the 0.2.1 release, the npm registry also listed `0.0.0-stage`; both old npm entries were removed on 2026-10-23. Use `fastrmemory@0.3.0` for current installs.
 - At v0.2.1, the benchmark corpus was synthetic and no external memory engine was measured; the 0.3.0 release adds pinned external retrieval baselines.
 - Apple Silicon macOS is not in the 6-job CI matrix.
 - The crash test kills the process (`taskkill /F`); it is not an OS-crash or power-loss test, and SQLite uses `synchronous=NORMAL` in WAL mode.

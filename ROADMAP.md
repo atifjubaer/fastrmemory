@@ -14,7 +14,7 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 |---|---|---|
 | Local test gate | **Done:** 276 tests across 51 files | `npm test` at `50a7d8f` on 2026-10-23 during the publish gate |
 | CI matrix | **Done:** 6/6 green at `50a7d8f` | run `39831793263`; historical v0.2.1 release `3fa2bf9` is 6/6 in run `39495621243` |
-| npm distribution | **Done:** canonical `fastrmemory@0.3.0` published 2026-10-22 18:32 UTC; `npm view fastrmemory version` returns `0.3.0`; `latest` is `0.3.0`; clean global and `npx` installs return `0.3.0` | `docs/npm-publishing.md`; `CLAIMS.md` A2a |
+| npm distribution | **Done:** canonical `fastrmemory@0.3.0` published 2026-10-22 18:32 UTC; `npm view fastrmemory version` returns `0.3.0`; `latest` is `0.3.0`; clean global and `npx` installs return `0.3.0`; old scoped entries removed 2026-10-23 | `docs/npm-publishing.md`; `CLAIMS.md` A2a, A2b |
 | npm package rename (0.3.0) | **Done:** unscoped `fastrmemory@0.3.0` is published and `latest`; generated MCP/hook configs pin it and reject the GitHub default branch | `package.json`; `CLAIMS.md` A1a, A1b, A2a |
 | Package artifact | **0.3.0 npm tarball:** 647,903 bytes packed / 2,598,164 bytes unpacked / 270 files, shasum `e17af4f854bd9231e1f4b3a8efb04d3e5b65f8e2`; historical v0.2.1 asset is 591,204 bytes, SHA-256 `78F1535E87A7148272824C0B0D31F21D4AD385D9EEAA2EF8A40D41DCD0ACA63B`; v0.2.0 asset is 571,279 bytes | `npm pack --dry-run`; registry metadata; `npm publish` output |
 | Benchmark | **Done for the synthetic gate:** 240 cases, 192/48 split; holdout 95.8% Hit@1, 100% Hit@5, 209 tokens | `bench/results/minilm.json` |
@@ -121,12 +121,12 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 | Clean the 60 legacy test rows | **Done** | `scripts/clean-test-junk.mjs` dry-run found 60/60 matching rows; approved `--apply --yes` deleted 60 rows and their dependent links; post-run count 0; backup `~/.fastr/backup-20261022-232531/global.db` (286,720 bytes, SHA-256 `F0D6165AC8B4BF850E9FC8FB6D22F5BE6FCCB01664A7B0977E90AA69F5C9FCA8`). |
 | Package surface, build split, tarball gate | **Done** | `scripts/check-package.mjs`; v0.2.1 asset: 591,204 bytes / 220 files (577.3 KiB). Current `0.3.0` `check:ci`: 268 files, 631.2 kB packed, 2.5 MB unpacked. |
 | Prepare v0.2.1 release candidate | **Done** | Version, README, `CLAIMS.md`, `CHANGELOG.md`, skills metadata; `npm run check:ci`; tarball SHA-256 recorded |
-| Publish v0.2.1 to npm | **Done** | Published 2026-10-22 16:51 UTC from `3fa2bf9`; `npm view @atifjubaer/fastrmemory version` = `0.2.1`; registry tarball shasum `352abba135ce1b0921cacbcdf9b7efd2abfc4802`; `npx` = `0.2.1`; access status `public`. |
+| Publish v0.2.1 to npm | **Done, then removed** | Published 2026-10-22 16:51 UTC from `3fa2bf9`; registry tarball shasum `352abba135ce1b0921cacbcdf9b7efd2abfc4802`; removed 2026-10-23. The GitHub release remains. |
 | Attach v0.2.1 GitHub Release asset | **Done** | Release `v0.2.1` at `https://github.com/atifjubaer/fastrmemory/releases/tag/v0.2.1`; downloaded asset is 591,204 bytes with matching SHA-256; release-URL install verified. |
 | CI matrix for the current commit | **Done** | Run `39495621243`: 6/6 green at `3fa2bf9` (Ubuntu, Windows, Intel macOS; Node 22.x and 24.x). |
 | Apple Silicon macOS coverage | **Missing** | Matrix uses `macos-15-intel` only. |
 
-**Gate:** 6/6 OS × Node green on the release commit; npm published or explicitly blocked; `npx` works; tarball under 5 MB. Current result: **Pass**; npm `0.2.1` is published and `npx` returns `0.2.1`.
+**Gate:** 6/6 OS × Node green on the release commit; npm published or explicitly blocked; `npx` works; tarball under 5 MB. Current result: **Pass**; npm `0.3.0` is `latest` and `npx fastrmemory@0.3.0 --version` returns `0.3.0`.
 
 ## Phase 2 — Retrieval superiority
 
@@ -195,19 +195,19 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 | `MIGRATION.md` | **Done** | Upgrade and rollback paths for 0.1.x → 0.2.x → 0.3.0; physical and logical backup steps. |
 | `SECURITY.md` | **Done** | Threat model, local data boundaries, secret handling, loopback dashboard controls, and private reporting path. |
 | `SCORECARD.md` | **Done** | Nine gates scored from evidence; provisional `9.4 / 10`; the `9.2` target is met. |
-| `CHANGELOG.md` | **Done** | `CHANGELOG.md` covers 0.1.0 through v0.2.1. |
-| Launch post with one command per number | **Done** | `docs/blog/2026-10-21-fastrmemory-0.2.1.md`; every number has a command and caveat. The post now leads with the live npm path and keeps the GitHub asset as a byte-verified fallback. |
+| `CHANGELOG.md` | **Done** | `CHANGELOG.md` covers 0.1.0 through 0.3.0. |
+| Launch post with one command per number | **Done** | `docs/blog/2026-10-21-fastrmemory-0.2.1.md`; every number has a command and caveat. The post records the historical 0.2.1 npm publish and removal; current installs use `fastrmemory@0.3.0`. |
 
-**Gate:** 100% of README claims traced; docs checks green; every launch number reproducible. Current result: **Done** for the trace and docs gates; npm `0.2.1` is live.
+**Gate:** 100% of README claims traced; docs checks green; every launch number reproducible. Current result: **Done** for the trace and docs gates; npm `0.3.0` is `latest`.
 
 ## Completion gates
 
 | Gate | Pass condition | Current |
 |---|---|---|
 | Truth | No false/stale claims; `CLAIMS.md` covers every public claim | **Pass** — README trace enforced by `check:docs`; specification, release notes, and npm docs aligned |
-| Tests | 6/6 OS × Node green on the release commit; isolation green | **Pass** - local 276 green / 51 files; 6/6 at `3fa2bf9` in run `39495621243` and 6/6 at `d6f3662` in run `39532273797` |
-| Package | npm published or explicitly blocked and documented; `npx` works | **Pass** — npm `@atifjubaer/fastrmemory@0.2.1` is published and public; `npm view` and `npx` return `0.2.1`; v0.2.1 GitHub asset is attached and release-URL install verified |
-| Footprint | Default install under 20 MB; install under 10 s | **Pass (0.3.0)** - local 16,750,800-16,751,875 bytes, 1.842-2.154 s; canonical CI `1,251 ms`; v0.2.1 is 16,493,075 bytes, 1.93 s |
+| Tests | 6/6 OS × Node green on the release commit; isolation green | **Pass** - local 276 green / 51 files; 6/6 at `50a7d8f` in run `39831793263`; docs HEAD `573b83c` is 6/6 in run `39835543041` |
+| Package | npm published or explicitly blocked and documented; `npx` works | **Pass** — canonical `fastrmemory@0.3.0` is published and public; `npm view` and `npx` return `0.3.0`; old scoped npm entries are removed; the v0.2.1 GitHub asset remains historical |
+| Footprint | Default install under 20 MB; install under 10 s | **Pass (0.3.0)** - local 16,756,937 bytes, 1.806 s; canonical CI `1,251 ms`; v0.2.1 was 16,493,075 bytes, 1.93 s |
 | Benchmark | 240+ cases; held-out; raw JSON committed | **Done** |
 | Retrieval | Hit@1 ≥90%; Hit@5 ≥98%; external baseline +5pp Hit@5; tokens ≤0.5× | **Partial** — synthetic targets pass; LongMemEval +10.4pp / +11.0pp, LoCoMo +4.4pp / +2.3pp; LoCoMo misses |
 | Integrity | 0 lost/0 duplicates in 10k crash test; replay exact | **Done (process crash)** — 10/10 runs, 0 lost, 0 duplicates; replay exact; power loss not tested |
@@ -221,9 +221,9 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 3. **Done:** `npm run check:ci` green; tarball is 591,204 bytes with SHA-256 `78F1535E87A7148272824C0B0D31F21D4AD385D9EEAA2EF8A40D41DCD0ACA63B`.
 4. **Done:** pushed `3fa2bf9`; CI run `39495621243` is 6/6 green; GitHub release `v0.2.1` and its asset are attached.
 5. **Done 2026-10-22:** `npm login`, `npm whoami` = `atifjubaer`, and `npm publish --access public` from tag `3fa2bf9`; npm published `0.2.1` at 16:51 UTC.
-6. **Done:** `npm view @atifjubaer/fastrmemory version` and `npx --yes --package @atifjubaer/fastrmemory@0.2.1 fastr --version` both return `0.2.1`; `CLAIMS.md` A2 is Supported. The first `npm view` returned E404 for about two minutes during registry propagation; this was not a failed publish.
+6. **Historical:** the 0.2.1 npm entry was published and later removed on 2026-10-23; `npm view @atifjubaer/fastrmemory version` now returns E404. The first `npm view` after the original publish returned E404 for about two minutes during registry propagation; this was not a failed publish.
 
-Do not publish current HEAD as `0.2.0` or `0.2.1`: the frozen v0.2.1 tag is `3fa2bf9`, its tarball is 591,204 bytes, and the existing GitHub v0.2.0 asset is 571,279 bytes. Publish `0.2.1` only from the tag, never from the `0.3.0` work.
+Do not attempt to republish `0.2.1`; its npm entry was removed and the frozen tag is `3fa2bf9`. The GitHub `v0.2.1` release remains historical.
 
 ## Work order
 
@@ -235,7 +235,7 @@ Do not publish current HEAD as `0.2.0` or `0.2.1`: the frozen v0.2.1 tag is `3fa
 6. **P2:** add public benchmark harnesses and a pinned external baseline. Both **Done**; LoCoMo retrieval target remains Partial.
 7. **P2:** finish README, migration, security, scorecard, changelog, and launch evidence. Migration, security, scorecard, README launch rewrite, launch post, and the section-level claim trace are **Done**.
 
-Estimated remaining effort: Apple Silicon coverage remains; LoCoMo retrieval is still Partial. The canonical npm `0.3.0` package is published and verified; the frozen `0.2.1` npm package and GitHub release remain available.
+Estimated remaining effort: Apple Silicon coverage remains; LoCoMo retrieval is still Partial. The canonical npm `0.3.0` package is published and verified; the old scoped npm entries are removed, and the GitHub `v0.2.1` release remains historical.
 
 ## Reporting contract
 

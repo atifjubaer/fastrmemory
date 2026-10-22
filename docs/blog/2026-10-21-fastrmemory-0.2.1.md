@@ -1,34 +1,29 @@
-# FastrMemory 0.2.1: replay, crash evidence, and a live npm package
+# FastrMemory 0.2.1: replay, crash evidence, and the 0.2.1 release
 
-**Date:** 2026-10-21 (release); 2026-10-22 (npm publish)<br>
+**Date:** 2026-10-21 (release); 2026-10-22 (npm publish); 2026-10-23 (npm removal)<br>
 **Release commit:** `3fa2bf9` (tag `v0.2.1`)<br>
 **CI:** [run 39495621243](https://github.com/atifjubaer/fastrmemory/actions/runs/39495621243) - 6/6 jobs green<br>
-**npm:** `@atifjubaer/fastrmemory@0.2.1` (published 2026-10-22 16:51 UTC)
+**npm:** `@atifjubaer/fastrmemory@0.2.1` (published 2026-10-22 16:51 UTC; removed 2026-10-23)
 
-FastrMemory 0.2.1 is the replay and reliability release. It adds exact memory replay, portable JSONL snapshots, Memory CI, non-lossy consolidation, and a 12-tool core MCP profile. The GitHub Release tarball is attached and installable, and the npm registry package is now published at `0.2.1`.
+FastrMemory 0.2.1 is the replay and reliability release. It adds exact memory replay, portable JSONL snapshots, Memory CI, non-lossy consolidation, and a 12-tool core MCP profile. The GitHub Release tarball is attached and installable. The npm registry package was published at `0.2.1` and later removed.
 
-> **Update (2026-10-23):** The canonical unscoped `fastrmemory@0.3.0` is now published and is `latest`. The "0.3.0 is not published" statements below describe the 0.2.1 release date; see [docs/npm-publishing.md](../npm-publishing.md).
+> **Update (2026-10-23):** The canonical unscoped `fastrmemory@0.3.0` is now published and is `latest`. The old scoped npm package was removed on 2026-10-23; the GitHub `v0.2.1` release remains historical. The "0.3.0 is not published" statements below describe the 0.2.1 release date; see [docs/npm-publishing.md](../npm-publishing.md).
 
 ## Install
 
+The npm commands below are historical and no longer work. Use current `fastrmemory@0.3.0` for new installs.
+
 ```bash
-# npm global CLI:
-npm install -g @atifjubaer/fastrmemory@0.2.1
-fastr --version
-
-# One-shot run without a global install:
-npx --yes --package @atifjubaer/fastrmemory@0.2.1 fastr --version
-
-# Byte-verified GitHub Release fallback:
+# Historical GitHub Release fallback:
 npm install https://github.com/atifjubaer/fastrmemory/releases/download/v0.2.1/atifjubaer-fastrmemory-0.2.1.tgz
 npx fastr --version
 ```
 
 The GitHub release asset is **591,204 bytes** with SHA-256 `78F1535E87A7148272824C0B0D31F21D4AD385D9EEAA2EF8A40D41DCD0ACA63B`. A local Windows release-URL install took **8.35 s**, produced **16,493,121 bytes** in `node_modules`, and reported `0.2.1` from both binaries.
 
-The npm tarball is a separate pack: npm reports **591.4 kB packed / 2.3 MB unpacked / 220 files**, shasum `352abba135ce1b0921cacbcdf9b7efd2abfc4802`, and integrity `sha512-vl51HU0V7BvJ7+ctDMjumDRAt6+5ylvFJYeRPDViM2K4Li0j9fdNIPaF9IILWKdMZwP/wVDQCbM812V+iv3AVA==`. The two channels are not byte-identical; both report `0.2.1`.
+The npm tarball was a separate pack: npm reported **591.4 kB packed / 2.3 MB unpacked / 220 files**, shasum `352abba135ce1b0921cacbcdf9b7efd2abfc4802`, and integrity `sha512-vl51HU0V7BvJ7+ctDMjumDRAt6+5ylvFJYeRPDViM2K4Li0j9fdNIPaF9IILWKdMZwP/wVDQCbM812V+iv3AVA==`. The two channels were not byte-identical; both reported `0.2.1`. The npm entry was removed on 2026-10-23.
 
-The publish completed from the frozen tag. The first `npm view` returned E404 for about two minutes during registry propagation; it then returned `0.2.1`. This was not a failed publish. Do not republish `0.2.1`; npm will reject it with E409.
+The publish completed from the frozen tag. The first `npm view` returned E404 for about two minutes during registry propagation; it then returned `0.2.1`. This was not a failed publish. The npm entry has since been removed; do not republish `0.2.1`.
 
 ## What changed
 
@@ -52,6 +47,8 @@ The publish completed from the frozen tag. The first `npm view` returned E404 fo
 | MCP surface | `node scripts/smoke-mcp-profile.mjs` | core 12/12; full 41/41 |
 | Crash test | `npm run test:crash` | 10/10 runs; 10,718 acknowledged writes; 0 lost; 0 duplicates |
 | Replay exactness | `npm run verify:replay` | Three stable snapshot hashes; JSONL round-trip hash equal |
+The npm rows below are historical; the registry entry was removed on 2026-10-23.
+
 | npm publish | `npm publish --access public` from `3fa2bf9` | `+ @atifjubaer/fastrmemory@0.2.1`; 591.4 kB packed / 2.3 MB unpacked / 220 files |
 | npm registry | `npm view @atifjubaer/fastrmemory version` | `0.2.1` (verified 2026-10-22) |
 | npm tarball | `npm view @atifjubaer/fastrmemory dist.tarball` | `https://registry.npmjs.org/@atifjubaer/fastrmemory/-/fastrmemory-0.2.1.tgz` |
