@@ -76,6 +76,11 @@ export function resolveMcpCommand(
     : { command: 'npx', args: npxArgs };
 }
 
+/** Pin a user-scoped MCP entry to a project root so the client's launch directory cannot change the database. */
+export function withProjectRoot(entry: McpServerEntry, projectRoot: string): McpServerEntry {
+  return { ...entry, args: [...entry.args, '--project', path.resolve(projectRoot)] };
+}
+
 interface ClientTarget {
   label: string;
   filePath: string;
@@ -107,7 +112,7 @@ export function ensureAgentsDiscipline(projectRoot: string): 'added' | 'present'
 
 export function runInteractiveSetup(options: SetupOptions = {}): void {
   const homeDir = options.homeDir ?? os.homedir();
-  const projectRoot = options.projectRoot ?? process.cwd();
+  const projectRoot = path.resolve(options.projectRoot ?? process.cwd());
 
   console.log('\n=================================================');
   console.log('⚡ FastrMemory: Interactive Agent Setup Wizard');
@@ -125,21 +130,23 @@ export function runInteractiveSetup(options: SetupOptions = {}): void {
     console.log(`[1/8] Project init note: ${err.message}\n`);
   }
 
-  const mcpTarget = resolveMcpCommand();
+  const projectMcpTarget = resolveMcpCommand();
+  const globalMcpTarget = withProjectRoot(projectMcpTarget, projectRoot);
   const antigravityPath = getAntigravityConfigPath(homeDir);
   const claudeDesktopPath = getClaudeDesktopConfigPath(homeDir);
 
   // 2-6. Wire MCP clients. Existing configs are merged (never replaced), backed up once, and written atomically.
-  const clients: Array<[string, ClientTarget]> = [
-    ['[2/8] Antigravity IDE:', { label: 'Antigravity', filePath: antigravityPath, requireDir: path.dirname(path.dirname(antigravityPath)) }],
-    ['[3/8] Claude Desktop: ', { label: 'Claude Desktop', filePath: claudeDesktopPath, requireDir: path.dirname(claudeDesktopPath) }],
-    ['[4/8] Cursor IDE:     ', { label: 'Cursor', filePath: path.join(projectRoot, '.cursor', 'mcp.json') }],
+  // User-scoped clients get an explicit --project so their launch directory cannot select the wrong database.
+  const clients: Array<[string, ClientTarget, McpServerEntry]> = [
+    ['[2/8] Antigravity IDE:', { label: 'Antigravity', filePath: antigravityPath, requireDir: path.dirname(path.dirname(antigravityPath)) }, globalMcpTarget],
+    ['[3/8] Claude Desktop: ', { label: 'Claude Desktop', filePath: claudeDesktopPath, requireDir: path.dirname(claudeDesktopPath) }, globalMcpTarget],
+    ['[4/8] Cursor IDE:     ', { label: 'Cursor', filePath: path.join(projectRoot, '.cursor', 'mcp.json') }, projectMcpTarget],
     // Claude Code reads user-scoped MCP servers from ~/.claude.json (it ignores mcpServers in settings.json).
-    ['[5/8] Claude Code:    ', { label: 'Claude Code', filePath: path.join(homeDir, '.claude.json'), requireDir: path.join(homeDir, '.claude') }],
-    ['[6/8] Windsurf:       ', { label: 'Windsurf', filePath: path.join(homeDir, '.codeium', 'windsurf', 'mcp_config.json'), requireDir: path.join(homeDir, '.codeium', 'windsurf') }],
+    ['[5/8] Claude Code:    ', { label: 'Claude Code', filePath: path.join(homeDir, '.claude.json'), requireDir: path.join(homeDir, '.claude') }, globalMcpTarget],
+    ['[6/8] Windsurf:       ', { label: 'Windsurf', filePath: path.join(homeDir, '.codeium', 'windsurf', 'mcp_config.json'), requireDir: path.join(homeDir, '.codeium', 'windsurf') }, globalMcpTarget],
   ];
-  for (const [prefix, target] of clients) {
-    console.log(`${prefix} ${wireMcpClient(target, mcpTarget)}`);
+  for (const [prefix, target, entry] of clients) {
+    console.log(`${prefix} ${wireMcpClient(target, entry)}`);
   }
 
   // 7. Wire Autonomous Agent Discipline in AGENTS.md

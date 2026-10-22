@@ -8,7 +8,7 @@
       "name": "fastrmemory",
       "source": "./",
       "description": "Local-first agent memory for Claude Code: MCP server plus Agent Skills for pre-edit trap checks, recall, trap logging, curation, and session handoffs.",
-      "version": "0.3.0"
+      "version": "0.3.1"
     }
   ]
 }

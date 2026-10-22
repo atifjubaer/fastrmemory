@@ -52,7 +52,7 @@ const runtimeDeps = Object.keys(pkg.dependencies ?? {});
 check(runtimeDeps.length === 3, `expected 3 runtime dependencies, found ${runtimeDeps.length}: ${runtimeDeps.join(', ')}`);
 
 // 2. Package entrypoints and the files allowlist.
-const binTarget = 'dist/bin/fastr.js';
+const binTarget = 'bin/fastr-guard.mjs';
 check(pkg.bin?.fastr === binTarget, `bin.fastr must be ${binTarget}`);
 check(pkg.bin?.fastrmemory === binTarget, `bin.fastrmemory must be ${binTarget}`);
 check(pkg.main === './dist/src/index.js', 'main must be ./dist/src/index.js');
@@ -60,7 +60,7 @@ check(pkg.types === './dist/src/index.d.ts', 'types must be ./dist/src/index.d.t
 check(pkg.exports?.['.'] === './dist/src/index.js', 'exports["."] must be ./dist/src/index.js');
 check(pkg.exports?.['./mcp'] === './dist/src/mcp/server.js', 'exports["./mcp"] must be ./dist/src/mcp/server.js');
 
-const allowedFiles = new Set(['dist', 'dist-ui', 'skills', '.claude-plugin', '.cursor', 'server.json', 'llms-install.md']);
+const allowedFiles = new Set(['dist', 'dist-ui', 'bin/fastr-guard.mjs', 'skills', '.claude-plugin', '.cursor', 'server.json', 'llms-install.md']);
 for (const entry of pkg.files ?? []) {
   check(allowedFiles.has(entry), `files must not include ${entry}`);
 }
@@ -129,7 +129,7 @@ check(fs.existsSync(path.join(ROOT, 'dist-ui', 'assets')), 'dist-ui/assets is mi
 
 // The compiled CLI must report the package version, not a stale literal.
 try {
-  const cliVersion = execSync('node dist/bin/fastr.js --version', {
+  const cliVersion = execSync('node bin/fastr-guard.mjs --version', {
     cwd: ROOT,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -164,6 +164,7 @@ if (pack) {
     'LICENSE',
     'server.json',
     'llms-install.md',
+    'bin/fastr-guard.mjs',
     ...buildOutputs,
     'skills/skills.json'
   ];

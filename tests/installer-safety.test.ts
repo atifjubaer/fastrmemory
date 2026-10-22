@@ -360,6 +360,39 @@ describe('Claude Code hook I/O', () => {
 });
 
 describe('runInteractiveSetup in a sandbox', () => {
+  it('pins user-scoped clients to the project root while keeping Cursor project-scoped', async () => {
+    const { runInteractiveSetup, getClaudeDesktopConfigPath } = await import('../src/installer/setup.js');
+    const sandbox = fs.mkdtempSync(path.join(os.tmpdir(), 'fastr-setup-root-'));
+    const home = path.join(sandbox, 'home');
+    const project = path.join(sandbox, 'project');
+    fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
+    fs.mkdirSync(path.join(home, '.codeium', 'windsurf'), { recursive: true });
+    fs.mkdirSync(path.join(home, '.gemini'), { recursive: true });
+    fs.mkdirSync(path.dirname(getClaudeDesktopConfigPath(home)), { recursive: true });
+    fs.writeFileSync(path.join(home, '.claude.json'), '{}');
+    fs.mkdirSync(project, { recursive: true });
+
+    const origLog = console.log;
+    console.log = () => {};
+    try {
+      runInteractiveSetup({ homeDir: home, projectRoot: project });
+    } finally {
+      console.log = origLog;
+    }
+
+    try {
+      const claude = JSON.parse(fs.readFileSync(path.join(home, '.claude.json'), 'utf-8'));
+      expect(claude.mcpServers.fastrmemory.args).toContain('--project');
+      expect(claude.mcpServers.fastrmemory.args).toContain(path.resolve(project));
+
+      const cursor = JSON.parse(fs.readFileSync(path.join(project, '.cursor', 'mcp.json'), 'utf-8'));
+      expect(cursor.mcpServers.fastrmemory.args).toContain('mcp');
+      expect(cursor.mcpServers.fastrmemory.args).not.toContain('--project');
+    } finally {
+      try { fs.rmSync(sandbox, { recursive: true, force: true }); } catch {}
+    }
+  });
+
   it('connects present clients, skips absent ones, and never clobbers an unparseable ~/.claude.json', async () => {
     const { runInteractiveSetup } = await import('../src/installer/setup.js');
     const sandbox = fs.mkdtempSync(path.join(os.tmpdir(), 'fastr-setup-'));

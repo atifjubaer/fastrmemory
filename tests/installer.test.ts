@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { getAntigravityConfigPath, getClaudeDesktopConfigPath, resolveMcpCommand } from '../src/installer/setup.js';
+import { getAntigravityConfigPath, getClaudeDesktopConfigPath, resolveMcpCommand, withProjectRoot } from '../src/installer/setup.js';
 import { PACKAGE_VERSION } from '../src/version.js';
 
 describe('Installer & MCP Multi-Client Configuration', () => {
@@ -43,6 +43,15 @@ describe('Installer & MCP Multi-Client Configuration', () => {
     expect(target).toEqual({
       command: 'cmd',
       args: ['/c', 'npx', '-y', `fastrmemory@${PACKAGE_VERSION}`, 'mcp']
+    });
+  });
+
+  it('pins a user-scoped MCP command to an absolute project root', () => {
+    const projectRoot = path.join(os.tmpdir(), 'fastr project root');
+    const target = withProjectRoot({ command: 'node', args: ['cli.js', 'mcp'] }, projectRoot);
+    expect(target).toEqual({
+      command: 'node',
+      args: ['cli.js', 'mcp', '--project', path.resolve(projectRoot)]
     });
   });
 
