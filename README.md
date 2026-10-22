@@ -13,7 +13,7 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-architecture)
 
-> **Status (2026-10-21):** The latest GitHub release is **v0.2.1**; npm publication remains blocked. At `2026-10-21 01:51 UTC`, `npm whoami` returned `E401` and `npm view @atifjubaer/fastrmemory version` returned `E404`. This README tracks the unreleased **0.3.0** branch, so features marked **0.3.0** are not in the v0.2.1 asset. If `npm view` later returns `0.2.1`, install from npm; otherwise use the **v0.2.1 GitHub Release tarball** or the GitHub source below. The exact release surface is in [CHANGELOG.md](CHANGELOG.md); the release post is [docs/blog/2026-10-21-fastrmemory-0.2.1.md](docs/blog/2026-10-21-fastrmemory-0.2.1.md). The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval. Public LongMemEval, LoCoMo, and self-repository retrieval-only results plus pinned external baselines are in [BENCHMARKS.md](BENCHMARKS.md); no QA-leaderboard parity is claimed. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); every README section is mapped to claim IDs in the README claim trace at the end of that ledger. Methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md).
+> **Status (2026-10-22):** `@atifjubaer/fastrmemory@0.2.1` is published on npm. `npm view @atifjubaer/fastrmemory version` returns `0.2.1`, and `npx --yes --package @atifjubaer/fastrmemory@0.2.1 fastr --version` returns `0.2.1`. The latest GitHub release is **v0.2.1**. This README tracks the unreleased **0.3.0** branch, so features marked **0.3.0** are not in the v0.2.1 package. Install `@0.2.1` for the release; use the **v0.2.1 GitHub Release tarball** as a byte-verified fallback. The exact release surface is in [CHANGELOG.md](CHANGELOG.md); the release post is [docs/blog/2026-10-21-fastrmemory-0.2.1.md](docs/blog/2026-10-21-fastrmemory-0.2.1.md). The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval. Public LongMemEval, LoCoMo, and self-repository retrieval-only results plus pinned external baselines are in [BENCHMARKS.md](BENCHMARKS.md); no QA-leaderboard parity is claimed. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); every README section is mapped to claim IDs in the README claim trace at the end of that ledger. Methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md).
 
 <p align="center">
   <a href="#-overview">Overview</a> &bull;
@@ -39,12 +39,12 @@
 
 | Claim | Current result | Evidence |
 |---|---|---|
-| Install path | GitHub release `v0.2.1`; npm is `E404` | `npm view @atifjubaer/fastrmemory version`; `npx --yes github:atifjubaer/fastrmemory --version` -> `0.2.1` |
+| Install path | npm `@atifjubaer/fastrmemory@0.2.1` and GitHub release `v0.2.1` | `npm view @atifjubaer/fastrmemory version` -> `0.2.1`; `npx --yes --package @atifjubaer/fastrmemory@0.2.1 fastr --version` -> `0.2.1` |
 | Synthetic retrieval | Holdout `95.8%` Hit@1, `100%` Hit@5, MRR `0.969` | `npx tsx scripts/eval-bench.ts --split all --embeddings minilm --out bench/results/minilm.json` |
 | Test suite | `274` tests across `51` files on the `0.3.0` branch; v0.2.1 is `235` / `43` | `npm test` |
 | Crash safety | 10/10 runs, 0 lost, 0 duplicate ids/titles | `npm run test:crash`; `bench/results/crash-test.json` |
 | Public retrieval (0.3.0 branch) | LongMemEval `+10.4pp` / `+11.0pp` Hit@5; LoCoMo `+4.4pp` / `+2.3pp` (target missed) | [docs/EXTERNAL_BASELINE.md](docs/EXTERNAL_BASELINE.md) |
-| Release score | Provisional `7.8 / 10`; `9.2` target not met | [SCORECARD.md](SCORECARD.md) |
+| Release score | Provisional `9.4 / 10`; `9.2` target met; Retrieval remains Partial | [SCORECARD.md](SCORECARD.md) |
 
 The synthetic table is not SWE-bench or LongMemEval. Public numbers are retrieval-only and are not QA-leaderboard results. Full provenance is in [CLAIMS.md](CLAIMS.md).
 
@@ -109,30 +109,34 @@ Clients commonly used with FastrMemory include Codex CLI, Gemini CLI, OpenCode, 
 
 ### ⚡ Run Without a Global Install
 
-Run directly from GitHub (verified with `npx --yes github:atifjubaer/fastrmemory --version` -> `0.2.1` on 2026-10-21):
+Run directly from npm (verified with `npx --yes --package @atifjubaer/fastrmemory@0.2.1 fastr --version` -> `0.2.1` on 2026-10-22):
 
 ```bash
 # Instant interactive auto-setup:
-npx github:atifjubaer/fastrmemory setup
+npx --yes --package @atifjubaer/fastrmemory@0.2.1 fastr setup
 
 # Or launch local Web UI:
-npx github:atifjubaer/fastrmemory ui
+npx --yes --package @atifjubaer/fastrmemory@0.2.1 fastr ui
 ```
+
+The GitHub source path remains available for development: `npx github:atifjubaer/fastrmemory setup`.
 
 ---
 
-### Install from npm (when available)
+### Install from npm
 
 ```bash
-# Check the registry first:
-npm view @atifjubaer/fastrmemory version
-
-# If it returns 0.2.1:
 npm install -g @atifjubaer/fastrmemory@0.2.1
 fastr --version
 ```
 
-If `npm view` returns E404, use one of the GitHub install paths below.
+For a one-shot run without a global install:
+
+```bash
+npx --yes --package @atifjubaer/fastrmemory@0.2.1 fastr --version
+```
+
+The package is public. The first `npm view` after the 2026-10-22 publish returned E404 for about two minutes during registry propagation; use the exact `0.2.1` version for reproducibility.
 
 ### Install the v0.2.1 GitHub Release Tarball
 
@@ -155,7 +159,7 @@ Or install the current default branch for development (not the frozen release ta
 npm install -g git+https://github.com/atifjubaer/fastrmemory.git
 ```
 
-> Both `fastrmemory` and `fastr` (short alias) are executable after installation. The release tarball SHA-256 is recorded in [CLAIMS.md](CLAIMS.md).
+> Both `fastrmemory` and `fastr` (short alias) are executable after installation. The GitHub asset is the byte-verified fallback and is not byte-identical to the registry tarball. The release tarball SHA-256 is recorded in [CLAIMS.md](CLAIMS.md).
 
 ### 2. Verify Database Health
 

@@ -6,7 +6,7 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ### Added
 
-- `docs/blog/2026-10-21-fastrmemory-0.2.1.md` launch post with one reproducible command per release number; npm publication remains blocked.
+- `docs/blog/2026-10-21-fastrmemory-0.2.1.md` launch post with one reproducible command per release number; npm `0.2.1` is published.
 - Conflict-aware recall: ranked results mark both sides of an open contradiction with the conflict id and the opposing memory.
 - `fastr conflict list` and `fastr conflict resolve <id> --keep <memory-id> [--forget] [--reason]`.
 - `fastr import --from markdown|agents-md|cursor-rules|claude-md|jsonl` imports local Markdown rules and snapshots with dry-run and exact-duplicate skipping.
@@ -30,7 +30,7 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 - Memory CI live evidence: same-repository draft PR #12 produced one marker comment, kept it through a re-run, and updated the same comment in place when a new head commit changed the diff from `Added (1)` to `Added (2)`.
 - Public retrieval harnesses for LongMemEval, LoCoMo, and real-repository history: pinned dataset revisions, SHA-256 checks, per-case raw JSON, and retrieval-only metrics in `docs/PUBLIC_BENCHMARKS.md`.
 - Pinned external retrieval baselines: MiniSearch `7.2.0` and the official MCP reference memory server `2.0.0`, with raw JSON, adapter rules, and caveats in `docs/EXTERNAL_BASELINE.md`. The `+5pp Hit@5` target is met on LongMemEval but missed on LoCoMo (`+4.4pp` vs MiniSearch, `+2.3pp` vs MCP).
-- `MIGRATION.md`, `SECURITY.md`, and `SCORECARD.md`: upgrade/rollback paths, local threat model and reporting path, and an evidence-based nine-gate release score (`7.8 / 10` provisional, below the `9.2` target).
+- `MIGRATION.md`, `SECURITY.md`, and `SCORECARD.md`: upgrade/rollback paths, local threat model and reporting path, and an evidence-based nine-gate release score (`9.4 / 10` provisional; the `9.2` target is met, with Retrieval still Partial).
 
 ### Changed
 
@@ -43,7 +43,7 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ## [0.2.1] - 2026-10-21
 
-GitHub release attached from the post-0.2.0 fixes. npm publication remains blocked by the account suspension documented in [docs/npm-publishing.md](docs/npm-publishing.md).
+GitHub release attached and npm package published from the post-0.2.0 fixes. `@atifjubaer/fastrmemory@0.2.1` went live on 2026-10-22 16:51 UTC from `3fa2bf9`; see [docs/npm-publishing.md](docs/npm-publishing.md).
 
 ### Added
 
@@ -60,7 +60,7 @@ GitHub release attached from the post-0.2.0 fixes. npm publication remains block
 ### Changed
 
 - MCP `serverInfo.name` is now `fastrmemory`; registry identity remains `io.github.atifjubaer/fastrmemory`.
-- MCP surface is 41 tools, 2 prompts, and 4 resources.
+- MCP surface is 41 tools, 2 prompts, and 4 resources. The unreleased 0.3.0 branch adds a fifth resource template.
 - Retrieval uses weighted FTS5 `bm25`, configurable RRF (`k = 20` by default), per-stream weights, conditional trap boosting, and graph seeding disabled by default.
 - Semantic embeddings are optional; deterministic hash vectors are not the default semantic path.
 - Test suite is 235 tests across 43 files.
@@ -73,7 +73,7 @@ GitHub release attached from the post-0.2.0 fixes. npm publication remains block
 
 ### Known limitations
 
-- npm publication is blocked until the registry account is restored.
+- The npm registry also lists `0.0.0-stage`; use `@0.2.1` for reproducible installs.
 - At v0.2.1, the benchmark corpus was synthetic and no external memory engine was measured; the Unreleased section adds pinned external retrieval baselines.
 - Apple Silicon macOS is not in the 6-job CI matrix.
 - The crash test kills the process (`taskkill /F`); it is not an OS-crash or power-loss test, and SQLite uses `synchronous=NORMAL` in WAL mode.

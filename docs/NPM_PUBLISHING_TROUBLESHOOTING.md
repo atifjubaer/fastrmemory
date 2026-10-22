@@ -1,19 +1,19 @@
 # FastrMemory NPM Publishing & Troubleshooting Guide
 
-> **Status (2026-10-20): publication is blocked.** `npm view @atifjubaer/fastrmemory version` returns **E404**. The account suspension/2FA issue is unresolved. **Do not bypass npm security, 2FA, or the suspension.** The steps below are a historical incident log and a resume plan; they are not a workaround.
+> **Status (2026-10-22): resolved and published.** `@atifjubaer/fastrmemory@0.2.1` is live on npm; `npm view @atifjubaer/fastrmemory version` returns **0.2.1** and `npx --yes --package @atifjubaer/fastrmemory@0.2.1 fastr --version` returns **0.2.1**. **Do not bypass npm security or 2FA.** The steps below are a historical incident log from the temporary suspension; they are not a workaround. The current publish protocol is in [npm-publishing.md](npm-publishing.md).
 
-> Reference guide documenting all publishing errors, root causes, fixes applied, and the exact resume protocol for `@atifjubaer/fastrmemory`.
+> Reference guide documenting all publishing errors, root causes, fixes applied, and the historical resume protocol for `@atifjubaer/fastrmemory`.
 
 ---
 
-## 📋 Resume Protocol (When You Return)
+## Historical Resume Protocol (Completed 2026-10-22)
 
-Follow these 3 steps once you're ready to publish:
+The 0.2.1 publish completed with these steps. Keep them for future releases:
 
 ### Step 1: Confirm the suspension and wait for automatic return
 1. Open the email inbox registered with npm and find the notice from `support@npmjs.com`.
-2. Current notice: a recovery-code login on 2026-10-19 triggered a 72-hour suspension. The account returns to normal on **2026-10-21 22:42 UTC** (**2026-10-22 04:42 Asia/Dhaka**).
-3. If the recovery-code login was yours, no action is required. If it was not, contact npm Support immediately and treat the account as compromised.
+2. Historical notice: a recovery-code login on 2026-10-19 triggered a 72-hour suspension. The account returned to normal on **2026-10-21 22:42 UTC** (**2026-10-22 04:42 Asia/Dhaka**). The restriction was lifted before the successful 2026-10-22 publish.
+3. If a future recovery-code login was not yours, contact npm Support immediately and treat the account as compromised.
 4. Do not retry `npm login` or `npm publish` repeatedly while suspended. Wait for the return time, then refresh [https://www.npmjs.com](https://www.npmjs.com) and confirm the red banner is gone.
 
 ### Step 2: Restore 2FA / publish access (1 min)
@@ -21,24 +21,35 @@ Follow these 3 steps once you're ready to publish:
 2. Complete the security challenge npm asks for. **Do not create an automation token to bypass 2FA.**
 3. If npm requires a token, use a short-lived granular token scoped to this package and revoke it after publishing.
 
-### Step 3: Publish from Terminal (30 sec)
+### Step 3: Publish from Terminal (completed for 0.2.1)
 ```powershell
 # Authenticate interactively; complete the 2FA prompt when npm asks.
 npm login
 npm whoami
 
-# Re-run the local evidence gate before publishing.
+# Re-run the local evidence gate on the frozen release tree.
 npm run check:ci
 npm run build:core
 npm run check:package
 
 # Publish with public access
 npm publish --access public
+
+# Verify from a neutral directory; the first check may lag 2-3 minutes.
+npm view @atifjubaer/fastrmemory version
+npx --yes --package @atifjubaer/fastrmemory@0.2.1 fastr --version
+
+# Clear the local session when finished.
+npm logout
 ```
+
+The 0.2.1 run published from `3fa2bf9`: 235 tests / 43 files passed,
+`check:package` reported 220 files / 577.6 kB, and npm reported
+`+ @atifjubaer/fastrmemory@0.2.1` with a 591.4 kB tarball.
 
 ---
 
-## 🛠️ Incident & Error Log (All Errors Faced & Solved)
+## Incident & Error Log (All Errors Faced & Solved)
 
 ### 1. `EJSONPARSE` in `package.json`
 - **Location**: `package.json:1`
@@ -95,10 +106,10 @@ npm publish --access public
 
 ---
 
-## 📦 Distribution Health Verification
+## Distribution Health Verification
 
-Before publishing, this pipeline automatically runs and verifies:
-1. `npm run check:ci` (234 tests across 42 files, isolation, skills, UI freshness, package surface, docs, and benchmarks)
+The 0.2.1 publish ran and verified:
+1. `npm run check:ci` (235 tests across 43 files at `3fa2bf9`; isolation, skills, UI freshness, package surface, docs, and benchmarks)
 2. `npm run build:core` (`tsc` with 0 errors)
 3. Whitelisted distribution payload:
    - `dist/` (compiled runtime & CLI)
@@ -106,3 +117,6 @@ Before publishing, this pipeline automatically runs and verifies:
    - `skills/` (10 agent memory skills)
    - `.claude-plugin/` & `.cursor/` (IDE manifests)
    - `README.md` & `LICENSE` (Apache-2.0)
+4. Registry verification: `npm view @atifjubaer/fastrmemory version` = `0.2.1`; `npm access get status` = `public`; registry shasum `352abba135ce1b0921cacbcdf9b7efd2abfc4802`; `npx` = `0.2.1`.
+
+The earlier 2026-10-20 E404 state is historical. The package has been public since 2026-10-22 16:51 UTC.

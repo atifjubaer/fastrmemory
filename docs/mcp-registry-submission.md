@@ -1,6 +1,6 @@
 # Official Model Context Protocol Registry Submission
 
-> **Status (2026-10-21): draft only.** The npm package is unpublished (`npm view` returns E404), so the `npx @atifjubaer/fastrmemory` form is not available. Use the GitHub form below until an npm release exists.
+> **Status (2026-10-22): draft ready.** `@atifjubaer/fastrmemory@0.2.1` is published on npm (`npm view` returns `0.2.1`; access status `public`), so the npm `npx` form is available. Use the exact `0.2.1` version; `0.3.0` remains unreleased.
 
 Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers) under the **Memory & Cognitive Engines** section.
 
@@ -11,7 +11,7 @@ Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://gi
 
 ### Table Entry for `README.md`
 ```markdown
-| [FastrMemory](https://github.com/atifjubaer/fastrmemory) | High-Performance Cognitive Agent Memory Engine with native `node:sqlite` WAL storage (Node >= 22.16), Bi-Temporal Git Sync, Triple-Stream RRF ($k=20$), Conditional 2.0x Error Trap Shield, and High-DPI React 19 Dashboard. Zero background daemons, zero open ports. | `npx -y github:atifjubaer/fastrmemory mcp` |
+| [FastrMemory](https://github.com/atifjubaer/fastrmemory) | High-Performance Cognitive Agent Memory Engine with native `node:sqlite` WAL storage (Node >= 22.16), Bi-Temporal Git Sync, Triple-Stream RRF ($k=20$), Conditional 2.0x Error Trap Shield, and High-DPI React 19 Dashboard. Zero background daemons, zero open ports. | `npx -y --package @atifjubaer/fastrmemory@0.2.1 fastr mcp` |
 ```
 
 ### Full Server Description & Metadata
@@ -37,7 +37,7 @@ Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://gi
   "mcpServers": {
     "fastrmemory": {
       "command": "npx",
-      "args": ["-y", "github:atifjubaer/fastrmemory", "mcp"]
+      "args": ["-y", "--package", "@atifjubaer/fastrmemory@0.2.1", "fastr", "mcp"]
     }
   }
 }
@@ -47,8 +47,10 @@ Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://gi
   "mcpServers": {
     "fastrmemory": {
       "command": "npx",
-      "args": ["-y", "github:atifjubaer/fastrmemory", "mcp"]
+      "args": ["-y", "--package", "@atifjubaer/fastrmemory@0.2.1", "fastr", "mcp"]
     }
   }
 }
 ```
+
+> Version note: pin `@0.2.1` until `0.3.0` is released. The full 41-tool surface is the default; pass `--profile core` for the 12-tool daily loop.
