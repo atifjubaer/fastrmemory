@@ -9,6 +9,9 @@ on:
 jobs:
   test:
     runs-on: ${{ matrix.os }}
+    env:
+      # Timing gates are runner-sensitive; run them once on the canonical job.
+      FASTR_PERF_GATE: ${{ matrix.os == 'ubuntu-latest' && matrix.node-version == '24.x' && '1' || '0' }}
     strategy:
       fail-fast: false
       matrix:

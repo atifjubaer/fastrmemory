@@ -186,6 +186,98 @@ if (legacy) {
   }
 }
 
+// Pinned external baselines. These are deliberately exact: a version, integrity, or
+// dataset-hash drift must be reviewed and documented, not silently accepted.
+const externalSpecs = [
+  {
+    rel: 'bench/results/external-minisearch-longmemeval.json',
+    engine: 'minisearch',
+    packageName: 'minisearch',
+    version: '7.2.0',
+    integrity: 'sha512-dqT2XBYUOZOiC5t2HRnwADjhNS2cecp9u+TJRiJ1Qp/f5qjkeT5APcGPjHw+bz89Ms8Jp+cG4AlE+QZ/QnDglg==',
+    dataset: 'longmemeval_s',
+    revision: '2ec2a557f339b6c0369619b1ed5793734cc87533',
+    datasetSha: '08d8dad4be43ee2049a22ff5674eb86725d0ce5ff434cde2627e5e8e7e117894',
+    cases: 500
+  },
+  {
+    rel: 'bench/results/external-mcp-longmemeval.json',
+    engine: 'mcp-memory',
+    packageName: '@modelcontextprotocol/server-memory',
+    version: '2.0.0',
+    integrity: 'sha512-h+oxQCpK6FOuhlPB9hAcSihAAahcnijuGTZGcXStGOL4UzFYB4ap+pvtSelxchkZlz7tnpY/e0sONaAs24Rurw==',
+    dataset: 'longmemeval_s',
+    revision: '2ec2a557f339b6c0369619b1ed5793734cc87533',
+    datasetSha: '08d8dad4be43ee2049a22ff5674eb86725d0ce5ff434cde2627e5e8e7e117894',
+    cases: 500,
+    distSha256: '8A4D2E89A6058B5FFA7CAA567BD185BE2087A57D23DDF1E609884C9A25FD38FD'
+  },
+  {
+    rel: 'bench/results/external-minisearch-locomo.json',
+    engine: 'minisearch',
+    packageName: 'minisearch',
+    version: '7.2.0',
+    integrity: 'sha512-dqT2XBYUOZOiC5t2HRnwADjhNS2cecp9u+TJRiJ1Qp/f5qjkeT5APcGPjHw+bz89Ms8Jp+cG4AlE+QZ/QnDglg==',
+    dataset: 'locomo10',
+    revision: '3eb6f2c585f5e1699204e3c3bdf7adc5c28cb376',
+    datasetSha: '79fa87e90f04081343b8c8debecb80a9a6842b76a7aa537dc9fdf651ea698ff4',
+    cases: 1981
+  },
+  {
+    rel: 'bench/results/external-mcp-locomo.json',
+    engine: 'mcp-memory',
+    packageName: '@modelcontextprotocol/server-memory',
+    version: '2.0.0',
+    integrity: 'sha512-h+oxQCpK6FOuhlPB9hAcSihAAahcnijuGTZGcXStGOL4UzFYB4ap+pvtSelxchkZlz7tnpY/e0sONaAs24Rurw==',
+    dataset: 'locomo10',
+    revision: '3eb6f2c585f5e1699204e3c3bdf7adc5c28cb376',
+    datasetSha: '79fa87e90f04081343b8c8debecb80a9a6842b76a7aa537dc9fdf651ea698ff4',
+    cases: 1981,
+    distSha256: '8A4D2E89A6058B5FFA7CAA567BD185BE2087A57D23DDF1E609884C9A25FD38FD'
+  }
+];
+
+const externalDoc = readText('docs/EXTERNAL_BASELINE.md');
+const publicDoc = readText('docs/PUBLIC_BENCHMARKS.md');
+const externalClaims = readText('CLAIMS.md');
+
+for (const spec of externalSpecs) {
+  const result = readJson(spec.rel);
+  if (!result) continue;
+  check(result.schemaVersion === 1, `${spec.rel} schemaVersion must be 1`);
+  check(/^[0-9a-f]{40}$/.test(result.code?.commit ?? ''), `${spec.rel} must record a 40-character commit`);
+  check(String(result.command ?? '').includes('eval-external'), `${spec.rel} command must include eval-external`);
+  check(result.dataset?.name === spec.dataset, `${spec.rel} dataset must be ${spec.dataset}`);
+  check(result.dataset?.examples === spec.cases, `${spec.rel} examples must be ${spec.cases}`);
+  check(result.dataset?.pin?.revision === spec.revision, `${spec.rel} dataset revision drift`);
+  check(
+    String(result.dataset?.pin?.sha256 ?? '').toLowerCase() === spec.datasetSha,
+    `${spec.rel} dataset SHA-256 drift`
+  );
+  check(result.dataset?.uniqueMemories > 0, `${spec.rel} must record unique memory ids`);
+  check(result.engine?.name === spec.engine, `${spec.rel} engine must be ${spec.engine}`);
+  check(result.engine?.package === spec.packageName, `${spec.rel} package must be ${spec.packageName}`);
+  check(result.engine?.version === spec.version, `${spec.rel} engine version must be ${spec.version}`);
+  check(result.engine?.integrity === spec.integrity, `${spec.rel} package integrity drift`);
+  check(Boolean(result.engine?.adapter?.duplicateIds), `${spec.rel} must document duplicate-id handling`);
+  check(result.results?.overall?.count === spec.cases, `${spec.rel} overall count must be ${spec.cases}`);
+  check(result.results?.cases?.length === spec.cases, `${spec.rel} must include ${spec.cases} case rows`);
+  if (spec.distSha256) {
+    check(result.engine?.server?.distSha256 === spec.distSha256, `${spec.rel} server dist hash drift`);
+  }
+
+  expectNumber(externalDoc, `${spec.engine} ${spec.dataset} Hit@5`, result.results.overall.hitAt5, 'docs/EXTERNAL_BASELINE.md');
+  expectNumber(publicDoc, `${spec.engine} ${spec.dataset} Hit@5`, result.results.overall.hitAt5, 'docs/PUBLIC_BENCHMARKS.md');
+  expectNumber(benchmarks, `${spec.engine} ${spec.dataset} Hit@5`, result.results.overall.hitAt5, 'BENCHMARKS.md');
+}
+
+check(externalClaims.includes('| E14 |'), 'CLAIMS.md is missing the external baseline row E14');
+check(externalClaims.includes('| E15 |'), 'CLAIMS.md is missing the external target row E15');
+check(
+  /LoCoMo[^\n]*\+4\.4pp/.test(externalDoc) || /\+4\.4pp[^\n]*LoCoMo/.test(externalDoc),
+  'docs/EXTERNAL_BASELINE.md must state the LoCoMo +4.4pp gap'
+);
+
 for (const warning of warnings) console.warn(`WARN: ${warning}`);
 if (errors.length > 0) {
   for (const error of errors) console.error(`ERROR: ${error}`);

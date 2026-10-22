@@ -13,3 +13,5 @@ Thumbs.db
 coverage/
 *.tsbuildinfo
 *.tgz
+bench/data/
+bench/external/

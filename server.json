@@ -1,0 +1,28 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.atifjubaer/fastrmemory",
+  "title": "FastrMemory",
+  "description": "Local-first cognitive agent memory with bi-temporal SQLite, replayable history, and triple-stream retrieval.",
+  "version": "0.3.0",
+  "websiteUrl": "https://github.com/atifjubaer/fastrmemory",
+  "repository": {
+    "url": "https://github.com/atifjubaer/fastrmemory",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "fastrmemory",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ]
+    }
+  ]
+}

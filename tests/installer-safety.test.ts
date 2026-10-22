@@ -10,8 +10,12 @@ import {
   upsertMcpServer,
 } from '../src/installer/json-config.js';
 import { buildHookCommand, claudeHookSpecs, installAgentHooks } from '../src/installer/hooks.js';
+import { installGemini } from '../src/installer/gemini.js';
+import { installCopilot } from '../src/installer/copilot.js';
+import { installOpenCode } from '../src/installer/opencode.js';
 import { resolveMcpCommand } from '../src/installer/setup.js';
-import { extractTargetFiles, toClaudeHookStdout } from '../src/hooks/runner.js';
+import { PACKAGE_VERSION } from '../src/version.js';
+import { extractTargetFiles, toClaudeHookStdout, toGeminiHookStdout, toCopilotHookStdout } from '../src/hooks/runner.js';
 
 describe('Installer config safety', () => {
   let dir: string;
@@ -88,12 +92,21 @@ describe('Installer config safety', () => {
   it('recognises hook commands from every install form', () => {
     expect(isFastrHookCommand('fastrmemory hook run SessionStart')).toBe(true);
     expect(isFastrHookCommand('node "C:/a b/dist/bin/fastr.js" hook run PreToolUse')).toBe(true);
-    expect(isFastrHookCommand('npx -y @atifjubaer/fastrmemory hook run SessionEnd')).toBe(true);
+    expect(isFastrHookCommand(`npx -y fastrmemory@${PACKAGE_VERSION} hook run SessionEnd`)).toBe(true);
     expect(isFastrHookCommand('echo hook run')).toBe(false);
     const cmd = buildHookCommand('SessionStart', 'linux');
     expect(cmd).toMatch(/hook run SessionStart$/);
     expect(cmd).not.toContain('\\'); // backslashes would be eaten by Git Bash on Windows
     expect(isFastrHookCommand(cmd)).toBe(true);
+
+    const gemini = buildHookCommand('SessionStart', 'linux', 'gemini');
+    expect(gemini).toMatch(/hook run SessionStart --format gemini$/);
+    expect(gemini).not.toContain(' mcp ');
+    expect(isFastrHookCommand(gemini)).toBe(true);
+
+    const copilot = buildHookCommand('PreToolUse', 'linux', 'copilot');
+    expect(copilot).toMatch(/hook run PreToolUse --format copilot$/);
+    expect(isFastrHookCommand(copilot)).toBe(true);
   });
 
   it('never points MCP clients at the bare .cmd shim on Windows', () => {
@@ -102,13 +115,16 @@ describe('Installer config safety', () => {
     expect(target.args).toContain('mcp');
   });
 
-  it('installAgentHooks writes project-scoped .mcp.json and .claude/settings.json only', () => {
+  it('installAgentHooks writes project-scoped MCP config and Claude hooks', () => {
     const settingsPath = path.join(dir, '.claude', 'settings.json');
     fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
     fs.writeFileSync(settingsPath, JSON.stringify({ permissions: { allow: ['Bash(npm test)'] } }));
 
     const res = installAgentHooks(dir);
     expect(res.claudeCodeUpdated).toBe(true);
+    expect(res.geminiUpdated).toBe(true);
+    expect(res.copilotUpdated).toBe(true);
+    expect(res.openCodeUpdated).toBe(true);
 
     const mcp = JSON.parse(fs.readFileSync(path.join(dir, '.mcp.json'), 'utf-8'));
     expect(mcp.mcpServers.fastrmemory.args).toContain('mcp');
@@ -117,6 +133,167 @@ describe('Installer config safety', () => {
     expect(settings.permissions.allow).toEqual(['Bash(npm test)']);
     expect(settings.mcpServers).toBeUndefined();
     expect(Array.isArray(settings.hooks.SessionStart)).toBe(true);
+
+    const gemini = JSON.parse(fs.readFileSync(path.join(dir, '.gemini', 'settings.json'), 'utf-8'));
+    expect(gemini.mcpServers.fastrmemory.args).toContain('mcp');
+    expect(gemini.hooks.BeforeTool[0].matcher).toBe('write_file|replace');
+    expect(gemini.hooks.SessionStart.flatMap((group: any) => group.hooks)
+      .some((hook: any) => hook.command.includes('--format gemini'))).toBe(true);
+
+    const copilotMcp = JSON.parse(fs.readFileSync(path.join(dir, '.github', 'mcp.json'), 'utf-8'));
+    expect(copilotMcp.mcpServers.fastrmemory.type).toBe('local');
+    expect(copilotMcp.mcpServers.fastrmemory.args).toContain('mcp');
+    const copilotHooks = JSON.parse(fs.readFileSync(path.join(dir, '.github', 'hooks', 'fastrmemory.json'), 'utf-8'));
+    expect(copilotHooks.version).toBe(1);
+    expect(copilotHooks.hooks.preToolUse[0].matcher).toBe('edit|create|str_replace_editor|apply_patch');
+    expect(copilotHooks.hooks.sessionStart[0].command).toContain('--format copilot');
+
+    const openCode = JSON.parse(fs.readFileSync(path.join(dir, 'opencode.json'), 'utf-8'));
+    expect(openCode.mcp.servers.fastrmemory.command).toContain('mcp');
+    expect(fs.existsSync(path.join(dir, '.opencode', 'plugins', 'fastrmemory', 'index.ts'))).toBe(true);
+
+    const again = installAgentHooks(dir);
+    expect(again.geminiUpdated).toBe(false);
+    expect(again.copilotUpdated).toBe(false);
+    expect(again.openCodeUpdated).toBe(false);
+  });
+
+  it('writes Gemini CLI settings idempotently and preserves user hooks', () => {
+    const settingsPath = path.join(dir, '.gemini', 'settings.json');
+    fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
+    fs.writeFileSync(settingsPath, JSON.stringify({
+      theme: 'dark',
+      mcpServers: { other: { command: 'other', args: ['serve'] } },
+      hooks: {
+        BeforeTool: [{
+          matcher: 'write_file',
+          hooks: [
+            { name: 'user-check', type: 'command', command: 'node user-check.js' },
+            { name: 'old-fastr', type: 'command', command: 'fastrmemory hook run PreToolUse' }
+          ]
+        }],
+        SessionStart: 'fastrmemory hook run SessionStart'
+      }
+    }));
+
+    const first = installGemini(dir, { command: 'node', args: ['cli.js', 'mcp'] });
+    expect(first.changed).toBe(true);
+    const second = installGemini(dir, { command: 'node', args: ['cli.js', 'mcp'] });
+    expect(second.changed).toBe(false);
+
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+    expect(config.theme).toBe('dark');
+    expect(config.mcpServers.other).toEqual({ command: 'other', args: ['serve'] });
+    expect(config.mcpServers.fastrmemory).toEqual({ command: 'node', args: ['cli.js', 'mcp'] });
+
+    const beforeToolHooks = config.hooks.BeforeTool.flatMap((group: any) => group.hooks);
+    expect(beforeToolHooks.filter((hook: any) => isFastrHookCommand(hook.command))).toHaveLength(1);
+    expect(beforeToolHooks.some((hook: any) => hook.name === 'user-check')).toBe(true);
+    expect(beforeToolHooks.filter((hook: any) => isFastrHookCommand(hook.command))[0].command)
+      .toContain('--format gemini');
+    expect(config.hooks.BeforeTool[0].matcher).toBe('write_file');
+
+    const sessionStartHooks = config.hooks.SessionStart.flatMap((group: any) => group.hooks);
+    expect(sessionStartHooks.filter((hook: any) => isFastrHookCommand(hook.command))).toHaveLength(1);
+    expect(sessionStartHooks[0].name).toBe('fastrmemory-session-start');
+  });
+
+  it('writes Copilot CLI MCP and hooks idempotently and preserves user entries', () => {
+    const mcpPath = path.join(dir, '.github', 'mcp.json');
+    const hooksPath = path.join(dir, '.github', 'hooks', 'fastrmemory.json');
+    fs.mkdirSync(path.dirname(hooksPath), { recursive: true });
+    fs.writeFileSync(mcpPath, JSON.stringify({
+      mcpServers: { other: { type: 'local', command: 'other', args: ['serve'] } }
+    }));
+    fs.writeFileSync(hooksPath, JSON.stringify({
+      version: 1,
+      hooks: {
+        sessionStart: [
+          { type: 'command', command: 'node user-start.js' },
+          { type: 'command', command: 'fastrmemory hook run SessionStart' }
+        ],
+        preToolUse: [{ type: 'command', command: 'node user-policy.js' }]
+      }
+    }));
+
+    const first = installCopilot(dir, { command: 'node', args: ['cli.js', 'mcp'] });
+    expect(first.changed).toBe(true);
+    const second = installCopilot(dir, { command: 'node', args: ['cli.js', 'mcp'] });
+    expect(second.changed).toBe(false);
+
+    const mcp = JSON.parse(fs.readFileSync(mcpPath, 'utf-8'));
+    expect(mcp.mcpServers.other).toEqual({ type: 'local', command: 'other', args: ['serve'] });
+    expect(mcp.mcpServers.fastrmemory).toEqual({
+      type: 'local',
+      command: 'node',
+      args: ['cli.js', 'mcp']
+    });
+
+    const hooks = JSON.parse(fs.readFileSync(hooksPath, 'utf-8'));
+    expect(hooks.version).toBe(1);
+    expect(hooks.hooks.sessionStart.filter((entry: any) => isFastrHookCommand(entry.command))).toHaveLength(1);
+    expect(hooks.hooks.sessionStart.some((entry: any) => entry.command === 'node user-start.js')).toBe(true);
+    expect(hooks.hooks.preToolUse.some((entry: any) => entry.command === 'node user-policy.js')).toBe(true);
+    expect(hooks.hooks.preToolUse[0].command).toBe('node user-policy.js');
+    expect(hooks.hooks.preToolUse[1].matcher).toBe('edit|create|str_replace_editor|apply_patch');
+    expect(hooks.hooks.sessionStart.filter((entry: any) => isFastrHookCommand(entry.command))[0].command)
+      .toContain('--format copilot');
+  });
+
+  it('writes an OpenCode V2 MCP server and managed plugin without touching other settings', () => {
+    const configPath = path.join(dir, 'opencode.json');
+    fs.writeFileSync(configPath, JSON.stringify({
+      theme: 'dark',
+      plugins: ['company-plugin'],
+      mcp: { servers: { other: { type: 'remote', url: 'https://mcp.example.com' } } }
+    }));
+
+    const res = installOpenCode(dir, { command: 'node', args: ['cli.js', 'mcp'] });
+    expect(res.changed).toBe(true);
+    expect(res.configSkipped).toBeUndefined();
+
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    expect(config.theme).toBe('dark');
+    expect(config.plugins).toEqual(['company-plugin']);
+    expect(config.mcp.servers.other).toEqual({ type: 'remote', url: 'https://mcp.example.com' });
+    expect(config.mcp.servers.fastrmemory).toEqual({
+      type: 'local',
+      command: ['node', 'cli.js', 'mcp']
+    });
+
+    const plugin = fs.readFileSync(path.join(dir, '.opencode', 'plugins', 'fastrmemory', 'index.ts'), 'utf-8');
+    expect(plugin.startsWith('// fastrmemory:managed')).toBe(true);
+    expect(plugin).toContain('ctx.session.hook("context"');
+    expect(plugin).toContain('ctx.session.hook("compaction"');
+    expect(plugin).toContain('"hook", "run", event');
+    expect(plugin).toContain('const FASTR_COMMAND = ["node","cli.js"]');
+    expect(plugin).not.toContain('const FASTR_COMMAND = ["node","cli.js","mcp"]');
+
+    const again = installOpenCode(dir, { command: 'node', args: ['cli.js', 'mcp'] });
+    expect(again.changed).toBe(false);
+  });
+
+  it('does not overwrite a user-owned OpenCode plugin', () => {
+    const pluginPath = path.join(dir, '.opencode', 'plugins', 'fastrmemory', 'index.ts');
+    fs.mkdirSync(path.dirname(pluginPath), { recursive: true });
+    fs.writeFileSync(pluginPath, '// custom user plugin\nexport default {}\n');
+
+    const res = installOpenCode(dir, { command: 'node', args: ['cli.js', 'mcp'] });
+    expect(res.pluginChanged).toBe(false);
+    expect(res.pluginSkipped).toContain('not overwritten');
+    expect(fs.readFileSync(pluginPath, 'utf-8')).toBe('// custom user plugin\nexport default {}\n');
+  });
+
+  it('never rewrites an OpenCode JSONC config it cannot parse', () => {
+    const jsoncPath = path.join(dir, 'opencode.jsonc');
+    const original = '{\n  // keep this comment\n  "theme": "dark"\n}\n';
+    fs.writeFileSync(jsoncPath, original);
+
+    const res = installOpenCode(dir, { command: 'node', args: ['cli.js', 'mcp'] });
+    expect(res.configSkipped).toContain('JSONC');
+    expect(fs.readFileSync(jsoncPath, 'utf-8')).toBe(original);
+    expect(fs.existsSync(path.join(dir, 'opencode.json'))).toBe(false);
+    expect(res.pluginChanged).toBe(true);
   });
 });
 
@@ -129,6 +306,16 @@ describe('Claude Code hook I/O', () => {
     );
     expect(files).toEqual(['src/auth/jwt.ts']);
     expect(extractTargetFiles({ files: ['src\\a.ts'] }, root)).toEqual(['src/a.ts']);
+    expect(extractTargetFiles({
+      toolName: 'edit',
+      toolArgs: { path: path.join(root, 'src', 'copilot.ts') }
+    }, root)).toEqual(['src/copilot.ts']);
+    expect(extractTargetFiles({
+      toolArgs: { edits: [{ path: 'src/b.ts' }, { filePath: 'src/c.ts' }] }
+    }, root)).toEqual(['src/b.ts', 'src/c.ts']);
+    expect(extractTargetFiles({
+      toolArgs: { patch: '*** Update File: src/d.ts\n*** End Patch' }
+    }, root)).toEqual(['src/d.ts']);
   });
 
   it('formats PreToolUse warnings as additionalContext JSON and SessionStart as plain text', () => {
@@ -137,6 +324,38 @@ describe('Claude Code hook I/O', () => {
     expect(toClaudeHookStdout('SessionStart', { output: 'hello' })).toBe('hello');
     expect(toClaudeHookStdout('SessionEnd', { output: 'x' })).toBeNull();
     expect(toClaudeHookStdout('PreToolUse', {})).toBeNull();
+  });
+
+  it('formats Gemini hook output as strict JSON', () => {
+    const session = JSON.parse(toGeminiHookStdout('SessionStart', { output: 'context' })!);
+    expect(session).toEqual({
+      hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: 'context' }
+    });
+
+    const pre = JSON.parse(toGeminiHookStdout('PreToolUse', { output: 'TRAP!' })!);
+    expect(pre.systemMessage).toBe('TRAP!');
+    expect(pre.hookSpecificOutput).toEqual({
+      hookEventName: 'BeforeTool',
+      additionalContext: 'TRAP!'
+    });
+
+    expect(JSON.parse(toGeminiHookStdout('PreToolUse', { message: 'safe' })!)).toEqual({});
+    expect(JSON.parse(toGeminiHookStdout('PreCompact', { message: 'snapshot' })!))
+      .toEqual({ systemMessage: 'snapshot' });
+    expect(JSON.parse(toGeminiHookStdout('SessionEnd', { message: 'done' })!))
+      .toEqual({ systemMessage: 'done' });
+    expect(toGeminiHookStdout('UnknownEvent', { output: 'x' })).toBeNull();
+  });
+
+  it('formats Copilot hook output with session context and an ask decision for traps', () => {
+    expect(JSON.parse(toCopilotHookStdout('SessionStart', { output: 'context' })!))
+      .toEqual({ additionalContext: 'context' });
+    expect(JSON.parse(toCopilotHookStdout('PreToolUse', { output: 'TRAP!' })!))
+      .toEqual({ permissionDecision: 'ask', permissionDecisionReason: 'TRAP!' });
+    expect(JSON.parse(toCopilotHookStdout('PreToolUse', { message: 'safe' })!)).toEqual({});
+    expect(JSON.parse(toCopilotHookStdout('PreCompact', { message: 'snapshot' })!)).toEqual({});
+    expect(JSON.parse(toCopilotHookStdout('SessionEnd', { message: 'done' })!)).toEqual({});
+    expect(toCopilotHookStdout('UnknownEvent', { output: 'x' })).toBeNull();
   });
 });
 

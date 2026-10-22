@@ -2,9 +2,51 @@
 
 All notable changes to FastrMemory are recorded here. Versions follow semantic versioning.
 
+## [Unreleased]
+
+### Added
+
+- `docs/blog/2026-10-21-fastrmemory-0.2.1.md` launch post with one reproducible command per release number; npm `0.2.1` is published.
+- Conflict-aware recall: ranked results mark both sides of an open contradiction with the conflict id and the opposing memory.
+- `fastr conflict list` and `fastr conflict resolve <id> --keep <memory-id> [--forget] [--reason]`.
+- `fastr import --from markdown|agents-md|cursor-rules|claude-md|jsonl` imports local Markdown rules and snapshots with dry-run and exact-duplicate skipping.
+- OpenCode V2 integration: `fastrmemory hook install` writes `opencode.json` `mcp.servers.fastrmemory` and an auto-loaded plugin that injects session-start context and captures pre-compaction snapshots.
+- Gemini CLI integration: `fastrmemory hook install` merges `.gemini/settings.json` `mcpServers.fastrmemory` and `SessionStart`, `BeforeTool`, `PreCompress`, and `SessionEnd` hooks; `fastr hook run --format gemini` emits Gemini's strict JSON hook contract.
+- `npm run smoke:gemini` installs the Gemini config in a temporary project, starts the configured MCP server, and asserts the 41-tool surface.
+- GitHub Copilot CLI integration: `fastrmemory hook install` merges `.github/mcp.json` `mcpServers.fastrmemory` and `.github/hooks/fastrmemory.json` `sessionStart`, `preToolUse`, `preCompact`, and `sessionEnd` hooks; `fastr hook run --format copilot` emits Copilot's JSON contract.
+- `npm run smoke:copilot` installs the Copilot config in a temporary project, starts the configured MCP server, and asserts the 41-tool surface.
+- Memory envelope resource: `fastr://memory/{id}/envelope` returns metadata, cryptographic provenance, file/graph links, and open/resolved/ignored conflict state for one memory.
+- Immutable memory branches: `fastr branch create <name> [--from <snapshot-id>]` and `fastr branch list [--json]`.
+- `fastr merge <branch> [--dry-run] [--force] [--strategy target|branch] [--json]` adds branch-only memories, preserves target-only memories, reports same-identity conflicts, and records merge attempts in `memory_branch_merges`. Branch-favored resolution supersedes target rows without deleting history.
+- Per-ID confidence tiers: active memories report `high`, `medium`, or `low` from `reward_score`; inactive rows report `dormant` or `superseded`. `fastr feedback <memory-id> <good|bad>` exposes the same update from the CLI.
+- Three consecutive bad outcomes automatically move a memory to `dormant`; good outcomes reset the streak. Feedback events are stored in the append-only `memory_feedback` audit table.
+- `fastr hygiene` reports orphaned file link, conflict, and feedback rows; duplicate active memories by normalized title or exact content; and stale unpinned active memories (default 90 days). `npm run check:hygiene` seeds a deterministic fixture inside `check:ci` and asserts the raw counts.
+- `fastr backup [file]` writes a portable JSONL snapshot plus a sidecar provenance manifest; `--verify` checks the file SHA-256 and content hash, and `--restore` verifies before importing with an optional `--dry-run`. The manifest records scope, record counts, tool/environment, source integrity, and provenance-hash count.
+- `npm run check:query-plans` records ten `EXPLAIN QUERY PLAN` shapes against a 10k-memory fixture and fails on full table scans of large tables. Raw evidence is in `bench/results/query-plans.json`; methodology is in `docs/QUERY_PLANS.md`.
+- `npm run check:recall-latency` seeds 10k memories and fails when default recall p95 reaches 50 ms. Raw evidence is in `bench/results/recall-latency-10k.json`.
+- `npm run check:install-size` packs the current tree, installs it into an empty temporary project with scripts disabled, and fails above 20 MB installed or 10 seconds with a warm npm cache.
+- Dashboard Replay & Diff workspace at `/replay`: pick two timestamps, inspect both replay snapshots, and review added, superseded, changed, still-active, and open-conflict sections from the new `/api/replay` endpoint.
+- `docs/MEMORY_CI.md` documents the PR workflow inputs, outputs, permissions, fork behavior, sample comment, local reproduction, and troubleshooting.
+- Memory CI live evidence: same-repository draft PR #12 produced one marker comment, kept it through a re-run, and updated the same comment in place when a new head commit changed the diff from `Added (1)` to `Added (2)`.
+- Public retrieval harnesses for LongMemEval, LoCoMo, and real-repository history: pinned dataset revisions, SHA-256 checks, per-case raw JSON, and retrieval-only metrics in `docs/PUBLIC_BENCHMARKS.md`.
+- Pinned external retrieval baselines: MiniSearch `7.2.0` and the official MCP reference memory server `2.0.0`, with raw JSON, adapter rules, and caveats in `docs/EXTERNAL_BASELINE.md`. The `+5pp Hit@5` target is met on LongMemEval but missed on LoCoMo (`+4.4pp` vs MiniSearch, `+2.3pp` vs MCP).
+- `MIGRATION.md`, `SECURITY.md`, and `SCORECARD.md`: upgrade/rollback paths, local threat model and reporting path, and an evidence-based nine-gate release score (`9.4 / 10` provisional; the `9.2` target is met, with Retrieval still Partial).
+- Root `server.json` registry manifest and `llms-install.md` agent install guide, both included in the npm tarball.
+
+### Changed
+
+- Package identity moves to unscoped `fastrmemory@0.3.0`; generated MCP and hook configs pin `fastrmemory@0.3.0` instead of the GitHub default branch. The scoped `@atifjubaer/fastrmemory@0.2.1` release remains available.
+- Removed 60 legacy `Global Security Invariant` rows from the global store with explicit approval; a timestamped database backup was written first, and the post-cleanup dry run reported 0 matching rows.
+- Dormancy now requires three consecutive bad outcomes instead of a low reward score alone.
+- Added indexes for project/time raw-event replay and project/embedded candidate scans; the query-plan gate verifies they are selected.
+
+### Fixed
+
+- Conflict resolution now rejects a keep id that is not part of the conflict and refuses to resolve an already-resolved conflict.
+
 ## [0.2.1] - 2026-10-21
 
-GitHub release attached from the post-0.2.0 fixes. npm publication remains blocked by the account suspension documented in [docs/npm-publishing.md](docs/npm-publishing.md).
+GitHub release attached and npm package published from the post-0.2.0 fixes. `@atifjubaer/fastrmemory@0.2.1` went live on 2026-10-22 16:51 UTC from `3fa2bf9`; see [docs/npm-publishing.md](docs/npm-publishing.md).
 
 ### Added
 
@@ -21,7 +63,7 @@ GitHub release attached from the post-0.2.0 fixes. npm publication remains block
 ### Changed
 
 - MCP `serverInfo.name` is now `fastrmemory`; registry identity remains `io.github.atifjubaer/fastrmemory`.
-- MCP surface is 41 tools, 2 prompts, and 4 resources.
+- MCP surface is 41 tools, 2 prompts, and 4 resources. The unreleased 0.3.0 branch adds a fifth resource template.
 - Retrieval uses weighted FTS5 `bm25`, configurable RRF (`k = 20` by default), per-stream weights, conditional trap boosting, and graph seeding disabled by default.
 - Semantic embeddings are optional; deterministic hash vectors are not the default semantic path.
 - Test suite is 235 tests across 43 files.
@@ -34,8 +76,8 @@ GitHub release attached from the post-0.2.0 fixes. npm publication remains block
 
 ### Known limitations
 
-- npm publication is blocked until the registry account is restored.
-- The benchmark corpus is synthetic; no external memory engine is measured.
+- The npm registry also lists `0.0.0-stage`; use `@0.2.1` for reproducible installs.
+- At v0.2.1, the benchmark corpus was synthetic and no external memory engine was measured; the Unreleased section adds pinned external retrieval baselines.
 - Apple Silicon macOS is not in the 6-job CI matrix.
 - The crash test kills the process (`taskkill /F`); it is not an OS-crash or power-loss test, and SQLite uses `synchronous=NORMAL` in WAL mode.
 

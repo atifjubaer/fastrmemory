@@ -8,6 +8,8 @@ import { extractEntities } from '../learn/ner.js';
 import { detectConflict } from '../learn/conflicts.js';
 import { calculateBaserate, PredictionBaserate } from '../learn/planning-fallacy.js';
 import { computeProvenanceHash, verifyProvenanceHash } from './provenance.js';
+import { confidenceTier, ConfidenceTier } from './confidence.js';
+import { scrubSecrets } from '../privacy/scrubber.js';
 import { globalBroadcaster } from '../ui/sse.js';
 
 export interface CreateMemoryParams {
@@ -432,36 +434,95 @@ export class FastrRepository {
     }
   }
 
-  updateFeedback(memoryId: string, outcome: 'good' | 'bad', note?: string): { reward_score: number; status: string } {
-    const table = this.locateMemoryTable(memoryId);
-    const mem = table ? this.getMemory(memoryId) : null;
-    if (!table || !mem) {
-      throw new Error(`Memory not found: ${memoryId}`);
-    }
+  updateFeedback(
+    memoryId: string,
+    outcome: 'good' | 'bad',
+    note?: string
+  ): {
+    reward_score: number;
+    status: string;
+    confidence_tier: ConfidenceTier;
+    bad_streak: number;
+    dormant: boolean;
+  } {
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const table = this.locateMemoryTable(memoryId);
+      const mem = table ? this.getMemory(memoryId) : null;
+      if (!table || !mem) {
+        throw new Error(`Memory not found: ${memoryId}`);
+      }
 
-    let newScore = mem.reward_score;
-    let newStatus = mem.status;
+      const rewardBefore = Number(mem.reward_score);
+      const statusBefore = mem.status;
+      let newScore = rewardBefore;
+      let badStreak = 0;
 
-    if (outcome === 'good') {
-      newScore = Math.min(3.0, Number((mem.reward_score + 0.2).toFixed(2)));
-    } else {
-      newScore = Math.max(0.1, Number((mem.reward_score - 0.5).toFixed(2)));
-      // If reward drops to floor and was already low, quarantine as dormant
-      if (newScore <= 0.2) {
+      if (outcome === 'good') {
+        newScore = Math.min(3.0, Number((rewardBefore + 0.2).toFixed(2)));
+      } else {
+        newScore = Math.max(0.1, Number((rewardBefore - 0.5).toFixed(2)));
+        // Count consecutive bad outcomes from the append-only feedback log.
+        const recent = this.db.prepare(`
+          SELECT outcome FROM memory_feedback
+          WHERE memory_id = ?
+          ORDER BY created_at DESC, rowid DESC
+          LIMIT 2
+        `).all(memoryId) as Array<{ outcome: string }>;
+        badStreak = 1;
+        for (const row of recent) {
+          if (row.outcome !== 'bad') break;
+          badStreak += 1;
+        }
+      }
+
+      let newStatus: Memory['status'] = statusBefore;
+      if (outcome === 'bad' && badStreak >= 3 && statusBefore !== 'superseded') {
         newStatus = 'dormant';
       }
-    }
 
-    const res = this.db.prepare(`
-      UPDATE ${table}
-      SET reward_score = ?, status = ?
-      WHERE id = ?
-    `).run(newScore, newStatus, memoryId);
-    if (Number(res.changes) === 0) {
-      throw new Error(`Memory not found: ${memoryId}`);
-    }
+      const res = this.db.prepare(`
+        UPDATE ${table}
+        SET reward_score = ?, status = ?
+        WHERE id = ?
+      `).run(newScore, newStatus, memoryId);
+      if (Number(res.changes) === 0) {
+        throw new Error(`Memory not found: ${memoryId}`);
+      }
 
-    return { reward_score: newScore, status: newStatus };
+      const tier = confidenceTier({ status: newStatus, reward_score: newScore });
+      this.db.prepare(`
+        INSERT INTO memory_feedback (
+          id, project_id, memory_id, outcome, note, reward_before, reward_after,
+          status_before, status_after, confidence_tier, bad_streak, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        `fb_${crypto.randomBytes(4).toString('hex')}`,
+        mem.project_id,
+        memoryId,
+        outcome,
+        note ? scrubSecrets(note) : null,
+        rewardBefore,
+        newScore,
+        statusBefore,
+        newStatus,
+        tier,
+        badStreak,
+        new Date().toISOString()
+      );
+
+      this.db.exec('COMMIT');
+      return {
+        reward_score: newScore,
+        status: newStatus,
+        confidence_tier: tier,
+        bad_streak: badStreak,
+        dormant: newStatus === 'dormant'
+      };
+    } catch (err) {
+      this.db.exec('ROLLBACK');
+      throw err;
+    }
   }
 
   pinMemory(memoryId: string, pinned: boolean): { success: boolean; pinned: boolean; error?: string } {
@@ -956,6 +1017,12 @@ export class FastrRepository {
     const conflict = this.db.prepare('SELECT * FROM memory_conflicts WHERE id = ?').get(conflictId) as unknown as MemoryConflict | undefined;
     if (!conflict) {
       throw new Error(`Conflict ${conflictId} not found`);
+    }
+    if (conflict.status !== 'open') {
+      throw new Error(`Conflict ${conflictId} is already ${conflict.status}`);
+    }
+    if (keepMemoryId !== conflict.memory_a_id && keepMemoryId !== conflict.memory_b_id) {
+      throw new Error(`Memory ${keepMemoryId} is not part of conflict ${conflictId}`);
     }
 
     const loserId = conflict.memory_a_id === keepMemoryId ? conflict.memory_b_id : conflict.memory_a_id;

@@ -145,6 +145,8 @@ describe('MCP v2 Server (Tools & Resources)', () => {
       outcome: 'good'
     });
     expect(feedbackRes.content[0].text).toContain('reward_score = 1.2');
+    expect(feedbackRes.content[0].text).toContain('confidence = "medium"');
+    expect(feedbackRes.content[0].text).toContain('bad_streak = 0');
 
     // 4. fastr_file_history
     const fileHistRes = await callTool('fastr_file_history', {

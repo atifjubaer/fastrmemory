@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-10-21T01:37:58.428Z",
+  "commit": "2afded29dab79d5f262652427fe6cbed1493b445",
+  "project": "proj_query_plans",
+  "seed": {
+    "memories": 10000,
+    "embeddedMemories": 1000,
+    "rawEvents": 1000,
+    "fileLinks": 1000,
+    "graphEdges": 1000,
+    "conflicts": 100,
+    "feedbackRows": 100
+  },
+  "threshold": "no full table scan on a large table; every plan uses an index",
+  "pass": true,
+  "results": [
+    {
+      "id": "active-memories",
+      "description": "Active project memories for a module, ordered for prompt assembly.",
+      "sql": "SELECT * FROM memories WHERE project_id = ? AND valid_to IS NULL AND status != 'superseded' AND status != 'dormant' AND module = ? ORDER BY pinned DESC, reward_score DESC, created_at DESC",
+      "plans": [
+        "SEARCH memories USING INDEX idx_memories_active (project_id=? AND module=? AND valid_to=?)",
+        "USE TEMP B-TREE FOR ORDER BY"
+      ],
+      "scanTables": [],
+      "usesIndex": true
+    },
+    {
+      "id": "fts-recall",
+      "description": "FTS5 BM25 candidate stream used by recall.",
+      "sql": "SELECT * FROM ( SELECT m.*, bm25(memories_fts, 0.0, 10.0, 5.0, 1.0) AS rank FROM memories_fts f JOIN memories m ON m.id = f.id WHERE (m.project_id = ? OR m.project_id = 'global') AND memories_fts MATCH ? ORDER BY rank ASC LIMIT 50 ) ORDER BY rank ASC LIMIT 50",
+      "plans": [
+        "CO-ROUTINE (subquery-1)",
+        "SCAN f VIRTUAL TABLE INDEX 0:M4",
+        "SEARCH m USING INDEX sqlite_autoindex_memories_1 (id=?)",
+        "USE TEMP B-TREE FOR ORDER BY",
+        "SCAN (subquery-1)"
+      ],
+      "scanTables": [],
+      "usesIndex": true
+    },
+    {
+      "id": "vector-candidates",
+      "description": "Embedded-memory candidate scan used by the vector stream.",
+      "sql": "SELECT * FROM memories WHERE (project_id = ? OR project_id = 'global') AND embedded = 1 AND embedding IS NOT NULL",
+      "plans": [
+        "SEARCH memories USING INDEX idx_memories_embedded (project_id=? AND embedded=?)"
+      ],
+      "scanTables": [],
+      "usesIndex": true
+    },
+    {
+      "id": "file-links",
+      "description": "File-scoped graph seeds for recall.",
+      "sql": "SELECT DISTINCT m.id FROM file_links fl JOIN memories m ON m.id = fl.memory_id WHERE m.project_id = ? AND fl.file_path IN (?, ?, ?)",
+      "plans": [
+        "SEARCH m USING INDEX idx_memories_embedded (project_id=?)",
+        "SEARCH fl USING COVERING INDEX sqlite_autoindex_file_links_1 (memory_id=? AND file_path=?)",
+        "USE TEMP B-TREE FOR DISTINCT"
+      ],
+      "scanTables": [],
+      "usesIndex": true
+    },
+    {
+      "id": "graph-edges",
+      "description": "Two-hop spreading-activation edge lookup.",
+      "sql": "SELECT ge.source_id, ge.target_id, ge.edge_type, ge.weight FROM graph_edges ge WHERE ge.project_id = ? AND (ge.source_id IN (?, ?) OR ge.target_id IN (?, ?))",
+      "plans": [
+        "SEARCH ge USING INDEX idx_graph_edges_target (project_id=?)"
+      ],
+      "scanTables": [],
+      "usesIndex": true
+    },
+    {
+      "id": "replay-memories",
+      "description": "Bi-temporal replay memory rows up to a timestamp.",
+      "sql": "SELECT * FROM memories WHERE project_id = ? AND valid_from <= ? ORDER BY created_at ASC, id ASC",
+      "plans": [
+        "SEARCH memories USING INDEX idx_memories_embedded (project_id=?)",
+        "USE TEMP B-TREE FOR ORDER BY"
+      ],
+      "scanTables": [],
+      "usesIndex": true
+    },
+    {
+      "id": "replay-events",
+      "description": "Raw-event rows up to a replay timestamp.",
+      "sql": "SELECT * FROM raw_events WHERE project_id = ? AND created_at <= ? ORDER BY created_at ASC, id ASC",
+      "plans": [
+        "SEARCH raw_events USING INDEX idx_raw_events_project_created (project_id=? AND created_at<?)",
+        "USE TEMP B-TREE FOR LAST TERM OF ORDER BY"
+      ],
+      "scanTables": [],
+      "usesIndex": true
+    },
+    {
+      "id": "replay-conflicts",
+      "description": "Open or newly resolved conflicts at a replay timestamp.",
+      "sql": "SELECT * FROM memory_conflicts WHERE project_id = ? AND created_at <= ? AND (status = 'open' OR (resolved_at IS NOT NULL AND resolved_at > ?)) ORDER BY created_at ASC, id ASC",
+      "plans": [
+        "SEARCH memory_conflicts USING INDEX idx_conflicts_status (project_id=?)",
+        "USE TEMP B-TREE FOR ORDER BY"
+      ],
+      "scanTables": [],
+      "usesIndex": true
+    },
+    {
+      "id": "feedback-history",
+      "description": "Latest feedback rows for one memory.",
+      "sql": "SELECT * FROM memory_feedback WHERE memory_id = ? ORDER BY created_at DESC LIMIT 3",
+      "plans": [
+        "SEARCH memory_feedback USING INDEX idx_memory_feedback_memory (memory_id=?)"
+      ],
+      "scanTables": [],
+      "usesIndex": true
+    },
+    {
+      "id": "branch-lookup",
+      "description": "Case-insensitive branch lookup by project and name.",
+      "sql": "SELECT id, project_id, name, base_snapshot_id, head_snapshot_id FROM memory_branches WHERE project_id = ? AND name = ? COLLATE NOCASE",
+      "plans": [
+        "SEARCH memory_branches USING INDEX sqlite_autoindex_memory_branches_2 (project_id=? AND name=?)"
+      ],
+      "scanTables": [],
+      "usesIndex": true
+    }
+  ]
+}

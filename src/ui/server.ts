@@ -10,6 +10,15 @@ import { SpoolManager } from '../db/spool.js';
 import { searchMemories } from '../search/hybrid-rrf.js';
 import { diagnoseDatabase, healDatabase } from '../db/doctor.js';
 import type { Memory } from '../db/schema.js';
+import {
+  diffSnapshots,
+  formatDiffMarkdown,
+  replayAt,
+  type DiffEntry,
+  type ReplayConflict,
+  type ReplayMemory,
+  type ReplaySnapshot
+} from '../replay/snapshot.js';
 import { globalBroadcaster } from './sse.js';
 
 export interface UiServerOptions {
@@ -119,6 +128,57 @@ function clampInt(value: string | null, fallback: number, min: number, max: numb
   const n = parseInt(value || '', 10);
   if (!Number.isFinite(n)) return fallback;
   return Math.min(max, Math.max(min, n));
+}
+
+function replayMemoryView(memory: ReplayMemory) {
+  return {
+    id: memory.id,
+    title: memory.title,
+    module: memory.module,
+    kind: memory.kind,
+    status: memory.status,
+    rewardScore: memory.reward_score,
+    validFrom: memory.valid_from,
+    validTo: memory.valid_to,
+    supersededById: memory.superseded_by_id,
+    files: memory.files
+  };
+}
+
+function replaySnapshotView(snapshot: ReplaySnapshot) {
+  return {
+    at: snapshot.at,
+    tokenCount: snapshot.tokenCount,
+    contentHash: snapshot.contentHash,
+    active: snapshot.memories.map(replayMemoryView),
+    historyCount: snapshot.history.length,
+    eventCount: snapshot.events.length,
+    conflictCount: snapshot.conflicts.length
+  };
+}
+
+function replayDiffEntryView(entry: DiffEntry) {
+  return {
+    id: entry.id,
+    title: entry.title,
+    module: entry.module,
+    kind: entry.kind,
+    status: entry.status,
+    validFrom: entry.valid_from,
+    validTo: entry.valid_to,
+    supersededById: entry.superseded_by_id
+  };
+}
+
+function replayConflictView(conflict: ReplayConflict) {
+  return {
+    id: conflict.id,
+    memoryAId: conflict.memory_a_id,
+    memoryBId: conflict.memory_b_id,
+    reason: conflict.reason,
+    score: conflict.score,
+    status: conflict.status
+  };
 }
 
 /** Lexical guard used to tell real search hits apart from the search engine's "latest memories" fallback. */
@@ -548,6 +608,48 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(timeline));
+        return;
+      }
+
+      // API: Replay two snapshots and return the memory diff
+      if (req.method === 'GET' && url.pathname === '/api/replay') {
+        try {
+          const toParam = url.searchParams.get('to');
+          const to = toParam ? new Date(toParam) : new Date();
+          if (Number.isNaN(to.getTime())) {
+            throw new HttpError(400, `Invalid "to" timestamp: ${toParam}`);
+          }
+
+          const fromParam = url.searchParams.get('from');
+          const from = fromParam ? new Date(fromParam) : new Date(to.getTime() - 7 * 24 * 60 * 60 * 1000);
+          if (Number.isNaN(from.getTime())) {
+            throw new HttpError(400, `Invalid "from" timestamp: ${fromParam}`);
+          }
+          if (from.getTime() > to.getTime()) {
+            throw new HttpError(400, '"from" must be before or equal to "to"');
+          }
+
+          const fromSnapshot = replayAt(db, config.projectId, from.toISOString());
+          const toSnapshot = replayAt(db, config.projectId, to.toISOString());
+          const diff = diffSnapshots(fromSnapshot, toSnapshot);
+
+          sendJson(res, 200, {
+            from: replaySnapshotView(fromSnapshot),
+            to: replaySnapshotView(toSnapshot),
+            diff: {
+              ...diff,
+              added: diff.added.map(replayDiffEntryView),
+              superseded: diff.superseded.map(replayDiffEntryView),
+              stillActive: diff.stillActive.map(replayDiffEntryView),
+              changed: diff.changed.map(replayDiffEntryView),
+              conflicts: diff.conflicts.map(replayConflictView)
+            },
+            markdown: formatDiffMarkdown(diff)
+          });
+        } catch (err) {
+          const status = err instanceof HttpError ? err.status : 500;
+          sendJson(res, status, { error: err instanceof Error ? err.message : 'Replay failed' });
+        }
         return;
       }
 

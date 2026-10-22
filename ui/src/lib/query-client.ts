@@ -26,6 +26,7 @@ export const qk = {
   actions: ['actions'] as const,
   conflicts: ['conflicts'] as const,
   timeline: (limit: number) => ['timeline', limit] as const,
+  replay: (from: string, to: string) => ['replay', from, to] as const,
   graph: (file?: string) => ['graph', file ?? ''] as const,
   entities: ['entities'] as const,
   explain: (q: string) => ['explain', q] as const,

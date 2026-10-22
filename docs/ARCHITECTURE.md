@@ -1,9 +1,9 @@
 # FastrMemory Architecture
 
-> **Package:** `@atifjubaer/fastrmemory` (CLI: `fastr` / `fastrmemory`)
+> **Package:** `fastrmemory` on the 0.3.0 branch (published 0.2.1 release: `@atifjubaer/fastrmemory`; CLI: `fastr` / `fastrmemory`)
 > **Runtime:** Node.js >= 22.16.0, ESM, built-in `node:sqlite` in WAL mode
 > **Protocol:** MCP v2 via `@modelcontextprotocol/server`
-> **Status:** current `main` as of 2026-10-21 (`a91ad6d`). Known gaps are listed at the end and are not hidden.
+> **Status:** `feat/0.3.0` code state as of 2026-10-21 (`b220067`). Known gaps are listed at the end and are not hidden.
 
 ## 1. What problem it solves
 
@@ -20,12 +20,15 @@ FastrMemory takes a third path: keep immutable raw events, keep a bi-temporal me
 |---|---|
 | `raw_events` | Immutable event payloads (tool output, errors, commits, prompts) with SHA-256 content hashes |
 | `memories` | Rules/decisions/traps with `valid_from`, `valid_to`, `superseded_by_id`, `status`, `reward_score`, optional embedding |
+| `memory_feedback` | Append-only per-ID outcome events with score before/after, status before/after, confidence tier, and consecutive-bad count |
 | `memories_fts` | FTS5 index over title/module/content (porter + unicode61) |
 | `file_links` | Memory ↔ file/symbol links used by the graph stream |
 | `handoffs` | Cross-agent session milestones |
 | `entities` / `graph_edges` | Lightweight entity and relationship graph for spreading activation |
 | `memory_conflicts` | Candidate contradictions detected on write |
 | `memory_snapshots` | Named coarse checkpoints; exact point-in-time replay reads the bi-temporal columns directly |
+| `memory_branches` | Immutable named branch pointers to a base and head snapshot |
+| `memory_branch_merges` | Audit log of branch merge attempts, strategy, applied state, counts, and the full report JSON |
 
 Supersession sets `valid_to` and `status='superseded'` on the old row; it does not delete it. `forget` tombstones rather than hard-deletes. Markdown mirrors in `.fastr/pages/<module>.md` put active rules on top and superseded history below for Git review.
 
@@ -61,8 +64,8 @@ Results are sorted, capped at 3 per source session, then packed into a token bud
 
 Known retrieval gaps (tracked in `ROADMAP.md`):
 
-- The 240-case benchmark is synthetic; real-repository retrieval is not measured.
-- No external memory engine is measured.
+- The 240-case benchmark is synthetic; it is separate from the public LongMemEval, LoCoMo, and self-repository retrieval-only harnesses.
+- External baselines are limited to two pinned retrieval engines: MiniSearch `7.2.0` and the MCP reference memory server `2.0.0`. No unverified competitor or QA-leaderboard comparison is claimed.
 - The 48-case holdout leaves a wide Hit@1 interval, and semantic paraphrase is the weakest category.
 - The graph stream is not exercised beyond cases that are already rank 1 on this corpus.
 - A reranker for title-concept collisions is not implemented.
@@ -85,8 +88,12 @@ Replay is derived from the existing bi-temporal columns, not from a second log:
 - `exportSnapshotJsonl()` writes one hashed JSONL header plus hashed memory, raw-event, file-link, and conflict records. It never writes a SQLite file. Import verifies every hash, is idempotent, and re-embeds imported memories lazily.
 - `consolidateMemories()` writes a new `workflow` summary that links every source memory and raw event. It does not delete, merge, or mutate the originals; project-wide before/after counts make the non-loss property visible.
 - `runMemoryCi()` compares base and head JSONL snapshots, emits Markdown, and optionally exits `1` when the head adds an active trap.
+- `createBranch()` stores an immutable branch pointer to a base and head snapshot. `mergeBranch()` is one-way into the current active set: branch-only memories are added, target-only memories are preserved, and same-identity changes become conflicts. Conflicts block writes by default; `--force` applies additions, and `--force --strategy branch` supersedes the target while keeping the old rows in history. Every non-dry-run attempt is recorded in `memory_branch_merges`.
+- `inspectMemoryHygiene()` reports orphaned `file_links`, conflict, and feedback rows; duplicate active rows by `module + kind + normalized title` or exact content; and stale unpinned active rows whose last recall (or creation time) is older than the threshold. `fastr hygiene` prints the report and can exit nonzero with `--fail-on-issues`; `npm run check:hygiene` exercises the same inspector against a deterministic fixture in `check:ci` and asserts raw counts. The gate does not mutate a project database.
 
-CLI: `fastr replay`, `fastr diff`, `fastr snapshot export|import`, `fastr consolidate`, and `fastr memory-ci`. MCP: `fastr_replay` and `fastr_diff`.
+CLI: `fastr replay`, `fastr diff`, `fastr snapshot export|import`, `fastr branch create|list`, `fastr merge`, `fastr feedback`, `fastr hygiene`, `fastr consolidate`, and `fastr memory-ci`. MCP: `fastr_replay`, `fastr_diff`, and `fastr_feedback`.
+
+The dashboard `/replay` route calls `GET /api/replay?from=<iso>&to=<iso>`, which replays both timestamps and returns compact snapshot views plus the same `diffSnapshots` result used by the CLI. The route is read-only: it does not insert memories, events, or conflicts. Memory CI workflow details are in [`docs/MEMORY_CI.md`](MEMORY_CI.md).
 
 ## 7. MCP surface
 
@@ -94,7 +101,7 @@ CLI: `fastr replay`, `fastr diff`, `fastr snapshot export|import`, `fastr consol
 - **41 tools** in the full profile (memory CRUD, recall/drill, traps, conflicts, DAG actions, planning, slots, federation, snapshot/rollback, replay/diff, compression, doctor, vision).
 - **12 tools** in the optional core profile: `fastr_recall`, `fastr_remember`, `fastr_handoff`, `fastr_trap_recall`, `fastr_trap_log`, `fastr_status`, `fastr_get`, `fastr_timeline`, `fastr_diff`, `fastr_replay`, `fastr_compress`, and `fastr_diagnose`.
 - **2 prompts**: `pre-edit-check`, `session-wrap-up`.
-- **4 resources**: `fastr://project/overview`, `fastr://project/traps`, `fastr://session/handoff`, and the `fastr://memory/{id}` template.
+- **5 resources**: `fastr://project/overview`, `fastr://project/traps`, `fastr://session/handoff`, the `fastr://memory/{id}` template, and the `fastr://memory/{id}/envelope` template (metadata, provenance, file/graph links, and conflict state).
 
 The full 41-tool surface is the default. Start the core profile with `fastrmemory mcp --profile core` or `FASTR_MCP_PROFILE=core`; resources and prompts are identical in both profiles. Verify both surfaces against a built CLI with `node scripts/smoke-mcp-profile.mjs`.
 
@@ -103,16 +110,17 @@ The full 41-tool surface is the default. Start the core profile with `fastrmemor
 1. **Never delete facts.** Supersede and tombstone; raw events stay immutable.
 2. **Bi-temporal validity, not time decay.** Active queries require `valid_to IS NULL` and exclude superseded/dormant rows.
 3. **Staging until verified.** Captured memories start as `staging`; tests passing/handoff promotes them.
-4. **Per-ID feedback.** `fastr_feedback` changes one memory's score (+0.2 / −0.5). It becomes `dormant` when the score reaches 0.2 or below — not after a fixed strike count.
+4. **Per-ID feedback and confidence tiers.** `fastr_feedback` changes one memory's score (+0.2 / −0.5) and reports `high` (score >= 1.5), `medium` (>= 0.8), or `low`; inactive rows report `dormant` or `superseded`. Three consecutive bad outcomes set `dormant`, and a good outcome resets the streak. Each event is appended to `memory_feedback`; a low score alone does not set dormancy.
 5. **Two-zone Markdown.** Compiled Truth on top, append-only timeline below, both Git-diffable.
 6. **Local-first.** No network call is required for the default path; embeddings are opt-in.
 7. **Additive consolidation.** A summary is a new linked memory; originals remain queryable and replayable.
+8. **Hygiene is observable, not destructive.** Orphan, duplicate, and stale checks report raw counts; `check:ci` validates the detector on a fixture, and no automatic cleanup runs against a project database.
 
 ## 9. Not implemented yet
 
 - Prompt-cache `skipUnchanged` behavior (no byte-identical block suppression in the current hook runner).
-- A real-repository benchmark and a pinned external baseline (the 240-case synthetic held-out benchmark exists; see [`BENCHMARKS.md`](../BENCHMARKS.md)).
-- Dashboard timeline slider and diff view.
-- A live PR run of the Memory CI comment path (the workflow is committed; fork PRs are job-summary-only).
+- An end-to-end external agent-memory workflow comparison. The pinned external baselines are retrieval-only and do not exercise extraction, consolidation, or agent workflows; see [`docs/EXTERNAL_BASELINE.md`](EXTERNAL_BASELINE.md).
+- Branch checkout or a mutable branch working tree; branches are immutable snapshot pointers merged one-way into the current active set.
+- A live fork PR run of the Memory CI comment path (same-repository PRs are verified; fork PRs are job-summary-only by design).
 
 These are roadmap items, not claims.

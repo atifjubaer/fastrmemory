@@ -1,11 +1,21 @@
 import { Memory } from '../db/schema.js';
 
+export interface ConflictLink {
+  conflictId: number;
+  withMemoryId: string;
+  withTitle: string;
+  reason: string;
+  score: number;
+}
+
 export interface ScoredMemory {
   memory: Memory;
   score: number;
   bm25Rank?: number;
   vectorRank?: number;
   graphRank?: number;
+  /** Open contradiction attached to this memory, when one exists. */
+  conflict?: ConflictLink;
 }
 
 export const TOKEN_LEVELS = {
@@ -27,7 +37,10 @@ export function formatMemoryForContext(scored: ScoredMemory): string {
   const statusBadge = memory.status;
 
   const header = `[${memory.id}] [${kindBadge}] [${statusBadge}] ${memory.title} (Score: ${score.toFixed(2)})`;
-  return `${header}\n${memory.content}\n`;
+  const conflictLine = scored.conflict
+    ? `⚠️ OPEN CONFLICT #${scored.conflict.conflictId}: contradicts [${scored.conflict.withMemoryId}] "${scored.conflict.withTitle}". Resolve before relying on this rule: fastr conflict resolve ${scored.conflict.conflictId} --keep ${memory.id}\n`
+    : '';
+  return `${header}\n${conflictLine}${memory.content}\n`;
 }
 
 export const MEMORY_SEPARATOR = '\n---\n\n';

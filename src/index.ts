@@ -1,4 +1,4 @@
-// Public API exports for @atifjubaer/fastrmemory
+// Public API exports for fastrmemory
 
 export * from './db/schema.js';
 export * from './db/spool.js';
@@ -11,3 +11,4 @@ export * from './search/hybrid-rrf.js';
 export * from './config.js';
 export * from './mcp/server.js';
 export * from './mcp/stdio.js';
+export * from './replay/backup.js';

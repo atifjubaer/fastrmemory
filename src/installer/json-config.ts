@@ -93,7 +93,7 @@ export interface ClaudeHookSpec {
 /**
  * Recognises hook commands this installer wrote (now or in older versions), e.g.
  * `fastrmemory hook run SessionStart`, `node "/x/dist/bin/fastr.js" hook run PreToolUse`,
- * `npx -y @atifjubaer/fastrmemory hook run SessionEnd`.
+ * `npx -y fastrmemory@0.3.0 hook run SessionEnd`.
  */
 export function isFastrHookCommand(command: unknown): boolean {
   return typeof command === 'string' && /fastr[\w./\\@-]*"?\s+hook\s+run\b/i.test(command);

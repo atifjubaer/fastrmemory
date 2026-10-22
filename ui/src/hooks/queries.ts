@@ -75,6 +75,14 @@ export function useTimeline(limit = 30) {
   return useQuery({ queryKey: qk.timeline(limit), queryFn: ({ signal }) => api.timeline(limit, signal) });
 }
 
+export function useReplay(from: string, to: string) {
+  return useQuery({
+    queryKey: qk.replay(from, to),
+    queryFn: ({ signal }) => api.replay(from, to, signal),
+    enabled: Boolean(from && to),
+  });
+}
+
 export function useGraph(file?: string) {
   return useQuery({
     queryKey: qk.graph(file),

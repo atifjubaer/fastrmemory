@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-10-21T01:37:58.428Z",
+  "commit": "2afded29dab79d5f262652427fe6cbed1493b445",
+  "project": "proj_recall_latency",
+  "seed": {
+    "memories": 10000,
+    "fileLinks": 1000,
+    "graphEdges": 1000,
+    "embeddings": 0
+  },
+  "retrieval": {
+    "mode": "BM25 + graph RRF (vector disabled; fixture has no embeddings)",
+    "filesPerQuery": 1,
+    "budgetTokens": 2000,
+    "queries": 100,
+    "warmup": 10
+  },
+  "thresholdMs": 50,
+  "firstResultCount": 79,
+  "latencyMs": {
+    "p50": 14.87,
+    "p95": 16.13,
+    "mean": 14.99,
+    "max": 17.55
+  },
+  "pass": true
+}

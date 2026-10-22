@@ -160,6 +160,68 @@ export interface TimelineEntry {
   linkedFiles: string[];
 }
 
+export interface ReplayMemoryView {
+  id: string;
+  title: string;
+  module: string;
+  kind: string;
+  status: string;
+  rewardScore: number;
+  validFrom: string;
+  validTo: string | null;
+  supersededById: string | null;
+  files: string[];
+}
+
+export interface ReplaySnapshotView {
+  at: string;
+  tokenCount: number;
+  contentHash: string;
+  active: ReplayMemoryView[];
+  historyCount: number;
+  eventCount: number;
+  conflictCount: number;
+}
+
+export interface ReplayConflictView {
+  id: number;
+  memoryAId: string;
+  memoryBId: string;
+  reason: string;
+  score: number;
+  status: string;
+}
+
+export interface ReplayDiffEntry {
+  id: string;
+  title: string;
+  module: string;
+  kind: string;
+  status: string;
+  validFrom: string;
+  validTo: string | null;
+  supersededById: string | null;
+}
+
+export interface ReplayDiffView {
+  fromAt: string;
+  toAt: string;
+  added: ReplayDiffEntry[];
+  superseded: ReplayDiffEntry[];
+  stillActive: ReplayDiffEntry[];
+  changed: ReplayDiffEntry[];
+  conflicts: ReplayConflictView[];
+  tokenDelta: number;
+  newTrapIds: string[];
+}
+
+export interface ReplayResponse {
+  from: ReplaySnapshotView;
+  to: ReplaySnapshotView;
+  diff: ReplayDiffView;
+  markdown: string;
+}
+
 export interface GraphNode {
   id: string;
   label: string;
@@ -314,6 +376,8 @@ export const api = {
   actions: (signal?: AbortSignal) => request<ActionsResponse>('/api/actions', { signal }),
   conflicts: (signal?: AbortSignal) => request<Conflict[]>('/api/conflicts', { signal }),
   timeline: (limit = 30, signal?: AbortSignal) => request<TimelineEntry[]>(`/api/timeline${qs({ limit })}`, { signal }),
+  replay: (from: string, to: string, signal?: AbortSignal) =>
+    request<ReplayResponse>(`/api/replay${qs({ from, to })}`, { signal }),
   graph: (file?: string, signal?: AbortSignal) => request<GraphResponse>(`/api/graph${qs({ file })}`, { signal }),
   entities: (signal?: AbortSignal) => request<EntitiesResponse>('/api/entities', { signal }),
   explain: (q: string, signal?: AbortSignal) => request<ExplainResponse>(`/api/search/explain${qs({ q })}`, { signal }),

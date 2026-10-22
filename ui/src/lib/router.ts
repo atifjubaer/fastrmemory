@@ -11,6 +11,7 @@ export type RouteName =
   | 'observatory'
   | 'treemap'
   | 'search'
+  | 'replay'
   | 'health'
   | 'settings';
 
@@ -24,6 +25,7 @@ export const ROUTE_NAMES: RouteName[] = [
   'observatory',
   'treemap',
   'search',
+  'replay',
   'health',
   'settings',
 ];

@@ -1,6 +1,6 @@
 {
-  "name": "@atifjubaer/fastrmemory",
-  "version": "0.2.1",
+  "name": "fastrmemory",
+  "version": "0.3.0",
   "mcpName": "io.github.atifjubaer/fastrmemory",
   "description": "High-Performance Cognitive Agent Memory Engine with Bi-Temporal SQLite and Official MCP v2",
   "type": "module",
@@ -20,7 +20,9 @@
     "dist-ui",
     "skills",
     ".claude-plugin",
-    ".cursor"
+    ".cursor",
+    "server.json",
+    "llms-install.md"
   ],
   "bin": {
     "fastrmemory": "dist/bin/fastr.js",
@@ -46,19 +48,28 @@
     "watch": "tsc --watch",
     "test": "vitest run",
     "test:isolation": "vitest run tests/isolation.test.ts",
+    "smoke:gemini": "npm run build:core && node scripts/smoke-gemini.mjs",
+    "smoke:copilot": "npm run build:core && node scripts/smoke-copilot.mjs",
+    "smoke:opencode": "npm run build:core && node scripts/smoke-opencode.mjs",
     "test:crash": "node scripts/crash-test.mjs",
     "check:skills": "node scripts/check-skills.mjs",
     "check:dist-ui": "node scripts/check-dist-ui.mjs",
     "check:package": "node scripts/check-package.mjs",
     "check:docs": "node scripts/check-docs.mjs",
+    "check:hygiene": "tsx scripts/check-hygiene.ts",
     "check:crash": "node scripts/check-crash-evidence.mjs",
     "bench": "tsx scripts/eval-bench.ts --split all --embeddings minilm --out bench/results/minilm.json",
     "bench:hash": "tsx scripts/eval-bench.ts --split all --embeddings hash --out bench/results/hash.json",
     "bench:legacy": "tsx scripts/capture-bench.ts",
+    "bench:public": "tsx scripts/eval-public.ts",
+    "bench:external": "tsx scripts/eval-external.ts",
     "bench:verify": "node scripts/check-bench.mjs",
     "verify:replay": "tsx scripts/verify-replay.ts",
-    "check:ci": "npm run test && npm run test:isolation && npm run check:skills && npm run check:dist-ui && npm run check:package && npm run verify:replay && npm run check:docs && npm run check:crash && npm run bench:verify",
-    "start": "node dist/bin/fastr.js"
+    "check:ci": "npm run test && npm run test:isolation && npm run check:skills && npm run check:dist-ui && npm run check:package && npm run check:query-plans && npm run check:recall-latency && npm run check:install-size && npm run verify:replay && npm run check:hygiene && npm run check:docs && npm run check:crash && npm run bench:verify",
+    "start": "node dist/bin/fastr.js",
+    "check:query-plans": "tsx scripts/check-query-plans.ts",
+    "check:recall-latency": "tsx scripts/check-recall-latency.ts",
+    "check:install-size": "node scripts/check-install-size.mjs"
   },
   "keywords": [
     "ai",
@@ -88,6 +99,7 @@
   "devDependencies": {
     "@huggingface/transformers": "^3.8.1",
     "@types/node": "^24.0.0",
+    "minisearch": "7.2.0",
     "tsx": "^4.20.0",
     "typescript": "^5.8.0",
     "vitest": "^3.0.0"

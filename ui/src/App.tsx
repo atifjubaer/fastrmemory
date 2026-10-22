@@ -18,6 +18,7 @@ import { ConflictsPage } from '@/routes/ConflictsPage';
 import { HealthPage } from '@/routes/HealthPage';
 import { SettingsPage } from '@/routes/SettingsPage';
 import { SearchLabPage } from '@/routes/SearchLabPage';
+import { ReplayPage } from '@/routes/ReplayPage';
 
 // Canvas/WebGL views are split out of the main bundle; three.js only loads when the 3D view opens.
 const ActionsPage = React.lazy(() => import('@/routes/ActionsPage'));
@@ -35,6 +36,7 @@ const PAGES: Record<RouteName, React.ComponentType> = {
   observatory: ObservatoryPage,
   treemap: TreemapPage,
   search: SearchLabPage,
+  replay: ReplayPage,
   health: HealthPage,
   settings: SettingsPage,
 };

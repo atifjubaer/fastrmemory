@@ -1,9 +1,11 @@
 # FastrMemory 0.2.0: a verified tarball, a deterministic UI, and an honest CI gate
 
+> **Historical note (2026-10-22):** This post describes the 0.2.0 release, when npm was blocked. `@atifjubaer/fastrmemory@0.2.1` is now published. The 0.2.0 registry status below is preserved as history; current install instructions are in [the 0.2.1 post](2026-10-21-fastrmemory-0.2.1.md).
+
 **Date:** 2026-10-20  
 **Code commit:** `de4fde3`  
 **CI:** [run 39467306362](https://github.com/atifjubaer/fastrmemory/actions/runs/39467306362) - 6/6 jobs green  
-**npm:** still blocked (`npm whoami` E401, `npm view` E404)
+**npm:** blocked at publication time (`npm whoami` E401, `npm view` E404); resolved 2026-10-22
 
 FastrMemory 0.2.0 is the packaging and evidence release. The retrieval engine is
 unchanged from the measured 0.2.0 benchmark commit; this release makes the
@@ -77,8 +79,8 @@ measured 89.6% is 0.4 points below it. The full ledger is in
   the canonical artifact.
 - The optional MiniLM model is not installed by default and is not counted in
   the install size.
-- The npm registry remains unavailable until the account security issue is
-  resolved.
+- At the time of this release, the npm registry was unavailable until the
+  account security issue was resolved; npm `0.2.1` is now published.
 
 ## Next
 

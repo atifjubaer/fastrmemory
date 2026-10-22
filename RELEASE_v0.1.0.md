@@ -1,6 +1,8 @@
 # FastrMemory v0.1.0 — Historical Release Notes
 
-> **Status: historical (released 2026-10-19, superseded by the current `main` branch).** These notes describe the v0.1.0 tarball, not the current commit. Several claims below were marketing copy and have not been independently verified. Current numbers and evidence live in [`CLAIMS.md`](CLAIMS.md) and [`BENCHMARKS.md`](BENCHMARKS.md).
+> **Status: historical (released 2026-10-19; superseded by v0.2.1 and the unreleased `0.3.0` branch).** These notes describe the v0.1.0 tarball, not the current commit. Several claims below were marketing copy and have not been independently verified. Current numbers and evidence live in [`CLAIMS.md`](CLAIMS.md) and [`BENCHMARKS.md`](BENCHMARKS.md).
+>
+> **Current state (2026-10-22):** v0.2.1 is the latest GitHub release and is published on npm as `@atifjubaer/fastrmemory@0.2.1`. The `0.3.0` branch registers **41 tools, 2 prompts, and 5 resources**, ships **10 Agent Skills**, and has **276 tests across 51 files**. Verify current counts with `npm run check:docs`.
 
 **High-Performance Cognitive Agent Memory • Zero Daemon • Native Node 22/24 `node:sqlite` WAL • Bi-Temporal Git Sync • Triple-Stream RRF • Official MCP v2**
 
@@ -10,9 +12,9 @@
 
 1. **Zero daemon**: native Node `node:sqlite` in WAL mode, no background service and no open network ports for the default CLI/MCP path.
 2. **Bi-temporal storage**: `valid_from` / `valid_to` timestamps plus Markdown mirrors in `.fastr/pages/*.md`; supersession keeps history instead of deleting it.
-3. **Hybrid retrieval**: SQLite FTS5 BM25 + optional local embeddings + a file/entity graph fused with reciprocal rank fusion (k=60). Error traps receive a 2.0× multiplier.
-4. **Local dashboard** (`fastrmemory ui`) and **39 MCP tools** (the v0.1.0 release shipped fewer tools; the 39-tool catalog was current `main` when v0.2.0 was prepared; current `main` has 41).
-5. **MCP + CLI integration** for Claude Code and Cursor via native config/hook installers; other clients connect over MCP or HTTP.
+3. **Hybrid retrieval**: SQLite FTS5 BM25 + optional local embeddings + a file/entity graph fused with reciprocal rank fusion (k=60 in the v0.1.0 design; the current default is k=20). Error traps receive a conditional 2.0× multiplier for trap-intent or file-scoped queries.
+4. **Local dashboard** (`fastrmemory ui`) and **39 MCP tools** (the v0.1.0 release shipped fewer tools; the 39-tool catalog was current `main` when v0.2.0 was prepared; the current `0.3.0` branch has 41).
+5. **MCP + CLI integration** for Claude Code (MCP config plus lifecycle hooks) and Cursor (MCP config plus skills) via native installers; other clients connect over MCP or HTTP.
 
 ---
 
@@ -32,4 +34,4 @@
 npm install -g ./atifjubaer-fastrmemory-0.1.0.tgz
 ```
 
-The tarball is tracked in the repository root for archival reproducibility. It is **not** the recommended install path; use the GitHub install in the README until an npm release exists.
+The historical tarball is kept in the local repository root for archival reproducibility; it is **not** committed to Git and is **not** the recommended install path. Use the v0.2.1 npm package or the GitHub Release asset; the README documents both.

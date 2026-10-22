@@ -12,7 +12,7 @@ import { startUiServer } from '../src/ui/server.js';
 import { installAgentHooks } from '../src/installer/hooks.js';
 import { learnFromGitHistory } from '../src/learn/git-learner.js';
 import { exportToObsidianVault } from '../src/export/obsidian.js';
-import { runLifecycleHook, toClaudeHookStdout } from '../src/hooks/runner.js';
+import { runLifecycleHook, toClaudeHookStdout, toGeminiHookStdout, toCopilotHookStdout } from '../src/hooks/runner.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { startDaemon, stopDaemon, getDaemonStatus, getDaemonPidFile } from '../src/daemon/service.js';
@@ -20,10 +20,15 @@ import { cognitiveBlame } from '../src/git/blame.js';
 import { executeMemoryCommit } from '../src/git/commit.js';
 import { compressFile } from '../src/compress/markdown.js';
 import { diagnoseDatabase, healDatabase } from '../src/db/doctor.js';
+import { inspectMemoryHygiene } from '../src/db/hygiene.js';
 import { tagVisionAsset, searchVisionAssets } from '../src/vision/assets.js';
 import { runTrapGuardian } from '../src/ci/guardian.js';
 import { diffSnapshots, formatDiffMarkdown, replayAt } from '../src/replay/snapshot.js';
 import { exportSnapshotJsonl, importSnapshotFile, snapshotFromJsonl } from '../src/replay/jsonl.js';
+import { createBackup, defaultBackupPath, restoreBackup, verifyBackup } from '../src/replay/backup.js';
+import { createBranch, listBranches, mergeBranch, formatBranchMergeMarkdown } from '../src/branch/manager.js';
+import { importMarkdownFile } from '../src/import/local.js';
+import type { LocalImportKind } from '../src/import/local.js';
 import { consolidateMemories } from '../src/db/consolidate.js';
 import { runMemoryCi } from '../src/ci/memory-ci.js';
 
@@ -159,6 +164,31 @@ program
     console.log(`Recorded [${mem.id}] (${mem.kind}) in module "${mem.module}" [${mem.status}].`);
   });
 
+// 5a. Feedback command (per-ID confidence and 3-bad dormancy)
+program
+  .command('feedback <memoryId> <outcome>')
+  .description('Score one memory outcome (good | bad); three consecutive bad outcomes make it dormant')
+  .option('-n, --note <note>', 'Optional explanation for the outcome')
+  .option('--json', 'Print the feedback result as JSON', false)
+  .action((memoryId: string, outcome: string, opts: any) => {
+    if (outcome !== 'good' && outcome !== 'bad') {
+      console.error('Error: outcome must be "good" or "bad".');
+      process.exit(1);
+    }
+    const ctx = createFastrServerContext();
+    const res = ctx.repo.updateFeedback(memoryId, outcome, opts.note);
+    if (opts.json) {
+      console.log(JSON.stringify(res, null, 2));
+      return;
+    }
+    const dormancyText = res.bad_streak >= 3 && res.status === 'dormant'
+      ? ' Dormancy triggered after 3 consecutive bad outcomes.'
+      : '';
+    console.log(
+      `Feedback for [${memoryId}] (${outcome}): reward_score = ${res.reward_score}, confidence = "${res.confidence_tier}", status = "${res.status}", bad_streak = ${res.bad_streak}.${dormancyText}`
+    );
+  });
+
 // 5b. Trap commands (Active Error Trap Management)
 const trapCmd = program.command('trap').description('Manage active [TRAP] error warnings and 2.0x recall boost quarantine');
 
@@ -216,7 +246,72 @@ trapCmd
     console.log(`✅ Trap [${id}] "${trap.title}" marked as dormant (${opts.reason}).`);
   });
 
-// 6. Sync command
+// 6. Conflict inspection and resolution
+const conflictCmd = program.command('conflict').description('Inspect and resolve contradictory memories');
+
+conflictCmd
+  .command('list')
+  .description('List detected memory conflicts')
+  .option('-s, --status <status>', 'open | resolved | ignored', 'open')
+  .option('--json', 'Print raw JSON', false)
+  .action((opts: any) => {
+    const status = String(opts.status || 'open').toLowerCase();
+    if (!['open', 'resolved', 'ignored'].includes(status)) {
+      console.error('Error: --status must be one of: open, resolved, ignored.');
+      process.exit(1);
+    }
+
+    const ctx = createFastrServerContext();
+    const conflicts = ctx.repo.listConflicts(ctx.config.projectId, status as 'open' | 'resolved' | 'ignored');
+    if (opts.json) {
+      console.log(JSON.stringify(conflicts, null, 2));
+      return;
+    }
+    if (conflicts.length === 0) {
+      console.log(`No ${status} memory conflicts for ${ctx.config.projectName}.`);
+      return;
+    }
+
+    console.log(`\n=== FastrMemory Conflicts (${conflicts.length} ${status}) ===`);
+    for (const conflict of conflicts) {
+      const a = ctx.repo.getMemory(conflict.memory_a_id);
+      const b = ctx.repo.getMemory(conflict.memory_b_id);
+      console.log(`- Conflict #${conflict.id} [${conflict.status}] score ${Number(conflict.score).toFixed(2)}`);
+      console.log(`  A: [${conflict.memory_a_id}] "${a?.title ?? 'missing memory'}"`);
+      console.log(`  B: [${conflict.memory_b_id}] "${b?.title ?? 'missing memory'}"`);
+      console.log(`  Reason: ${conflict.reason}`);
+      if (conflict.status === 'open') {
+        console.log(`  Resolve: fastr conflict resolve ${conflict.id} --keep <memory-id> [--forget]`);
+      }
+    }
+    console.log('');
+  });
+
+conflictCmd
+  .command('resolve <id>')
+  .description('Resolve a memory conflict by keeping one side')
+  .requiredOption('-k, --keep <memoryId>', 'Memory ID to keep')
+  .option('--forget', 'Supersede the losing memory instead of only weakening its score', false)
+  .option('-r, --reason <reason>', 'Resolution rationale')
+  .action((id: string, opts: any) => {
+    const conflictId = Number.parseInt(id, 10);
+    if (!Number.isInteger(conflictId) || conflictId < 1) {
+      console.error('Error: conflict id must be a positive integer.');
+      process.exit(1);
+    }
+
+    const ctx = createFastrServerContext();
+    try {
+      const res = ctx.repo.resolveConflict(conflictId, opts.keep, Boolean(opts.forget), opts.reason);
+      syncAllModulePages(ctx.db, ctx.config.projectRoot, ctx.config.projectId);
+      console.log(`✅ Conflict #${conflictId} resolved. Kept [${res.keptId}]; loser [${res.loserId}] ${opts.forget ? 'superseded' : 'weakened'}.`);
+    } catch (err: any) {
+      console.error(`Error: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+// 7. Sync command
 program
   .command('sync')
   .description('Re-render all Two-Zone Markdown pages in .fastr/pages/')
@@ -226,7 +321,127 @@ program
     console.log(`Synced ${files.length} module markdown pages in .fastr/pages/`);
   });
 
-// 7. Benchmark command
+// 7. Local memory import (JSONL snapshot or Markdown rules)
+program
+  .command('import <file>')
+  .description('Import local memory sources (JSONL snapshot or Markdown rules)')
+  .option('--from <format>', 'jsonl | markdown | agents-md | cursor-rules | claude-md', 'jsonl')
+  .option('-m, --module <module>', 'Module for Markdown imports', 'imported')
+  .option('-k, --kind <kind>', 'rule | decision | error_trap | workflow', 'rule')
+  .option('--verified', 'Mark imported Markdown memories verified', false)
+  .option('--dry-run', 'Report counts without writing', false)
+  .action((file: string, opts: any) => {
+    const ctx = createFastrServerContext();
+    const target = path.resolve(file);
+    const format = String(opts.from || 'jsonl').toLowerCase();
+
+    if (format === 'jsonl') {
+      const result = importSnapshotFile(ctx.db, target, { dryRun: opts.dryRun });
+      console.log(`${result.dryRun ? 'Verified' : 'Imported'} ${target}`);
+      console.log(`Memories: ${result.memories} | Events: ${result.events} | File links: ${result.fileLinks} | Conflicts: ${result.conflicts} | Skipped: ${result.skipped}`);
+      console.log(`Content hash: ${result.contentHash}`);
+      return;
+    }
+
+    const markdownFormats = new Set(['markdown', 'agents-md', 'cursor-rules', 'claude-md']);
+    if (!markdownFormats.has(format)) {
+      console.error('Error: --from must be one of: jsonl, markdown, agents-md, cursor-rules, claude-md.');
+      process.exit(1);
+    }
+    const kinds: LocalImportKind[] = ['rule', 'decision', 'error_trap', 'workflow'];
+    if (!kinds.includes(opts.kind)) {
+      console.error('Error: --kind must be one of: rule, decision, error_trap, workflow.');
+      process.exit(1);
+    }
+
+    try {
+      const result = importMarkdownFile(ctx.repo, ctx.db, target, {
+        projectId: ctx.config.projectId,
+        module: opts.module,
+        kind: opts.kind,
+        verified: Boolean(opts.verified),
+        dryRun: Boolean(opts.dryRun)
+      });
+      if (!result.dryRun && result.imported > 0) {
+        syncAllModulePages(ctx.db, ctx.config.projectRoot, ctx.config.projectId);
+      }
+      console.log(`${result.dryRun ? 'Would import' : 'Imported'} ${result.imported} of ${result.total} sections from ${target}`);
+      console.log(`Skipped duplicates: ${result.skipped}${result.dryRun ? ' (dry run)' : ''}`);
+    } catch (err: any) {
+      console.error(`Error: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+// 7b. Backup command with sidecar provenance manifest and verified restore
+program
+  .command('backup [file]')
+  .description('Create, verify, or restore a portable memory backup with a provenance manifest')
+  .option('--at <iso>', 'Snapshot timestamp (defaults to now)')
+  .option('-f, --force', 'Overwrite an existing backup and manifest', false)
+  .option('--json', 'Print machine-readable output', false)
+  .option('--verify <file>', 'Verify a backup file and its sidecar manifest')
+  .option('--restore <file>', 'Verify and restore a backup into the current database')
+  .option('--dry-run', 'Report restore counts without writing', false)
+  .action((file: string | undefined, opts: any) => {
+    if (opts.verify && opts.restore) {
+      console.error('Error: use either --verify or --restore, not both.');
+      process.exit(1);
+    }
+    try {
+      if (opts.verify) {
+        const result = verifyBackup(path.resolve(opts.verify));
+        if (opts.json) {
+          console.log(JSON.stringify(result.manifest, null, 2));
+        } else {
+          console.log(`Verified backup: ${result.backupPath}`);
+          console.log(`Manifest:        ${result.manifestPath}`);
+          console.log(`Project:         ${result.manifest.projectId}`);
+          console.log(`Records:         ${result.manifest.backup.records}`);
+          console.log(`Content hash:    ${result.header.contentHash}`);
+        }
+        return;
+      }
+
+      const ctx = createFastrServerContext();
+      if (opts.restore) {
+        const result = restoreBackup(ctx.db, path.resolve(opts.restore), { dryRun: opts.dryRun });
+        if (!result.dryRun) {
+          syncAllModulePages(ctx.db, ctx.config.projectRoot, ctx.config.projectId);
+        }
+        if (opts.json) {
+          console.log(JSON.stringify(result, null, 2));
+        } else {
+          console.log(`${result.dryRun ? 'Verified' : 'Restored'} ${result.backupPath}`);
+          console.log(`Memories: ${result.memories} | Events: ${result.events} | File links: ${result.fileLinks} | Conflicts: ${result.conflicts} | Skipped: ${result.skipped}`);
+          console.log(`Content hash: ${result.contentHash}`);
+        }
+        return;
+      }
+
+      const at = opts.at ? new Date(opts.at).toISOString() : new Date().toISOString();
+      const target = file ? path.resolve(file) : defaultBackupPath(ctx.config.projectRoot, at);
+      const result = createBackup(ctx.db, ctx.config.projectId, target, {
+        at,
+        force: Boolean(opts.force),
+        sourceDbPath: ctx.config.dbPath
+      });
+      if (opts.json) {
+        console.log(JSON.stringify(result.manifest, null, 2));
+      } else {
+        console.log(`Backup written: ${result.backupPath}`);
+        console.log(`Manifest:       ${result.manifestPath}`);
+        console.log(`Records:        ${result.manifest.backup.records} (${result.manifest.backup.memories} memories, ${result.manifest.backup.events} events, ${result.manifest.backup.fileLinks} links, ${result.manifest.backup.conflicts} conflicts)`);
+        console.log(`SHA-256:        ${result.manifest.backup.sha256}`);
+        console.log(`Content hash:   ${result.manifest.backup.contentHash}`);
+      }
+    } catch (err: any) {
+      console.error(`Error: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+// 8. Benchmark command
 program
   .command('bench')
   .description('Run automated retrieval accuracy & latency benchmarks')
@@ -337,6 +552,69 @@ snapshotCmd
     console.log(`Content hash: ${result.contentHash}`);
   });
 
+// 9a. Memory branches and merges (immutable snapshot-backed branches)
+const branchCmd = program.command('branch').description('Git-like memory branches backed by immutable snapshots');
+
+branchCmd
+  .command('create <name>')
+  .description('Create a named branch at the current active set or an existing snapshot')
+  .option('--from <snapshotId>', 'Base the branch on an existing snapshot instead of the current active set')
+  .option('-d, --desc <description>', 'Optional branch description')
+  .action((name: string, opts: any) => {
+    const ctx = createFastrServerContext();
+    const branch = createBranch(ctx.db, ctx.repo, ctx.config.projectId, name, {
+      fromSnapshotId: opts.from,
+      description: opts.desc
+    });
+    console.log(`Created branch "${branch.name}" at snapshot [${branch.head_snapshot_id}] (${branch.memoryCount} active memories).`);
+  });
+
+branchCmd
+  .command('list')
+  .description('List memory branches for this project')
+  .option('--json', 'Print the branch list as JSON', false)
+  .action((opts: any) => {
+    const ctx = createFastrServerContext();
+    const branches = listBranches(ctx.db, ctx.config.projectId);
+    if (opts.json) {
+      console.log(JSON.stringify(branches, null, 2));
+      return;
+    }
+    if (branches.length === 0) {
+      console.log('No memory branches found for this project.');
+      return;
+    }
+    console.log(`\n=== FastrMemory Branches (${ctx.config.projectName}) ===`);
+    for (const branch of branches) {
+      const lastMerge = branch.lastMergedAt ? ` • last merge ${branch.lastMergedAt}` : '';
+      console.log(`- ${branch.name} [${branch.id}] snapshot [${branch.head_snapshot_id}] (${branch.memoryCount} memories) • ${branch.created_at}${lastMerge}`);
+    }
+    console.log('');
+  });
+
+program
+  .command('merge <branch>')
+  .description('Merge a memory branch snapshot into the current active set with a conflict report')
+  .option('--dry-run', 'Report the merge without writing memories or a merge log', false)
+  .option('--force', 'Apply additions and the selected conflict strategy even when conflicts exist', false)
+  .option('--strategy <strategy>', 'Conflict strategy: target (keep target) or branch (supersede target)', 'target')
+  .option('--json', 'Print the merge report as JSON', false)
+  .action((branchName: string, opts: any) => {
+    const ctx = createFastrServerContext();
+    const report = mergeBranch(ctx.db, ctx.repo, ctx.config.projectId, branchName, {
+      dryRun: Boolean(opts.dryRun),
+      force: Boolean(opts.force),
+      strategy: opts.strategy
+    });
+    if (report.appliedMemories.length > 0) {
+      syncAllModulePages(ctx.db, ctx.config.projectRoot, ctx.config.projectId);
+    }
+    console.log(opts.json ? JSON.stringify(report, null, 2) : formatBranchMergeMarkdown(report));
+    if (report.conflicts.length > 0 && !report.applied) {
+      process.exitCode = 1;
+    }
+  });
+
 // 9b. Replay and memory diff commands (bi-temporal state reconstruction)
 function loadReplayState(ctx: ReturnType<typeof createFastrServerContext>, ref: string) {
   const resolved = ref === 'now' ? new Date().toISOString() : ref;
@@ -444,7 +722,7 @@ const hookCmd = program.command('hook').description('Autonomous agent lifecycle 
 
 hookCmd
   .command('install')
-  .description('Auto-detect and install FastrMemory hooks into Claude Code, Cursor, and AGENTS.md')
+  .description('Install FastrMemory MCP and hooks into Claude Code, Cursor, Gemini CLI, Copilot CLI, OpenCode, and AGENTS.md')
   .action(() => {
     const ctx = createFastrServerContext();
     const res = installAgentHooks(ctx.config.projectRoot);
@@ -459,19 +737,27 @@ hookCmd
   .command('run <event>')
   .description('Direct sub-3ms execution of agent lifecycle hooks (SessionStart, PreToolUse, PreCompact, SessionEnd)')
   .option('-p, --payload <json>', 'JSON payload with tool or session context (defaults to the hook JSON on stdin)')
-  .option('--verbose', 'Print status messages (for manual runs; Claude Code hooks stay quiet)')
+  .option('--format <format>', 'Output contract: claude, gemini, or copilot', 'claude')
+  .option('--verbose', 'Print status messages (for manual runs; agent hooks stay quiet)')
   .action((event, opts) => {
     let payload: Record<string, any> = {};
     try {
-      // Claude Code pipes the hook input as JSON on stdin; --payload is for manual runs.
+      // Agent CLIs pipe the hook input as JSON on stdin; --payload is for manual runs.
       const raw = opts.payload ?? (process.stdin.isTTY ? '' : fs.readFileSync(0, 'utf-8'));
       if (raw && raw.trim()) payload = JSON.parse(raw);
     } catch {}
-    // Hooks run from the session's cwd; prefer the project dir Claude Code reports.
-    const projectDir = process.env.CLAUDE_PROJECT_DIR || (typeof payload.cwd === 'string' ? payload.cwd : undefined);
+    // Hooks run from the session's cwd; prefer the project dir the agent reports.
+    const projectDir = process.env.CLAUDE_PROJECT_DIR
+      || process.env.GEMINI_PROJECT_DIR
+      || process.env.GEMINI_CWD
+      || (typeof payload.cwd === 'string' ? payload.cwd : undefined);
     const ctx = createFastrServerContext(projectDir);
     const res = runLifecycleHook(ctx, event, payload);
-    const stdout = toClaudeHookStdout(event, res);
+    const stdout = opts.format === 'gemini'
+      ? toGeminiHookStdout(event, res)
+      : opts.format === 'copilot'
+        ? toCopilotHookStdout(event, res)
+        : toClaudeHookStdout(event, res);
     if (stdout) {
       console.log(stdout);
     } else if (opts.verbose || opts.payload !== undefined) {
@@ -756,6 +1042,54 @@ program
       }
     } catch (err: any) {
       console.error(`Diagnose error: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+// 18b. Hygiene command
+program
+  .command('hygiene')
+  .description('Report orphaned records, duplicate active memories, and stale memories')
+  .option('--stale-days <days>', 'Stale threshold in days', '90')
+  .option('--json', 'Print the hygiene report as JSON', false)
+  .option('--fail-on-issues', 'Exit 1 when any hygiene issue is found', false)
+  .action((opts: any) => {
+    try {
+      const ctx = createFastrServerContext();
+      const staleAfterDays = Number.parseInt(opts.staleDays, 10);
+      if (!Number.isFinite(staleAfterDays) || staleAfterDays < 1) {
+        throw new Error('--stale-days must be a positive integer.');
+      }
+      const report = inspectMemoryHygiene(ctx.db, ctx.config.projectId, { staleAfterDays });
+      if (opts.json) {
+        console.log(JSON.stringify(report, null, 2));
+      } else {
+        const fmt = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+        const orphans = report.counts.orphanFileLinks + report.counts.orphanConflicts + report.counts.orphanFeedback;
+        console.log(`\n=== FastrMemory Hygiene (${ctx.config.projectName}) ===`);
+        console.log(`Status:           ${report.healthy ? 'HEALTHY' : 'ISSUES DETECTED'}`);
+        console.log(`Active memories:  ${report.counts.activeMemories} (pinned ${report.counts.pinnedMemories})`);
+        console.log(`Never recalled:   ${report.counts.neverRecalled}`);
+        console.log(`Stale threshold:  ${report.thresholds.staleAfterDays} days`);
+        console.log(`Orphans:          ${orphans} (file_links ${report.counts.orphanFileLinks}, conflicts ${report.counts.orphanConflicts}, feedback ${report.counts.orphanFeedback})`);
+        console.log(`Duplicate titles: ${fmt(report.counts.duplicateTitleGroups, 'group', 'groups')} / ${fmt(report.counts.duplicateTitleRows, 'extra row', 'extra rows')}`);
+        console.log(`Duplicate content: ${fmt(report.counts.duplicateContentGroups, 'group', 'groups')} / ${fmt(report.counts.duplicateContentRows, 'extra row', 'extra rows')}`);
+        console.log(`Stale memories:   ${report.counts.staleMemories}`);
+        if (report.issues.length > 0) {
+          console.log('\nIssues:');
+          for (const issue of report.issues) {
+            console.log(`  - [${issue.category.toUpperCase()}] ${issue.description}`);
+          }
+        } else {
+          console.log('\nNo orphan, duplicate, or stale memory issues found.');
+        }
+        console.log('');
+      }
+      if (opts.failOnIssues && !report.healthy) {
+        process.exit(1);
+      }
+    } catch (err: any) {
+      console.error(`Hygiene error: ${err.message}`);
       process.exit(1);
     }
   });

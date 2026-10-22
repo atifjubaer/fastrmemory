@@ -17,6 +17,7 @@ const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'))
 const errors = [];
 const warnings = [];
 
+const PKG_NAME = 'fastrmemory';
 const MCP_NAME = 'io.github.atifjubaer/fastrmemory';
 const TARBALL_GATE = 5 * 1024 * 1024;
 const TARBALL_WARN = 2 * 1024 * 1024;
@@ -29,8 +30,17 @@ function check(condition, message) {
   if (!condition) fail(message);
 }
 
+function readJson(rel) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
+  } catch {
+    fail(`cannot read valid JSON from ${rel}`);
+    return null;
+  }
+}
+
 // 1. Metadata, MCP registry identity, and dependency shape.
-check(pkg.name === '@atifjubaer/fastrmemory', 'unexpected package name');
+check(pkg.name === PKG_NAME, `package name must be ${PKG_NAME}`);
 check(pkg.mcpName === MCP_NAME, `mcpName must be ${MCP_NAME}`);
 check(/^\d+\.\d+\.\d+$/.test(pkg.version), 'version must be semver');
 check(pkg.license === 'Apache-2.0', 'license must be Apache-2.0');
@@ -50,7 +60,7 @@ check(pkg.types === './dist/src/index.d.ts', 'types must be ./dist/src/index.d.t
 check(pkg.exports?.['.'] === './dist/src/index.js', 'exports["."] must be ./dist/src/index.js');
 check(pkg.exports?.['./mcp'] === './dist/src/mcp/server.js', 'exports["./mcp"] must be ./dist/src/mcp/server.js');
 
-const allowedFiles = new Set(['dist', 'dist-ui', 'skills', '.claude-plugin', '.cursor']);
+const allowedFiles = new Set(['dist', 'dist-ui', 'skills', '.claude-plugin', '.cursor', 'server.json', 'llms-install.md']);
 for (const entry of pkg.files ?? []) {
   check(allowedFiles.has(entry), `files must not include ${entry}`);
 }
@@ -70,6 +80,38 @@ if (!fs.existsSync(skillsFile)) {
     warnings.push('skills/skills.json has no version field; skipping version sync check');
   }
 }
+
+// 3b. Registry and plugin manifests must agree and pin the npm package, never a GitHub branch.
+const plugin = readJson('.claude-plugin/plugin.json');
+if (plugin) {
+  check(plugin.version === pkg.version, `plugin.json version ${plugin.version} != package version ${pkg.version}`);
+  const entry = plugin.mcpServers?.fastrmemory;
+  check(entry?.command === 'npx', 'plugin.json MCP command must be npx');
+  check(
+    JSON.stringify(entry?.args) === JSON.stringify(['-y', `fastrmemory@${pkg.version}`, 'mcp']),
+    `plugin.json MCP args must pin fastrmemory@${pkg.version}`
+  );
+}
+const marketplace = readJson('.claude-plugin/marketplace.json');
+if (marketplace) {
+  check(
+    marketplace.plugins?.[0]?.version === pkg.version,
+    `marketplace.json version ${marketplace.plugins?.[0]?.version} != package version ${pkg.version}`
+  );
+}
+const server = readJson('server.json');
+if (server) {
+  check(server.name === MCP_NAME, `server.json name must be ${MCP_NAME}`);
+  check(server.version === pkg.version, `server.json version ${server.version} != package version ${pkg.version}`);
+  const pkgEntry = server.packages?.[0];
+  check(pkgEntry?.registryType === 'npm', 'server.json package registryType must be npm');
+  check(pkgEntry?.identifier === PKG_NAME, `server.json package identifier must be ${PKG_NAME}`);
+  check(pkgEntry?.transport?.type === 'stdio', 'server.json transport must be stdio');
+  check(pkgEntry?.packageArguments?.[0]?.value === 'mcp', 'server.json packageArguments must select mcp');
+}
+check(fs.existsSync(path.join(ROOT, 'llms-install.md')), 'llms-install.md is missing');
+const generatedManifests = JSON.stringify({ plugin, marketplace, server });
+check(!generatedManifests.includes('github:'), 'generated manifests must not use a GitHub default-branch reference');
 
 // 4. Build output required by the bin, main, types, and exports map.
 const buildOutputs = [
@@ -120,6 +162,8 @@ if (pack) {
     'package.json',
     'README.md',
     'LICENSE',
+    'server.json',
+    'llms-install.md',
     ...buildOutputs,
     'skills/skills.json'
   ];

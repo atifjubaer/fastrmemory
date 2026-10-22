@@ -12,6 +12,74 @@ import { scheduleBackfill } from './backfill.js';
 import { packMemoriesIntoBudget, ScoredMemory, TOKEN_LEVELS } from './budget.js';
 import { extractEntities } from '../learn/ner.js';
 
+interface ConflictRow {
+  id: number;
+  memory_a_id: string;
+  memory_b_id: string;
+  reason: string;
+  score: number;
+  a_title: string | null;
+  b_title: string | null;
+}
+
+/**
+ * Annotate ranked results with open contradictions. Both sides are marked when both are
+ * present, so an agent sees the warning regardless of which rule it recalls first.
+ */
+function attachConflictMarkers(db: DatabaseSync, projectId: string, scored: ScoredMemory[]): void {
+  if (scored.length === 0) return;
+
+  const byId = new Map(scored.map((result) => [result.memory.id, result]));
+  const ids = [...byId.keys()];
+  const chunkSize = 400;
+
+  for (let start = 0; start < ids.length; start += chunkSize) {
+    const chunk = ids.slice(start, start + chunkSize);
+    const placeholders = chunk.map(() => '?').join(',');
+    let rows: ConflictRow[];
+
+    try {
+      rows = db.prepare(`
+        SELECT c.id, c.memory_a_id, c.memory_b_id, c.reason, c.score,
+               ma.title AS a_title, mb.title AS b_title
+        FROM memory_conflicts c
+        LEFT JOIN memories ma ON ma.id = c.memory_a_id
+        LEFT JOIN memories mb ON mb.id = c.memory_b_id
+        WHERE c.project_id = ? AND c.status = 'open'
+          AND (c.memory_a_id IN (${placeholders}) OR c.memory_b_id IN (${placeholders}))
+        ORDER BY c.id DESC
+      `).all(projectId, ...chunk, ...chunk) as unknown as ConflictRow[];
+    } catch {
+      // Older databases without the conflict table still return normal recall results.
+      return;
+    }
+
+    for (const row of rows) {
+      const a = byId.get(row.memory_a_id);
+      const b = byId.get(row.memory_b_id);
+
+      if (a && !a.conflict) {
+        a.conflict = {
+          conflictId: row.id,
+          withMemoryId: row.memory_b_id,
+          withTitle: row.b_title ?? row.memory_b_id,
+          reason: row.reason,
+          score: row.score
+        };
+      }
+      if (b && !b.conflict) {
+        b.conflict = {
+          conflictId: row.id,
+          withMemoryId: row.memory_a_id,
+          withTitle: row.a_title ?? row.memory_a_id,
+          reason: row.reason,
+          score: row.score
+        };
+      }
+    }
+  }
+}
+
 export interface StreamWeights {
   bm25?: number;
   vector?: number;
@@ -508,6 +576,7 @@ export async function searchMemories(
   // Keeping the two separate means a small context never hides the full ranked
   // list from callers that need to fetch a specific memory by id.
   const ranked = Number.isFinite(maxItems) ? scoredMemories.slice(0, maxItems) : scoredMemories;
+  attachConflictMarkers(db, projectId, ranked);
   const packed = packMemoriesIntoBudget(ranked, budgetTokens);
 
   // Bounded, non-blocking embedding backfill. Enabled by default only when the

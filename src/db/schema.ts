@@ -160,6 +160,7 @@ CREATE TABLE IF NOT EXISTS raw_events (
 );
 CREATE INDEX IF NOT EXISTS idx_raw_events_session ON raw_events(project_id, session_id);
 CREATE INDEX IF NOT EXISTS idx_raw_events_hash ON raw_events(content_hash);
+CREATE INDEX IF NOT EXISTS idx_raw_events_project_created ON raw_events(project_id, created_at);
 
 -- 2. Structured memories with Bi-Temporal Validity Windows & Outcome Multipliers
 CREATE TABLE IF NOT EXISTS memories (
@@ -186,6 +187,25 @@ CREATE TABLE IF NOT EXISTS memories (
   provenance_hash TEXT DEFAULT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_memories_active ON memories(project_id, module, valid_to, status);
+CREATE INDEX IF NOT EXISTS idx_memories_embedded ON memories(project_id, embedded);
+
+-- 2b. Per-ID Feedback Audit (confidence tiers and 3-consecutive-bad dormancy)
+CREATE TABLE IF NOT EXISTS memory_feedback (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  memory_id TEXT NOT NULL,
+  outcome TEXT NOT NULL CHECK (outcome IN ('good', 'bad')),
+  note TEXT DEFAULT NULL,
+  reward_before REAL NOT NULL,
+  reward_after REAL NOT NULL,
+  status_before TEXT NOT NULL,
+  status_after TEXT NOT NULL,
+  confidence_tier TEXT NOT NULL CHECK (confidence_tier IN ('high', 'medium', 'low', 'dormant', 'superseded')),
+  bad_streak INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_memory_feedback_memory ON memory_feedback(memory_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_memory_feedback_project ON memory_feedback(project_id, created_at DESC);
 
 -- 3. FTS5 Virtual Table for sub-millisecond BM25 keyword search
 CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
@@ -244,6 +264,38 @@ CREATE TABLE IF NOT EXISTS memory_snapshots (
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
 CREATE INDEX IF NOT EXISTS idx_snapshots_project ON memory_snapshots(project_id, created_at DESC);
+
+-- 6b. Memory Branches and Merge Audit Trail
+CREATE TABLE IF NOT EXISTS memory_branches (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  name TEXT NOT NULL COLLATE NOCASE,
+  base_snapshot_id TEXT NOT NULL,
+  head_snapshot_id TEXT NOT NULL,
+  description TEXT DEFAULT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  UNIQUE (project_id, name),
+  FOREIGN KEY (base_snapshot_id) REFERENCES memory_snapshots(id) ON DELETE RESTRICT,
+  FOREIGN KEY (head_snapshot_id) REFERENCES memory_snapshots(id) ON DELETE RESTRICT
+);
+CREATE INDEX IF NOT EXISTS idx_memory_branches_project ON memory_branches(project_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS memory_branch_merges (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  branch_id TEXT NOT NULL,
+  branch_name TEXT NOT NULL,
+  source_snapshot_id TEXT NOT NULL,
+  strategy TEXT NOT NULL CHECK (strategy IN ('target', 'branch')),
+  applied INTEGER NOT NULL DEFAULT 0,
+  added_count INTEGER NOT NULL DEFAULT 0,
+  conflict_count INTEGER NOT NULL DEFAULT 0,
+  report_json TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  FOREIGN KEY (branch_id) REFERENCES memory_branches(id) ON DELETE RESTRICT
+);
+CREATE INDEX IF NOT EXISTS idx_branch_merges_branch ON memory_branch_merges(branch_id, created_at DESC);
 
 -- 7. Knowledge Graph Entities
 CREATE TABLE IF NOT EXISTS entities (

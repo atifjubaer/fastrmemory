@@ -1,6 +1,6 @@
 # Official Model Context Protocol Registry Submission
 
-> **Status (2026-10-21): draft only.** The npm package is unpublished (`npm view` returns E404), so the `npx @atifjubaer/fastrmemory` form is not available. Use the GitHub form below until an npm release exists.
+> **Status (2026-10-23): draft for 0.3.0.** The published release remains `@atifjubaer/fastrmemory@0.2.1` (`npm view` returns `0.2.1`; access status `public`). The unscoped `fastrmemory@0.3.0` package is not on the registry yet. Submit this entry only after the 0.3.0 release gate passes and root `server.json` matches the published package.
 
 Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers) under the **Memory & Cognitive Engines** section.
 
@@ -11,11 +11,11 @@ Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://gi
 
 ### Table Entry for `README.md`
 ```markdown
-| [FastrMemory](https://github.com/atifjubaer/fastrmemory) | High-Performance Cognitive Agent Memory Engine with native `node:sqlite` WAL storage (Node >= 22.16), Bi-Temporal Git Sync, Triple-Stream RRF ($k=20$), Conditional 2.0x Error Trap Shield, and High-DPI React 19 Dashboard. Zero background daemons, zero open ports. | `npx -y github:atifjubaer/fastrmemory mcp` |
+| [FastrMemory](https://github.com/atifjubaer/fastrmemory) | High-Performance Cognitive Agent Memory Engine with native `node:sqlite` WAL storage (Node >= 22.16), Bi-Temporal Git Sync, Triple-Stream RRF ($k=20$), Conditional 2.0x Error Trap Shield, and High-DPI React 19 Dashboard. Zero background daemons, zero open ports. | `npx -y fastrmemory@0.3.0 mcp` |
 ```
 
 ### Full Server Description & Metadata
-- **Name**: `fastrmemory` (npm package: `@atifjubaer/fastrmemory`; registry ID: `io.github.atifjubaer/fastrmemory`)
+- **Name**: `fastrmemory` (npm package: `fastrmemory`; registry ID: `io.github.atifjubaer/fastrmemory`)
 - **Repository**: [https://github.com/atifjubaer/fastrmemory](https://github.com/atifjubaer/fastrmemory)
 - **Author**: Atif Jubaer / Fastrsoft
 - **Transport**: `stdio` (Zero network daemon, in-process WAL SQLite)
@@ -37,7 +37,7 @@ Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://gi
   "mcpServers": {
     "fastrmemory": {
       "command": "npx",
-      "args": ["-y", "github:atifjubaer/fastrmemory", "mcp"]
+      "args": ["-y", "fastrmemory@0.3.0", "mcp"]
     }
   }
 }
@@ -47,8 +47,10 @@ Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://gi
   "mcpServers": {
     "fastrmemory": {
       "command": "npx",
-      "args": ["-y", "github:atifjubaer/fastrmemory", "mcp"]
+      "args": ["-y", "fastrmemory@0.3.0", "mcp"]
     }
   }
 }
 ```
+
+> Version note: pin `fastrmemory@0.3.0` and submit only after that version is published. The full 41-tool surface is the default; pass `--profile core` for the 12-tool daily loop.
