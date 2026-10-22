@@ -31,9 +31,11 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 - Public retrieval harnesses for LongMemEval, LoCoMo, and real-repository history: pinned dataset revisions, SHA-256 checks, per-case raw JSON, and retrieval-only metrics in `docs/PUBLIC_BENCHMARKS.md`.
 - Pinned external retrieval baselines: MiniSearch `7.2.0` and the official MCP reference memory server `2.0.0`, with raw JSON, adapter rules, and caveats in `docs/EXTERNAL_BASELINE.md`. The `+5pp Hit@5` target is met on LongMemEval but missed on LoCoMo (`+4.4pp` vs MiniSearch, `+2.3pp` vs MCP).
 - `MIGRATION.md`, `SECURITY.md`, and `SCORECARD.md`: upgrade/rollback paths, local threat model and reporting path, and an evidence-based nine-gate release score (`9.4 / 10` provisional; the `9.2` target is met, with Retrieval still Partial).
+- Root `server.json` registry manifest and `llms-install.md` agent install guide, both included in the npm tarball.
 
 ### Changed
 
+- Package identity moves to unscoped `fastrmemory@0.3.0`; generated MCP and hook configs pin `fastrmemory@0.3.0` instead of the GitHub default branch. The scoped `@atifjubaer/fastrmemory@0.2.1` release remains available.
 - Removed 60 legacy `Global Security Invariant` rows from the global store with explicit approval; a timestamped database backup was written first, and the post-cleanup dry run reported 0 matching rows.
 - Dormancy now requires three consecutive bad outcomes instead of a low reward score alone.
 - Added indexes for project/time raw-event replay and project/embedded candidate scans; the query-plan gate verifies they are selected.

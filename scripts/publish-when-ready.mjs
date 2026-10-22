@@ -4,14 +4,17 @@
  * ⚡ FastrMemory NPM Publisher
  * 
  * Verifies npm authorization, runs the local publication gate, and publishes
- * @atifjubaer/fastrmemory only when the account is authenticated. It never
- * bypasses 2FA or an account suspension.
+ * the unscoped fastrmemory package only when the account is authenticated. It
+ * never bypasses 2FA or an account suspension.
  *
  * Usage:
  *   node scripts/publish-when-ready.mjs
  */
 
 import { execSync } from 'node:child_process';
+import * as fs from 'node:fs';
+
+const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 
 function run(cmd, capture = true) {
   try {
@@ -64,11 +67,11 @@ console.log('\n🚀 Attempting live publication to NPM Registry...');
 const livePub = run('npm publish --access public');
 
 if (livePub.success) {
-  console.log('\n🎉 SUCCESS! @atifjubaer/fastrmemory is now live on the public NPM registry.');
-  console.log('   Global users can now run: npx @atifjubaer/fastrmemory\n');
+  console.log(`\n🎉 SUCCESS! ${pkg.name}@${pkg.version} is now live on the public NPM registry.`);
+  console.log(`   Global users can now run: npx -y ${pkg.name}@${pkg.version} setup\n`);
 } else {
   console.log('\n⏳ Publish Blocked:');
   console.log(`   ${livePub.output}`);
-  console.log('\n💡 Note: FastrMemory is already live on GitHub:');
-  console.log('   npx github:atifjubaer/fastrmemory\n');
+  console.log('\n💡 Fix the release gate and retry. Do not switch users to a');
+  console.log('   GitHub default-branch install; generated configs must pin npm.\n');
 }

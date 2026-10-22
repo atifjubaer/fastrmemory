@@ -150,7 +150,7 @@ export function createBackup(
     projectId,
     scope: ['memories', 'raw_events', 'file_links', 'memory_conflicts'],
     tool: {
-      name: '@atifjubaer/fastrmemory',
+      name: 'fastrmemory',
       version: PACKAGE_VERSION
     },
     environment: {

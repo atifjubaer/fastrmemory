@@ -109,7 +109,7 @@ describe('FastrMemory Web UI Server security', () => {
   it('does not serve files outside dist-ui', async () => {
     const res = await fetch(`${base}/%2e%2e/package.json`);
     const text = await res.text();
-    expect(text).not.toContain('"@atifjubaer/fastrmemory"');
+    expect(text).not.toContain('"mcpName"');
   });
 
   it('404s missing build assets instead of answering with the SPA page', async () => {

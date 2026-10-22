@@ -1,6 +1,6 @@
 {
-  "name": "@atifjubaer/fastrmemory",
-  "version": "0.2.1",
+  "name": "fastrmemory",
+  "version": "0.3.0",
   "mcpName": "io.github.atifjubaer/fastrmemory",
   "description": "High-Performance Cognitive Agent Memory Engine with Bi-Temporal SQLite and Official MCP v2",
   "type": "module",
@@ -20,7 +20,9 @@
     "dist-ui",
     "skills",
     ".claude-plugin",
-    ".cursor"
+    ".cursor",
+    "server.json",
+    "llms-install.md"
   ],
   "bin": {
     "fastrmemory": "dist/bin/fastr.js",

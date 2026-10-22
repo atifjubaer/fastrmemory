@@ -14,6 +14,7 @@ import { installGemini } from '../src/installer/gemini.js';
 import { installCopilot } from '../src/installer/copilot.js';
 import { installOpenCode } from '../src/installer/opencode.js';
 import { resolveMcpCommand } from '../src/installer/setup.js';
+import { PACKAGE_VERSION } from '../src/version.js';
 import { extractTargetFiles, toClaudeHookStdout, toGeminiHookStdout, toCopilotHookStdout } from '../src/hooks/runner.js';
 
 describe('Installer config safety', () => {
@@ -91,7 +92,7 @@ describe('Installer config safety', () => {
   it('recognises hook commands from every install form', () => {
     expect(isFastrHookCommand('fastrmemory hook run SessionStart')).toBe(true);
     expect(isFastrHookCommand('node "C:/a b/dist/bin/fastr.js" hook run PreToolUse')).toBe(true);
-    expect(isFastrHookCommand('npx -y @atifjubaer/fastrmemory hook run SessionEnd')).toBe(true);
+    expect(isFastrHookCommand(`npx -y fastrmemory@${PACKAGE_VERSION} hook run SessionEnd`)).toBe(true);
     expect(isFastrHookCommand('echo hook run')).toBe(false);
     const cmd = buildHookCommand('SessionStart', 'linux');
     expect(cmd).toMatch(/hook run SessionStart$/);

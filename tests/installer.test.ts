@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { getAntigravityConfigPath, getClaudeDesktopConfigPath, resolveMcpCommand } from '../src/installer/setup.js';
+import { PACKAGE_VERSION } from '../src/version.js';
 
 describe('Installer & MCP Multi-Client Configuration', () => {
   it('correctly resolves Antigravity configuration path', () => {
@@ -24,6 +25,25 @@ describe('Installer & MCP Multi-Client Configuration', () => {
     expect(target).toHaveProperty('args');
     expect(Array.isArray(target.args)).toBe(true);
     expect(target.args).toContain('mcp');
+  });
+
+  it('pins the ephemeral npx fallback to the registry package version', () => {
+    const npxCli = '/home/user/.npm/_npx/abc123/node_modules/fastrmemory/dist/bin/fastr.js';
+    const target = resolveMcpCommand('linux', npxCli);
+    expect(target).toEqual({
+      command: 'npx',
+      args: ['-y', `fastrmemory@${PACKAGE_VERSION}`, 'mcp']
+    });
+    expect(target.args.join(' ')).not.toContain('github:');
+  });
+
+  it('wraps the ephemeral npx fallback in cmd /c on Windows', () => {
+    const npxCli = 'C:\\Users\\user\\AppData\\Local\\npm-cache\\_npx\\abc123\\node_modules\\fastrmemory\\dist\\bin\\fastr.js';
+    const target = resolveMcpCommand('win32', npxCli);
+    expect(target).toEqual({
+      command: 'cmd',
+      args: ['/c', 'npx', '-y', `fastrmemory@${PACKAGE_VERSION}`, 'mcp']
+    });
   });
 
   it('safely serializes mcpServers object into config files without destroying existing tools', () => {

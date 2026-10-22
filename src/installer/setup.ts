@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createFastrServerContext } from '../mcp/server.js';
+import { PACKAGE_VERSION } from '../version.js';
 import { McpServerEntry, updateJsonConfig, upsertMcpServer } from './json-config.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -59,13 +60,17 @@ export function findOwnCliPath(): string | null {
  * CLI works on every platform; `npx` (wrapped in `cmd /c` on Windows) is the fallback when this
  * copy lives in a throwaway npx cache.
  */
-export function resolveMcpCommand(platform: NodeJS.Platform = process.platform): McpServerEntry {
-  const cli = findOwnCliPath();
-  const isEphemeral = cli !== null && /[\\/]_npx[\\/]/.test(cli);
-  if (cli && !isEphemeral) {
-    return { command: 'node', args: [cli, 'mcp'] };
+export function resolveMcpCommand(
+  platform: NodeJS.Platform = process.platform,
+  cliPath: string | null = findOwnCliPath()
+): McpServerEntry {
+  const isEphemeral = cliPath !== null && /[\\/]_npx[\\/]/.test(cliPath);
+  if (cliPath && !isEphemeral) {
+    return { command: 'node', args: [cliPath, 'mcp'] };
   }
-  const npxArgs = ['-y', 'github:atifjubaer/fastrmemory', 'mcp'];
+  // Pin the registry package and version: npx cache paths are throwaway, and a GitHub
+  // default-branch reference would silently change the server under existing configs.
+  const npxArgs = ['-y', `fastrmemory@${PACKAGE_VERSION}`, 'mcp'];
   return platform === 'win32'
     ? { command: 'cmd', args: ['/c', 'npx', ...npxArgs] }
     : { command: 'npx', args: npxArgs };
