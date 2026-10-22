@@ -1,6 +1,6 @@
 # FastrMemory 0.2.0: a verified tarball, a deterministic UI, and an honest CI gate
 
-> **Historical note (2026-10-23):** This post describes the 0.2.0 release, when npm was blocked. `@atifjubaer/fastrmemory@0.2.1` was published later and removed on 2026-10-23; the canonical release target is `fastrmemory@0.3.1` (`0.3.0` remains `latest` until the release workflow publishes the patch). The 0.2.0 registry status below is preserved as history; current install instructions are in [the 0.2.1 post](2026-10-21-fastrmemory-0.2.1.md) and [npm-publishing.md](../npm-publishing.md).
+> **Historical note (2026-10-23):** This post describes the 0.2.0 release, when npm was blocked. `@atifjubaer/fastrmemory@0.2.1` was published later and removed on 2026-10-23; the canonical published release is `fastrmemory@0.3.1` (npm `latest`; `0.3.0` remains published historical). The 0.2.0 registry status below is preserved as history; current install instructions are in [the 0.2.1 post](2026-10-21-fastrmemory-0.2.1.md) and [npm-publishing.md](../npm-publishing.md).
 
 **Date:** 2026-10-20  
 **Code commit:** `de4fde3`  
@@ -80,7 +80,8 @@ measured 89.6% is 0.4 points below it. The full ledger is in
 - The optional MiniLM model is not installed by default and is not counted in
   the install size.
 - At the time of this release, the npm registry was unavailable until the
-  account security issue was resolved; npm `0.2.1` is now published.
+  account security issue was resolved. npm `0.2.1` was later published and then
+  removed; the current published release is `fastrmemory@0.3.1`.
 
 ## Next
 

@@ -1,6 +1,6 @@
 # FastrMemory Architecture
 
-> **Package:** release target `fastrmemory@0.3.1` (`0.3.0` remains npm `latest` until the release workflow publishes; historical 0.2.1 release: `@atifjubaer/fastrmemory`; npm entry removed 2026-10-23; CLI: `fastr` / `fastrmemory`)
+> **Package:** published `fastrmemory@0.3.1` (npm `latest` since 2026-10-22 23:02 UTC; `0.3.0` remains published historical; historical 0.2.1 release: `@atifjubaer/fastrmemory`; npm entry removed 2026-10-23; CLI: `fastr` / `fastrmemory`)
 > **Runtime:** Node.js >= 22.16.0, ESM, built-in `node:sqlite` in WAL mode
 > **Protocol:** MCP v2 via `@modelcontextprotocol/server`
 > **Status:** 0.3.0 architecture baseline as of 2026-10-21 (`b220067`); 0.3.1 is a patch that adds the runtime guard, project-root pinning, Windows launch fixes, and the automated release workflow. Known gaps are listed at the end and are not hidden.

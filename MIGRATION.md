@@ -1,6 +1,6 @@
 # Migration Guide
 
-**Current release target:** `0.3.1` (unscoped npm package; `0.3.0` remains `latest` until the release workflow publishes)
+**Current release:** `0.3.1` (published 2026-10-22 23:02 UTC; unscoped npm package and `latest`; `0.3.0` remains published historical)
 **Historical release:** `0.2.1` (GitHub Release; npm entry removed 2026-10-23)
 **Applies to:** `0.1.x` → `0.2.x` → `0.3.1` (the `0.3.0` migration steps apply unchanged; `0.3.1` is a patch)
 
@@ -61,7 +61,7 @@ Existing memories remain readable. The first `fastr status` opens the database a
 
 ## 3. Upgrade from 0.2.x to 0.3.1
 
-`0.3.1` is the canonical unscoped release target; `0.3.0` remains `latest` until the release workflow publishes. Install the exact release after publication:
+`0.3.1` is the canonical published unscoped release and npm `latest`; `0.3.0` remains available as a historical version. Install the exact release:
 
 ```bash
 npm install -g fastrmemory@0.3.1
@@ -160,5 +160,5 @@ Do not assume that an older binary can read a database written by a newer binary
 - There is no automatic database downgrade command.
 - `fastr backup` and `fastr snapshot export` are logical and do not include the SQLite WAL file. The backup scope is memories, raw events, file links, and conflicts; it does not include feedback history, snapshots, branches, action DAG rows, or vision assets. Use the physical `.fastr/fastr.db*` copy for a complete database backup.
 - `fastr backup --restore` verifies the sidecar manifest and file hash before writing; the import runs in one SQLite transaction, but stop other writers first.
-- npm `0.3.0` is currently `latest`; `0.3.1` is the release target and will supersede it. The `0.2.1` npm entry was removed, but its GitHub Release tarball remains for rollback.
-- Pin the exact published version for reproducible installs: `0.3.1` after the workflow, otherwise `0.3.0`.
+- npm `0.3.1` is `latest`; `0.3.0` remains published as a historical version. The `0.2.1` npm entry was removed, but its GitHub Release tarball remains for rollback.
+- Pin the exact published version for reproducible installs: `0.3.1`.

@@ -4,7 +4,7 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ## [0.3.1] - 2026-10-23
 
-Release target published by `.github/workflows/release.yml` with npm provenance and a matching GitHub Release tarball. This release replaces the stale `0.3.0` npm README, fixes Windows MCP launch commands, pins user-scoped clients to the project root, and adds a Node runtime guard before `node:sqlite` is loaded.
+Published 2026-10-22 23:02:38 UTC from tag `v0.3.1` (`3a3cac6`) by `.github/workflows/release.yml` using GitHub Actions OIDC trusted publishing. `npm view fastrmemory version` returns `0.3.1` and `latest` is `0.3.1`; release workflow run `39868908223` passed the full gate, clean install, provenance publish, registry verification, and GitHub Release upload. The GitHub Release tarball SHA-256 is `747f61791dcb7c5694f3cf5cc8705152892a5b16cb33bec51a356fc22112a7b8`. This release replaces the stale `0.3.0` npm README, fixes Windows MCP launch commands, pins user-scoped clients to the project root, and adds a Node runtime guard before `node:sqlite` is loaded.
 
 ### Added
 
@@ -28,7 +28,7 @@ Release target published by `.github/workflows/release.yml` with npm provenance 
 
 ## [0.3.0] - 2026-10-22
 
-Published as canonical unscoped `fastrmemory@0.3.0` on 2026-10-22 18:32 UTC from tag `v0.3.0` (`50a7d8f`). `npm view fastrmemory version` returns `0.3.0`; `latest` is `0.3.0`; registry tarball shasum `e17af4f854bd9231e1f4b3a8efb04d3e5b65f8e2`. The old scoped npm entries (`@atifjubaer/fastrmemory` and `fastrmemory@0.0.0-stage`) were removed on 2026-10-23; the GitHub `v0.2.1` tag/release remains as history. See [docs/npm-publishing.md](docs/npm-publishing.md).
+Published as canonical unscoped `fastrmemory@0.3.0` on 2026-10-22 18:32 UTC from tag `v0.3.0` (`50a7d8f`). It was npm `latest` until `0.3.1` published and remains available as a historical version; registry tarball shasum `e17af4f854bd9231e1f4b3a8efb04d3e5b65f8e2`. The old scoped npm entries (`@atifjubaer/fastrmemory` and `fastrmemory@0.0.0-stage`) were removed on 2026-10-23; the GitHub `v0.2.1` tag/release remains as history. See [docs/npm-publishing.md](docs/npm-publishing.md).
 
 ### Added
 
@@ -61,7 +61,7 @@ Published as canonical unscoped `fastrmemory@0.3.0` on 2026-10-22 18:32 UTC from
 
 ### Changed
 
-- Package identity is now unscoped `fastrmemory@0.3.0`, published and `latest`; generated MCP and hook configs pin `fastrmemory@0.3.0` instead of the GitHub default branch. The old scoped npm package was removed on 2026-10-23.
+- Package identity is now unscoped `fastrmemory@0.3.0` (published; later superseded as `latest` by `0.3.1`); generated MCP and hook configs pin `fastrmemory@0.3.0` instead of the GitHub default branch. The old scoped npm package was removed on 2026-10-23.
 - Removed 60 legacy `Global Security Invariant` rows from the global store with explicit approval; a timestamped database backup was written first, and the post-cleanup dry run reported 0 matching rows.
 - Dormancy now requires three consecutive bad outcomes instead of a low reward score alone.
 - Added indexes for project/time raw-event replay and project/embedded candidate scans; the query-plan gate verifies they are selected.
@@ -102,7 +102,7 @@ GitHub release attached and npm package published from the post-0.2.0 fixes. `@a
 
 ### Known limitations
 
-- At the time of the 0.2.1 release, the npm registry also listed `0.0.0-stage`; both old npm entries were removed on 2026-10-23. Use `fastrmemory@0.3.0` for current installs.
+- At the time of the 0.2.1 release, the npm registry also listed `0.0.0-stage`; both old npm entries were removed on 2026-10-23. Use `fastrmemory@0.3.1` for current installs.
 - At v0.2.1, the benchmark corpus was synthetic and no external memory engine was measured; the 0.3.0 release adds pinned external retrieval baselines.
 - Apple Silicon macOS is not in the 6-job CI matrix.
 - The crash test kills the process (`taskkill /F`); it is not an OS-crash or power-loss test, and SQLite uses `synchronous=NORMAL` in WAL mode.
