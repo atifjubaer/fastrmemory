@@ -66,7 +66,7 @@ Existing memories remain readable. The first `fastr status` opens the database a
 
 ## 3. Upgrade from 0.2.x to 0.3.0
 
-`0.3.0` is not published. These steps describe the branch behavior and are not a registry upgrade path yet.
+`0.3.0` is not published. These steps describe the branch behavior and are not a registry upgrade path yet. The package name changes from `@atifjubaer/fastrmemory` to unscoped `fastrmemory`; the `fastr` and `fastrmemory` bin names stay the same. The scoped `0.2.1` package remains available.
 
 After installing a `0.3.0` build:
 

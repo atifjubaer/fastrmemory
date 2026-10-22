@@ -1,6 +1,6 @@
 # FastrMemory Architecture
 
-> **Package:** `@atifjubaer/fastrmemory` (CLI: `fastr` / `fastrmemory`)
+> **Package:** `fastrmemory` on the 0.3.0 branch (published 0.2.1 release: `@atifjubaer/fastrmemory`; CLI: `fastr` / `fastrmemory`)
 > **Runtime:** Node.js >= 22.16.0, ESM, built-in `node:sqlite` in WAL mode
 > **Protocol:** MCP v2 via `@modelcontextprotocol/server`
 > **Status:** `feat/0.3.0` code state as of 2026-10-21 (`b220067`). Known gaps are listed at the end and are not hidden.

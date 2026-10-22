@@ -2,6 +2,8 @@
 
 > **Status (2026-10-22): published.** `@atifjubaer/fastrmemory@0.2.1` was published to the public npm registry on **2026-10-22 16:51 UTC** from frozen tag `3fa2bf9`. `npm view @atifjubaer/fastrmemory version` returns `0.2.1`; `npx --yes --package @atifjubaer/fastrmemory@0.2.1 fastr --version` returns `0.2.1`; access status is `public`. The earlier E401/E404 block is preserved below as history. The first `npm view` after publish returned E404 for about two minutes during registry propagation; it was not a failed publish. Do not republish `0.2.1`; npm rejects duplicates with E409.
 
+> **0.3.0 branch note (2026-10-23):** The next release renames the canonical package to unscoped `fastrmemory@0.3.0`. The publication evidence below is historical and remains accurate for `@atifjubaer/fastrmemory@0.2.1`. Do not publish 0.3.0 until the package checks and CI pass; generated MCP/hook configs pin `fastrmemory@0.3.0`.
+
 This document explains why npm matters for FastrMemory, how the package is verified, and the publish protocol used for 0.2.1. The historical block section is retained for audit.
 
 ---
@@ -51,7 +53,18 @@ The v0.2.1 GitHub Release asset is attached at
 
 ## Install paths
 
-Published npm package:
+Unreleased 0.3.0 branch (do not use until the registry entry exists):
+
+```bash
+# Global CLI:
+npm install -g fastrmemory@0.3.0
+fastr --version
+
+# One-shot run from a neutral directory:
+npx -y fastrmemory@0.3.0 --version
+```
+
+Published 0.2.1 package:
 
 ```bash
 # Global CLI:
@@ -120,7 +133,7 @@ Resolved on 2026-10-22: `npm whoami` returns `atifjubaer`, `npm view @atifjubaer
 
 ---
 
-## Publish protocol (0.2.1 example; adapt the tag for future releases)
+## Publish protocol (0.2.1 example; 0.3.0 uses `fastrmemory`)
 
 1. **Authenticate interactively**
    ```powershell

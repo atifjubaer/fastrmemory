@@ -2,7 +2,7 @@
 
 > **Status: historical (released 2026-10-19; superseded by v0.2.1 and the unreleased `0.3.0` branch).** These notes describe the v0.1.0 tarball, not the current commit. Several claims below were marketing copy and have not been independently verified. Current numbers and evidence live in [`CLAIMS.md`](CLAIMS.md) and [`BENCHMARKS.md`](BENCHMARKS.md).
 >
-> **Current state (2026-10-22):** v0.2.1 is the latest GitHub release and is published on npm as `@atifjubaer/fastrmemory@0.2.1`. The `0.3.0` branch registers **41 tools, 2 prompts, and 5 resources**, ships **10 Agent Skills**, and has **274 tests across 51 files**. Verify current counts with `npm run check:docs`.
+> **Current state (2026-10-22):** v0.2.1 is the latest GitHub release and is published on npm as `@atifjubaer/fastrmemory@0.2.1`. The `0.3.0` branch registers **41 tools, 2 prompts, and 5 resources**, ships **10 Agent Skills**, and has **276 tests across 51 files**. Verify current counts with `npm run check:docs`.
 
 **High-Performance Cognitive Agent Memory • Zero Daemon • Native Node 22/24 `node:sqlite` WAL • Bi-Temporal Git Sync • Triple-Stream RRF • Official MCP v2**
 

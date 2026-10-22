@@ -12,9 +12,10 @@ This roadmap is evidence-gated. A phase is complete only when its gate passes on
 
 | Item | Current state | Evidence |
 |---|---|---|
-| Local test gate | **Done:** 274 tests across 51 files | `npm run check:ci` on 2026-10-22 at `d6f3662` |
+| Local test gate | **Done:** 276 tests across 51 files | `npm test` on 2026-10-23 on the package-identity branch |
 | CI matrix | **Done:** 6/6 green at `d6f3662` | run `39532273797`; release `3fa2bf9` is 6/6 in run `39495621243` |
 | npm distribution | **Done:** `@atifjubaer/fastrmemory@0.2.1` published 2026-10-22 16:51 UTC; `npm view` and `npx` return `0.2.1`; access status is `public` | `docs/npm-publishing.md`; `CLAIMS.md` A2 |
+| npm package rename (0.3.0) | **In progress:** branch package is unscoped `fastrmemory@0.3.0`; not published; generated MCP/hook configs pin it and reject the GitHub default branch | `package.json`; `CLAIMS.md` A1a, A1b |
 | Package artifact | **GitHub asset and npm tarball:** v0.2.1 asset is 591,204 bytes, SHA-256 `78F1535E87A7148272824C0B0D31F21D4AD385D9EEAA2EF8A40D41DCD0ACA63B`; npm reports 591.4 kB packed / 2.3 MB unpacked / 220 files, shasum `352abba135ce1b0921cacbcdf9b7efd2abfc4802`; v0.2.0 asset is 571,279 bytes | `npm pack` vs downloaded release asset; `npm publish` output |
 | Benchmark | **Done for the synthetic gate:** 240 cases, 192/48 split; holdout 95.8% Hit@1, 100% Hit@5, 209 tokens | `bench/results/minilm.json` |
 | Replay and snapshots | **Done:** exact at three timestamps; JSONL round-trip hash stable | `bench/results/replay-evidence.json` |
@@ -103,11 +104,11 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 
 | Item | Status | Evidence / remaining work |
 |---|---|---|
-| Remove stale benchmark claims | **Done** | `README.md` uses the `562f461` run and states 274 tests / 51 files / 41 tools; `docs/benchmark-report.md` and `BENCHMARKS.md` match. |
+| Remove stale benchmark claims | **Done** | `README.md` uses the `562f461` run and states the current 276 tests / 51 files / 41 tools; `docs/benchmark-report.md` and `BENCHMARKS.md` match. |
 | Correct competitor and dependency claims | **Done** | `CLAIMS.md` records removed claims; README launch table, release-vs-branch banner, and 0.2.1 post are in place; the README claim trace maps every H2 section. |
 | `CLAIMS.md` with command, output, date, commit, caveat | **Done** | `CLAIMS.md`; `npm run check:docs` enforces the trace and catalog counts |
 | Baseline audit | **Done** | `docs/audit/2026-10-20-baseline.md` |
-| Align specification, release notes, npm docs | **Done** | `docs/SPECIFICATION.md` now carries current 41/2/5, 10-skill, 274/51 counts and points to the live schema; `RELEASE_v0.1.0.md` marks k=60 as historical, qualifies the 2.0× boost, and corrects the tarball-tracking claim; `docs/npm-publishing.md` records the successful 2026-10-22 publish and preserves the earlier E401/E404 block as history. |
+| Align specification, release notes, npm docs | **Done** | `docs/SPECIFICATION.md` now carries current 41/2/5, 10-skill, 276/51 counts and points to the live schema; `RELEASE_v0.1.0.md` marks k=60 as historical, qualifies the 2.0× boost, and corrects the tarball-tracking claim; `docs/npm-publishing.md` records the successful 2026-10-22 publish and preserves the earlier E401/E404 block as history. |
 | Replace inflated time estimates with evidence gates | **Done** | This roadmap |
 
 **Gate:** every public claim maps to `CLAIMS.md`; no stale count remains in a shipped README. Current result: **Done** - the README trace is enforced and the specification, release notes, and npm docs carry current counts and historical qualifiers.
@@ -204,7 +205,7 @@ Phase 2.2 runs MiniSearch `7.2.0` and `@modelcontextprotocol/server-memory@2.0.0
 | Gate | Pass condition | Current |
 |---|---|---|
 | Truth | No false/stale claims; `CLAIMS.md` covers every public claim | **Pass** — README trace enforced by `check:docs`; specification, release notes, and npm docs aligned |
-| Tests | 6/6 OS × Node green on the release commit; isolation green | **Pass** - local 274 green / 51 files; 6/6 at `3fa2bf9` in run `39495621243` and 6/6 at `d6f3662` in run `39532273797` |
+| Tests | 6/6 OS × Node green on the release commit; isolation green | **Pass** - local 276 green / 51 files; 6/6 at `3fa2bf9` in run `39495621243` and 6/6 at `d6f3662` in run `39532273797` |
 | Package | npm published or explicitly blocked and documented; `npx` works | **Pass** — npm `@atifjubaer/fastrmemory@0.2.1` is published and public; `npm view` and `npx` return `0.2.1`; v0.2.1 GitHub asset is attached and release-URL install verified |
 | Footprint | Default install under 20 MB; install under 10 s | **Pass (0.3.0 branch)** - local 16,750,800-16,751,875 bytes, 1.842-2.154 s; canonical CI `1,251 ms`; v0.2.1 is 16,493,075 bytes, 1.93 s |
 | Benchmark | 240+ cases; held-out; raw JSON committed | **Done** |
