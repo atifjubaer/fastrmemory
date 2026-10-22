@@ -1,6 +1,6 @@
 # Official Model Context Protocol Registry Submission
 
-> **Status (2026-10-23): ready to submit for 0.3.0.** The canonical unscoped `fastrmemory@0.3.0` is published (`npm view fastrmemory version` returns `0.3.0`; `latest` is `0.3.0`), and root `server.json` pins that version. The old scoped `@atifjubaer/fastrmemory@0.2.1` npm entry was removed on 2026-10-23. This entry has not been submitted to the MCP registry yet.
+> **Status (2026-10-23): ready to submit for 0.3.1.** The canonical unscoped `fastrmemory@0.3.1` is the release target, and root `server.json` pins that version. Submit only after the release workflow publishes `0.3.1` and `npm view fastrmemory version` returns it; `0.3.0` remains `latest` until then. The old scoped `@atifjubaer/fastrmemory@0.2.1` npm entry was removed on 2026-10-23. This entry has not been submitted to the MCP registry yet.
 
 Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers) under the **Memory & Cognitive Engines** section.
 
@@ -11,7 +11,7 @@ Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://gi
 
 ### Table Entry for `README.md`
 ```markdown
-| [FastrMemory](https://github.com/atifjubaer/fastrmemory) | High-Performance Cognitive Agent Memory Engine with native `node:sqlite` WAL storage (Node >= 22.16), Bi-Temporal Git Sync, Triple-Stream RRF ($k=20$), Conditional 2.0x Error Trap Shield, and High-DPI React 19 Dashboard. Zero background daemons, zero open ports. | `npx -y fastrmemory@0.3.0 mcp` |
+| [FastrMemory](https://github.com/atifjubaer/fastrmemory) | High-Performance Cognitive Agent Memory Engine with native `node:sqlite` WAL storage (Node >= 22.16), Bi-Temporal Git Sync, Triple-Stream RRF ($k=20$), Conditional 2.0x Error Trap Shield, and High-DPI React 19 Dashboard. Zero background daemons, zero open ports. | `npx -y fastrmemory@0.3.1 mcp` |
 ```
 
 ### Full Server Description & Metadata
@@ -37,20 +37,20 @@ Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://gi
   "mcpServers": {
     "fastrmemory": {
       "command": "npx",
-      "args": ["-y", "fastrmemory@0.3.0", "mcp"]
+      "args": ["-y", "fastrmemory@0.3.1", "mcp", "--project", "/absolute/path/to/repo"]
     }
   }
 }
 
-# Add to Cursor (.cursor/mcp.json):
+# Add to Cursor (.cursor/mcp.json), where the project root is implicit:
 {
   "mcpServers": {
     "fastrmemory": {
       "command": "npx",
-      "args": ["-y", "fastrmemory@0.3.0", "mcp"]
+      "args": ["-y", "fastrmemory@0.3.1", "mcp"]
     }
   }
 }
 ```
 
-> Version note: pin `fastrmemory@0.3.0`; it is published and is the current `latest`. The full 41-tool surface is the default; pass `--profile core` for the 12-tool daily loop.
+> Version note: pin `fastrmemory@0.3.1` only after the release workflow publishes it; until then, `0.3.0` is the current `latest`. The full 41-tool surface is the default; pass `--profile core` for the 12-tool daily loop. On native Windows, use `cmd /c npx ...` if the client cannot launch `npx` directly.

@@ -1,6 +1,6 @@
 # FastrMemory NPM Publishing & Troubleshooting Guide
 
-> **Status (2026-10-23): resolved and published.** The canonical `fastrmemory@0.3.0` is live on npm (`npm view fastrmemory version` returns **0.3.0**; `latest` is **0.3.0**). The old scoped `@atifjubaer/fastrmemory@0.2.1` npm entry was removed on 2026-10-23; its GitHub release remains historical. **Do not disable account 2FA or bypass npm security.** The steps below are a historical incident log from the temporary suspension; they are not a workaround. The current publish protocol is in [npm-publishing.md](npm-publishing.md).
+> **Status (2026-10-23): 0.3.1 release target.** `fastrmemory@0.3.0` is currently live on npm and `latest`; the automated release workflow publishes `0.3.1` with provenance and a GitHub Release tarball. Verify with `npm view fastrmemory version` before claiming the switch. The old scoped `@atifjubaer/fastrmemory@0.2.1` npm entry was removed on 2026-10-23; its GitHub release remains historical. **Do not disable account 2FA or bypass npm security.** The steps below are a historical incident log from the temporary suspension; they are not a workaround. The current publish protocol is in [npm-publishing.md](npm-publishing.md).
 
 > Reference guide documenting all publishing errors, root causes, fixes applied, and the historical resume protocol for `@atifjubaer/fastrmemory`.
 

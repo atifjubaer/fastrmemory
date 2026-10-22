@@ -13,11 +13,11 @@ FastrMemory uses the built-in `node:sqlite` module, so there is no database serv
 ## 2. Install the CLI
 
 ```bash
-npm install -g fastrmemory@0.3.0
+npm install -g fastrmemory@0.3.1
 fastr --version
 ```
 
-If global installs are not allowed, replace `fastr <command>` with `npx -y fastrmemory@0.3.0 <command>` in the remaining steps. Pin the version so an unrelated future release cannot change the installed behavior.
+If global installs are not allowed, replace `fastr <command>` with `npx -y fastrmemory@0.3.1 <command>` in the remaining steps. Pin the version so an unrelated future release cannot change the installed behavior.
 
 ## 3. Wire the agent clients
 
@@ -44,13 +44,13 @@ Any MCP client can launch the stdio server directly:
   "mcpServers": {
     "fastrmemory": {
       "command": "npx",
-      "args": ["-y", "fastrmemory@0.3.0", "mcp"]
+      "args": ["-y", "fastrmemory@0.3.1", "mcp"]
     }
   }
 }
 ```
 
-On native Windows, use `cmd /c npx -y fastrmemory@0.3.0 mcp` if the client cannot launch `npx` directly. The full 41-tool surface is the default; add `--profile core` to expose the 12-tool daily loop.
+For user-scoped clients (Claude Desktop, Antigravity, Windsurf, and the Claude Code entry in `~/.claude.json`), append `--project /absolute/path/to/project` so the client's launch directory cannot select the wrong database. On native Windows, use `cmd /c npx -y fastrmemory@0.3.1 mcp` if the client cannot launch `npx` directly; `fastr setup` writes the absolute `node` path automatically. The full 41-tool surface is the default; add `--profile core` to expose the 12-tool daily loop.
 
 ## 5. Verify
 

@@ -1,5 +1,7 @@
 # Scorecard
 
+> **0.3.1 patch target (2026-10-23):** this scorecard remains the 0.3.0 assessment. The 0.3.1 release worktree passes **282 tests / 52 files**; npm publication is pending the release workflow. `0.3.0` remains `latest` until that completes.
+
 **Evidence date:** 2026-10-23
 **Code evidence:** `50a7d8f` (publish-time `npm test`: 276 tests / 51 files; remote CI run `39831793263`: 6/6 green); roadmap status in this docs commit
 **npm release evidence:** `fastrmemory@0.3.0` published 2026-10-22 18:32 UTC; `npm view fastrmemory version` and `npx -y fastrmemory@0.3.0 --version` both return `0.3.0`; old scoped npm entries removed 2026-10-23; GitHub `v0.2.1` tag/release remains historical

@@ -10,11 +10,11 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.16.0-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Protocol](https://img.shields.io/badge/Protocol-MCP%20v2-7C3AED?style=flat-square)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/Tests-276%20Passed-brightgreen?style=flat-square)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-282%20Passed-brightgreen?style=flat-square)](tests/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-architecture)
 
-> **Status (2026-10-23):** The canonical package is **`fastrmemory@0.3.0`**, published to npm on **2026-10-22 18:32 UTC** from tag `v0.3.0` (`50a7d8f`). `npm view fastrmemory version` returns `0.3.0` and `latest` is `0.3.0`; `npm install -g fastrmemory` installs the published package, and `npx -y fastrmemory@0.3.0 --version` returns `0.3.0`. The old scoped npm entries (`@atifjubaer/fastrmemory` and `fastrmemory@0.0.0-stage`) were removed on 2026-10-23; the GitHub `v0.2.1` tag and release remain as history. This README tracks **0.3.0**. Use the exact `0.3.0` version for reproducibility. The release post for 0.2.1 remains at [docs/blog/2026-10-21-fastrmemory-0.2.1.md](docs/blog/2026-10-21-fastrmemory-0.2.1.md). The exact release surface is in [CHANGELOG.md](CHANGELOG.md). The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval. Public LongMemEval, LoCoMo, and self-repository retrieval-only results plus pinned external baselines are in [BENCHMARKS.md](BENCHMARKS.md); no QA-leaderboard parity is claimed. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); every README section is mapped to claim IDs in the README claim trace at the end of that ledger. Methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md).
+> **Status (2026-10-23):** The canonical release target is **`fastrmemory@0.3.1`**. The release workflow publishes it with npm provenance and a matching GitHub Release tarball; verify with `npm view fastrmemory version` and require `latest` to be `0.3.1`. This release replaces the stale `0.3.0` npm README, fixes Windows MCP commands, pins user-scoped clients to the project root, and adds the Node runtime guard. The old scoped npm entries (`@atifjubaer/fastrmemory` and `fastrmemory@0.0.0-stage`) were removed on 2026-10-23; the GitHub `v0.2.1` tag and release remain as history. This README tracks **0.3.1**. Use the exact `0.3.1` version for reproducibility. The release post for 0.2.1 remains at [docs/blog/2026-10-21-fastrmemory-0.2.1.md](docs/blog/2026-10-21-fastrmemory-0.2.1.md). The exact release surface is in [CHANGELOG.md](CHANGELOG.md). The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval. Public LongMemEval, LoCoMo, and self-repository retrieval-only results plus pinned external baselines are in [BENCHMARKS.md](BENCHMARKS.md); no QA-leaderboard parity is claimed. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); every README section is mapped to claim IDs in the README claim trace at the end of that ledger. Methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md).
 
 <p align="center">
   <a href="#-overview">Overview</a> &bull;
@@ -40,9 +40,9 @@
 
 | Claim | Current result | Evidence |
 |---|---|---|
-| Install path | Published canonical `fastrmemory@0.3.0`; old scoped npm entries removed | `npm view fastrmemory version` -> `0.3.0`; `npm install -g fastrmemory@0.3.0`; `fastr --version` -> `0.3.0` |
+| Install path | Canonical release target `fastrmemory@0.3.1`; old scoped npm entries removed | `npm view fastrmemory version` -> `0.3.1`; `npm install -g fastrmemory@0.3.1`; `fastr --version` -> `0.3.1` |
 | Synthetic retrieval | Holdout `95.8%` Hit@1, `100%` Hit@5, MRR `0.969` | `npx tsx scripts/eval-bench.ts --split all --embeddings minilm --out bench/results/minilm.json` |
-| Test suite | `276` tests across `51` files in `0.3.0`; v0.2.1 is `235` / `43` | `npm test` |
+| Test suite | `282` tests across `52` files in `0.3.1`; v0.2.1 is `235` / `43` | `npm test` |
 | Crash safety | 10/10 runs, 0 lost, 0 duplicate ids/titles | `npm run test:crash`; `bench/results/crash-test.json` |
 | Public retrieval (0.3.0) | LongMemEval `+10.4pp` / `+11.0pp` Hit@5; LoCoMo `+4.4pp` / `+2.3pp` (target missed) | [docs/EXTERNAL_BASELINE.md](docs/EXTERNAL_BASELINE.md) |
 | Release score | Provisional `9.4 / 10`; `9.2` target met; Retrieval remains Partial | [SCORECARD.md](SCORECARD.md) |
@@ -100,7 +100,7 @@ Fuses FTS5 BM25 + optional local embeddings + file-graph links. Error traps rece
 
 ## 🤖 Works With MCP- and HTTP-Compatible Agents
 
-FastrMemory exposes one stdio MCP server and optional local HTTP services (dashboard and daemon). **Native installers wire Claude Code (MCP config plus lifecycle hooks), Cursor (MCP config plus skills), and, on 0.3.0, Gemini CLI, GitHub Copilot CLI, and OpenCode V2** (`fastrmemory hook install`); `fastrmemory setup` also writes MCP configs for Antigravity, Claude Desktop, and Windsurf. Every other client connects through its own MCP configuration or the REST API. Integration depth varies by client - only the native installers are covered by tests in this repository.
+FastrMemory exposes one stdio MCP server and optional local HTTP services (dashboard and daemon). **Native installers wire Claude Code (MCP config plus lifecycle hooks), Cursor (MCP config plus skills), and, since 0.3.0, Gemini CLI, GitHub Copilot CLI, and OpenCode V2** (`fastrmemory hook install`); `fastrmemory setup` also writes MCP configs for Antigravity, Claude Desktop, and Windsurf. Every other client connects through its own MCP configuration or the REST API. Integration depth varies by client - only the native installers are covered by tests in this repository.
 
 Clients commonly used with FastrMemory include Codex CLI, Gemini CLI, OpenCode, GitHub Copilot CLI, Antigravity, Claude Desktop, Cline, Continue, Roo Code, Goose, Zed, Warp, and Aider. Listing a client does **not** imply a tested native integration.
 
@@ -110,56 +110,60 @@ Clients commonly used with FastrMemory include Codex CLI, Gemini CLI, OpenCode, 
 
 ### ⚡ Run Without a Global Install
 
-The canonical package is published as unscoped `fastrmemory@0.3.0`. The old scoped npm entries were removed on 2026-10-23.
+The canonical package target is unscoped `fastrmemory@0.3.1`. The old scoped npm entries were removed on 2026-10-23.
 
 ```bash
 # Canonical one-shot (pins the exact release):
-npx -y fastrmemory@0.3.0 setup
+npx -y fastrmemory@0.3.1 setup
 
 # Or launch the local Web UI:
-npx -y fastrmemory@0.3.0 ui
+npx -y fastrmemory@0.3.1 ui
 ```
 
-The GitHub source path remains available for development only: `npx github:atifjubaer/fastrmemory setup`. For a reproducible source install, pin the tag: `npx github:atifjubaer/fastrmemory#v0.3.0 setup`. Do not use either GitHub form in generated MCP or hook configs; those must pin the npm package version.
+The GitHub source path remains available for development only: `npx github:atifjubaer/fastrmemory setup`. For a reproducible source install, pin the tag: `npx github:atifjubaer/fastrmemory#v0.3.1 setup`. Do not use either GitHub form in generated MCP or hook configs; those must pin the npm package version.
 
 ---
 
 ### Install from npm
 
 ```bash
-# Canonical install (latest is 0.3.0):
+# Canonical install (latest is 0.3.1):
 npm install -g fastrmemory
 fastr --version
 
 # Exact release:
-npm install -g fastrmemory@0.3.0
+npm install -g fastrmemory@0.3.1
 ```
 
 For a one-shot run without a global install:
 
 ```bash
-npx -y fastrmemory@0.3.0 --version
+npx -y fastrmemory@0.3.1 --version
 ```
 
-`0.3.0` was published on 2026-10-22 18:32 UTC; the registry tarball shasum is `e17af4f854bd9231e1f4b3a8efb04d3e5b65f8e2`, and `latest` is `0.3.0`. The old scoped npm entries were removed on 2026-10-23; `npm view fastrmemory versions --json` now returns only `0.3.0`.
+`0.3.1` is built from tag `v0.3.1` by `.github/workflows/release.yml`, which runs the full gate, publishes with npm provenance, and attaches the same tarball to the GitHub Release. Verify the registry result with `npm view fastrmemory@0.3.1 version` and `npm view fastrmemory dist-tags --json`; a first E404 for a few minutes is registry propagation, not a failed publish. The old scoped npm entries remain removed. Do not republish `0.3.0`.
 
 ### Install from GitHub
 
 For a one-shot source run, pin the release tag:
 
 ```bash
-npx --yes github:atifjubaer/fastrmemory#v0.3.0 --version
-npx --yes github:atifjubaer/fastrmemory#v0.3.0 setup
+npx --yes github:atifjubaer/fastrmemory#v0.3.1 --version
+npx --yes github:atifjubaer/fastrmemory#v0.3.1 setup
 ```
 
-For a local project install, pin the release tag:
+For a global CLI without npm's Git resolver, download the release tarball:
 
 ```bash
-npm install --no-save git+https://github.com/atifjubaer/fastrmemory.git#v0.3.0
-npx fastr --version
+curl -L -o fastrmemory-0.3.1.tgz \
+  https://github.com/atifjubaer/fastrmemory/releases/download/v0.3.1/fastrmemory-0.3.1.tgz
+npm install -g ./fastrmemory-0.3.1.tgz
+fastr --version
 ```
 
-> Git installs build from source and are slower than the npm tarball; use `npm install -g fastrmemory` for a global CLI. Both `fastrmemory` and `fastr` (short alias) are executable after installation. The canonical package is unscoped `fastrmemory@0.3.0`; the old scoped npm entries are gone. Use npm for generated MCP and hook configs so installs stay reproducible.
+On Windows, download the same URL with `Invoke-WebRequest` or a browser, then run `npm install -g .\fastrmemory-0.3.1.tgz`. For a local project install, use `npm install --no-save ./fastrmemory-0.3.1.tgz` instead of the global flag.
+
+> Git installs build from source and are slower than the npm tarball; for a global CLI, prefer the npm package or the release tarball above. `npm install -g git+https://...` is not recommended with npm 11 because the `prepare` build does not receive dev dependencies. Both `fastrmemory` and `fastr` (short alias) are executable after installation. The canonical package is unscoped `fastrmemory@0.3.1`; the old scoped npm entries are gone. Use npm for generated MCP and hook configs so installs stay reproducible.
 
 ### 2. Verify Database Health
 
@@ -304,39 +308,39 @@ fastrmemory guard --strict
 
 ## 🔌 One-Click Agent MCP Configuration
 
-Add this JSON block to your agent's MCP settings to enable autonomous memory:
+Use the installer when possible. `fastr setup` writes the platform-correct command (`node` with an absolute CLI path, or `cmd /c npx` where needed) and pins user-scoped clients to the project root. `fastr hook install` writes project-scoped configs and lifecycle hooks. The manual snippets below use `npx` for project-scoped clients; for user-scoped clients (Claude Desktop, Antigravity, Windsurf, and the Claude Code entry in `~/.claude.json`), append `--project /absolute/path/to/repo`.
 
-### Claude Code (`~/.claude.json`)
+### Claude Code (`~/.claude.json`, user-scoped)
 ```json
 {
   "mcpServers": {
     "fastrmemory": {
-      "command": "fastrmemory",
-      "args": ["mcp"]
+      "command": "npx",
+      "args": ["-y", "fastrmemory@0.3.1", "mcp", "--project", "/absolute/path/to/your/repo"]
     }
   }
 }
 ```
 
-### Cursor (`.cursor/mcp.json`)
+### Cursor (`.cursor/mcp.json`, project-scoped)
 ```json
 {
   "mcpServers": {
     "fastrmemory": {
-      "command": "fastrmemory",
-      "args": ["mcp"]
+      "command": "npx",
+      "args": ["-y", "fastrmemory@0.3.1", "mcp"]
     }
   }
 }
 ```
 
-### Gemini CLI (`.gemini/settings.json`, 0.3.0)
+### Gemini CLI (`.gemini/settings.json`, project-scoped, 0.3.0)
 ```json
 {
   "mcpServers": {
     "fastrmemory": {
-      "command": "fastrmemory",
-      "args": ["mcp"]
+      "command": "npx",
+      "args": ["-y", "fastrmemory@0.3.1", "mcp"]
     }
   }
 }
@@ -344,14 +348,14 @@ Add this JSON block to your agent's MCP settings to enable autonomous memory:
 
 `fastrmemory hook install` also merges `SessionStart`, `BeforeTool` (`write_file|replace`), `PreCompress`, and `SessionEnd` hooks into the same project settings file. Gemini CLI requires strict JSON on hook stdout, so the generated commands pass `--format gemini`. Google is transitioning users from Gemini CLI to Antigravity CLI; this integration targets the still-documented `.gemini/settings.json` contract.
 
-### GitHub Copilot CLI (`.github/mcp.json`, 0.3.0)
+### GitHub Copilot CLI (`.github/mcp.json`, project-scoped, 0.3.0)
 ```json
 {
   "mcpServers": {
     "fastrmemory": {
       "type": "local",
-      "command": "fastrmemory",
-      "args": ["mcp"]
+      "command": "npx",
+      "args": ["-y", "fastrmemory@0.3.1", "mcp"]
     }
   }
 }
@@ -359,14 +363,14 @@ Add this JSON block to your agent's MCP settings to enable autonomous memory:
 
 `fastrmemory hook install` also merges `.github/hooks/fastrmemory.json` with `sessionStart`, `preToolUse` (`edit|create|str_replace_editor|apply_patch`), `preCompact`, and `sessionEnd` hooks. Copilot has no model-facing advisory field for `preToolUse`, so an active trap returns `permissionDecision: "ask"` with the warning; autopilot/non-interactive mode treats `ask` as deny. The shared `AGENTS.md` written by the installer supplies repository instructions.
 
-### OpenCode V2 (`opencode.json`, 0.3.0)
+### OpenCode V2 (`opencode.json`, project-scoped, 0.3.0)
 ```json
 {
   "mcp": {
     "servers": {
       "fastrmemory": {
         "type": "local",
-        "command": ["fastrmemory", "mcp"]
+        "command": ["npx", "-y", "fastrmemory@0.3.1", "mcp"]
       }
     }
   }
@@ -375,15 +379,17 @@ Add this JSON block to your agent's MCP settings to enable autonomous memory:
 
 `fastrmemory hook install` also writes `.opencode/plugins/fastrmemory/index.ts`, which injects the session-start handoff and critical rules into model context and captures a snapshot before compaction. Existing `opencode.json(c)` settings are preserved; JSONC configs are left untouched and reported for manual wiring.
 
+> **Native Windows:** clients that cannot launch the `npx.cmd` shim directly should use `"command": "cmd"` and `"args": ["/c", "npx", "-y", "fastrmemory@0.3.1", "mcp"]` (add `--project` for user-scoped clients). `fastr setup` writes the absolute `node` path automatically and is the recommended path.
+
 ---
 
 ## 🛠️ MCP Server: Tools & Resources
 
-Built using the official **v2 `@modelcontextprotocol/server`** SDK. The tool list below describes **0.3.0**; the v0.2.1 release has 4 resources.
+Built using the official **v2 `@modelcontextprotocol/server`** SDK. The tool list below describes **0.3.1** (unchanged from 0.3.0); the v0.2.1 release has 4 resources.
 
 ### 41 MCP Tools
 
-The default **full profile** exposes all 41 tools. For a smaller schema, start the **core profile** with `fastrmemory mcp --profile core` or `FASTR_MCP_PROFILE=core`; it exposes the 12-tool daily loop: `fastr_recall`, `fastr_remember`, `fastr_handoff`, `fastr_trap_recall`, `fastr_trap_log`, `fastr_status`, `fastr_get`, `fastr_timeline`, `fastr_diff`, `fastr_replay`, `fastr_compress`, and `fastr_diagnose`. Resources and prompts are the same in both profiles.
+The default **full profile** exposes all 41 tools. For a smaller schema, start the **core profile** with `fastrmemory mcp --profile core` or `FASTR_MCP_PROFILE=core`; it exposes the 12-tool daily loop: `fastr_recall`, `fastr_remember`, `fastr_handoff`, `fastr_trap_recall`, `fastr_trap_log`, `fastr_status`, `fastr_get`, `fastr_timeline`, `fastr_diff`, `fastr_replay`, `fastr_compress`, and `fastr_diagnose`. Resources and prompts are the same in both profiles. Pass `--project /absolute/path/to/repo` when the host starts the server outside the repository, so memory is written to the intended `.fastr/fastr.db`.
 
 #### Cognitive Retrieval & Memory Core
 1. `fastr_recall`: Triple-stream hybrid search (BM25 + Vector + Spreading Activation Graph) with progressive L0–L3 token budgeting and air-gapped offline vector fallback.
@@ -557,7 +563,7 @@ Run the comprehensive unit test suite:
 npm test
 ```
 
-All **276 tests pass** across **51 test files** in 0.3.0 (the v0.2.1 release has **235 tests / 43 files**) covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, branch merge conflict reports, replay/diff, memory envelopes, confidence tiers and 3-bad dormancy, memory hygiene checks, Memory CI, conflict-aware recall, portable backup manifests and verified restore, local rule import, OpenCode V2, Gemini CLI, and Copilot CLI wiring, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, UI loopback security boundaries, and atomic installer configuration safety.
+All **282 tests pass** across **52 test files** in 0.3.1 (the v0.2.1 release has **235 tests / 43 files**) covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, branch merge conflict reports, replay/diff, memory envelopes, confidence tiers and 3-bad dormancy, memory hygiene checks, Memory CI, conflict-aware recall, portable backup manifests and verified restore, local rule import, OpenCode V2, Gemini CLI, and Copilot CLI wiring, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, UI loopback security boundaries, and atomic installer configuration safety.
 
 **CI performance gates:** `check:query-plans`, `check:recall-latency`, and `check:install-size` run inside `check:ci`. CI executes them on the canonical Ubuntu/Node 24 job; other matrix jobs set `FASTR_PERF_GATE=0` because timing is runner-sensitive, while functional tests still run on every matrix entry.
 
@@ -675,7 +681,7 @@ Special thanks to **[@the-arizul](https://github.com/the-arizul)** for architect
    cd fastrmemory
    ```
 
-2. **Install Dependencies & Verify Test Suite (276 Tests Passing)**:
+2. **Install Dependencies & Verify Test Suite (282 Tests Passing)**:
    ```bash
    npm install
    npm test
@@ -708,7 +714,7 @@ Special thanks to **[@the-arizul](https://github.com/the-arizul)** for architect
 Before submitting your PR, verify:
 - [ ] **Strict TypeScript**: `npm run build:all` passes without type errors.
 - [ ] **Zero External Daemons**: Engine runs in-process via Node.js WAL SQLite.
-- [ ] **100% Test Green**: `npm test` passes all 276 unit tests across 51 files.
+- [ ] **100% Test Green**: `npm test` passes all 282 unit tests across 52 files.
 - [ ] **DCO Sign-off**: All commits signed off using `git commit -s` ([Developer Certificate of Origin](https://developercertificate.org/)).
 - [ ] **Pre-Merge Trap Guardian**: Run `fastrmemory guard --strict` to verify no active error traps are violated.
 

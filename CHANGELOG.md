@@ -2,6 +2,30 @@
 
 All notable changes to FastrMemory are recorded here. Versions follow semantic versioning.
 
+## [0.3.1] - 2026-10-23
+
+Release target published by `.github/workflows/release.yml` with npm provenance and a matching GitHub Release tarball. This release replaces the stale `0.3.0` npm README, fixes Windows MCP launch commands, pins user-scoped clients to the project root, and adds a Node runtime guard before `node:sqlite` is loaded.
+
+### Added
+
+- `bin/fastr-guard.mjs`: a dependency-free CLI entry point that fails with a clear message on Node `< 22.16.0` before the `node:sqlite` import is evaluated.
+- `fastr mcp --project <path>`: explicit project-root selection for clients that launch outside the repository.
+- User-scoped installer entries (`Claude Desktop`, `Antigravity`, `Claude Code` in `~/.claude.json`, and `Windsurf`) now append `--project` with the absolute project root. Project-scoped Cursor config remains unqualified.
+- `.github/workflows/release.yml`: tag-driven full gate, production audit, clean tarball install, npm provenance publish, registry verification, and GitHub Release asset upload.
+- `scripts/check-release-version.mjs` and `tests/node-guard.test.ts`.
+
+### Changed
+
+- Package and manifests are `0.3.1`; generated MCP and hook configs pin `fastrmemory@0.3.1`.
+- Manual MCP snippets use pinned `npx` commands and document the native Windows `cmd /c npx` form.
+- Test suite is 282 tests across 52 files.
+
+### Fixed
+
+- Windows clients can no longer fail on a bare `npx.cmd` shim when using the installer; `fastr setup` writes an absolute `node` path.
+- User-scoped clients no longer depend on their launch directory to select `.fastr/fastr.db`.
+- npm README no longer points at the removed `@atifjubaer/fastrmemory@0.2.1` package.
+
 ## [0.3.0] - 2026-10-22
 
 Published as canonical unscoped `fastrmemory@0.3.0` on 2026-10-22 18:32 UTC from tag `v0.3.0` (`50a7d8f`). `npm view fastrmemory version` returns `0.3.0`; `latest` is `0.3.0`; registry tarball shasum `e17af4f854bd9231e1f4b3a8efb04d3e5b65f8e2`. The old scoped npm entries (`@atifjubaer/fastrmemory` and `fastrmemory@0.0.0-stage`) were removed on 2026-10-23; the GitHub `v0.2.1` tag/release remains as history. See [docs/npm-publishing.md](docs/npm-publishing.md).
