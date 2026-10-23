@@ -37,11 +37,9 @@ export function SettingsPage() {
   const memories = useMemories();
   const s = status.data;
 
-  const mcpEntry = s?.mcp ?? {
-    command: 'npx',
-    args: ['-y', `fastrmemory@${s?.version ?? '0.4.0'}`, 'mcp', '--project', s?.projectRoot ?? '<project-root>'],
-  };
-  const mcpJson = JSON.stringify({ mcpServers: { fastrmemory: mcpEntry } }, null, 2);
+  const mcpJson = s
+    ? JSON.stringify({ mcpServers: { fastrmemory: s.mcp } }, null, 2)
+    : 'Loading MCP config…';
 
   return (
     <div className="flex max-w-3xl flex-col gap-4">
@@ -175,7 +173,9 @@ export function SettingsPage() {
         <CardContent>
           <div className="relative">
             <pre className="overflow-x-auto rounded-lg border bg-muted/50 p-3 font-mono text-xs">{mcpJson}</pre>
-            <CopyButton text={mcpJson} description="Copy MCP config" variant="ghost" className="absolute top-2 right-2" />
+            {s && (
+              <CopyButton text={mcpJson} description="Copy MCP config" variant="ghost" className="absolute top-2 right-2" />
+            )}
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
             Uses the local CLI when available; otherwise it pins the npm package. On Windows the registry config uses{' '}

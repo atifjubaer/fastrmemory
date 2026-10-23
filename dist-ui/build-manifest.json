@@ -3,7 +3,7 @@
   "generator": "scripts/build-dist-ui-manifest.mjs",
   "uiRoot": "ui",
   "outputRoot": "dist-ui",
-  "sourceHash": "3d334d70681b4a6579999edc28d316ac6d6efaad8f67b9d570364c5becdf3d7d",
+  "sourceHash": "503b99d5ba69ea8af72a4aec3cf04a732c565d11c1749e7b5866634218f943c3",
   "sources": {
     "ui/components.json": "40ae7e0306e52e38bf99373f31512e2a5ad29615c95f537677db1d339174de63",
     "ui/index.html": "e220c31aa5831bf41b969ab100bb09798630d8d65f24765a9090dcf1447679b2",
@@ -72,7 +72,7 @@
     "ui/src/routes/ObservatoryPage.tsx": "f9a155f55329e639dbba86f834d943062a16afd6323300dae9a3b71e680be817",
     "ui/src/routes/ReplayPage.tsx": "985e6aaaf133357b612167660805c7588e01b2705bc24207b6aa14bc96ab56d1",
     "ui/src/routes/SearchLabPage.tsx": "72498788cc28a06e0a74470118b9b1240541211735814a361df001d70af51c04",
-    "ui/src/routes/SettingsPage.tsx": "94994fbd84b4b243e80150d6c038a265db96e24f2ca5a528fe9ef7f7975271ae",
+    "ui/src/routes/SettingsPage.tsx": "c91d6c2015d1aca24bc51b5e18f0d731e99cb73d91d6be72a12d9643241294f8",
     "ui/src/routes/TrapsPage.tsx": "4d7f23a025cb17c2d7ea8da5189e59451132961b0a6e5088a644ede3c70fe15e",
     "ui/src/routes/TreemapPage.tsx": "bc22b7cece9180805d734d66f2ca9d0e72d849ae1a54972702cfd6f8d870e1e1",
     "ui/src/utils/squarify.ts": "a52dd340fe73164807e04ce3ceac586f1d25ecd3c5a8cd4263f8349893cb78a3",
@@ -80,16 +80,16 @@
     "ui/vite.config.ts": "be3b5aa477fd1d2e770c6e99c4d53178b0822b4171adde32b285696047b02b19"
   },
   "files": {
-    "assets/ActionsPage-vH1M_aFs.js": "806f6505b2a8e4e5a871b4adc148e95f59a3b40549dc4df2b269c07e33f5db9e",
-    "assets/GraphPage-CGne8L4t.js": "adcd92ba90cb250bda43d0726b75f7e4ee6e66365ef5a668cb978c1e45e60bfd",
-    "assets/index-1-ur-IDs.js": "9a461a4e728c6b9c30c1f5b48353833f9b34cd76309a618f810f473467cc8217",
+    "assets/ActionsPage-C5HF_3da.js": "6e9e9cb07ecda7bb4783928066ecf254bbdc680f7207e21ff5b8be4fa7548f27",
+    "assets/GraphPage-D3CKDOGf.js": "4ffc34954505f03442ee940d0f110e040333c7130327563c8cc0fc4edf2fc0b6",
+    "assets/index-B7VBztuv.js": "5ba0fb11cfd354274ff962d5967e53405df73527072224e34617d76107365567",
     "assets/index-Ca9pma3Q.css": "f1cb8e4f91f44c1eedcdfed2e1b2457d9c4b49190727c50e5b5a2d22ad616f48",
-    "assets/maximize-2-D4SoOShK.js": "7e0d156f20b7a9932bdf8575e256ed1b60d0d75d558cb31ce6461455b8f63f37",
-    "assets/ObservatoryPage-zZcis_1H.js": "21643dcb889d6928de9b90f59ca34230f1195bd0c714ec339a75bc63542b3c02",
+    "assets/maximize-2-KDxPhf1Q.js": "50dddbfd5b2b74f824fe9a94443da0ed0202f1d507d8009d98c2e3c68ec5b2bd",
+    "assets/ObservatoryPage-DfdWSKoA.js": "455e97a18645dca1b4b2574cb4f20ea85b13cb533f752b83e2563a3744e5be99",
     "assets/query-fe9kutlk.js": "44a5c6682b4595c47fe6a6b91dd1d4a4ab3e8503eed6a18abbfacbe356ae3a00",
     "assets/three-CjKLTR5c.js": "d83f62405579c59aac4c18d513e53ac0a9eef8c78f45b2e5999eac9f4bafaf10",
-    "assets/TreemapPage-BwUWHNiF.js": "525f9707dd70ed2fedf9114a77b60604ea92a1dd38b721a648a65cfe133b22aa",
+    "assets/TreemapPage-DlhjPfPB.js": "162633e5d3ee62bee80882ebbaf524f46e8d13073e3f4b312af5e2750ec6ee70",
     "assets/vendor-wVc5lIPn.js": "27b169519376edf90743a8d45ccf327a9d4d12d20118f91da67a23ed6bcbde3a",
-    "index.html": "08f4cd4f9e4c4db95c97015a573a3ba8a54e714ee5c67fa1b3fce68d2b8c29fe"
+    "index.html": "f00d8aad35354b587fe71fd66ba5c28e9a6bc5859f7512f367b9969d0a1024ed"
   }
 }
