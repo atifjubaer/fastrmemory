@@ -1,8 +1,9 @@
 # Migration Guide
 
 **Current release:** `0.3.1` (published 2026-10-22 23:02 UTC; unscoped npm package and `latest`; `0.3.0` remains published historical)
+**Prepared release:** `0.4.0` (on `main`; not tagged or published as of 2026-10-23; no schema migration)
 **Historical release:** `0.2.1` (GitHub Release; npm entry removed 2026-10-23)
-**Applies to:** `0.1.x` → `0.2.x` → `0.3.1` (the `0.3.0` migration steps apply unchanged; `0.3.1` is a patch)
+**Applies to:** `0.1.x` → `0.2.x` → `0.3.1` (the `0.3.0` migration steps apply unchanged; `0.3.1` is a patch; `0.4.0` adds CLI/config and line-ending changes only)
 
 FastrMemory stores memory in a local SQLite database. Schema setup is additive: new tables are created with `CREATE TABLE IF NOT EXISTS`, and the `provenance_hash` column is added when missing. There is no destructive schema rewrite. That does not replace a backup. Stop every agent, hook, daemon, and dashboard before upgrading or rolling back.
 
@@ -93,6 +94,10 @@ What changes:
 
 Schema additions are automatic. No manual SQL is required. Branch pointers and merge logs are additive; merging is one-way into the current active set.
 
+### 0.4.0 preparation (not published)
+
+The current `main` package is `0.4.0`. It adds `fastr mcp init`, LF checkout enforcement, and documentation updates, with no schema migration. Do not install `fastrmemory@0.4.0` from npm until the release workflow publishes it; `0.3.1` remains `latest`. Once published, install the exact version and run the same `fastr status` and `fastr hygiene` checks shown above.
+
 ## 4. Verify the upgrade
 
 ```bash
@@ -160,5 +165,5 @@ Do not assume that an older binary can read a database written by a newer binary
 - There is no automatic database downgrade command.
 - `fastr backup` and `fastr snapshot export` are logical and do not include the SQLite WAL file. The backup scope is memories, raw events, file links, and conflicts; it does not include feedback history, snapshots, branches, action DAG rows, or vision assets. Use the physical `.fastr/fastr.db*` copy for a complete database backup.
 - `fastr backup --restore` verifies the sidecar manifest and file hash before writing; the import runs in one SQLite transaction, but stop other writers first.
-- npm `0.3.1` is `latest`; `0.3.0` remains published as a historical version. The `0.2.1` npm entry was removed, but its GitHub Release tarball remains for rollback.
-- Pin the exact published version for reproducible installs: `0.3.1`.
+- npm `0.3.1` is `latest`; `0.3.0` remains published as a historical version. `0.4.0` is prepared on `main` but not published. The `0.2.1` npm entry was removed, but its GitHub Release tarball remains for rollback.
+- Pin the exact published version for reproducible installs: `0.3.1` until `0.4.0` publishes.

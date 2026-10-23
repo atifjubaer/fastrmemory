@@ -2,6 +2,29 @@
 
 All notable changes to FastrMemory are recorded here. Versions follow semantic versioning.
 
+## [0.4.0] - 2026-10-23
+
+**Prepared on `main`; not tagged or published as of 2026-10-23.** `fastrmemory@0.3.1` remains the published npm `latest` release. The source package and release manifests are `0.4.0`; this entry records the prepared release surface and will gain publish evidence after the tag-driven workflow runs.
+
+### Added
+
+- `fastr mcp init`: config-only MCP setup for Claude Code, Cursor, VS Code, OpenCode, Gemini CLI, GitHub Copilot CLI, Windsurf, Antigravity, and Claude Desktop (9 JSON clients), plus a Codex TOML snippet for `~/.codex/config.toml`. Supports project and user scopes, `npx` / `pnpm dlx` / `yarn dlx` / `bunx` runners, `latest` and pinned channels, `--profile core`, `--dry-run`, `--json`, and idempotent merges with `.fastr.bak` backups.
+- `.gitattributes` and `.editorconfig`: enforce LF checkout and editor defaults so LF-sensitive tests do not fail on Windows with `core.autocrlf=true`.
+
+### Changed
+
+- Package, lockfile, MCP registry manifest, Claude plugin manifests, and skills metadata are `0.4.0`; generated `--channel pinned` configs pin `fastrmemory@0.4.0`.
+- README now documents package-runner quick starts and the `mcp init` client matrix; roadmap and contribution sections were removed, with contributor credit retained in `CONTRIBUTING.md`.
+- Test suite is 293 tests across 53 files. CI run `39878169687` at `2faaf9e` passed all six matrix jobs on 2026-10-23, including Windows Node `22.x` and `24.x`.
+
+### Fixed
+
+- Windows checkouts no longer convert LF-sensitive test fixtures to CRLF when `core.autocrlf=true`.
+
+### Release caveat
+
+- `0.4.0` is not installable from npm until the release workflow publishes it. `npx fastrmemory@latest mcp init` still resolves to published `0.3.1`, and `--channel pinned` writes the unpublished `fastrmemory@0.4.0` from current `main`. There is no schema migration.
+
 ## [0.3.1] - 2026-10-23
 
 Published 2026-10-22 23:02:38 UTC from tag `v0.3.1` (`3a3cac6`) by `.github/workflows/release.yml` using GitHub Actions OIDC trusted publishing. `npm view fastrmemory version` returns `0.3.1` and `latest` is `0.3.1`; release workflow run `39868908223` passed the full gate, clean install, provenance publish, registry verification, and GitHub Release upload. The GitHub Release tarball SHA-256 is `747f61791dcb7c5694f3cf5cc8705152892a5b16cb33bec51a356fc22112a7b8`. This release replaces the stale `0.3.0` npm README, fixes Windows MCP launch commands, pins user-scoped clients to the project root, and adds a Node runtime guard before `node:sqlite` is loaded.

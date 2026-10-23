@@ -1,6 +1,6 @@
 # Official Model Context Protocol Registry Submission
 
-> **Status (2026-10-23): ready to submit for 0.3.1.** The canonical unscoped `fastrmemory@0.3.1` is published and `latest`; root `server.json` pins that version. `npm view fastrmemory version` returns `0.3.1`. The old scoped `@atifjubaer/fastrmemory@0.2.1` npm entry was removed on 2026-10-23. This entry has not been submitted to the MCP registry yet.
+> **Status (2026-10-23): 0.3.1 published; 0.4.0 prepared, not submitted.** The canonical unscoped `fastrmemory@0.3.1` is published and `latest`; root `server.json` now pins the prepared `0.4.0` release, which is not published yet. `npm view fastrmemory version` returns `0.3.1`. The old scoped `@atifjubaer/fastrmemory@0.2.1` npm entry was removed on 2026-10-23. Use the 0.3.1 commands below for any current submission; do not submit the 0.4.0 manifest until the package publishes. This entry has not been submitted to the MCP registry yet.
 
 Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers) under the **Memory & Cognitive Engines** section.
 
@@ -53,4 +53,4 @@ Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://gi
 }
 ```
 
-> Version note: `fastrmemory@0.3.1` is published and `latest`; pin it for registry installs. The full 41-tool surface is the default; pass `--profile core` for the 12-tool daily loop. On native Windows, use `cmd /c npx ...` if the client cannot launch `npx` directly.
+> Version note: `fastrmemory@0.3.1` is published and `latest`; pin it for registry installs. `0.4.0` is prepared in `server.json` but is not published; do not submit or install it from npm until the release workflow completes. The full 41-tool surface is the default; pass `--profile core` for the 12-tool daily loop. On native Windows, use `cmd /c npx ...` if the client cannot launch `npx` directly.

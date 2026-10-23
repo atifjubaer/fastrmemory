@@ -1,6 +1,8 @@
 # Scorecard
 
 > **0.3.1 release (2026-10-23):** `fastrmemory@0.3.1` is published and npm `latest`. The release passes **282 tests / 52 files**; release workflow run `39868908223` passed the full gate, provenance publish, registry verification, and GitHub Release upload. `0.3.0` remains published historical.
+>
+> **0.4.0 preparation (2026-10-23):** `0.4.0` is prepared on `main` and is not tagged or published. This scorecard remains the published `0.3.1` release assessment; update it after the `0.4.0` workflow publishes.
 
 **Evidence date:** 2026-10-23
 **Code evidence:** `0e0cb8d` (282 tests / 52 files); remote CI run `4164a9c` is 6/6 green in run `39847701573`; release tag `v0.3.1` (`3a3cac6`)
