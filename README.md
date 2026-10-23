@@ -170,7 +170,7 @@ fastr hygiene
 
 ### One-Command MCP Setup
 
-`fastr mcp init` is the shadcn-style setup path. It is config-only: it merges the `fastrmemory` MCP entry into an existing client config, preserves unrelated keys, writes a one-time `.fastr.bak` backup, and is idempotent. It does not install lifecycle hooks, skills, or the OpenCode plugin; use `fastr hook install` for those.
+`fastr mcp init` is the shadcn-style setup path. It is config-only: it merges the `fastrmemory` MCP entry into an existing client config, preserves unrelated keys, writes a one-time `.fastr.bak` backup, and is idempotent. It does not install lifecycle hooks, skills, or the OpenCode plugin; use `fastr hook install` for hooks and the OpenCode plugin, and `fastr setup` for skills.
 
 ```bash
 # Claude Code (project-scoped .mcp.json)
@@ -324,9 +324,10 @@ fastrmemory daemon start
 fastrmemory daemon status
 fastrmemory daemon stop
 
-# Auto-wire MCP configs, lifecycle hooks, and Planetary Skills into Claude Code, Cursor,
-# Gemini CLI, GitHub Copilot CLI, and OpenCode; setup also wires Antigravity, Claude Desktop, and Windsurf:
+# Auto-wire MCP + lifecycle hooks for Claude Code, Cursor, Gemini CLI, Copilot CLI, and OpenCode:
 fastrmemory hook install
+
+# Auto-wire MCP + AGENTS.md + Planetary Skills; setup also wires Antigravity, Claude Desktop, and Windsurf:
 fastrmemory setup
 
 # Mine past Git bug fixes directly into staging error traps:
