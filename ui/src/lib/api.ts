@@ -67,7 +67,11 @@ export interface ProjectStatus {
 export interface FastrStatus {
   projectId: string;
   projectName: string;
+  projectRoot: string;
   dbPath: string;
+  version: string;
+  platform: string;
+  isHomeProject: boolean;
   status: ProjectStatus;
   trapsCount: number;
   activeCount: number;

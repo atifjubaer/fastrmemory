@@ -3,7 +3,7 @@
   "generator": "scripts/build-dist-ui-manifest.mjs",
   "uiRoot": "ui",
   "outputRoot": "dist-ui",
-  "sourceHash": "6c553dde3079236c68384a31897932a0795a6870e2516d263ac52a440ab2b023",
+  "sourceHash": "aa351903bf37e154a4a9d12c19f1e10b2f7d29a13eb1cc9a060fd3c507bc2592",
   "sources": {
     "ui/components.json": "40ae7e0306e52e38bf99373f31512e2a5ad29615c95f537677db1d339174de63",
     "ui/index.html": "e220c31aa5831bf41b969ab100bb09798630d8d65f24765a9090dcf1447679b2",
@@ -52,7 +52,7 @@
     "ui/src/hooks/useMediaQuery.ts": "ff26dc14cc521ad86fdf120392fc1c96fa95e9a902bfecbe618c015cd4c1c808",
     "ui/src/hooks/useMemoryActions.ts": "e04f27956592c7f3cb8e3adf8aab41e28d7b3ea21dd4745eb9221f6807c0cbb7",
     "ui/src/index.css": "38d745d60c2b718b6f021546515f8872dfd7987b9a76c56640aece7f03b8f433",
-    "ui/src/lib/api.ts": "f6806505d80b82d59514b55d7f29bde67760fd931fc04d2024cec3137e28498b",
+    "ui/src/lib/api.ts": "19ba2a0545044df8145900e364ee849a5b91ddf932b37f5872efff4f0524c497",
     "ui/src/lib/diff.ts": "1e56fd1c13ce791484f8c0c1e69fe7aa897878343363f4aa14de7987377d216e",
     "ui/src/lib/format.ts": "2b75729c64c1f19af51aa47a5ecf003740efe240a91eb6e4e18db5ab769527c3",
     "ui/src/lib/glossary.ts": "f18ea064db60e3528d41e6846b7fc604effe3d06b26e7a02dfabf142cda38767",
@@ -72,7 +72,7 @@
     "ui/src/routes/ObservatoryPage.tsx": "f9a155f55329e639dbba86f834d943062a16afd6323300dae9a3b71e680be817",
     "ui/src/routes/ReplayPage.tsx": "985e6aaaf133357b612167660805c7588e01b2705bc24207b6aa14bc96ab56d1",
     "ui/src/routes/SearchLabPage.tsx": "72498788cc28a06e0a74470118b9b1240541211735814a361df001d70af51c04",
-    "ui/src/routes/SettingsPage.tsx": "c3a7ecc4cd95b292fe0bcbd633f1f82642efa67fd00bf674de7bf7ae70785489",
+    "ui/src/routes/SettingsPage.tsx": "63d8d06ce349841c48e5db8b4d5153edd796e65e8db62bfa893c6b621fce5354",
     "ui/src/routes/TrapsPage.tsx": "4d7f23a025cb17c2d7ea8da5189e59451132961b0a6e5088a644ede3c70fe15e",
     "ui/src/routes/TreemapPage.tsx": "bc22b7cece9180805d734d66f2ca9d0e72d849ae1a54972702cfd6f8d870e1e1",
     "ui/src/utils/squarify.ts": "a52dd340fe73164807e04ce3ceac586f1d25ecd3c5a8cd4263f8349893cb78a3",
@@ -80,16 +80,16 @@
     "ui/vite.config.ts": "be3b5aa477fd1d2e770c6e99c4d53178b0822b4171adde32b285696047b02b19"
   },
   "files": {
-    "assets/ActionsPage-B3quzFNF.js": "d5e4a59adcfc232a257e38fdeae8de2ab5d6d69f7495326108c43bdd166b8671",
-    "assets/GraphPage-DetiATmC.js": "2da84c55e557d855ebe9945e7bebc2b508031bea70906402469be50c650f1a6e",
-    "assets/index-BJnPINTu.css": "718a40e10df13b00f35e37e75a3fcc215b060fa8094188d2a24750e7f67f0056",
-    "assets/index-DWAH--Fu.js": "bc3d865a13bcd6e9a8cce975cb7f7cad6b6818c2cf4b239517a7f10041ce33c1",
-    "assets/maximize-2-BebkGbZA.js": "644a5aad7dbed131bdefa138e517c3abbbc8f31d5da0461e321c8c366f2c6ec4",
-    "assets/ObservatoryPage-QIGMwENf.js": "a38fb2a1c13cc9709c30bfbfc1b8282db2e0e914e02099e185f03dbf771165cd",
+    "assets/ActionsPage-BiLZ34C4.js": "f21fcdbf41dea01235c4b7ee26372357b959833a7dc2f4182fef1926d214791c",
+    "assets/GraphPage-BuO75PJI.js": "9c6b14d7e5551566200ed9177b565f050bbcac440483adacabdbdf42596d1409",
+    "assets/index-BueAdFyC.js": "a23bb16e487e31d5ca217cad9b76257cd13956f22b55a9efab5ba0e2c0569dd4",
+    "assets/index-Ca9pma3Q.css": "f1cb8e4f91f44c1eedcdfed2e1b2457d9c4b49190727c50e5b5a2d22ad616f48",
+    "assets/maximize-2-Da7IY19i.js": "2cacdf8513ac5f7627e7dbcc8c7d88b7d9a31d885fc06e9051039aeffae8a3fb",
+    "assets/ObservatoryPage-Ci8rNL-d.js": "f9b1a5f33864dededb1bce7f951569dab9038525b04d1c0a78caab9cf97fe548",
     "assets/query-fe9kutlk.js": "44a5c6682b4595c47fe6a6b91dd1d4a4ab3e8503eed6a18abbfacbe356ae3a00",
     "assets/three-CjKLTR5c.js": "d83f62405579c59aac4c18d513e53ac0a9eef8c78f45b2e5999eac9f4bafaf10",
-    "assets/TreemapPage-C7uLZd37.js": "e25c9f2b4faa823e4c178536294165fe3470dff8e18715221cc521e7dde96094",
+    "assets/TreemapPage-CXNCN9Kk.js": "c13df307187911ecf5e220bffe5fe0370d5eb7cd2d0a94ad7b471a49bf7a9d4a",
     "assets/vendor-wVc5lIPn.js": "27b169519376edf90743a8d45ccf327a9d4d12d20118f91da67a23ed6bcbde3a",
-    "index.html": "96e889d3ec816f04b0a885a0a32c76699c5ced6bf03cbc409cc7e1d636129247"
+    "index.html": "d7b079ee157db8a4261217e174092aa5675f7d3622cd4bba8b83b6593c739b1e"
   }
 }

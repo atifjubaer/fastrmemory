@@ -1,9 +1,11 @@
 import * as http from 'node:http';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import * as os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { exec } from 'node:child_process';
 import { FastrConfig } from '../config.js';
+import { PACKAGE_VERSION } from '../version.js';
 import { initDatabase } from '../db/schema.js';
 import { FastrRepository } from '../db/repository.js';
 import { SpoolManager } from '../db/spool.js';
@@ -274,7 +276,11 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
         res.end(JSON.stringify({
           projectId: config.projectId,
           projectName: config.projectName,
+          projectRoot: config.projectRoot,
           dbPath: config.dbPath,
+          version: PACKAGE_VERSION,
+          platform: process.platform,
+          isHomeProject: path.resolve(config.projectRoot) === path.resolve(os.homedir()),
           status,
           trapsCount: traps.length,
           activeCount: memories.length,
