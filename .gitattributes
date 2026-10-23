@@ -1,0 +1,18 @@
+# Keep text sources LF on every platform. Windows checkouts default to CRLF,
+# which makes Vitest fail to parse the TypeScript test suite.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tgz binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
