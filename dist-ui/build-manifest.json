@@ -3,7 +3,7 @@
   "generator": "scripts/build-dist-ui-manifest.mjs",
   "uiRoot": "ui",
   "outputRoot": "dist-ui",
-  "sourceHash": "503b99d5ba69ea8af72a4aec3cf04a732c565d11c1749e7b5866634218f943c3",
+  "sourceHash": "c845c640ca236d968303bbc7f3616f09a503a55b21cd5aa619c13025e4247e0a",
   "sources": {
     "ui/components.json": "40ae7e0306e52e38bf99373f31512e2a5ad29615c95f537677db1d339174de63",
     "ui/index.html": "e220c31aa5831bf41b969ab100bb09798630d8d65f24765a9090dcf1447679b2",
@@ -52,7 +52,7 @@
     "ui/src/hooks/useMediaQuery.ts": "ff26dc14cc521ad86fdf120392fc1c96fa95e9a902bfecbe618c015cd4c1c808",
     "ui/src/hooks/useMemoryActions.ts": "e04f27956592c7f3cb8e3adf8aab41e28d7b3ea21dd4745eb9221f6807c0cbb7",
     "ui/src/index.css": "38d745d60c2b718b6f021546515f8872dfd7987b9a76c56640aece7f03b8f433",
-    "ui/src/lib/api.ts": "1233fdcea115f0afaa157ea1241454293d43d094f31eafc171129bb5af80a520",
+    "ui/src/lib/api.ts": "54bf6f8f8a3a5cc44b24a8a6a82128e755f3a399508f024966da386c1c95b57e",
     "ui/src/lib/diff.ts": "1e56fd1c13ce791484f8c0c1e69fe7aa897878343363f4aa14de7987377d216e",
     "ui/src/lib/format.ts": "2b75729c64c1f19af51aa47a5ecf003740efe240a91eb6e4e18db5ab769527c3",
     "ui/src/lib/glossary.ts": "f18ea064db60e3528d41e6846b7fc604effe3d06b26e7a02dfabf142cda38767",
@@ -72,7 +72,7 @@
     "ui/src/routes/ObservatoryPage.tsx": "f9a155f55329e639dbba86f834d943062a16afd6323300dae9a3b71e680be817",
     "ui/src/routes/ReplayPage.tsx": "985e6aaaf133357b612167660805c7588e01b2705bc24207b6aa14bc96ab56d1",
     "ui/src/routes/SearchLabPage.tsx": "72498788cc28a06e0a74470118b9b1240541211735814a361df001d70af51c04",
-    "ui/src/routes/SettingsPage.tsx": "c91d6c2015d1aca24bc51b5e18f0d731e99cb73d91d6be72a12d9643241294f8",
+    "ui/src/routes/SettingsPage.tsx": "574028c03cc6e7afcfeb64784df8542346f83a9c53fee949c26c95b80efe40e3",
     "ui/src/routes/TrapsPage.tsx": "4d7f23a025cb17c2d7ea8da5189e59451132961b0a6e5088a644ede3c70fe15e",
     "ui/src/routes/TreemapPage.tsx": "bc22b7cece9180805d734d66f2ca9d0e72d849ae1a54972702cfd6f8d870e1e1",
     "ui/src/utils/squarify.ts": "a52dd340fe73164807e04ce3ceac586f1d25ecd3c5a8cd4263f8349893cb78a3",
@@ -80,16 +80,16 @@
     "ui/vite.config.ts": "be3b5aa477fd1d2e770c6e99c4d53178b0822b4171adde32b285696047b02b19"
   },
   "files": {
-    "assets/ActionsPage-C5HF_3da.js": "6e9e9cb07ecda7bb4783928066ecf254bbdc680f7207e21ff5b8be4fa7548f27",
-    "assets/GraphPage-D3CKDOGf.js": "4ffc34954505f03442ee940d0f110e040333c7130327563c8cc0fc4edf2fc0b6",
-    "assets/index-B7VBztuv.js": "5ba0fb11cfd354274ff962d5967e53405df73527072224e34617d76107365567",
+    "assets/ActionsPage-CI-IRMeS.js": "21b3b0c5ce4080b271d08a6e0ab2c7b711704eb27b0d05cc6fc9082a6ae98633",
+    "assets/GraphPage-BdYMF7yz.js": "fa957a43d03b041a7e2d53eae847f99497088d09a6636c0c9ef809eaa8e601cb",
     "assets/index-Ca9pma3Q.css": "f1cb8e4f91f44c1eedcdfed2e1b2457d9c4b49190727c50e5b5a2d22ad616f48",
-    "assets/maximize-2-KDxPhf1Q.js": "50dddbfd5b2b74f824fe9a94443da0ed0202f1d507d8009d98c2e3c68ec5b2bd",
-    "assets/ObservatoryPage-DfdWSKoA.js": "455e97a18645dca1b4b2574cb4f20ea85b13cb533f752b83e2563a3744e5be99",
+    "assets/index-MlNuiu0T.js": "bf7f75b42f41d7187d87c7c9b39959d5ff8dbca89a7764b5cf073d128c31429e",
+    "assets/maximize-2-_nvSvCC7.js": "9d2f783951ab344a59bfe49fed8f3ff1ae7dc921448fbf832d1e98c271e6165e",
+    "assets/ObservatoryPage-BG_vg8B9.js": "b53b1f71a7e003a2bf3a71cd6398a2ea42388f99fe07980fb4713a506fab500f",
     "assets/query-fe9kutlk.js": "44a5c6682b4595c47fe6a6b91dd1d4a4ab3e8503eed6a18abbfacbe356ae3a00",
     "assets/three-CjKLTR5c.js": "d83f62405579c59aac4c18d513e53ac0a9eef8c78f45b2e5999eac9f4bafaf10",
-    "assets/TreemapPage-DlhjPfPB.js": "162633e5d3ee62bee80882ebbaf524f46e8d13073e3f4b312af5e2750ec6ee70",
+    "assets/TreemapPage-CZreyyLA.js": "86dc789008c0c762e2307e0f6c075ba7a2d3408b60ae3a520acc65c9657564e5",
     "assets/vendor-wVc5lIPn.js": "27b169519376edf90743a8d45ccf327a9d4d12d20118f91da67a23ed6bcbde3a",
-    "index.html": "f00d8aad35354b587fe71fd66ba5c28e9a6bc5859f7512f367b9969d0a1024ed"
+    "index.html": "e942aa07f033fd0fc7c7fe9995d84656d473b967c7eb2ec44eec3551bedbbfc8"
   }
 }

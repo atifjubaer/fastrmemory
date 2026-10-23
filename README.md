@@ -157,7 +157,8 @@ npm install -g fastrmemory@latest
 fastr --version
 
 # 3. Refresh project integration (choose what you use)
-fastr mcp init --client all --scope project   # MCP configs only
+fastr mcp init --client all --scope project   # portable npx configs only
+fastr mcp init --client all --scope user --source local --profile core  # installed CLI
 fastr setup                                   # MCP configs, AGENTS.md, and skills
 fastr hook install                            # lifecycle hooks plus MCP for hook clients
 
@@ -166,7 +167,7 @@ fastr status
 fastr hygiene
 ```
 
-`0.4.0` has no schema migration. If you use `--channel pinned`, rerun `fastr mcp init` after each update; with the default `latest` channel, restart the client to pick up the new release. `fastr setup` refreshes copied skills, overwrites same-named skill files, removes retired skills, and leaves user-owned directories. `fastr hook install` does not copy skills. See [MIGRATION.md](MIGRATION.md) for rollback.
+`0.4.0` has no schema migration. If you use `--channel pinned`, rerun `fastr mcp init` after each update; with the default `latest` channel, restart the client to pick up the new release. If you use `--source local`, the config points at the installed CLI, so updating the global package updates the server without rewriting the config. `fastr setup` refreshes copied skills, overwrites same-named skill files, removes retired skills, and leaves user-owned directories. `fastr hook install` does not copy skills. See [MIGRATION.md](MIGRATION.md) for rollback.
 
 ### One-Command MCP Setup
 
@@ -201,6 +202,14 @@ bunx fastrmemory@latest mcp init --client claude
 ```
 
 The default `--channel latest` writes `fastrmemory@latest`, so a client restart picks up the newest npm release. Use `--channel pinned` for a reproducible config containing the exact version that ran the command; on current `main` that writes `fastrmemory@0.4.0`. `--runner pnpm|yarn|bunx` changes the generated runner, `--profile core` selects the 12-tool surface, `--dry-run` prints targets without writing, and `--scope user` writes user-level configs with an explicit `--project /absolute/path` so the server always opens the intended database. Codex prints a `[mcp_servers.fastrmemory]` TOML block for `~/.codex/config.toml` instead of rewriting a user-owned TOML file.
+
+For a globally installed CLI, use `--source local` to write the active CLI path instead of an npx command. It always appends an absolute `--project`, so the config is machine-specific but starts without an npx cold start:
+
+```bash
+fastr mcp init --client all --scope user --source local --profile core
+```
+
+Updating the global package updates the server; rerun the command only if the CLI path changes. Use the default `--source registry` for portable project configs that are committed and shared across machines.
 
 > `mcp init` ships in `0.4.0`; `npx fastrmemory@latest mcp init ...` now resolves to published `0.4.0`. If you need the previous release, use `fastr setup` or pin `fastrmemory@0.3.1`.
 

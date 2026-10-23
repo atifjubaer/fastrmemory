@@ -18,6 +18,7 @@ import {
   parseMcpProfile,
   parseMcpRunner,
   parseMcpScope,
+  parseMcpSource,
 } from '../src/installer/mcp-init.js';
 import { learnFromGitHistory } from '../src/learn/git-learner.js';
 import { exportToObsidianVault } from '../src/export/obsidian.js';
@@ -101,6 +102,7 @@ mcpCmd
   .option('--channel <channel>', 'latest (auto-update) or pinned (exact version)', 'latest')
   .option('--runner <runner>', 'npx, pnpm, yarn, or bunx', 'npx')
   .option('--profile <profile>', 'Tool surface: full or core', 'full')
+  .option('--source <source>', 'registry (portable npx) or local (active CLI)', 'registry')
   .option('--project <path>', 'Project root for user-scoped configs', process.cwd())
   .option('--dry-run', 'Print the target files without writing', false)
   .option('--json', 'Print a machine-readable result', false)
@@ -110,13 +112,17 @@ Examples:
   $ fastrmemory mcp init --client cursor,vscode --channel pinned
   $ fastrmemory mcp init --client opencode --runner pnpm
   $ fastrmemory mcp init --client all --scope project
-  $ fastrmemory mcp init --client codex --scope user`)
+  $ fastrmemory mcp init --client all --scope user --source local --profile core
+  $ fastrmemory mcp init --client codex --scope user
+
+--source local writes the active CLI and an absolute --project; project configs are machine-specific.`)
   .action((options: {
     client: string;
     scope: string;
     channel: string;
     runner: string;
     profile: string;
+    source: string;
     project: string;
     dryRun: boolean;
     json: boolean;
@@ -127,6 +133,7 @@ Examples:
       const channel = parseMcpChannel(options.channel);
       const runner = parseMcpRunner(options.runner);
       const profile = parseMcpProfile(options.profile);
+      const source = parseMcpSource(options.source);
       const results = initMcpClients({
         clients,
         scope,
@@ -134,11 +141,12 @@ Examples:
         channel,
         runner,
         profile,
+        source,
         dryRun: options.dryRun,
       });
 
       if (options.json) {
-        console.log(JSON.stringify({ scope, channel, runner, profile, results }, null, 2));
+        console.log(JSON.stringify({ scope, channel, runner, profile, source, results }, null, 2));
         return;
       }
 

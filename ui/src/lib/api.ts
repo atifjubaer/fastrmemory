@@ -78,7 +78,7 @@ export interface FastrStatus {
   platform: string;
   isHomeProject: boolean;
   mcp: McpServerEntry;
-  mcpSource: 'local' | 'registry';
+  mcpSource: 'source' | 'installed' | 'registry';
   status: ProjectStatus;
   trapsCount: number;
   activeCount: number;

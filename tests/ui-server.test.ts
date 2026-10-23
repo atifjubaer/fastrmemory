@@ -69,7 +69,7 @@ describe('FastrMemory Web UI Server', () => {
     expect(statusJson.isHomeProject).toBe(false);
     expect(statusJson.mcp.args).toContain('--project');
     expect(statusJson.mcp.args).toContain(path.resolve(testDir));
-    expect(['local', 'registry']).toContain(statusJson.mcpSource);
+    expect(['source', 'installed', 'registry']).toContain(statusJson.mcpSource);
 
     // 3. Test /api/memories
     const memRes = await fetch(`${url}/api/memories`);

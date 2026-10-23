@@ -9,6 +9,7 @@ import {
 } from './json-config.js';
 import { resolveOpenCodeConfigPath, upsertOpenCodeMcpServer } from './opencode.js';
 import { getAntigravityConfigPath, getClaudeDesktopConfigPath } from './setup.js';
+import { resolveMcpCommand, withProjectRoot } from './mcp-command.js';
 
 export const MCP_CLIENTS = [
   'claude',
@@ -27,6 +28,7 @@ export type McpClientId = (typeof MCP_CLIENTS)[number];
 export type McpScope = 'project' | 'user';
 export type McpChannel = 'latest' | 'pinned';
 export type McpRunner = 'npx' | 'pnpm' | 'yarn' | 'bunx';
+export type McpSource = 'registry' | 'local';
 
 export interface McpInitOptions {
   clients: McpClientId[];
@@ -36,6 +38,10 @@ export interface McpInitOptions {
   channel?: McpChannel;
   runner?: McpRunner;
   profile?: 'full' | 'core';
+  /** registry (portable npx) or local (the active CLI, with an absolute project root). */
+  source?: McpSource;
+  /** Overrides the active CLI path (tests and sandboxes). */
+  cliPath?: string | null;
   dryRun?: boolean;
   platform?: NodeJS.Platform;
 }
@@ -46,6 +52,7 @@ export interface McpInitResult {
   scope: McpScope;
   filePath: string;
   entry: McpServerEntry;
+  source: McpSource;
   changed: boolean;
   created: boolean;
   backupPath?: string;
@@ -137,6 +144,11 @@ export function parseMcpRunner(value: string): McpRunner {
   throw new McpInitError('Runner must be "npx", "pnpm", "yarn", or "bunx".');
 }
 
+export function parseMcpSource(value: string): McpSource {
+  if (value === 'registry' || value === 'local') return value;
+  throw new McpInitError('Source must be "registry" or "local".');
+}
+
 export function parseMcpProfile(value: string): 'full' | 'core' {
   if (value === 'full' || value === 'core') return value;
   throw new McpInitError('Profile must be "full" or "core".');
@@ -185,6 +197,22 @@ export function buildRegistryMcpEntry(options: {
     return { command: 'cmd', args: ['/c', runner, ...args] };
   }
   return { command: runner, args };
+}
+
+/**
+ * Build a non-portable MCP entry that points at the active CLI. This avoids npx cold starts
+ * and is the right choice for a globally installed CLI or a local development checkout.
+ */
+export function buildLocalMcpEntry(options: {
+  profile?: 'full' | 'core';
+  platform?: NodeJS.Platform;
+  cliPath?: string | null;
+} = {}): McpServerEntry {
+  const entry = resolveMcpCommand(options.platform ?? process.platform, options.cliPath);
+  if ((options.profile ?? 'full') === 'core') {
+    entry.args.push('--profile', 'core');
+  }
+  return entry;
 }
 
 function resolveVsCodeUserConfig(homeDir: string, platform: NodeJS.Platform): string {
@@ -239,10 +267,6 @@ function resolveClientPath(
   }
 }
 
-function withProjectRoot(entry: McpServerEntry, projectRoot: string): McpServerEntry {
-  return { ...entry, args: [...entry.args, '--project', path.resolve(projectRoot)] };
-}
-
 function buildCodexToml(entry: McpServerEntry): string {
   const args = entry.args.map((arg) => JSON.stringify(arg)).join(', ');
   return [
@@ -284,13 +308,20 @@ export function initMcpClients(options: McpInitOptions): McpInitResult[] {
   const homeDir = options.homeDir ?? os.homedir();
   const platform = options.platform ?? process.platform;
   const dryRun = options.dryRun ?? false;
-  const baseEntry = buildRegistryMcpEntry({
-    channel: options.channel,
-    runner: options.runner,
-    profile: options.profile,
-    platform,
-  });
-  const entry = scope === 'user' ? withProjectRoot(baseEntry, projectRoot) : baseEntry;
+  const source = options.source ?? 'registry';
+  const baseEntry = source === 'local'
+    ? buildLocalMcpEntry({ profile: options.profile, platform, cliPath: options.cliPath })
+    : buildRegistryMcpEntry({
+        channel: options.channel,
+        runner: options.runner,
+        profile: options.profile,
+        platform,
+      });
+  // Local entries always pin the project root. Registry project configs stay portable.
+  const entry = source === 'local' || scope === 'user'
+    ? withProjectRoot(baseEntry, projectRoot)
+    : baseEntry;
+  const entrySource: McpSource = entry.command === 'node' ? 'local' : 'registry';
 
   // Validate every requested client before the first write so a bad scope cannot leave a
   // half-configured set of clients behind.
@@ -313,6 +344,7 @@ export function initMcpClients(options: McpInitOptions): McpInitResult[] {
       scope,
       filePath,
       entry,
+      source: entrySource,
       changed: false,
       created: false,
       dryRun,

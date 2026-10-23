@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { exec } from 'node:child_process';
 import { FastrConfig } from '../config.js';
 import { PACKAGE_VERSION } from '../version.js';
-import { resolveMcpCommand, withProjectRoot } from '../installer/setup.js';
+import { classifyMcpCommand, resolveMcpCommand, withProjectRoot } from '../installer/mcp-command.js';
 import { initDatabase } from '../db/schema.js';
 import { FastrRepository } from '../db/repository.js';
 import { SpoolManager } from '../db/spool.js';
@@ -284,7 +284,7 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
           platform: process.platform,
           isHomeProject: path.resolve(config.projectRoot) === path.resolve(os.homedir()),
           mcp: mcpEntry,
-          mcpSource: mcpEntry.command === 'node' ? 'local' : 'registry',
+          mcpSource: classifyMcpCommand(mcpEntry, config.projectRoot),
           status,
           trapsCount: traps.length,
           activeCount: memories.length,

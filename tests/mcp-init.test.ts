@@ -6,11 +6,13 @@ import * as path from 'node:path';
 import {
   PROJECT_ALL_CLIENTS,
   USER_ALL_CLIENTS,
+  buildLocalMcpEntry,
   buildRegistryMcpEntry,
   formatMcpInitResult,
   initMcpClients,
   isPortableRegistryEntry,
   parseMcpClients,
+  parseMcpSource,
 } from '../src/installer/mcp-init.js';
 import { PACKAGE_VERSION } from '../src/version.js';
 import { ConfigParseError } from '../src/installer/json-config.js';
@@ -60,6 +62,49 @@ describe('shadcn-style MCP init', () => {
       args: ['-y', `fastrmemory@${PACKAGE_VERSION}`, 'mcp', '--profile', 'core'],
     });
     expect(isPortableRegistryEntry(entry)).toBe(true);
+  });
+
+  it('builds a local entry from the active CLI and appends the core profile', () => {
+    expect(buildLocalMcpEntry({ platform: 'linux', cliPath: '/opt/fastr.js', profile: 'core' })).toEqual({
+      command: 'node',
+      args: ['/opt/fastr.js', 'mcp', '--profile', 'core'],
+    });
+  });
+
+  it('falls back to the registry when the active CLI is an ephemeral npx copy', () => {
+    const entry = buildLocalMcpEntry({
+      platform: 'linux',
+      cliPath: '/tmp/_npx/abc/node_modules/fastrmemory/dist/bin/fastr.js',
+    });
+    expect(entry.command).toBe('npx');
+    expect(entry.args).toContain(`fastrmemory@${PACKAGE_VERSION}`);
+  });
+
+  it('parses registry and local sources and rejects unknown values', () => {
+    expect(parseMcpSource('registry')).toBe('registry');
+    expect(parseMcpSource('local')).toBe('local');
+    expect(() => parseMcpSource('github')).toThrow(/Source must be/);
+  });
+
+  it('writes a local source config with the active CLI and absolute project root', () => {
+    const results = initMcpClients({
+      clients: ['claude'],
+      scope: 'project',
+      source: 'local',
+      cliPath: '/opt/fastr.js',
+      projectRoot: dir,
+      homeDir: home,
+      platform: 'linux',
+      profile: 'core',
+    });
+    expect(results[0].source).toBe('local');
+    expect(results[0].entry.command).toBe('node');
+    expect(results[0].entry.args).toContain('--project');
+    expect(results[0].entry.args).toContain(path.resolve(dir));
+    expect(results[0].entry.args).toContain('--profile');
+
+    const config = JSON.parse(fs.readFileSync(path.join(dir, '.mcp.json'), 'utf-8'));
+    expect(config.mcpServers.fastrmemory).toEqual(results[0].entry);
   });
 
   it('wraps every package runner in cmd /c on Windows', () => {

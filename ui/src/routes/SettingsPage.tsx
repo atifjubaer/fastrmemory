@@ -134,7 +134,13 @@ export function SettingsPage() {
           <div className="flex min-w-0 items-center gap-2">
             <span className="w-24 shrink-0 text-muted-foreground">MCP source</span>
             <span className="text-xs">
-              {s?.mcpSource === 'local' ? 'Local CLI' : s?.mcpSource === 'registry' ? 'npm registry' : '…'}
+              {s?.mcpSource === 'source'
+                ? 'Source checkout'
+                : s?.mcpSource === 'installed'
+                  ? 'Installed CLI'
+                  : s?.mcpSource === 'registry'
+                    ? 'npm registry'
+                    : '…'}
             </span>
           </div>
           {s?.isHomeProject && (
@@ -178,8 +184,9 @@ export function SettingsPage() {
             )}
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Uses the local CLI when available; otherwise it pins the npm package. On Windows the registry config uses{' '}
-            <code className="font-mono">cmd /c npx</code>. Add <code className="font-mono">--profile core</code>{' '}
+            Uses the source checkout when the dashboard runs from the repo, the installed CLI when launched from a
+            global install, and the pinned npm package in an ephemeral npx environment. On Windows the registry config
+            uses <code className="font-mono">cmd /c npx</code>. Add <code className="font-mono">--profile core</code>{' '}
             before <code className="font-mono">--project</code> for the smaller 12-tool surface.
           </p>
         </CardContent>

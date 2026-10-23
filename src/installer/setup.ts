@@ -3,8 +3,10 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createFastrServerContext } from '../mcp/server.js';
-import { PACKAGE_VERSION } from '../version.js';
 import { McpServerEntry, updateJsonConfig, upsertMcpServer } from './json-config.js';
+import { resolveMcpCommand, withProjectRoot } from './mcp-command.js';
+
+export { findOwnCliPath, resolveMcpCommand, withProjectRoot } from './mcp-command.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -43,42 +45,6 @@ export function getClaudeDesktopConfigPath(homeDir: string = os.homedir()): stri
   } else {
     return path.join(homeDir, '.config', 'Claude', 'claude_desktop_config.json');
   }
-}
-
-/** Absolute path of this package's own CLI entry, whether running compiled (dist/src/installer) or from source. */
-export function findOwnCliPath(): string | null {
-  const candidates = [
-    path.resolve(__dirname, '..', '..', 'bin', 'fastr.js'),         // dist/src/installer -> dist/bin/fastr.js
-    path.resolve(__dirname, '..', '..', 'dist', 'bin', 'fastr.js'), // src/installer -> dist/bin/fastr.js
-  ];
-  return candidates.find((c) => fs.existsSync(c)) ?? null;
-}
-
-/**
- * The command MCP clients should spawn. MCP clients launch servers without a shell, so on Windows
- * the `fastrmemory.cmd` npm shim cannot be executed directly. Pointing `node` at the package's own
- * CLI works on every platform; `npx` (wrapped in `cmd /c` on Windows) is the fallback when this
- * copy lives in a throwaway npx cache.
- */
-export function resolveMcpCommand(
-  platform: NodeJS.Platform = process.platform,
-  cliPath: string | null = findOwnCliPath()
-): McpServerEntry {
-  const isEphemeral = cliPath !== null && /[\\/]_npx[\\/]/.test(cliPath);
-  if (cliPath && !isEphemeral) {
-    return { command: 'node', args: [cliPath, 'mcp'] };
-  }
-  // Pin the registry package and version: npx cache paths are throwaway, and a GitHub
-  // default-branch reference would silently change the server under existing configs.
-  const npxArgs = ['-y', `fastrmemory@${PACKAGE_VERSION}`, 'mcp'];
-  return platform === 'win32'
-    ? { command: 'cmd', args: ['/c', 'npx', ...npxArgs] }
-    : { command: 'npx', args: npxArgs };
-}
-
-/** Pin a user-scoped MCP entry to a project root so the client's launch directory cannot change the database. */
-export function withProjectRoot(entry: McpServerEntry, projectRoot: string): McpServerEntry {
-  return { ...entry, args: [...entry.args, '--project', path.resolve(projectRoot)] };
 }
 
 interface ClientTarget {
