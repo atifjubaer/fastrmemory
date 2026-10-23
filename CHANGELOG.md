@@ -15,7 +15,7 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 - Package, lockfile, MCP registry manifest, Claude plugin manifests, and skills metadata are `0.4.0`; generated `--channel pinned` configs pin `fastrmemory@0.4.0`.
 - README now documents package-runner quick starts and the `mcp init` client matrix; roadmap and contribution sections were removed, with contributor credit retained in `CONTRIBUTING.md`.
-- Test suite is 293 tests across 53 files. CI run `39878169687` at `2faaf9e` passed all six matrix jobs on 2026-10-23, including Windows Node `22.x` and `24.x`.
+- Test suite is 293 tests across 53 files. CI run `39879595191` at `098100e` (the 0.4.0 preparation commit) passed all six matrix jobs on 2026-10-23, including Windows Node `22.x` and `24.x`.
 
 ### Fixed
 

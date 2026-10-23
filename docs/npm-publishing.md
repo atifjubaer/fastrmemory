@@ -53,7 +53,7 @@ As of 2026-10-23, the source tree is at `0.4.0` and the release manifests agree:
 
 No tag `v0.4.0` and no npm publication exist. `fastrmemory@0.3.1` remains npm `latest`.
 
-The prepared surface is `fastr mcp init`, LF checkout enforcement, and documentation updates. There is no schema migration. The release gate is `node scripts/check-release-version.mjs v0.4.0`, `npm run build:core`, `npm test`, and `npm run check:ci`.
+The prepared surface is `fastr mcp init`, LF checkout enforcement, and documentation updates. There is no schema migration. The release gate is `node scripts/check-release-version.mjs v0.4.0`, `npm run build:core`, `npm test`, and `npm run check:ci`. CI run `39879595191` at `098100e` (the 0.4.0 preparation commit) passed all six matrix jobs, including Windows Node `22.x` and `24.x`.
 
 When publishing is approved:
 
