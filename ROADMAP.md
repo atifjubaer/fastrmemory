@@ -1,5 +1,7 @@
 # FastrMemory Roadmap
 
+> **Archived planning record.** FastrMemory does not currently publish a roadmap commitment. This file is retained for evidence history and is not linked from the README. Use GitHub issues for new proposals.
+
 This roadmap is evidence-gated. A phase is complete only when its gate passes on a committed artifact (test, raw JSON, CI run, or installable package), not when code exists.
 
 - **Roadmap date:** 2026-10-23

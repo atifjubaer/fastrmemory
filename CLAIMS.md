@@ -72,7 +72,7 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 |---|---|---|---|---|---|---|
 | D1 | Historical v0.2.0 count: 226 tests, 38 files | v0.2.0 release notes | Historical | `npm test` | `226 passed`, `38 passed` | Historical v0.2.0 result; current suite is D1b |
 | D1a | v0.2.1 release count: 235 tests, 43 files | README launch status, release notes | Supported | `npm test` at `3fa2bf9` | `235 passed`, `43 passed` | Clean worktree rerun on 2026-10-21 01:16 UTC; current suite is D1b |
-| D1b | 282 tests pass across 52 files | Current HEAD | Supported | `npm test`; `gh run view 39868908223 --json conclusion,jobs` | `282 passed`, `52 passed`; release workflow `success` | Run at `0e0cb8d` on 2026-10-23; the release workflow re-ran the full gate from tag `v0.3.1` (`3a3cac6`) and succeeded; local Windows run; remote CI is separate |
+| D1b | 293 tests pass across 53 files on current HEAD | README launch status, Testing & Verification | Supported | `npm test` | `293 passed`, `53 passed` | Local Windows run on 2026-10-23 after adding `tests/mcp-init.test.ts`; published `0.3.1` remains 282 passing tests across 52 files; remote CI is separate |
 | D2 | Test suite writes nothing to the real home store | README | Supported | `npm test` then count rows | 60 before, 60 after | The 60 pre-existing rows are documented legacy data |
 | D3 | 6/6 CI matrix green | ROADMAP | Supported | `gh run view 39831793263 --json conclusion,jobs` | 6/6 jobs succeeded: Ubuntu, Windows, and Intel macOS on Node 22.x and 24.x | Run on `50a7d8f` after the v0.3.0 merge; the historical v0.2.1 run `39495621243` was also 6/6 on `3fa2bf9`; macOS jobs use `macos-15-intel`, so Apple Silicon is not covered |
 | D4 | Zero data loss in a 10k crash test | README, Roadmap | Supported | `npm run test:crash`; `npm run check:crash` | 10/10 runs; 10,718 acknowledged writes; 10,727 committed rows; 0 missing; 0 duplicate ids; 0 duplicate titles; `PRAGMA integrity_check` = `ok` | Local Windows run on 2026-10-21; kill is `taskkill /F`, not a power-loss test; `synchronous=NORMAL` in WAL mode; report at `bench/results/crash-test.json` |
@@ -159,6 +159,7 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 | H18 | The dashboard exposes a read-only Replay & Diff workspace backed by `GET /api/replay` | README, docs/ARCHITECTURE, CHANGELOG | Supported | `npm test -- tests/replay-ui.test.ts tests/ui-server-v2.test.ts`; `npm run build:ui`; `npm run check:dist-ui`; `npm test` | `3 passed`; `11 passed`; `1783 modules transformed`; `Wrote dist-ui\build-manifest.json: 73 source files, 11 output files, 1 normalized text output(s), source 6c553dde3079`; `UI bundle is fresh: source and output hashes match the manifest.`; full gate `266 passed`, `49 passed` | Local Windows smoke on branch `feat/0.3.0` at `4639f27`; component tests render the dashboard's React 19 tree to HTML, not a browser screenshot; endpoint tests cover invalid and reversed timestamps plus cross-origin denial; replay payload omits raw memory content; the endpoint is read-only |
 | H19 | Memory CI posts one marked PR comment and updates it in place as the head branch changes | docs/MEMORY_CI, ROADMAP, CHANGELOG | Supported | same-repository draft PR #12; GitHub Actions runs `39519088805` and `39519253601` | Run `39519088805` created comment `6304608575` with `Added (1)`; re-running the same workflow kept one marked comment with the same id; head commit `252f29e` triggered run `39519253601`, which updated comment `6304608575` to `Added (2)` at `2026-10-21T00:06:33Z`; marker comment count remained `1` | Same-repository synthetic snapshots only (one base rule, two head rules, no product data); PR #12 is now closed and its test branches are retained for reproducibility; fork PRs remain job-summary-only by design and were not live-tested |
 | H20 | Claude Code and Cursor native installers merge config without clobbering user settings | README | Supported | `npm test -- tests/installer-safety.test.ts`; code inspection `src/installer/hooks.ts` | `16 passed`; Claude Code writes `.mcp.json` plus `.claude/settings.json` lifecycle hooks; Cursor writes `.cursor/mcp.json`; the sandbox setup test reads `.cursor/mcp.json` and asserts `mcpServers.fastrmemory.args` contains `mcp` | Local Windows run on 2026-10-21; Cursor gets MCP config and skills, not lifecycle hooks; live IDE sessions were not exercised |
+| H21 | `fastr mcp init` writes portable MCP configs for ten clients with runner, scope, and channel options | README, CONTRIBUTING | Supported | `npm test -- tests/mcp-init.test.ts`; `node bin/fastr-guard.mjs mcp init --client claude --dry-run --json`; `npm test` | `11 passed`; `293 passed`, `53 passed`; dry-run reported `.mcp.json` and `fastrmemory@latest`; a second real run reported all configs up to date | Current source; ships in the next release, so `npx fastrmemory@latest mcp init` works only after that release is published; project clients are Claude Code, Cursor, VS Code, OpenCode, Gemini CLI, and Copilot CLI; user-only clients are Windsurf, Antigravity, Claude Desktop, and Codex; OpenCode JSONC is skipped rather than rewritten; Codex is printed as TOML; `--channel latest` requires network access when the client starts |
 
 ## I. Hygiene and CI gates (Phase 5)
 
@@ -175,28 +176,27 @@ Every public claim must have a row here. A claim is **Supported** only when the 
 | ID | Claim | Where | Status | Evidence command | Raw output | Caveat |
 |---|---|---|---|---|---|---|
 | J1 | Release score is provisional `9.4 / 10` | README launch status, SCORECARD | Supported | `Get-Content SCORECARD.md` | `8.5 / 9 gate points = 9.4 / 10`; target `9.2` met; Retrieval remains Partial | Self-assessed release-readiness score, not an external benchmark; only the underlying gates change it |
-| J2 | Contributor wall PRs #1-#11 are merged contributions from `@the-arizul` | README | Supported | `gh pr list --state all --limit 20 --json number,title,author,state` | PRs `#1`-`#11` all `MERGED`, author `the-arizul`; PR `#12` closed, PR `#13` merged | Attribution only; PR #12 is a test PR and PR #13 is the merged release PR, so neither is part of the wall |
+| J2 | Contributor credit for PRs #1-#11 from `@the-arizul` is kept in CONTRIBUTING | CONTRIBUTING | Supported | `gh pr list --state all --limit 20 --json number,title,author,state` | PRs `#1`-`#11` all `MERGED`, author `the-arizul`; PR `#12` closed, PR `#13` merged | Attribution only; PR #12 is a test PR and PR #13 is the merged release PR, so neither is part of the credit |
 
 The table below maps every README H2 section to the claim rows that support it. `check:docs` enforces the mapping, the 41-tool catalog names, and the prompt/resource counts. Code-block sample outputs are illustrative unless they cite a measured value that is traced above.
 
 <!-- README_TRACE_START -->
 | README section | Claim IDs | Scope note |
 |---|---|---|
-| Launch Status at a Glance | A1a, A2, A2a, A2b, A10, A11, D1a, D1b, D4, E3, E15, J1 | Install paths, counts, crash result, external retrieval, score |
+| Launch Status at a Glance | A1a, A2, A2a, A2b, A10, A11, D1a, D1b, D4, E3, E15, H21, J1 | Install paths, counts, crash result, external retrieval, score, MCP setup |
 | Overview | A7, B1, B3, B5, B6, B7, F1, F3, F4, H16 | Runtime dependencies, daemon, latency, OS matrix, trap and feedback mechanics |
 | Design Principles | B1, B3, E1, H3, H4 | Non-lossy storage, replay, benchmark corpus |
 | Works With MCP- and HTTP-Compatible Agents | C4, H11, H12, H13, H20 | Tested installer coverage only; the client list is not a support matrix |
-| Quick Start | A1a, A1b, A2a, A2b, A8, A10, A11, A11b, H9, H10, H15, I2 | Release installs, package pinning, conflict/import, branch, backup |
-| One-Click Agent MCP Configuration | H11, H12, H13, H20 | Claude Code and Cursor plus the 0.3.0 clients |
+| Quick Start | A1a, A1b, A2a, A2b, A8, A10, A11, A11b, H9, H10, H15, H21, I2 | Release installs, package pinning, conflict/import, branch, backup, MCP init |
+| One-Click Agent MCP Configuration | H11, H12, H13, H20, H21 | Client config shapes and the config-only init flow |
 | MCP Server: Tools & Resources | C1, C2, C3, C7, C8, H7, H8, H14 | Tool catalog, prompts, resources, core profile, envelope |
 | Two-Zone Git-Diffable Mirror | B4 | Mirror format |
 | Planetary Agent Skills Suite | C4, C5, C6 | Skills count, tool references, plugin manifest |
 | Architecture | B5, C1, C2, C3, E16, F1, F2, F4, F6 | Diagram mechanics and the BM25 sub-millisecond row |
-| Testing & Verification | D1a, D1b, D4, H1, H2, H9, H10, H11, H12, H13, H14, H15, H16, H17, H18, H19, I2, I5 | Test counts and feature coverage |
+| Testing & Verification | D1a, D1b, D4, H1, H2, H9, H10, H11, H12, H13, H14, H15, H16, H17, H18, H19, H21, I2, I5 | Test counts and feature coverage |
 | Retrieval Benchmark (240 synthetic cases) | E1, E2, E3, E4, E5, E6, E7, E8, E16 | Synthetic table, targets, and BM25 latency |
 | Local Web Dashboard v2 & 3D Brain Observatory | F7, F10, F11, F12, F13, F14, H18 | Routes, React, stack, SSE, Three.js, themes |
 | Native VS Code & Cursor Extension | F15 | Build/package and feature claims |
-| Contributing & Pull Request Roadmap | B1, C5, D1b, J2 | Contributor wall and checklist counts |
 | License | A5 | Apache-2.0 |
 <!-- README_TRACE_END -->
 

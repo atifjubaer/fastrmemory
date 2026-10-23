@@ -13,23 +13,29 @@ FastrMemory uses the built-in `node:sqlite` module, so there is no database serv
 ## 2. Install the CLI
 
 ```bash
-npm install -g fastrmemory@0.3.1
+npm install -g fastrmemory@latest
 fastr --version
 ```
 
-If global installs are not allowed, replace `fastr <command>` with `npx -y fastrmemory@0.3.1 <command>` in the remaining steps. Pin the version so an unrelated future release cannot change the installed behavior.
+If global installs are not allowed, replace `fastr <command>` with `npx -y fastrmemory@latest <command>` in the remaining steps. For a fully reproducible install, replace `@latest` with the exact version the project has approved.
 
 ## 3. Wire the agent clients
 
-From the project the developer works in:
+From the project the developer works in, configure the MCP client with one command:
+
+```bash
+fastr mcp init --client claude
+```
+
+Supported project-scoped clients are `claude`, `cursor`, `vscode`, `opencode`, `gemini`, and `copilot`. Use `--client all --scope project` for all six. User-scoped clients are `claude`, `cursor`, `vscode`, `gemini`, `windsurf`, `antigravity`, `claude-desktop`, and `codex`; `codex` prints a TOML snippet for `~/.codex/config.toml` instead of rewriting it. The default writes `fastrmemory@latest`; add `--channel pinned` to write the exact version, `--runner pnpm|yarn|bunx` to change the package runner, and `--dry-run` to inspect without writing. Existing JSON is merged, unrelated keys are preserved, and the first change writes a `.fastr.bak` backup.\n\n> `mcp init` ships in the next release after `0.3.1`. If the installed CLI returns an unknown-command error, use `fastr setup` or the manual JSON in step 4 until that release is installed.
+
+For the full installer (database initialization, `AGENTS.md`, skills, and lifecycle hooks), run:
 
 ```bash
 fastr setup
 ```
 
-`fastr setup` initializes `.fastr/` and writes MCP entries for the clients it finds. It also adds the AGENTS.md discipline block and installs the Agent Skills. Existing JSON configs are merged, not replaced, and changed files are backed up. It never creates a database outside the project and never uploads memory content.
-
-For Claude Code lifecycle hooks only:
+`fastr setup` writes MCP entries for the clients it finds. It never creates a database outside the project and never uploads memory content. For lifecycle hooks only:
 
 ```bash
 fastr hook install
@@ -44,13 +50,13 @@ Any MCP client can launch the stdio server directly:
   "mcpServers": {
     "fastrmemory": {
       "command": "npx",
-      "args": ["-y", "fastrmemory@0.3.1", "mcp"]
+      "args": ["-y", "fastrmemory@latest", "mcp"]
     }
   }
 }
 ```
 
-For user-scoped clients (Claude Desktop, Antigravity, Windsurf, and the Claude Code entry in `~/.claude.json`), append `--project /absolute/path/to/project` so the client's launch directory cannot select the wrong database. On native Windows, use `cmd /c npx -y fastrmemory@0.3.1 mcp` if the client cannot launch `npx` directly; `fastr setup` writes the absolute `node` path automatically. The full 41-tool surface is the default; add `--profile core` to expose the 12-tool daily loop.
+For user-scoped clients (Claude Desktop, Antigravity, Windsurf, and the Claude Code entry in `~/.claude.json`), append `--project /absolute/path/to/project` so the client's launch directory cannot select the wrong database. `fastr mcp init --scope user` adds this automatically. On native Windows, `fastr mcp init` emits `cmd /c npx ...`; a manual entry can use `cmd /c npx -y fastrmemory@latest mcp` if the client cannot launch `npx` directly. `fastr setup` writes the absolute `node` path automatically. The full 41-tool surface is the default; add `--profile core` to expose the 12-tool daily loop.
 
 ## 5. Verify
 

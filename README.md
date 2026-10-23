@@ -10,11 +10,11 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.16.0-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Protocol](https://img.shields.io/badge/Protocol-MCP%20v2-7C3AED?style=flat-square)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/Tests-282%20Passed-brightgreen?style=flat-square)](tests/)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
+[![Tests](https://img.shields.io/badge/Tests-293%20Passed-brightgreen?style=flat-square)](tests/)
+[![MCP Setup](https://img.shields.io/badge/MCP%20Setup-fastr%20mcp%20init-7C3AED?style=flat-square)](#-one-click-agent-mcp-configuration)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-architecture)
 
-> **Status (2026-10-23):** **`fastrmemory@0.3.1` is published and is `latest`.** Evidence: `npm view fastrmemory version` -> `0.3.1`; `npm view fastrmemory dist-tags --json` -> `{"latest":"0.3.1"}`; tag `v0.3.1` (`3a3cac6`); published 2026-10-22 23:02 UTC via GitHub Actions OIDC with npm provenance; GitHub Release tarball SHA-256 `747f61791dcb7c5694f3cf5cc8705152892a5b16cb33bec51a356fc22112a7b8`; `npm install -g fastrmemory@0.3.1` + `fastr --version` -> `0.3.1`. Caveat: Node.js >=22.16.0; the npm README for 0.3.1 was rendered at the release tag and still labels 0.3.1 the release target; this post-release docs commit is not part of that render; `0.3.0` remains published historical. This release replaces the stale `0.3.0` npm README, fixes Windows MCP commands, pins user-scoped clients to the project root, and adds the Node runtime guard. The old scoped npm entries (`@atifjubaer/fastrmemory` and `fastrmemory@0.0.0-stage`) were removed on 2026-10-23; the GitHub `v0.2.1` tag and release remain as history. This README tracks **0.3.1**. Use the exact `0.3.1` version for reproducibility. The release post for 0.2.1 remains at [docs/blog/2026-10-21-fastrmemory-0.2.1.md](docs/blog/2026-10-21-fastrmemory-0.2.1.md). The exact release surface is in [CHANGELOG.md](CHANGELOG.md). The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval. Public LongMemEval, LoCoMo, and self-repository retrieval-only results plus pinned external baselines are in [BENCHMARKS.md](BENCHMARKS.md); no QA-leaderboard parity is claimed. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); every README section is mapped to claim IDs in the README claim trace at the end of that ledger. Methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md).
+> **Status (2026-10-23):** **`fastrmemory@0.3.1` is published and is `latest`.** Evidence: `npm view fastrmemory version` -> `0.3.1`; `npm view fastrmemory dist-tags --json` -> `{"latest":"0.3.1"}`; tag `v0.3.1` (`3a3cac6`); published 2026-10-22 23:02 UTC via GitHub Actions OIDC with npm provenance; GitHub Release tarball SHA-256 `747f61791dcb7c5694f3cf5cc8705152892a5b16cb33bec51a356fc22112a7b8`; `npm install -g fastrmemory@0.3.1` + `fastr --version` -> `0.3.1`. Caveat: Node.js >=22.16.0; the npm README for 0.3.1 was rendered at the release tag and still labels 0.3.1 the release target; this post-release docs commit is not part of that render; `0.3.0` remains published historical. This release replaces the stale `0.3.0` npm README, fixes Windows MCP commands, pins user-scoped clients to the project root, and adds the Node runtime guard. The old scoped npm entries (`@atifjubaer/fastrmemory` and `fastrmemory@0.0.0-stage`) were removed on 2026-10-23; the GitHub `v0.2.1` tag and release remain as history. This README tracks current `main`; published release evidence remains **0.3.1**. Use the exact `0.3.1` version for reproducibility. The current branch adds `fastr mcp init` and LF checkout enforcement; those changes are not in the published `0.3.1` tarball and will ship in the next release. The release post for 0.2.1 remains at [docs/blog/2026-10-21-fastrmemory-0.2.1.md](docs/blog/2026-10-21-fastrmemory-0.2.1.md). The exact release surface is in [CHANGELOG.md](CHANGELOG.md). The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval. Public LongMemEval, LoCoMo, and self-repository retrieval-only results plus pinned external baselines are in [BENCHMARKS.md](BENCHMARKS.md); no QA-leaderboard parity is claimed. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); every README section is mapped to claim IDs in the README claim trace at the end of that ledger. Methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md).
 
 <p align="center">
   <a href="#-overview">Overview</a> &bull;
@@ -23,13 +23,12 @@
   <a href="#-local-web-dashboard">Web UI</a> &bull;
   <a href="#-works-with-mcp--and-http-compatible-agents">Supported Agents</a> &bull;
   <a href="#-quick-start">Quick Start</a> &bull;
+  <a href="#-one-click-agent-mcp-configuration">MCP Setup</a> &bull;
   <a href="#-mcp-server-tools--resources">MCP Tools</a> &bull;
   <a href="#-architecture">Architecture</a> &bull;
-  <a href="ROADMAP.md">Roadmap</a> &bull;
   <a href="MIGRATION.md">Migration</a> &bull;
   <a href="SECURITY.md">Security</a> &bull;
-  <a href="SCORECARD.md">Scorecard</a> &bull;
-  <a href="#-contributing">Contributing</a>
+  <a href="SCORECARD.md">Scorecard</a>
 </p>
 
 </div>
@@ -42,7 +41,8 @@
 |---|---|---|
 | Install path | Published `fastrmemory@0.3.1`; old scoped npm entries removed | `npm view fastrmemory version` -> `0.3.1`; `npm install -g fastrmemory@0.3.1`; `fastr --version` -> `0.3.1`; GitHub Release tarball SHA-256 `747f6179...` |
 | Synthetic retrieval | Holdout `95.8%` Hit@1, `100%` Hit@5, MRR `0.969` | `npx tsx scripts/eval-bench.ts --split all --embeddings minilm --out bench/results/minilm.json` |
-| Test suite | `282` tests across `52` files in `0.3.1`; v0.2.1 is `235` / `43` | `npm test` |
+| Test suite | `293` tests across `53` files on current HEAD; published `0.3.1` is `282` / `52`; v0.2.1 is `235` / `43` | `npm test` |
+| MCP setup | `fastr mcp init` merges portable configs for 9 JSON clients and prints a Codex TOML snippet | `npm test -- tests/mcp-init.test.ts` -> `11 passed`; `fastr mcp init --client claude --dry-run` |
 | Crash safety | 10/10 runs, 0 lost, 0 duplicate ids/titles | `npm run test:crash`; `bench/results/crash-test.json` |
 | Public retrieval (0.3.0) | LongMemEval `+10.4pp` / `+11.0pp` Hit@5; LoCoMo `+4.4pp` / `+2.3pp` (target missed) | [docs/EXTERNAL_BASELINE.md](docs/EXTERNAL_BASELINE.md) |
 | Release score | Provisional `9.4 / 10`; `9.2` target met; Retrieval remains Partial | [SCORECARD.md](SCORECARD.md) |
@@ -120,7 +120,7 @@ npx -y fastrmemory@0.3.1 setup
 npx -y fastrmemory@0.3.1 ui
 ```
 
-The GitHub source path remains available for development only: `npx github:atifjubaer/fastrmemory setup`. For a reproducible source install, pin the tag: `npx github:atifjubaer/fastrmemory#v0.3.1 setup`. Do not use either GitHub form in generated MCP or hook configs; those must pin the npm package version.
+The GitHub source path remains available for development only: `npx github:atifjubaer/fastrmemory setup`. For a reproducible source install, pin the tag: `npx github:atifjubaer/fastrmemory#v0.3.1 setup`. Do not use either GitHub form in generated MCP or hook configs; those must use the npm package. The default `latest` channel tracks new releases, and `--channel pinned` records the exact version for reproducibility.
 
 ---
 
@@ -142,6 +142,42 @@ npx -y fastrmemory@0.3.1 --version
 ```
 
 `0.3.1` is built from tag `v0.3.1` by `.github/workflows/release.yml`, which runs the full gate, publishes with npm provenance, and attaches the same tarball to the GitHub Release. Verify the registry result with `npm view fastrmemory@0.3.1 version` and `npm view fastrmemory dist-tags --json`; a first E404 for a few minutes is registry propagation, not a failed publish. The old scoped npm entries remain removed. Do not republish `0.3.0`.
+
+### One-Command MCP Setup
+
+`fastr mcp init` is the shadcn-style setup path. It is config-only: it merges the `fastrmemory` MCP entry into an existing client config, preserves unrelated keys, writes a one-time `.fastr.bak` backup, and is idempotent. It does not install lifecycle hooks, skills, or the OpenCode plugin; use `fastr hook install` for those.
+
+```bash
+# Claude Code (project-scoped .mcp.json)
+npx -y fastrmemory@latest mcp init --client claude
+
+# Cursor
+npx -y fastrmemory@latest mcp init --client cursor
+
+# VS Code (.vscode/mcp.json)
+npx -y fastrmemory@latest mcp init --client vscode
+
+# OpenCode (opencode.json)
+npx -y fastrmemory@latest mcp init --client opencode
+
+# Gemini CLI and GitHub Copilot CLI
+npx -y fastrmemory@latest mcp init --client gemini,copilot
+
+# Every project-scoped client at once
+npx -y fastrmemory@latest mcp init --client all --scope project
+```
+
+The same command through the other package runners:
+
+```bash
+pnpm dlx fastrmemory@latest mcp init --client claude
+yarn dlx fastrmemory@latest mcp init --client claude
+bunx fastrmemory@latest mcp init --client claude
+```
+
+The default `--channel latest` writes `fastrmemory@latest`, so a client restart picks up the newest npm release. Use `--channel pinned` for a reproducible config containing the exact version that ran the command. `--runner pnpm|yarn|bunx` changes the generated runner, `--profile core` selects the 12-tool surface, `--dry-run` prints targets without writing, and `--scope user` writes user-level configs with an explicit `--project /absolute/path` so the server always opens the intended database. Codex prints a `[mcp_servers.fastrmemory]` TOML block for `~/.codex/config.toml` instead of rewriting a user-owned TOML file.
+
+> `mcp init` is part of the current source and ships in the next release. Until that release is published, run the same commands from a source checkout (`npx --yes github:atifjubaer/fastrmemory#main mcp init ...`) or after `npm run build:core` with `node bin/fastr-guard.mjs mcp init ...`.
 
 ### Install from GitHub
 
@@ -308,78 +344,39 @@ fastrmemory guard --strict
 
 ## 🔌 One-Click Agent MCP Configuration
 
-Use the installer when possible. `fastr setup` writes the platform-correct command (`node` with an absolute CLI path, or `cmd /c npx` where needed) and pins user-scoped clients to the project root. `fastr hook install` writes project-scoped configs and lifecycle hooks. The manual snippets below use `npx` for project-scoped clients; for user-scoped clients (Claude Desktop, Antigravity, Windsurf, and the Claude Code entry in `~/.claude.json`), append `--project /absolute/path/to/repo`.
+`fastr mcp init` is the one-command path for MCP-only wiring. It writes the platform-correct runner (`npx`, `pnpm dlx`, `yarn dlx`, or `bunx`; `cmd /c ...` on native Windows), preserves unrelated config keys, and is idempotent. `fastr setup` remains the full installer for `.fastr/`, `AGENTS.md`, skills, and lifecycle hooks; `fastr hook install` remains the hook-only path.
 
-### Claude Code (`~/.claude.json`, user-scoped)
+`fastr hook install` merges lifecycle hooks for Claude Code, Cursor, Gemini CLI, GitHub Copilot CLI, and OpenCode, and writes the OpenCode context/compaction plugin. Gemini CLI requires strict JSON on hook stdout; Copilot returns `permissionDecision: "ask"` for an active trap because it has no model-facing advisory field for `preToolUse`.
+
+| Client | Project config | User config | JSON key |
+| :--- | :--- | :--- | :--- |
+| Claude Code | `.mcp.json` | `~/.claude.json` | `mcpServers` |
+| Cursor | `.cursor/mcp.json` | `~/.cursor/mcp.json` | `mcpServers` |
+| VS Code | `.vscode/mcp.json` | VS Code `User/mcp.json` | `servers` |
+| OpenCode | `opencode.json` | project only | `mcp.servers` |
+| Gemini CLI | `.gemini/settings.json` | `~/.gemini/settings.json` | `mcpServers` |
+| GitHub Copilot CLI | `.github/mcp.json` | project only | `mcpServers` |
+| Windsurf | user only | `~/.codeium/windsurf/mcp_config.json` | `mcpServers` |
+| Antigravity | user only | `~/.gemini/antigravity/mcp_config.json` | `mcpServers` |
+| Claude Desktop | user only | platform-specific | `mcpServers` |
+| Codex | user only | `~/.codex/config.toml` | printed TOML |
+
+Example POSIX project config generated by `fastr mcp init --client cursor` (Windows uses `cmd /c npx ...`):
+
 ```json
 {
   "mcpServers": {
     "fastrmemory": {
       "command": "npx",
-      "args": ["-y", "fastrmemory@0.3.1", "mcp", "--project", "/absolute/path/to/your/repo"]
+      "args": ["-y", "fastrmemory@latest", "mcp"]
     }
   }
 }
 ```
 
-### Cursor (`.cursor/mcp.json`, project-scoped)
-```json
-{
-  "mcpServers": {
-    "fastrmemory": {
-      "command": "npx",
-      "args": ["-y", "fastrmemory@0.3.1", "mcp"]
-    }
-  }
-}
-```
+VS Code uses `servers` instead of `mcpServers`; OpenCode uses `mcp.servers` with a command array and `"type": "local"`. Existing `opencode.json(c)` settings are preserved, but a JSONC config is reported for manual wiring rather than rewritten. Codex is always printed as a `[mcp_servers.fastrmemory]` TOML block because rewriting a user-owned TOML file safely requires a dedicated parser.
 
-### Gemini CLI (`.gemini/settings.json`, project-scoped, 0.3.0)
-```json
-{
-  "mcpServers": {
-    "fastrmemory": {
-      "command": "npx",
-      "args": ["-y", "fastrmemory@0.3.1", "mcp"]
-    }
-  }
-}
-```
-
-`fastrmemory hook install` also merges `SessionStart`, `BeforeTool` (`write_file|replace`), `PreCompress`, and `SessionEnd` hooks into the same project settings file. Gemini CLI requires strict JSON on hook stdout, so the generated commands pass `--format gemini`. Google is transitioning users from Gemini CLI to Antigravity CLI; this integration targets the still-documented `.gemini/settings.json` contract.
-
-### GitHub Copilot CLI (`.github/mcp.json`, project-scoped, 0.3.0)
-```json
-{
-  "mcpServers": {
-    "fastrmemory": {
-      "type": "local",
-      "command": "npx",
-      "args": ["-y", "fastrmemory@0.3.1", "mcp"]
-    }
-  }
-}
-```
-
-`fastrmemory hook install` also merges `.github/hooks/fastrmemory.json` with `sessionStart`, `preToolUse` (`edit|create|str_replace_editor|apply_patch`), `preCompact`, and `sessionEnd` hooks. Copilot has no model-facing advisory field for `preToolUse`, so an active trap returns `permissionDecision: "ask"` with the warning; autopilot/non-interactive mode treats `ask` as deny. The shared `AGENTS.md` written by the installer supplies repository instructions.
-
-### OpenCode V2 (`opencode.json`, project-scoped, 0.3.0)
-```json
-{
-  "mcp": {
-    "servers": {
-      "fastrmemory": {
-        "type": "local",
-        "command": ["npx", "-y", "fastrmemory@0.3.1", "mcp"]
-      }
-    }
-  }
-}
-```
-
-`fastrmemory hook install` also writes `.opencode/plugins/fastrmemory/index.ts`, which injects the session-start handoff and critical rules into model context and captures a snapshot before compaction. Existing `opencode.json(c)` settings are preserved; JSONC configs are left untouched and reported for manual wiring.
-
-> **Native Windows:** clients that cannot launch the `npx.cmd` shim directly should use `"command": "cmd"` and `"args": ["/c", "npx", "-y", "fastrmemory@0.3.1", "mcp"]` (add `--project` for user-scoped clients). `fastr setup` writes the absolute `node` path automatically and is the recommended path.
+For user-scoped clients, the generated entry includes `--project /absolute/path/to/repo`; this prevents the client's launch directory from selecting the wrong database. `fastr setup` also writes the absolute `node` path and is the recommended path when the client cannot launch package-runner shims. On native Windows, `fastr mcp init` automatically emits `"command": "cmd"` with `"/c"` and the runner, so manual `npx.cmd` fixes are not needed.
 
 ---
 
@@ -563,7 +560,7 @@ Run the comprehensive unit test suite:
 npm test
 ```
 
-All **282 tests pass** across **52 test files** in 0.3.1 (the v0.2.1 release has **235 tests / 43 files**) covering database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, branch merge conflict reports, replay/diff, memory envelopes, confidence tiers and 3-bad dormancy, memory hygiene checks, Memory CI, conflict-aware recall, portable backup manifests and verified restore, local rule import, OpenCode V2, Gemini CLI, and Copilot CLI wiring, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, UI loopback security boundaries, and atomic installer configuration safety.
+All **293 tests pass** across **53 test files** on current HEAD; published `0.3.1` has **282 tests / 52 files**, and v0.2.1 has **235 tests / 43 files**. Coverage includes database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, branch merge conflict reports, replay/diff, memory envelopes, confidence tiers and 3-bad dormancy, memory hygiene checks, Memory CI, conflict-aware recall, portable backup manifests and verified restore, local rule import, OpenCode V2, Gemini CLI, and Copilot CLI wiring, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, UI loopback security boundaries, atomic installer configuration safety, and shadcn-style `mcp init` client config merges.
 
 **CI performance gates:** `check:query-plans`, `check:recall-latency`, and `check:install-size` run inside `check:ci`. CI executes them on the canonical Ubuntu/Node 24 job; other matrix jobs set `FASTR_PERF_GATE=0` because timing is runner-sensitive, while functional tests still run on every matrix entry.
 
@@ -637,88 +634,6 @@ cursor --install-extension fastrmemory-vscode-0.1.0.vsix
 - **Amber Underlines**: Trapped files are underlined in amber with full hover mitigation instructions and conditional 2.0x boost conditions.
 - **Problems Tab Integration**: Active error traps populate the IDE Problems panel as non-blocking warning diagnostics.
 - **Zero Daemons**: Reads directly from `.fastr/fastr.db` via `node:sqlite`.
-
----
-
-## 🤝 Contributing & Pull Request Roadmap
-
-We warmly welcome contributions from the open-source community! Whether you are adding a new AI coding agent hook, integrating local embedding backends, or crafting 3D visualizations, your pull requests are valued and reviewed promptly.
-
-### 🏆 Contributor Wall of Fame
-
-Special thanks to **[@the-arizul](https://github.com/the-arizul)** for architecting PRs #1 through #11:
-- **PR #1**: Loopback security boundaries, DNS rebinding lockdown, and `dist-ui` package resolution.
-- **PR #2**: Safe atomic JSON config merges, nested Claude Code hook schemas, and sandboxed installer tests.
-- **PR #3**: Hardened GitHub Actions fork PR comment safety.
-- **PR #4**: Core SQLite B-tree heal, BUSY spool fallback, ATTACH injection prevention, and atomic claim/supersede.
-- **PR #5**: Git security hardening (zero shell interpolation, confined paths, and high-entropy secret scrubbing).
-- **PR #6**: Triple-stream RRF recall ranking calibration, zero irrelevant results, and Unicode query normalization.
-- **PR #7**: MCP server hardening (`isError` handling, bounded inputs, parameter annotations, prompts, and new tools: `fastr_get`, `fastr_list`, `fastr_pin`, `fastr_forget`).
-- **PR #8**: Skills suite consolidation, plugin manifest, and CI validation runner.
-- **PR #9**: VS Code extension headless activation fallback and staging trap decorations.
-- **PR #10**: Isolated benchmark database harnesses and calibrated baselines.
-- **PR #11**: Planetary Dashboard v2 overhaul with shadcn/ui, Tailwind CSS v4, and live cross-process sync.
-
----
-
-### 🗺️ Open Contribution Roadmap
-
-| Domain / Focus Area | What Needs Building | Difficulty | Reference Location | Target PR Scope |
-| :--- | :--- | :--- | :--- | :--- |
-| **Agent Hook Installers** | Auto-wire hooks & skills for Windsurf, Roo Code, Continue, and Warp | `good first issue` | [src/installer/setup.ts](src/installer/setup.ts) | `feat(installer)` |
-| **Local Embedding Providers** | Optional on-device backends (Ollama, llama.cpp, WebGPU) with air-gapped fallback | Intermediate | [src/search/embeddings.ts](src/search/embeddings.ts) | `feat(embeddings)` |
-| **IDE Extensions** | JetBrains (IntelliJ / WebStorm) and Neovim Lua plugin with status bar pill & trap underlines | Advanced | [extensions/vscode/](extensions/vscode/) | `feat(ide)` |
-| **Benchmark Runners** | SWE-bench and additional public QA scenario runners; LongMemEval and LoCoMo retrieval harnesses already exist | `good first issue` | [src/bench/benchmark.ts](src/bench/benchmark.ts) | `feat(bench)` |
-| **UI Visualizations** | Custom Three.js shaders, Treemap color palettes, and SVG/PNG graph exports | Intermediate | [ui/src/components/](ui/src/components/) | `feat(ui)` |
-
----
-
-### 🚀 Pull Request Workflow
-
-1. **Fork & Clone Repository**:
-   ```bash
-   git clone https://github.com/<your-username>/fastrmemory.git
-   cd fastrmemory
-   ```
-
-2. **Install Dependencies & Verify Test Suite (282 Tests Passing)**:
-   ```bash
-   npm install
-   npm test
-   ```
-
-3. **Create a Feature Branch**:
-   ```bash
-   git checkout -b feat/add-windsurf-hooks
-   # or for bug fixes:
-   git checkout -b fix/sqlite-busy-retry
-   ```
-
-4. **Implement Changes & Verify All Packages Compile**:
-   ```bash
-   # Compiles backend, React UI, and VS Code extension
-   npm run build:all
-   npm test
-   ```
-
-5. **Commit with DCO Sign-off (`-s`) & Open Pull Request**:
-   ```bash
-   git commit -s -m "feat(installer): add windsurf auto-hook integration"
-   git push origin feat/add-windsurf-hooks
-   ```
-
----
-
-### 📋 Pull Request Quality Checklist
-
-Before submitting your PR, verify:
-- [ ] **Strict TypeScript**: `npm run build:all` passes without type errors.
-- [ ] **Zero External Daemons**: Engine runs in-process via Node.js WAL SQLite.
-- [ ] **100% Test Green**: `npm test` passes all 282 unit tests across 52 files.
-- [ ] **DCO Sign-off**: All commits signed off using `git commit -s` ([Developer Certificate of Origin](https://developercertificate.org/)).
-- [ ] **Pre-Merge Trap Guardian**: Run `fastrmemory guard --strict` to verify no active error traps are violated.
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for full architectural guidelines, secret scrubbing rules, and local development environment setup.
 
 ---
 

@@ -68,15 +68,9 @@ Before submitting a PR, verify that your changes adhere to FastrMemory's **7 Cor
 
 ---
 
-## 🌟 Open Contribution Roadmap
+## 🌟 Contributors
 
-| Domain / Focus Area | What Needs Building | Difficulty | Reference Location | Target PR Scope |
-| :--- | :--- | :--- | :--- | :--- |
-| **Agent Hook Installers** | Auto-wire hooks & skills for Windsurf, Roo Code, Continue, and Warp | `good first issue` | [src/installer/setup.ts](src/installer/setup.ts) | `feat(installer)` |
-| **Local Embedding Providers** | Optional on-device backends (Ollama, llama.cpp, WebGPU) with air-gapped fallback | Intermediate | [src/search/embeddings.ts](src/search/embeddings.ts) | `feat(embeddings)` |
-| **IDE Extensions** | JetBrains (IntelliJ / WebStorm) and Neovim Lua plugin with status bar pill & trap underlines | Advanced | [extensions/vscode/](extensions/vscode/) | `feat(ide)` |
-| **Benchmark Runners** | LongMemEval-S, LoCoMo, and SWE-bench dataset scenario runners | `good first issue` | [src/bench/benchmark.ts](src/bench/benchmark.ts) | `feat(bench)` |
-| **UI Visualizations** | Custom Three.js shaders, Treemap color palettes, and SVG/PNG graph exports | Intermediate | [ui/src/components/](ui/src/components/) | `feat(ui)` |
+Thanks to **[@the-arizul](https://github.com/the-arizul)** for PRs #1 through #11, covering loopback security, atomic JSON config merges, SQLite recovery, retrieval calibration, MCP hardening, the skills suite, the VS Code extension, benchmark harnesses, and the dashboard.
 
 ---
 
@@ -89,10 +83,11 @@ Before submitting a PR, verify that your changes adhere to FastrMemory's **7 Cor
    git checkout -b fix/sqlite-busy-retry
    ```
 2. Write unit tests in `tests/` covering new behavior.
-3. Verify that all 221 tests pass and all packages compile:
+3. Verify that all 293 tests pass and all packages compile:
    ```bash
    npm run build:all && npm test
    ```
+   Keep text files LF. The repository enforces this through `.gitattributes` and `.editorconfig`; a CRLF TypeScript test file fails Vitest on Windows.
 4. Verify no active error traps are regressed:
    ```bash
    node dist/bin/fastr.js guard --strict
