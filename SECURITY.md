@@ -1,8 +1,8 @@
 # Security Policy
 
 **Last reviewed:** 2026-10-23
-**Supported release:** `0.3.1` (published 2026-10-22 23:02 UTC from tag `v0.3.1`; npm `latest`; GitHub Actions OIDC provenance). `0.3.0` remains published as a historical version. `0.4.0` is prepared on `main` and is not tagged or published, so it is not a supported release yet.
-**Previous release:** `0.3.0` was superseded by `0.3.1` and remains published historical; `0.2.1` is historical, its GitHub Release remains for rollback, and its npm entry was removed on 2026-10-23.
+**Supported release:** `0.4.0` (published 2026-10-23 07:32 UTC from tag `v0.4.0`; npm `latest`; GitHub Actions OIDC provenance). `0.3.1` and `0.3.0` remain published historical versions.
+**Previous release:** `0.3.1` was superseded by `0.4.0` and remains published historical; `0.3.0` remains historical; `0.2.1` is historical, its GitHub Release remains for rollback, and its npm entry was removed on 2026-10-23.
 
 FastrMemory is a local-first memory engine. It stores plaintext SQLite and Markdown files, runs as the current OS user, and does not provide multi-user authentication. The security model assumes a trusted local account and treats repository content, imported files, and recalled memories as untrusted data.
 

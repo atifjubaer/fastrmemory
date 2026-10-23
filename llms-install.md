@@ -29,7 +29,7 @@ fastr mcp init --client claude
 
 Supported project-scoped clients are `claude`, `cursor`, `vscode`, `opencode`, `gemini`, and `copilot`. Use `--client all --scope project` for all six. User-scoped clients are `claude`, `cursor`, `vscode`, `gemini`, `windsurf`, `antigravity`, `claude-desktop`, and `codex`; `codex` prints a TOML snippet for `~/.codex/config.toml` instead of rewriting it. The default writes `fastrmemory@latest`; add `--channel pinned` to write the exact version, `--runner pnpm|yarn|bunx` to change the package runner, and `--dry-run` to inspect without writing. Existing JSON is merged, unrelated keys are preserved, and the first change writes a `.fastr.bak` backup.
 
-> `mcp init` is prepared in `0.4.0`; as of 2026-10-23, `0.3.1` is still npm `latest` and does not include the command. If `fastr mcp init` returns an unknown-command error, run `npx --yes github:atifjubaer/fastrmemory#main mcp init --client claude`, use `fastr setup`, or use the manual JSON in step 4 until `0.4.0` publishes.
+> `mcp init` ships in published `0.4.0`; `npx fastrmemory@latest mcp init ...` now resolves to `0.4.0`. If the command is missing, check `fastr --version`, install `npm install -g fastrmemory@0.4.0`, or run `npx -y fastrmemory@0.4.0 mcp init ...`. For the previous release, use `fastr setup` or pin `fastrmemory@0.3.1`.
 
 For the full installer (database initialization, `AGENTS.md`, skills, and lifecycle hooks), run:
 

@@ -14,7 +14,7 @@ allowed-tools: Bash(fastr *), Bash(fastrmemory *), Bash(npx -y fastrmemory*)
 ## 1. Project install (recommended)
 Run from the project root:
 ```bash
-npx -y fastrmemory@0.3.1 hook install
+npx -y fastrmemory@0.4.0 hook install
 ```
 This is idempotent and backs up files it changes. It writes:
 - `.mcp.json`: a project-scoped `fastrmemory` MCP server.
@@ -25,13 +25,13 @@ Commit `.mcp.json` and `.claude/settings.json` so the team shares the setup. Res
 
 ## 2. Manual MCP registration (alternative)
 ```bash
-claude mcp add fastrmemory -- npx -y fastrmemory@0.3.1 mcp
+claude mcp add fastrmemory -- npx -y fastrmemory@0.4.0 mcp
 ```
-On native Windows use `-- cmd /c npx -y fastrmemory@0.3.1 mcp`. Pass `--scope project` (before the name) to write `.mcp.json`. For a user-scoped registration (the default when `--scope project` is omitted), append `--project <absolute-project-path>` so the server does not use the client's launch directory; `fastr setup` writes that path automatically. This adds tools only, not hooks.
+On native Windows use `-- cmd /c npx -y fastrmemory@0.4.0 mcp`. Pass `--scope project` (before the name) to write `.mcp.json`. For a user-scoped registration (the default when `--scope project` is omitted), append `--project <absolute-project-path>` so the server does not use the client's launch directory; `fastr setup` writes that path automatically. This adds tools only, not hooks.
 
 ## 3. Verify
 ```bash
-npx -y fastrmemory@0.3.1 status
+npx -y fastrmemory@0.4.0 status
 claude mcp list
 ```
 `status` prints the project ID, memory counts, and database path (`.fastr/` under the project). Inside a session, call:

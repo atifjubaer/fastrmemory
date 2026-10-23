@@ -4,7 +4,7 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ## [0.4.0] - 2026-10-23
 
-**Prepared on `main`; not tagged or published as of 2026-10-23.** `fastrmemory@0.3.1` remains the published npm `latest` release. The source package and release manifests are `0.4.0`; this entry records the prepared release surface and will gain publish evidence after the tag-driven workflow runs.
+Published 2026-10-23 07:32:53 UTC from tag `v0.4.0` (`bb365c2`) by `.github/workflows/release.yml` using GitHub Actions OIDC trusted publishing. `npm view fastrmemory version` returns `0.4.0` and `latest` is `0.4.0`; release workflow run `39918288792` passed the full gate, clean tarball install, provenance publish, registry verification, and GitHub Release upload. The GitHub Release tarball SHA-256 is `b784e3e12b8a50deaee3b38dbc1f45c756bc37462f2d40433fdda5288cf554ad`; `npm audit signatures` reports 5 verified registry signatures and 4 verified attestations. `0.3.1` remains published historical.
 
 ### Added
 
@@ -15,7 +15,7 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 - Package, lockfile, MCP registry manifest, Claude plugin manifests, and skills metadata are `0.4.0`; generated `--channel pinned` configs pin `fastrmemory@0.4.0`.
 - README now documents package-runner quick starts and the `mcp init` client matrix; roadmap and contribution sections were removed, with contributor credit retained in `CONTRIBUTING.md`.
-- Test suite is 293 tests across 53 files. CI run `39879595191` at `098100e` (the 0.4.0 preparation commit) passed all six matrix jobs on 2026-10-23, including Windows Node `22.x` and `24.x`.
+- Test suite is 293 tests across 53 files. CI run `39879913968` at `bb365c2` passed all six matrix jobs on 2026-10-23, including Windows Node `22.x` and `24.x`; release workflow run `39918288792` at tag `v0.4.0` passed the full gate.
 
 ### Fixed
 
@@ -23,11 +23,11 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ### Release caveat
 
-- `0.4.0` is not installable from npm until the release workflow publishes it. `npx fastrmemory@latest mcp init` still resolves to published `0.3.1`, and `--channel pinned` writes the unpublished `fastrmemory@0.4.0` from current `main`. There is no schema migration.
+- `npx fastrmemory@latest mcp init` now resolves to published `0.4.0`, and `--channel pinned` writes `fastrmemory@0.4.0`. `0.3.1` remains published historical. There is no schema migration.
 
 ## [0.3.1] - 2026-10-23
 
-Published 2026-10-22 23:02:38 UTC from tag `v0.3.1` (`3a3cac6`) by `.github/workflows/release.yml` using GitHub Actions OIDC trusted publishing. `npm view fastrmemory version` returns `0.3.1` and `latest` is `0.3.1`; release workflow run `39868908223` passed the full gate, clean install, provenance publish, registry verification, and GitHub Release upload. The GitHub Release tarball SHA-256 is `747f61791dcb7c5694f3cf5cc8705152892a5b16cb33bec51a356fc22112a7b8`. This release replaces the stale `0.3.0` npm README, fixes Windows MCP launch commands, pins user-scoped clients to the project root, and adds a Node runtime guard before `node:sqlite` is loaded.
+Published 2026-10-22 23:02:38 UTC from tag `v0.3.1` (`3a3cac6`) by `.github/workflows/release.yml` using GitHub Actions OIDC trusted publishing. At release time, `npm view fastrmemory@0.3.1 version` returned `0.3.1` and `latest` was `0.3.1`; release workflow run `39868908223` passed the full gate, clean install, provenance publish, registry verification, and GitHub Release upload. The GitHub Release tarball SHA-256 is `747f61791dcb7c5694f3cf5cc8705152892a5b16cb33bec51a356fc22112a7b8`. This release replaces the stale `0.3.0` npm README, fixes Windows MCP launch commands, pins user-scoped clients to the project root, and adds a Node runtime guard before `node:sqlite` is loaded.
 
 ### Added
 
@@ -125,7 +125,7 @@ GitHub release attached and npm package published from the post-0.2.0 fixes. `@a
 
 ### Known limitations
 
-- At the time of the 0.2.1 release, the npm registry also listed `0.0.0-stage`; both old npm entries were removed on 2026-10-23. Use `fastrmemory@0.3.1` for current installs.
+- At the time of the 0.2.1 release, the npm registry also listed `0.0.0-stage`; both old npm entries were removed on 2026-10-23. Use `fastrmemory@0.4.0` for current installs.
 - At v0.2.1, the benchmark corpus was synthetic and no external memory engine was measured; the 0.3.0 release adds pinned external retrieval baselines.
 - Apple Silicon macOS is not in the 6-job CI matrix.
 - The crash test kills the process (`taskkill /F`); it is not an OS-crash or power-loss test, and SQLite uses `synchronous=NORMAL` in WAL mode.
