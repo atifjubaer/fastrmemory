@@ -10,6 +10,15 @@ import { runInteractiveSetup } from '../src/installer/setup.js';
 import { formatBenchmarkMarkdown } from '../src/bench/benchmark.js';
 import { startUiServer } from '../src/ui/server.js';
 import { installAgentHooks } from '../src/installer/hooks.js';
+import {
+  formatMcpInitResult,
+  initMcpClients,
+  parseMcpChannel,
+  parseMcpClients,
+  parseMcpProfile,
+  parseMcpRunner,
+  parseMcpScope,
+} from '../src/installer/mcp-init.js';
 import { learnFromGitHistory } from '../src/learn/git-learner.js';
 import { exportToObsidianVault } from '../src/export/obsidian.js';
 import { runLifecycleHook, toClaudeHookStdout, toGeminiHookStdout, toCopilotHookStdout } from '../src/hooks/runner.js';
@@ -43,6 +52,9 @@ const BANNER = `
 `;
 
 const program = new Command();
+// Let subcommands own options that also exist on their parent (for example `mcp --project`
+// and `mcp init --project`) without the parent consuming the subcommand's value.
+program.enablePositionalOptions();
 
 program
   .name('fastrmemory')
@@ -67,7 +79,7 @@ program
   });
 
 // 1. MCP stdio command (Primary integration for Claude Code, Cursor, Antigravity)
-program
+const mcpCmd = program
   .command('mcp')
   .description('Run FastrMemory as an MCP stdio server')
   .option('--profile <profile>', 'Tool surface: full (default) or core (12 tools)')
@@ -78,6 +90,69 @@ program
     } catch (err: any) {
       console.error('FastrMemory MCP Server error:', err.message);
       process.exit(1);
+    }
+  });
+
+mcpCmd
+  .command('init')
+  .description('Configure FastrMemory MCP in Claude Code, Cursor, VS Code, OpenCode, or another client')
+  .requiredOption('--client <clients>', 'Client id, comma-separated ids, or all')
+  .option('--scope <scope>', 'project or user', 'project')
+  .option('--channel <channel>', 'latest (auto-update) or pinned (exact version)', 'latest')
+  .option('--runner <runner>', 'npx, pnpm, yarn, or bunx', 'npx')
+  .option('--profile <profile>', 'Tool surface: full or core', 'full')
+  .option('--project <path>', 'Project root for user-scoped configs', process.cwd())
+  .option('--dry-run', 'Print the target files without writing', false)
+  .option('--json', 'Print a machine-readable result', false)
+  .addHelpText('after', `
+Examples:
+  $ fastrmemory mcp init --client claude
+  $ fastrmemory mcp init --client cursor,vscode --channel pinned
+  $ fastrmemory mcp init --client opencode --runner pnpm
+  $ fastrmemory mcp init --client all --scope project
+  $ fastrmemory mcp init --client codex --scope user`)
+  .action((options: {
+    client: string;
+    scope: string;
+    channel: string;
+    runner: string;
+    profile: string;
+    project: string;
+    dryRun: boolean;
+    json: boolean;
+  }) => {
+    try {
+      const scope = parseMcpScope(options.scope);
+      const clients = parseMcpClients(options.client, scope);
+      const channel = parseMcpChannel(options.channel);
+      const runner = parseMcpRunner(options.runner);
+      const profile = parseMcpProfile(options.profile);
+      const results = initMcpClients({
+        clients,
+        scope,
+        projectRoot: options.project,
+        channel,
+        runner,
+        profile,
+        dryRun: options.dryRun,
+      });
+
+      if (options.json) {
+        console.log(JSON.stringify({ scope, channel, runner, profile, results }, null, 2));
+        return;
+      }
+
+      for (const result of results) {
+        console.log(formatMcpInitResult(result));
+      }
+      if (results.some((result) => result.manual)) {
+        console.log('\nRestart the client after adding the snippet above.');
+      } else if (!options.dryRun) {
+        console.log('\nRestart the client so it picks up the FastrMemory MCP server.');
+      }
+    } catch (err: any) {
+      console.error(`FastrMemory MCP init error: ${err.message}`);
+      process.exitCode = 1;
     }
   });
 
