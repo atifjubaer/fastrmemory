@@ -2,6 +2,7 @@
 
 **Last reviewed:** 2026-10-23
 **Supported release:** `0.4.0` (published 2026-10-23 07:32 UTC from tag `v0.4.0`; npm `latest`; GitHub Actions OIDC provenance). `0.3.1` and `0.3.0` remain published historical versions.
+**Next release:** current `main` adds `fastr mcp init --source local`; it is not part of published `0.4.0`. The supported release remains `0.4.0` until the next tag is published.
 **Previous release:** `0.3.1` was superseded by `0.4.0` and remains published historical; `0.3.0` remains historical; `0.2.1` is historical, its GitHub Release remains for rollback, and its npm entry was removed on 2026-10-23.
 
 FastrMemory is a local-first memory engine. It stores plaintext SQLite and Markdown files, runs as the current OS user, and does not provide multi-user authentication. The security model assumes a trusted local account and treats repository content, imported files, and recalled memories as untrusted data.
@@ -16,7 +17,7 @@ FastrMemory is a local-first memory engine. It stores plaintext SQLite and Markd
 | `.fastr/spool/pending.jsonl` | Fallback queue when SQLite is busy | Plaintext JSONL |
 | `.fastr/project.json` | Project id and display name | No secrets expected |
 | `~/.fastr/global.db` | Federated global memories | Shared across projects for this OS user |
-| Agent config files | MCP and hook registration | Written by `fastrmemory hook install` / `fastr setup` |
+| Agent config files | MCP and hook registration; `--source local` entries embed absolute CLI and project paths | Written by `fastr mcp init`, `fastrmemory hook install`, or `fastr setup`; review before committing |
 
 `FASTR_HOME` overrides the global home directory for tests and sandboxes. It does not encrypt data.
 
@@ -66,7 +67,7 @@ This is **best-effort redaction, not encryption**:
 
 - The default MCP surface is 41 tools; use `--profile core` for the 12-tool daily loop when a client does not need branch, replay, or admin tools.
 - Treat tool permissions as security boundaries. A client that can call `fastr_forget`, `fastr_merge`, or conflict resolution can mutate memory.
-- Keep MCP configuration files reviewed and committed intentionally.
+- Keep MCP configuration files reviewed and committed intentionally. `fastr mcp init --source local` writes the active CLI path and an absolute `--project`; treat those configs as machine-specific and use `--source registry` (the default) for shared or committed configs.
 - Do not expose the dashboard port through a reverse proxy, tunnel, or container port publish.
 - Re-run `fastrmemory hook install` after upgrades so hook formats and MCP commands match the installed version.
 

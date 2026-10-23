@@ -2,6 +2,8 @@
 
 > **0.4.0 release (2026-10-23):** `fastrmemory@0.4.0` is published and npm `latest`. Release workflow run `39918288792` passed the full gate, clean tarball install, provenance publish, registry verification, and GitHub Release upload; the suite is **293 tests / 53 files**. `0.3.1` and `0.3.0` remain published historical.
 >
+> **Current main (unreleased):** `6c2a53a` adds `fastr mcp init --source local` and passes **297 tests / 53 files**; remote CI run `39935705994` is 6/6 green. The scores below remain the 0.4.0 assessment.
+>
 > **0.3.1 release (2026-10-23; historical):** `fastrmemory@0.3.1` remains published historical and passes **282 tests / 52 files**; release workflow run `39868908223` passed the full gate. The nine gate scores below remain the `0.3.1` assessment; `0.4.0` adds `mcp init` and LF enforcement, with no new benchmark or security score measured.
 
 **Evidence date:** 2026-10-23 (0.3.1 assessment)

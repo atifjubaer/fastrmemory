@@ -2,6 +2,17 @@
 
 All notable changes to FastrMemory are recorded here. Versions follow semantic versioning.
 
+## [Unreleased]
+
+### Added
+
+- `fastr mcp init --source local` writes the active CLI path and an absolute `--project` into client configs; `--source registry` remains the default portable runner. The local source supports a globally installed `fastr` without relying on `npx`.
+- Dashboard status reports the active MCP source (`source`, `installed`, or `registry`) and the resolved project root.
+
+### Changed
+
+- Test suite is 297 tests across 53 files on current `main` (`6c2a53a`); remote CI run `39935705994` passed 6/6 matrix jobs. Published `0.4.0` remains 293 tests / 53 files.
+
 ## [0.4.0] - 2026-10-23
 
 Published 2026-10-23 07:32:53 UTC from tag `v0.4.0` (`bb365c2`) by `.github/workflows/release.yml` using GitHub Actions OIDC trusted publishing. `npm view fastrmemory version` returns `0.4.0` and `latest` is `0.4.0`; release workflow run `39918288792` passed the full gate, clean tarball install, provenance publish, registry verification, and GitHub Release upload. The GitHub Release tarball SHA-256 is `b784e3e12b8a50deaee3b38dbc1f45c756bc37462f2d40433fdda5288cf554ad`; `npm audit signatures` reports 5 verified registry signatures and 4 verified attestations. `0.3.1` remains published historical.

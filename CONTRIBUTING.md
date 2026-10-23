@@ -10,7 +10,7 @@ FastrMemory is an open-source, high-performance cognitive agent memory engine bu
 
 - **License**: All contributions are licensed under the [Apache-2.0 License](./LICENSE).
 - **Developer Certificate of Origin (DCO)**: Please sign off on your commits with `git commit -s`.
-- **Code Quality**: Strict TypeScript (`tsc --noEmit`), zero external daemon dependencies, and 100% test passing (`npm test`).
+- **Code Quality**: Strict TypeScript (`tsc --noEmit`), zero external daemon dependencies, and 100% test passing (`npm test`; full gate `npm run check:ci`).
 - **Clean Commits**: Follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`).
 
 ---
@@ -83,11 +83,14 @@ Thanks to **[@the-arizul](https://github.com/the-arizul)** for PRs #1 through #1
    git checkout -b fix/sqlite-busy-retry
    ```
 2. Write unit tests in `tests/` covering new behavior.
-3. Verify that all 293 tests pass and all packages compile:
+3. Verify that all 297 tests pass and all packages compile:
    ```bash
-   npm run build:all && npm test
+   npm run build:all
+   npm run check:ci
    ```
    Keep text files LF. The repository enforces this through `.gitattributes` and `.editorconfig`; a CRLF TypeScript test file fails Vitest on Windows.
+
+   For MCP configuration changes, cover both `--source registry` (the default portable runner) and `--source local` (the active CLI path plus absolute `--project`); `tests/mcp-init.test.ts` has 15 cases.
 4. Verify no active error traps are regressed:
    ```bash
    node dist/bin/fastr.js guard --strict
