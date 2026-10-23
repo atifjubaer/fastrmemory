@@ -64,6 +64,11 @@ export interface ProjectStatus {
   embeddingCoveragePercent: number;
 }
 
+export interface McpServerEntry {
+  command: string;
+  args: string[];
+}
+
 export interface FastrStatus {
   projectId: string;
   projectName: string;
@@ -72,6 +77,8 @@ export interface FastrStatus {
   version: string;
   platform: string;
   isHomeProject: boolean;
+  mcp: McpServerEntry;
+  mcpSource: 'local' | 'registry';
   status: ProjectStatus;
   trapsCount: number;
   activeCount: number;

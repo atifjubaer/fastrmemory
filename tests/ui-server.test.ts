@@ -64,6 +64,12 @@ describe('FastrMemory Web UI Server', () => {
     expect(statusRes.status).toBe(200);
     const statusJson = await statusRes.json();
     expect(statusJson.projectId).toBe('proj_ui_test');
+    expect(statusJson.projectRoot).toBe(testDir);
+    expect(statusJson.version).toBeTruthy();
+    expect(statusJson.isHomeProject).toBe(false);
+    expect(statusJson.mcp.args).toContain('--project');
+    expect(statusJson.mcp.args).toContain(path.resolve(testDir));
+    expect(['local', 'registry']).toContain(statusJson.mcpSource);
 
     // 3. Test /api/memories
     const memRes = await fetch(`${url}/api/memories`);

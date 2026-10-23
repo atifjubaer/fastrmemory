@@ -37,12 +37,10 @@ export function SettingsPage() {
   const memories = useMemories();
   const s = status.data;
 
-  const projectRoot = s?.projectRoot ?? '<project-root>';
-  const packageSpec = `fastrmemory@${s?.version ?? '0.4.0'}`;
-  const mcpArgs = ['-y', packageSpec, 'mcp', '--project', projectRoot];
-  const mcpEntry = s?.platform === 'win32'
-    ? { command: 'cmd', args: ['/c', 'npx', ...mcpArgs] }
-    : { command: 'npx', args: mcpArgs };
+  const mcpEntry = s?.mcp ?? {
+    command: 'npx',
+    args: ['-y', `fastrmemory@${s?.version ?? '0.4.0'}`, 'mcp', '--project', s?.projectRoot ?? '<project-root>'],
+  };
   const mcpJson = JSON.stringify({ mcpServers: { fastrmemory: mcpEntry } }, null, 2);
 
   return (
@@ -135,6 +133,12 @@ export function SettingsPage() {
             <span className="w-24 shrink-0 text-muted-foreground">Server version</span>
             <code className="font-mono text-xs">{s?.version ?? '…'}</code>
           </div>
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="w-24 shrink-0 text-muted-foreground">MCP source</span>
+            <span className="text-xs">
+              {s?.mcpSource === 'local' ? 'Local CLI' : s?.mcpSource === 'registry' ? 'npm registry' : '…'}
+            </span>
+          </div>
           {s?.isHomeProject && (
             <div className="mt-2 flex gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
               <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-500" aria-hidden />
@@ -174,7 +178,7 @@ export function SettingsPage() {
             <CopyButton text={mcpJson} description="Copy MCP config" variant="ghost" className="absolute top-2 right-2" />
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Pinned to the running server version and project root. On Windows the config uses{' '}
+            Uses the local CLI when available; otherwise it pins the npm package. On Windows the registry config uses{' '}
             <code className="font-mono">cmd /c npx</code>. Add <code className="font-mono">--profile core</code>{' '}
             before <code className="font-mono">--project</code> for the smaller 12-tool surface.
           </p>

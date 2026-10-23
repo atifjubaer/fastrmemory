@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { exec } from 'node:child_process';
 import { FastrConfig } from '../config.js';
 import { PACKAGE_VERSION } from '../version.js';
+import { resolveMcpCommand, withProjectRoot } from '../installer/setup.js';
 import { initDatabase } from '../db/schema.js';
 import { FastrRepository } from '../db/repository.js';
 import { SpoolManager } from '../db/spool.js';
@@ -271,6 +272,7 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
         const frontier = repo.getFrontier(config.projectId);
         const conflicts = repo.listConflicts(config.projectId, 'open');
         const entities = repo.getEntities(config.projectId);
+        const mcpEntry = withProjectRoot(resolveMcpCommand(), config.projectRoot);
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
@@ -281,6 +283,8 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
           version: PACKAGE_VERSION,
           platform: process.platform,
           isHomeProject: path.resolve(config.projectRoot) === path.resolve(os.homedir()),
+          mcp: mcpEntry,
+          mcpSource: mcpEntry.command === 'node' ? 'local' : 'registry',
           status,
           trapsCount: traps.length,
           activeCount: memories.length,
