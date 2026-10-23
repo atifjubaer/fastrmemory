@@ -94,9 +94,9 @@ What changes:
 
 Schema additions are automatic. No manual SQL is required. Branch pointers and merge logs are additive; merging is one-way into the current active set.
 
-### Next release (unreleased)
+### 0.5.0 (prepared 2026-10-23)
 
-Current `main` adds `fastr mcp init --source local`, which writes the active CLI path and an absolute `--project`; `--source registry` remains the default. No schema migration is required. `0.4.0` remains the current published release until the next tag is published.
+`0.5.0` adds `fastr mcp init --source local`, which writes the active CLI path and an absolute `--project`; `--source registry` remains the default. No schema migration is required. `0.4.0` remains the current published release until the `v0.5.0` tag is published.
 
 ### 0.4.0 (published 2026-10-23)
 

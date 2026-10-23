@@ -4,7 +4,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "fastrmemory@0.4.0",
+        "fastrmemory@0.5.0",
         "mcp"
       ]
     }

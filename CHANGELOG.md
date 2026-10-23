@@ -2,7 +2,9 @@
 
 All notable changes to FastrMemory are recorded here. Versions follow semantic versioning.
 
-## [Unreleased]
+## [0.5.0] - 2026-10-23
+
+Prepared 2026-10-23. Publication evidence is recorded after the tag-driven release workflow completes.
 
 ### Added
 
@@ -11,7 +13,7 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ### Changed
 
-- Test suite is 297 tests across 53 files on current `main` (`6c2a53a`); remote CI run `39935705994` passed 6/6 matrix jobs. Published `0.4.0` remains 293 tests / 53 files.
+- Test suite is 297 tests across 53 files on current `main` (`6c2a53a`); remote CI run `39935705994` passed 6/6 matrix jobs. Prior published `0.4.0` remains 293 tests / 53 files.
 
 ## [0.4.0] - 2026-10-23
 
