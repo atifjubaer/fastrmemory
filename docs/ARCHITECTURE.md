@@ -1,9 +1,9 @@
 # FastrMemory Architecture
 
-> **Package:** published `fastrmemory@0.4.0` (npm `latest` since 2026-10-23 07:32 UTC; `0.3.1` and `0.3.0` remain published historical; historical 0.2.1 release: `@atifjubaer/fastrmemory`; npm entry removed 2026-10-23; CLI: `fastr` / `fastrmemory`)
+> **Package:** published `fastrmemory@0.5.0` (npm `latest` since 2026-10-23 15:20 UTC; `0.4.0`, `0.3.1`, and `0.3.0` remain published historical; historical 0.2.1 release: `@atifjubaer/fastrmemory`; npm entry removed 2026-10-23; CLI: `fastr` / `fastrmemory`)
 > **Runtime:** Node.js >= 22.16.0, ESM, built-in `node:sqlite` in WAL mode
 > **Protocol:** MCP v2 via `@modelcontextprotocol/server`
-> **Status:** 0.3.0 architecture baseline as of 2026-10-21 (`b220067`); 0.3.1 added the runtime guard, project-root pinning, Windows launch fixes, and the automated release workflow. 0.4.0 adds `fastr mcp init` and LF checkout enforcement, with no schema change. Known gaps are listed at the end and are not hidden.
+> **Status:** 0.3.0 architecture baseline as of 2026-10-21 (`b220067`); 0.3.1 added the runtime guard, project-root pinning, Windows launch fixes, and the automated release workflow. 0.4.0 added `fastr mcp init` and LF checkout enforcement. 0.5.0 adds `fastr mcp init --source local`, with no schema change. Known gaps are listed at the end and are not hidden.
 
 ## 1. What problem it solves
 

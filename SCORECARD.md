@@ -1,14 +1,14 @@
 # Scorecard
 
-> **0.4.0 release (2026-10-23):** `fastrmemory@0.4.0` is published and npm `latest`. Release workflow run `39918288792` passed the full gate, clean tarball install, provenance publish, registry verification, and GitHub Release upload; the suite is **293 tests / 53 files**. `0.3.1` and `0.3.0` remain published historical.
+> **0.5.0 release (2026-10-23):** `fastrmemory@0.5.0` is published and npm `latest`. Release workflow run `39977196250` passed the full gate, clean tarball install, provenance publish, registry verification, and GitHub Release upload; the suite is **297 tests / 53 files**. `0.4.0`, `0.3.1`, and `0.3.0` remain published historical.
 >
-> **Current main (`0.5.0`, prepared):** adds `fastr mcp init --source local` and passes **297 tests / 53 files**; remote CI run `39935705994` is 6/6 green. The scores below remain the 0.4.0 assessment until `v0.5.0` is published.
+> **0.4.0 release (2026-10-23; historical):** `fastrmemory@0.4.0` remains published historical. Release workflow run `39918288792` passed the full gate, clean tarball install, provenance publish, registry verification, and GitHub Release upload; the suite is **293 tests / 53 files**. `0.3.1` and `0.3.0` remain published historical.
 >
-> **0.3.1 release (2026-10-23; historical):** `fastrmemory@0.3.1` remains published historical and passes **282 tests / 52 files**; release workflow run `39868908223` passed the full gate. The nine gate scores below remain the `0.3.1` assessment; `0.4.0` adds `mcp init` and LF enforcement, with no new benchmark or security score measured.
+> **0.3.1 release (2026-10-23; historical):** `fastrmemory@0.3.1` remains published historical and passes **282 tests / 52 files**; release workflow run `39868908223` passed the full gate. The nine gate scores below remain the `0.3.1` assessment; `0.4.0` and `0.5.0` add configuration-surface changes, with no new benchmark or security score measured.
 
-**Evidence date:** 2026-10-23 (0.3.1 assessment)
-**Code evidence:** `0e0cb8d` (282 tests / 52 files); remote CI run `4164a9c` is 6/6 green in run `39847701573`; release tag `v0.3.1` (`3a3cac6`)
-**npm release evidence:** `fastrmemory@0.3.1` published 2026-10-22 23:02 UTC; at that assessment `npm view fastrmemory version` returned `0.3.1` and fresh-cache `npx` plus clean global install returned `0.3.1`; GitHub `v0.3.1` asset attached; old scoped npm entries removed 2026-10-23; GitHub `v0.2.1` tag/release remains historical; `0.4.0` is now `latest`
+**Evidence date:** 2026-10-23 (0.5.0 release; scores remain the 0.3.1 assessment)
+**Code evidence:** `54a79ab` (297 tests / 53 files); release workflow run `39977196250`; historical 0.3.1 assessment `0e0cb8d` (282 tests / 52 files), remote CI run `4164a9c` 6/6 green in run `39847701573`, release tag `v0.3.1` (`3a3cac6`)
+**npm release evidence:** `fastrmemory@0.5.0` published 2026-10-23 15:20 UTC; `npm view fastrmemory version` returns `0.5.0`; clean registry install returns `0.5.0`; GitHub `v0.5.0` asset attached with SHA-256 `10420ed6c70e6db52984ad6b895949f0f1d849dff06e2cb9227b7b56540cfb0e`; old scoped npm entries removed 2026-10-23; GitHub `v0.2.1` tag/release remains historical; `0.4.0` and `0.3.1` remain published historical
 **Documentation evidence:** `MIGRATION.md`, `SECURITY.md`, `CLAIMS.md`, and this scorecard in this docs commit
 **Target:** `9.2 / 10`
 
@@ -36,7 +36,7 @@ The remaining retrieval gap is:
 
 1. LoCoMo misses the external `+5pp Hit@5` target (`+4.4pp` vs MiniSearch and `+2.3pp` vs MCP memory); Hit@1 is `0.1pp` below the MCP adapter.
 
-Remote CI evidence is green at `4164a9c` in run `39847701573` (6/6 jobs). The release workflow ran the full gate at tag `v0.3.1` (282 tests / 52 files), published with GitHub Actions OIDC, and `fastrmemory@0.3.1` was live as `latest` at that assessment; `0.4.0` is now `latest`. Phase 5's legacy-row cleanup is complete; Apple Silicon coverage remains, but it does not change the gate scores.
+Remote CI evidence is green at `4164a9c` in run `39847701573` (6/6 jobs). The release workflow ran the full gate at tag `v0.3.1` (282 tests / 52 files), published with GitHub Actions OIDC, and `fastrmemory@0.3.1` was live as `latest` at that assessment; `0.5.0` is now `latest`, and `0.4.0` remains published historical. Phase 5's legacy-row cleanup is complete; Apple Silicon coverage remains, but it does not change the gate scores.
 
 If Retrieval closes without regressing the passing gates, the provisional total would reach `9.0 / 9 = 10.0 / 10`. That is a forecast, not a result; the `9.2` target is already met at `9.4`.
 
@@ -59,4 +59,4 @@ Raw JSON is committed under `bench/results/`. Public benchmark caveats are in `B
 - It does not compare FastrMemory to a QA leaderboard.
 - It does not claim uniform retrieval superiority; LoCoMo is a measured miss.
 - It does not claim power-loss durability or multi-user security.
-- It does not claim any old scoped npm package is still installable; `fastrmemory@0.4.0` is `latest`, and `0.3.1`/`0.3.0` remain published historical.
+- It does not claim any old scoped npm package is still installable; `fastrmemory@0.5.0` is `latest`, and `0.4.0`/`0.3.1`/`0.3.0` remain published historical.

@@ -7,11 +7,11 @@
 
 FastrMemory 0.2.1 is the replay and reliability release. It adds exact memory replay, portable JSONL snapshots, Memory CI, non-lossy consolidation, and a 12-tool core MCP profile. The GitHub Release tarball is attached and installable. The npm registry package was published at `0.2.1` and later removed.
 
-> **Update (2026-10-23):** The canonical unscoped release is `fastrmemory@0.4.0`, published and npm `latest` since 2026-10-23 07:32 UTC; `0.3.1` and `0.3.0` remain published historical. The old scoped npm package was removed on 2026-10-23; the GitHub `v0.2.1` release remains historical. The "0.3.0 is not published" statements below describe the 0.2.1 release date; see [docs/npm-publishing.md](../npm-publishing.md).
+> **Update (2026-10-23):** The canonical unscoped release is `fastrmemory@0.5.0`, published and npm `latest` since 2026-10-23 15:20 UTC; `0.4.0`, `0.3.1`, and `0.3.0` remain published historical. The old scoped npm package was removed on 2026-10-23; the GitHub `v0.2.1` release remains historical. The "0.3.0 is not published" statements below describe the 0.2.1 release date; see [docs/npm-publishing.md](../npm-publishing.md).
 
 ## Install
 
-The npm commands below are historical and no longer work. Use published `fastrmemory@0.4.0` for new installs.
+The npm commands below are historical and no longer work. Use published `fastrmemory@0.5.0` for new installs.
 
 ```bash
 # Historical GitHub Release fallback:
@@ -61,7 +61,7 @@ The benchmark uses **240 deterministic synthetic cases with a 48-case frozen hol
 ## Caveats
 
 - The npm registry tarball and GitHub asset are not byte-identical; both report `0.2.1`. Use the exact version for reproducible installs.
-- At the 0.2.1 release date, `0.3.0` was unpublished. `0.3.0`, `0.3.1`, and `0.4.0` are now published; `0.4.0` is `latest`, and `0.3.1`/`0.3.0` remain historical. See [docs/npm-publishing.md](../npm-publishing.md).
+- At the 0.2.1 release date, `0.3.0` was unpublished. `0.3.0`, `0.3.1`, `0.4.0`, and `0.5.0` are now published; `0.5.0` is `latest`, and `0.4.0`/`0.3.1`/`0.3.0` remain historical. See [docs/npm-publishing.md](../npm-publishing.md).
 - The benchmark corpus is synthetic; it is not a QA leaderboard result.
 - The macOS CI jobs use Intel `macos-15-intel`; Apple Silicon is not covered.
 - Memory CI comment updates are verified for same-repository PRs; fork PRs are job-summary-only because their token is read-only.
@@ -72,4 +72,4 @@ The benchmark uses **240 deterministic synthetic cases with a 48-case frozen hol
 
 ## Next
 
-The `0.3.0` release added conflict-aware recall, local rule import, OpenCode V2/Gemini CLI/Copilot CLI hooks, immutable branches, confidence tiers, feedback, hygiene, and the dashboard Replay & Diff workspace. It remains published as `fastrmemory@0.3.0`; `0.3.1` remains the previous patch, and `0.4.0` is the current release with `fastr mcp init` and LF checkout enforcement. The `0.2.1` npm publish completed on 2026-10-22 from tag `3fa2bf9`; for future releases, use the documented workflow and verify `npm view` and `npx` from a neutral directory.
+The `0.3.0` release added conflict-aware recall, local rule import, OpenCode V2/Gemini CLI/Copilot CLI hooks, immutable branches, confidence tiers, feedback, hygiene, and the dashboard Replay & Diff workspace. It remains published as `fastrmemory@0.3.0`; `0.3.1` remains the previous patch, `0.4.0` remains published historical, and `0.5.0` is the current release with `fastr mcp init --source local` and LF checkout enforcement. The `0.2.1` npm publish completed on 2026-10-22 from tag `3fa2bf9`; for future releases, use the documented workflow and verify `npm view` and `npx` from a neutral directory.

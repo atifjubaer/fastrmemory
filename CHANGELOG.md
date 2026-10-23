@@ -4,7 +4,7 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ## [0.5.0] - 2026-10-23
 
-Prepared 2026-10-23. Publication evidence is recorded after the tag-driven release workflow completes.
+Published 2026-10-23 15:20:41 UTC from tag `v0.5.0` (`54a79ab`) by `.github/workflows/release.yml` using GitHub Actions OIDC trusted publishing. `npm view fastrmemory version` returns `0.5.0` and `latest` is `0.5.0`; release workflow run `39977196250` passed the full gate, clean tarball install, provenance publish, registry verification, and GitHub Release upload. The GitHub Release tarball SHA-256 is `10420ed6c70e6db52984ad6b895949f0f1d849dff06e2cb9227b7b56540cfb0e`; `npm audit signatures` reports 5 verified registry signatures and 4 verified attestations. `0.4.0` remains published historical.
 
 ### Added
 
@@ -13,7 +13,7 @@ Prepared 2026-10-23. Publication evidence is recorded after the tag-driven relea
 
 ### Changed
 
-- Test suite is 297 tests across 53 files on current `main` (`6c2a53a`); remote CI run `39935705994` passed 6/6 matrix jobs. Prior published `0.4.0` remains 293 tests / 53 files.
+- Test suite is 297 tests across 53 files at `6c2a53a`; release tag `v0.5.0` (`54a79ab`) includes the same suite; remote CI run `39935705994` passed 6/6 matrix jobs, and release workflow run `39977196250` passed the full gate. Historical `0.4.0` remains 293 tests / 53 files.
 
 ## [0.4.0] - 2026-10-23
 
@@ -36,7 +36,7 @@ Published 2026-10-23 07:32:53 UTC from tag `v0.4.0` (`bb365c2`) by `.github/work
 
 ### Release caveat
 
-- `npx fastrmemory@latest mcp init` now resolves to published `0.4.0`, and `--channel pinned` writes `fastrmemory@0.4.0`. `0.3.1` remains published historical. There is no schema migration.
+- At the `0.4.0` release, `npx fastrmemory@latest mcp init` resolved to published `0.4.0`, and `--channel pinned` wrote `fastrmemory@0.4.0`. `0.3.1` remains published historical. There is no schema migration.
 
 ## [0.3.1] - 2026-10-23
 
@@ -138,7 +138,7 @@ GitHub release attached and npm package published from the post-0.2.0 fixes. `@a
 
 ### Known limitations
 
-- At the time of the 0.2.1 release, the npm registry also listed `0.0.0-stage`; both old npm entries were removed on 2026-10-23. Use `fastrmemory@0.4.0` for current installs.
+- At the time of the 0.2.1 release, the npm registry also listed `0.0.0-stage`; both old npm entries were removed on 2026-10-23. Use `fastrmemory@0.5.0` for current installs.
 - At v0.2.1, the benchmark corpus was synthetic and no external memory engine was measured; the 0.3.0 release adds pinned external retrieval baselines.
 - Apple Silicon macOS is not in the 6-job CI matrix.
 - The crash test kills the process (`taskkill /F`); it is not an OS-crash or power-loss test, and SQLite uses `synchronous=NORMAL` in WAL mode.
