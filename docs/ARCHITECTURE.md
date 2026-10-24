@@ -105,12 +105,12 @@ The dashboard `/replay` route calls `GET /api/replay?from=<iso>&to=<iso>`, which
 ## 7. MCP surface
 
 - **Server name:** `fastrmemory` (registry ID: `io.github.atifjubaer/fastrmemory`).
-- **41 tools** in the full profile (memory CRUD, recall/drill, traps, conflicts, DAG actions, planning, slots, federation, snapshot/rollback, replay/diff, compression, doctor, vision).
-- **12 tools** in the optional core profile: `fastr_recall`, `fastr_remember`, `fastr_handoff`, `fastr_trap_recall`, `fastr_trap_log`, `fastr_status`, `fastr_get`, `fastr_timeline`, `fastr_diff`, `fastr_replay`, `fastr_compress`, and `fastr_diagnose`.
+- **43 tools** in the full profile (memory CRUD, recall/drill, traps, conflicts, DAG actions, planning, slots, federation, snapshot/rollback, replay/diff, compression, doctor, vision, plus `fastr_tools` and `fastr_call`).
+- **12 tools** in the default core profile: `fastr_recall`, `fastr_remember`, `fastr_handoff`, `fastr_trap_recall`, `fastr_trap_log`, `fastr_status`, `fastr_get`, `fastr_replay`, `fastr_compress`, `fastr_diagnose`, `fastr_tools`, and `fastr_call`.
 - **2 prompts**: `pre-edit-check`, `session-wrap-up`.
 - **5 resources**: `fastr://project/overview`, `fastr://project/traps`, `fastr://session/handoff`, the `fastr://memory/{id}` template, and the `fastr://memory/{id}/envelope` template (metadata, provenance, file/graph links, and conflict state).
 
-The full 41-tool surface is the default. Start the core profile with `fastrmemory mcp --profile core` or `FASTR_MCP_PROFILE=core`; resources and prompts are identical in both profiles. Verify both surfaces against a built CLI with `node scripts/smoke-mcp-profile.mjs`.
+The core profile is the default: 12 tools and an 8,715-byte `tools/list` payload (~2,179 tokens) instead of 29,829 bytes (~7,457 tokens) for the full 43-tool surface. `fastr_tools` lists any hidden tool with its JSON schema and `fastr_call` runs it after validating arguments, so nothing is lost. Start the full profile with `fastrmemory mcp --profile full` or `FASTR_MCP_PROFILE=full`; resources and prompts are identical in both profiles. Verify both surfaces against a built CLI with `node scripts/smoke-mcp-profile.mjs`.
 
 ## 8. Design rules
 

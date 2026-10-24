@@ -83,7 +83,7 @@ program
 const mcpCmd = program
   .command('mcp')
   .description('Run FastrMemory as an MCP stdio server')
-  .option('--profile <profile>', 'Tool surface: full (default) or core (12 tools)')
+  .option('--profile <profile>', 'Tool surface: core (default, 12 tools) or full')
   .option('--project <path>', 'Project root for memory storage (defaults to cwd)')
   .action(async (options: { profile?: string; project?: string }) => {
     try {
@@ -101,7 +101,7 @@ mcpCmd
   .option('--scope <scope>', 'project or user', 'project')
   .option('--channel <channel>', 'latest (auto-update) or pinned (exact version)', 'latest')
   .option('--runner <runner>', 'npx, pnpm, yarn, or bunx', 'npx')
-  .option('--profile <profile>', 'Tool surface: full or core', 'full')
+  .option('--profile <profile>', 'Tool surface: core (default, 12 tools) or full', 'core')
   .option('--source <source>', 'registry (portable npx) or local (active CLI)', 'registry')
   .option('--project <path>', 'Project root for user-scoped configs', process.cwd())
   .option('--dry-run', 'Print the target files without writing', false)

@@ -7,7 +7,7 @@ const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url));
 const CLI = path.join(REPO_ROOT, 'dist', 'bin', 'fastr.js');
 const PROFILES = [
   { name: 'core', expectedTools: 12 },
-  { name: 'full', expectedTools: 41 }
+  { name: 'full', expectedTools: 43 }
 ];
 
 function listTools(profileName) {

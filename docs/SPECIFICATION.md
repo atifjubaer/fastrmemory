@@ -1,6 +1,6 @@
 # FastrMemory Technical Specification
 
-> **Status (2026-10-23): historical design reference, partially stale.** The schema tables below describe the v0.1.0 design. The canonical published release is npm `fastrmemory@0.5.0` (npm `latest` since 2026-10-23 15:20 UTC; `0.4.0`, `0.3.1`, and `0.3.0` remain published historical). `0.5.0` keeps the same surface: **41 tools, 2 prompts, and 5 resources** (3 static resources plus the `fastr://memory/{id}` and `fastr://memory/{id}/envelope` templates), **12 tools** in the optional core profile, and **10 Agent Skills**. The published `0.5.0` suite is **297 tests across 53 files**; historical `0.4.0` is **293 tests across 53 files**, and `0.3.1` remains historical at **282 tests across 52 files**. Newer tables for branches, merges, conflicts, actions, slots, snapshots, entities, graph edges, predictions, and vision assets live in `src/db/schema.ts` and are covered by the tests. Verify counts with `npm run check:docs` before citing them.
+> **Status (2026-10-23): historical design reference, partially stale.** The schema tables below describe the v0.1.0 design. The canonical published release is npm `fastrmemory@0.5.0` (npm `latest` since 2026-10-23 15:20 UTC; `0.4.0`, `0.3.1`, and `0.3.0` remain published historical). `0.5.0` shipped **41 tools, 2 prompts, and 5 resources** (3 static resources plus the `fastr://memory/{id}` and `fastr://memory/{id}/envelope` templates), **12 tools** in the optional core profile, and **10 Agent Skills**. Current `main` (unreleased) adds `fastr_tools` and `fastr_call` for **43 tools**, makes the 12-tool core profile the default, and keeps the full surface behind `--profile full`. The published `0.5.0` suite is **297 tests across 53 files**; historical `0.4.0` is **293 tests across 53 files**, and `0.3.1` remains historical at **282 tests across 52 files**. Newer tables for branches, merges, conflicts, actions, slots, snapshots, entities, graph edges, predictions, and vision assets live in `src/db/schema.ts` and are covered by the tests. Verify counts with `npm run check:docs` before citing them.
 >
 > **Package**: published `fastrmemory@0.5.0` (`0.4.0`, `0.3.1`, and `0.3.0` remain published historical); the historical 0.2.1 release was `@atifjubaer/fastrmemory` (npm entry removed 2026-10-23)
 > **Schema reference version**: `1.0.0` (v0.1.0 snapshot; see `src/db/schema.ts` for the live schema)
@@ -136,7 +136,7 @@ CREATE TABLE IF NOT EXISTS handoffs (
 
 ## 2. Historical Core MCP Tools (`src/mcp/server.ts`)
 
-> **Stale section:** this table documents the original 8-tool surface. The current server registers 41 tools; run `node dist/bin/fastr.js mcp` and list tools, or read `src/mcp/server.ts`, for the live catalog.
+> **Stale section:** this table documents the original 8-tool surface. The current server registers 43 tools, 12 of which are in the default core profile; run `node dist/bin/fastr.js mcp --profile full` and list tools, or read `src/mcp/server.ts`, for the live catalog.
 
 Registered via `server.registerTool(...)` using `@modelcontextprotocol/server` v2:
 

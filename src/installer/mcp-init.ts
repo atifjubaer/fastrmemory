@@ -167,7 +167,7 @@ export function buildRegistryMcpEntry(options: {
 } = {}): McpServerEntry {
   const channel = options.channel ?? 'latest';
   const runner = options.runner ?? 'npx';
-  const profile = options.profile ?? 'full';
+  const profile = options.profile ?? 'core';
   const packageSpec = channel === 'pinned'
     ? `fastrmemory@${options.packageVersion ?? PACKAGE_VERSION}`
     : 'fastrmemory@latest';
@@ -190,7 +190,9 @@ export function buildRegistryMcpEntry(options: {
       break;
   }
 
-  if (profile === 'core') args.push('--profile', 'core');
+  // Always pin the profile: a generated config must not depend on the server's default,
+  // which changed from full to core.
+  args.push('--profile', profile);
 
   if ((options.platform ?? process.platform) === 'win32') {
     // MCP clients spawn servers without a shell; npm/pnpm/yarn/bunx shims are .cmd files.
@@ -209,9 +211,7 @@ export function buildLocalMcpEntry(options: {
   cliPath?: string | null;
 } = {}): McpServerEntry {
   const entry = resolveMcpCommand(options.platform ?? process.platform, options.cliPath);
-  if ((options.profile ?? 'full') === 'core') {
-    entry.args.push('--profile', 'core');
-  }
+  entry.args.push('--profile', options.profile ?? 'core');
   return entry;
 }
 

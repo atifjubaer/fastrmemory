@@ -58,7 +58,7 @@ Any MCP client can launch the stdio server directly:
 }
 ```
 
-For user-scoped clients (Claude Desktop, Antigravity, Windsurf, and the Claude Code entry in `~/.claude.json`), append `--project /absolute/path/to/project` so the client's launch directory cannot select the wrong database. `fastr mcp init --scope user` adds this automatically. On native Windows, `fastr mcp init` emits `cmd /c npx ...`; a manual entry can use `cmd /c npx -y fastrmemory@latest mcp` if the client cannot launch `npx` directly. `fastr setup` writes the absolute `node` path automatically. On published `0.5.0`, `fastr mcp init --source local` writes the same installed-CLI shape. The full 41-tool surface is the default; add `--profile core` to expose the 12-tool daily loop.
+For user-scoped clients (Claude Desktop, Antigravity, Windsurf, and the Claude Code entry in `~/.claude.json`), append `--project /absolute/path/to/project` so the client's launch directory cannot select the wrong database. `fastr mcp init --scope user` adds this automatically. On native Windows, `fastr mcp init` emits `cmd /c npx ...`; a manual entry can use `cmd /c npx -y fastrmemory@latest mcp` if the client cannot launch `npx` directly. `fastr setup` writes the absolute `node` path automatically. On published `0.5.0`, `fastr mcp init --source local` writes the same installed-CLI shape. The default core profile exposes 12 tools, including `fastr_tools` and `fastr_call`; add `--profile full` to expose all 43.
 
 ## 5. Verify
 

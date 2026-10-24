@@ -79,7 +79,7 @@ if (badge && ledger && badge[1] !== ledger[1]) {
 }
 
 // The README tool catalog must match the server registrations, not just the count.
-const toolSectionStart = readme.indexOf('### 41 MCP Tools');
+const toolSectionStart = readme.indexOf('### 43 MCP Tools');
 const toolSectionEnd = readme.indexOf('### 2 MCP Prompt Templates');
 if (toolSectionStart < 0 || toolSectionEnd < 0 || toolSectionEnd < toolSectionStart) {
   fail('README.md is missing the MCP tool or prompt sections');
@@ -91,8 +91,8 @@ if (toolSectionStart < 0 || toolSectionEnd < 0 || toolSectionEnd < toolSectionSt
   const readmeToolSet = new Set(readmeTools);
   const serverToolSet = new Set(serverTools);
 
-  if (readmeToolSet.size !== 41) fail(`README.md lists ${readmeToolSet.size} tools, expected 41`);
-  if (serverToolSet.size !== 41) fail(`src/mcp/server.ts registers ${serverToolSet.size} tools, expected 41`);
+  if (readmeToolSet.size !== 43) fail(`README.md lists ${readmeToolSet.size} tools, expected 43`);
+  if (serverToolSet.size !== 43) fail(`src/mcp/server.ts registers ${serverToolSet.size} tools, expected 43`);
   for (const name of readmeToolSet) {
     if (!serverToolSet.has(name)) fail(`README.md lists ${name}, but the server does not register it`);
   }

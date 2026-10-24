@@ -52,7 +52,8 @@ describe('MCP server hardening (errors, bounds, annotations, new tools, prompts)
     fs.mkdirSync(testDir, { recursive: true });
 
     ctx = createFastrServerContext(testDir);
-    server = createFastrMcpServer(ctx);
+    // This suite exercises the complete tool surface.
+    server = createFastrMcpServer(ctx, { profile: 'full' });
 
     const [client, serverTr] = InMemoryTransport.createLinkedPair();
     transport = client;

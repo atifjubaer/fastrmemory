@@ -186,7 +186,7 @@ describe('Multi-Client Concurrency, Cryptographic Provenance & SSE Stream', () =
   describe('4. MCP fastr_verify_provenance tool', () => {
     it('verifies memory provenance via MCP protocol', async () => {
       const ctx = createFastrServerContext(testDir);
-      const server = createFastrMcpServer(ctx);
+      const server = createFastrMcpServer(ctx, { profile: 'full' });
 
       const [client, serverTr] = InMemoryTransport.createLinkedPair();
       await server.connect(serverTr);

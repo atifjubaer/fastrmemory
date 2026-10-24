@@ -5,11 +5,17 @@ import * as path from 'node:path';
 import { createFastrMcpServer, createFastrServerContext } from '../src/mcp/server.js';
 import {
   CORE_MCP_TOOL_NAMES,
+  DEFAULT_MCP_TOOL_PROFILE,
   parseMcpToolProfile,
   type McpToolProfile
 } from '../src/mcp/profiles.js';
 
-async function listTools(profile: McpToolProfile): Promise<string[]> {
+interface ToolSurface {
+  tools: Array<{ name: string; description?: string; inputSchema?: unknown }>;
+  call: (name: string, args?: Record<string, unknown>) => Promise<any>;
+}
+
+async function withTools<T>(profile: McpToolProfile, fn: (surface: ToolSurface) => Promise<T>): Promise<T> {
   const testDir = path.join(
     process.cwd(),
     'tests',
@@ -47,8 +53,11 @@ async function listTools(profile: McpToolProfile): Promise<string[]> {
       clientInfo: { name: 'core-profile-test', version: '1.0.0' }
     });
 
-    const response = await rpc('tools/list');
-    return response.result.tools.map((tool: any) => tool.name).sort();
+    const listed = await rpc('tools/list');
+    return await fn({
+      tools: listed.result.tools,
+      call: (name, args = {}) => rpc('tools/call', { name, arguments: args })
+    });
   } finally {
     try { await client.close(); } catch {}
     try { await server.close(); } catch {}
@@ -57,20 +66,91 @@ async function listTools(profile: McpToolProfile): Promise<string[]> {
   }
 }
 
+function toolNames(surface: ToolSurface): string[] {
+  return surface.tools.map((tool) => tool.name).sort();
+}
+
+function textOf(response: any): string {
+  return response?.result?.content?.[0]?.text ?? '';
+}
+
 describe('MCP tool profiles', () => {
-  it('exposes the 12-tool core profile and the complete full profile', async () => {
-    expect(parseMcpToolProfile(undefined)).toBe('full');
+  it('defaults to the 12-tool core profile and keeps the complete full profile', async () => {
+    expect(DEFAULT_MCP_TOOL_PROFILE).toBe('core');
+    expect(parseMcpToolProfile(undefined)).toBe('core');
     expect(parseMcpToolProfile(' CORE ')).toBe('core');
+    expect(parseMcpToolProfile('full')).toBe('full');
     expect(() => parseMcpToolProfile('tiny')).toThrow(/Unknown MCP tool profile/);
 
-    const coreTools = await listTools('core');
-    expect(coreTools).toHaveLength(12);
-    expect(coreTools).toEqual([...CORE_MCP_TOOL_NAMES].sort());
+    await withTools('core', async (core) => {
+      const names = toolNames(core);
+      expect(names).toHaveLength(12);
+      expect(names).toEqual([...CORE_MCP_TOOL_NAMES].sort());
+      expect(names).toContain('fastr_tools');
+      expect(names).toContain('fastr_call');
+      // Reachable through fastr_call, but not part of the core schema surface.
+      expect(names).not.toContain('fastr_timeline');
+      expect(names).not.toContain('fastr_diff');
+    });
 
-    const fullTools = await listTools('full');
-    expect(fullTools).toHaveLength(41);
-    for (const toolName of CORE_MCP_TOOL_NAMES) {
-      expect(fullTools).toContain(toolName);
-    }
+    await withTools('full', async (full) => {
+      const names = toolNames(full);
+      expect(names).toHaveLength(43);
+      for (const toolName of CORE_MCP_TOOL_NAMES) {
+        expect(names).toContain(toolName);
+      }
+    });
+  }, 30_000);
+
+  it('keeps the core tools/list payload under 10 KB', async () => {
+    await withTools('core', async (core) => {
+      const bytes = Buffer.byteLength(JSON.stringify(core.tools), 'utf8');
+      expect(bytes).toBeLessThanOrEqual(10 * 1024);
+    });
+  }, 30_000);
+
+  it('lists hidden tools with their schemas via fastr_tools', async () => {
+    await withTools('core', async (core) => {
+      const response = await core.call('fastr_tools', { query: 'timeline', limit: 5 });
+      expect(response.result.isError).toBeFalsy();
+
+      const payload = JSON.parse(textOf(response));
+      expect(payload.total).toBeGreaterThanOrEqual(1);
+      expect(payload.tools.map((tool: any) => tool.name)).toContain('fastr_timeline');
+
+      const timeline = payload.tools.find((tool: any) => tool.name === 'fastr_timeline');
+      expect(timeline.inputSchema).toBeTruthy();
+      expect(timeline.inputSchema.type).toBe('object');
+      expect(Object.keys(timeline.inputSchema.properties ?? {})).toContain('limit');
+    });
+  }, 30_000);
+
+  it('runs a tool outside the core profile through fastr_call', async () => {
+    await withTools('core', async (core) => {
+      const response = await core.call('fastr_call', {
+        tool: 'fastr_list',
+        args: { limit: 5 }
+      });
+      expect(response.result.isError).toBeFalsy();
+
+      const payload = JSON.parse(textOf(response));
+      expect(Array.isArray(payload.items)).toBe(true);
+    });
+  }, 30_000);
+
+  it('rejects unknown tools, meta-tools, and invalid arguments in fastr_call', async () => {
+    await withTools('core', async (core) => {
+      const unknown = await core.call('fastr_call', { tool: 'fastr_nope', args: {} });
+      expect(unknown.result.isError).toBe(true);
+      expect(textOf(unknown)).toContain('Unknown tool');
+
+      const meta = await core.call('fastr_call', { tool: 'fastr_call', args: {} });
+      expect(meta.result.isError).toBe(true);
+      expect(textOf(meta)).toContain('cannot invoke');
+
+      const invalid = await core.call('fastr_call', { tool: 'fastr_list', args: { limit: 9999 } });
+      expect(invalid.result.isError).toBe(true);
+      expect(textOf(invalid)).toContain('Invalid arguments for fastr_list');
+    });
   }, 30_000);
 });

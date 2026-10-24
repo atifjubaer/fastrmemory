@@ -201,7 +201,7 @@ yarn dlx fastrmemory@latest mcp init --client claude
 bunx fastrmemory@latest mcp init --client claude
 ```
 
-The default `--channel latest` writes `fastrmemory@latest`, so a client restart picks up the newest npm release. Use `--channel pinned` for a reproducible config containing the exact version that ran the command; on current `main` that writes `fastrmemory@0.5.0`. `--runner pnpm|yarn|bunx` changes the generated runner, `--profile core` selects the 12-tool surface, `--dry-run` prints targets without writing, and `--scope user` writes user-level configs with an explicit `--project /absolute/path` so the server always opens the intended database. Codex prints a `[mcp_servers.fastrmemory]` TOML block for `~/.codex/config.toml` instead of rewriting a user-owned TOML file.
+The default `--channel latest` writes `fastrmemory@latest`, so a client restart picks up the newest npm release. Use `--channel pinned` for a reproducible config containing the exact version that ran the command; on current `main` that writes `fastrmemory@0.5.0`. `--runner pnpm|yarn|bunx` changes the generated runner, `--profile full` selects the 43-tool surface (the default is the 12-tool core profile), `--dry-run` prints targets without writing, and `--scope user` writes user-level configs with an explicit `--project /absolute/path` so the server always opens the intended database. Codex prints a `[mcp_servers.fastrmemory]` TOML block for `~/.codex/config.toml` instead of rewriting a user-owned TOML file.
 
 For a globally installed CLI, use `--source local` to write the active CLI path instead of an npx command. It always appends an absolute `--project`, so the config is machine-specific but starts without an npx cold start:
 
@@ -423,9 +423,9 @@ For user-scoped clients, the generated entry includes `--project /absolute/path/
 
 Built using the official **v2 `@modelcontextprotocol/server`** SDK. The tool list below describes **0.5.0** (tool surface unchanged from 0.4.0); the v0.2.1 release has 4 resources.
 
-### 41 MCP Tools
+### 43 MCP Tools
 
-The default **full profile** exposes all 41 tools. For a smaller schema, start the **core profile** with `fastrmemory mcp --profile core` or `FASTR_MCP_PROFILE=core`; it exposes the 12-tool daily loop: `fastr_recall`, `fastr_remember`, `fastr_handoff`, `fastr_trap_recall`, `fastr_trap_log`, `fastr_status`, `fastr_get`, `fastr_timeline`, `fastr_diff`, `fastr_replay`, `fastr_compress`, and `fastr_diagnose`. Resources and prompts are the same in both profiles. Pass `--project /absolute/path/to/repo` when the host starts the server outside the repository, so memory is written to the intended `.fastr/fastr.db`.
+The default **core profile** exposes 12 tools: the daily loop (`fastr_recall`, `fastr_remember`, `fastr_handoff`, `fastr_trap_recall`, `fastr_trap_log`, `fastr_status`, `fastr_get`, `fastr_replay`, `fastr_compress`, `fastr_diagnose`) plus `fastr_tools` for discovery and `fastr_call` for dispatch. Its `tools/list` payload is 8,715 bytes (~2,179 tokens). The **full profile** exposes all 43 tools; start it with `fastrmemory mcp --profile full` or `FASTR_MCP_PROFILE=full`. Every full-profile tool stays reachable from the core profile through `fastr_call`. Resources and prompts are the same in both profiles. Pass `--project /absolute/path/to/repo` when the host starts the server outside the repository, so memory is written to the intended `.fastr/fastr.db`.
 
 #### Cognitive Retrieval & Memory Core
 1. `fastr_recall`: Triple-stream hybrid search (BM25 + Vector + Spreading Activation Graph) with progressive L0–L3 token budgeting and air-gapped offline vector fallback.
@@ -487,6 +487,10 @@ The default **full profile** exposes all 41 tools. For a smaller schema, start t
 #### Multimodal Visual Memory
 40. `fastr_vision_tag`: Tags screenshots, UI diagrams, and wireframes with OCR and semantic descriptions with 384-dim embeddings.
 41. `fastr_vision_search`: Hybrid vector and keyword search across stored visual assets for multimodal coding agents.
+
+#### Tool Discovery & Dispatch
+42. `fastr_tools`: Lists every tool the server can run, with its JSON input schema, filtered by name or description. Part of the core profile.
+43. `fastr_call`: Runs any tool from `fastr_tools` by name after validating arguments against that tool's schema. Part of the core profile.
 
 ### 2 MCP Prompt Templates
 
@@ -586,7 +590,7 @@ flowchart TD
 
     subgraph Protocol["4. Official MCP Protocol"]
         Budget --> MCPServer["Official MCP v2 Server\n(@modelcontextprotocol/server)"]
-        MCPServer --> Tools["41 tools • 2 prompts • 5 resources"]
+        MCPServer --> Tools["43 tools • 2 prompts • 5 resources"]
         Tools --> Agent
     end
 ```

@@ -104,7 +104,7 @@ export function createFastrServerContext(customRoot?: string, homeDir?: string):
 }
 
 export interface FastrMcpServerOptions {
-  /** Tool surface to expose. Defaults to the complete 41-tool surface. */
+  /** Tool surface to expose. Defaults to the 12-tool core profile. */
   profile?: McpToolProfile;
 }
 
@@ -121,9 +121,13 @@ export function createFastrMcpServer(
     version: PACKAGE_VERSION
   });
 
+  // Every tool is recorded in the registry even when the active profile hides it, so
+  // fastr_tools/fastr_call can reach the full surface from the 12-tool core profile.
   // Register only the tools selected by the profile. Resources and prompts stay
   // available in both profiles because their schema cost is small.
+  const toolRegistry = new Map<string, { config: any; handler: any }>();
   const registerTool = ((name: string, toolConfig: any, handler: any): void => {
+    toolRegistry.set(name, { config: toolConfig, handler });
     if (isMcpToolEnabled(profile, name)) {
       (server.registerTool as (n: string, c: any, h: any) => void)(name, toolConfig, handler);
     }
@@ -1911,6 +1915,87 @@ export function createFastrMcpServer(
         return ok(formatDiffMarkdown(diffSnapshots(from, to)));
       } catch (err) {
         return fail(`Diff failed: ${errMessage(err)}`);
+      }
+    }
+  );
+
+  // ==========================================
+  // TOOL 42: fastr_tools
+  // ==========================================
+  const META_TOOL_NAMES: ReadonlySet<string> = new Set(['fastr_tools', 'fastr_call']);
+
+  registerTool(
+    'fastr_tools',
+    {
+      description: 'Lists the memory tools this server can run, with their input schemas. Use fastr_call to execute any listed tool.',
+      inputSchema: z.object({
+        query: z.string().max(200).optional().describe('Filter by tool name or description'),
+        limit: z.number().int().min(1).max(50).default(20).describe('Maximum tools to return')
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false }
+    },
+    async ({ query, limit }) => {
+      const needle = (query ?? '').trim().toLowerCase();
+      const entries = [...toolRegistry.entries()]
+        .filter(([name]) => !META_TOOL_NAMES.has(name))
+        .filter(([name, entry]) => {
+          if (!needle) return true;
+          return (
+            name.toLowerCase().includes(needle) ||
+            String(entry.config?.description ?? '').toLowerCase().includes(needle)
+          );
+        })
+        .map(([name, entry]) => {
+          let inputSchema: unknown;
+          try {
+            inputSchema = z.toJSONSchema(entry.config.inputSchema);
+          } catch {
+            inputSchema = undefined;
+          }
+          return { name, description: entry.config?.description ?? '', inputSchema };
+        });
+
+      const tools = entries.slice(0, limit);
+      return ok(
+        JSON.stringify({ total: entries.length, returned: tools.length, tools }, null, 2)
+      );
+    }
+  );
+
+  // ==========================================
+  // TOOL 43: fastr_call
+  // ==========================================
+  registerTool(
+    'fastr_call',
+    {
+      description: 'Runs any tool from fastr_tools by name. Arguments are validated against that tool\'s input schema before dispatch.',
+      inputSchema: z.object({
+        tool: z.string().min(1).max(80).describe('Tool name from fastr_tools, e.g. fastr_list or fastr_export'),
+        args: z.record(z.string(), z.unknown()).default({}).describe('Arguments object for the target tool')
+      }),
+      annotations: { openWorldHint: true }
+    },
+    async ({ tool, args }) => {
+      if (META_TOOL_NAMES.has(tool)) {
+        return fail(`fastr_call cannot invoke ${tool}.`);
+      }
+      const entry = toolRegistry.get(tool);
+      if (!entry) {
+        return fail(`Unknown tool "${tool}". Use fastr_tools to list available tools.`);
+      }
+
+      const schema = entry.config?.inputSchema;
+      const parsed = schema && typeof schema.safeParse === 'function'
+        ? schema.safeParse(args ?? {})
+        : { success: true as const, data: args ?? {} };
+      if (!parsed.success) {
+        return fail(`Invalid arguments for ${tool}: ${parsed.error.message}`);
+      }
+
+      try {
+        return await entry.handler(parsed.data);
+      } catch (err) {
+        return fail(`${tool} failed: ${errMessage(err)}`);
       }
     }
   );

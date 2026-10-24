@@ -20,7 +20,7 @@ Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://gi
 - **Author**: Atif Jubaer / Fastrsoft
 - **Transport**: `stdio` (Zero network daemon, in-process WAL SQLite)
 - **Runtime**: Node.js >= 22.16 (uses built-in `node:sqlite`)
-- **Primary Tool Interfaces** (41 tools total; see `src/mcp/server.ts`):
+- **Primary Tool Interfaces** (43 tools in the full profile; the default core profile exposes 12 of them, including `fastr_tools` and `fastr_call`; see `src/mcp/server.ts`):
   - `fastr_recall`: Search memories using triple-stream RRF (k=20) over FTS5 BM25, optional local embeddings, and 2-hop file graph spreading.
   - `fastr_remember`: Ingest architectural decisions, rules, and workflows with verbatim event attribution.
   - `fastr_trap_recall`: Active pre-edit error check with a conditional 2.0x recall multiplier for trap-intent or file-scoped queries.
@@ -53,4 +53,4 @@ Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://gi
 }
 ```
 
-> Version note: `fastrmemory@0.5.0` is published and `latest`; pin it for registry installs. `0.4.0` and `0.3.1` remain published historical. The full 41-tool surface is the default; pass `--profile core` for the 12-tool daily loop. On native Windows, use `cmd /c npx ...` if the client cannot launch `npx` directly.
+> Version note: `fastrmemory@0.5.0` is published and `latest`; pin it for registry installs. `0.4.0` and `0.3.1` remain published historical. The default core profile exposes 12 tools (8,715-byte `tools/list`); pass `--profile full` for all 43. On native Windows, use `cmd /c npx ...` if the client cannot launch `npx` directly.

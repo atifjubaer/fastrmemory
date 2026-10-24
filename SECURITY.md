@@ -65,7 +65,7 @@ This is **best-effort redaction, not encryption**:
 
 ## 5. Agent and MCP hardening
 
-- The default MCP surface is 41 tools; use `--profile core` for the 12-tool daily loop when a client does not need branch, replay, or admin tools.
+- The default MCP surface is the 12-tool core profile; use `--profile full` when a client needs branch, replay, diff, vision, or admin tools. Every full-profile tool remains reachable from core through `fastr_call`, so treat dispatch as the same permission boundary as direct tool access.
 - Treat tool permissions as security boundaries. A client that can call `fastr_forget`, `fastr_merge`, or conflict resolution can mutate memory.
 - Keep MCP configuration files reviewed and committed intentionally. `fastr mcp init --source local` writes the active CLI path and an absolute `--project`; treat those configs as machine-specific and use `--source registry` (the default) for shared or committed configs.
 - Do not expose the dashboard port through a reverse proxy, tunnel, or container port publish.

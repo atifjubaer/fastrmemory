@@ -34,19 +34,30 @@ describe('shadcn-style MCP init', () => {
   it('builds a portable latest entry for every package runner', () => {
     expect(buildRegistryMcpEntry({ channel: 'latest', runner: 'npx', platform: 'linux' })).toEqual({
       command: 'npx',
-      args: ['-y', 'fastrmemory@latest', 'mcp'],
+      args: ['-y', 'fastrmemory@latest', 'mcp', '--profile', 'core'],
     });
     expect(buildRegistryMcpEntry({ channel: 'latest', runner: 'pnpm', platform: 'linux' })).toEqual({
       command: 'pnpm',
-      args: ['dlx', 'fastrmemory@latest', 'mcp'],
+      args: ['dlx', 'fastrmemory@latest', 'mcp', '--profile', 'core'],
     });
     expect(buildRegistryMcpEntry({ channel: 'latest', runner: 'yarn', platform: 'linux' })).toEqual({
       command: 'yarn',
-      args: ['dlx', 'fastrmemory@latest', 'mcp'],
+      args: ['dlx', 'fastrmemory@latest', 'mcp', '--profile', 'core'],
     });
     expect(buildRegistryMcpEntry({ channel: 'latest', runner: 'bunx', platform: 'linux' })).toEqual({
       command: 'bunx',
-      args: ['fastrmemory@latest', 'mcp'],
+      args: ['fastrmemory@latest', 'mcp', '--profile', 'core'],
+    });
+  });
+
+  it('pins the full profile explicitly when requested', () => {
+    expect(buildRegistryMcpEntry({ runner: 'npx', profile: 'full', platform: 'linux' })).toEqual({
+      command: 'npx',
+      args: ['-y', 'fastrmemory@latest', 'mcp', '--profile', 'full'],
+    });
+    expect(buildLocalMcpEntry({ platform: 'linux', cliPath: '/opt/fastr.js', profile: 'full' })).toEqual({
+      command: 'node',
+      args: ['/opt/fastr.js', 'mcp', '--profile', 'full'],
     });
   });
 
@@ -111,7 +122,7 @@ describe('shadcn-style MCP init', () => {
     const entry = buildRegistryMcpEntry({ channel: 'latest', runner: 'pnpm', platform: 'win32' });
     expect(entry).toEqual({
       command: 'cmd',
-      args: ['/c', 'pnpm', 'dlx', 'fastrmemory@latest', 'mcp'],
+      args: ['/c', 'pnpm', 'dlx', 'fastrmemory@latest', 'mcp', '--profile', 'core'],
     });
   });
 
@@ -152,7 +163,7 @@ describe('shadcn-style MCP init', () => {
     expect(claude.mcpServers.other).toEqual({ command: 'other', args: ['serve'] });
     expect(claude.mcpServers.fastrmemory).toEqual({
       command: 'npx',
-      args: ['-y', 'fastrmemory@latest', 'mcp'],
+      args: ['-y', 'fastrmemory@latest', 'mcp', '--profile', 'core'],
     });
 
     const cursor = JSON.parse(fs.readFileSync(path.join(dir, '.cursor', 'mcp.json'), 'utf-8'));
@@ -168,7 +179,7 @@ describe('shadcn-style MCP init', () => {
     expect(opencode.mcp.servers.other).toEqual({ type: 'remote', url: 'https://example.test/mcp' });
     expect(opencode.mcp.servers.fastrmemory).toEqual({
       type: 'local',
-      command: ['npx', '-y', 'fastrmemory@latest', 'mcp'],
+      command: ['npx', '-y', 'fastrmemory@latest', 'mcp', '--profile', 'core'],
     });
 
     const gemini = JSON.parse(fs.readFileSync(path.join(dir, '.gemini', 'settings.json'), 'utf-8'));
@@ -178,7 +189,7 @@ describe('shadcn-style MCP init', () => {
     expect(copilot.mcpServers.fastrmemory).toEqual({
       type: 'local',
       command: 'npx',
-      args: ['-y', 'fastrmemory@latest', 'mcp'],
+      args: ['-y', 'fastrmemory@latest', 'mcp', '--profile', 'core'],
     });
 
     const second = initMcpClients({

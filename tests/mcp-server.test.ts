@@ -18,7 +18,8 @@ describe('MCP v2 Server (Tools & Resources)', () => {
     fs.mkdirSync(testDir, { recursive: true });
 
     ctx = createFastrServerContext(testDir);
-    server = createFastrMcpServer(ctx);
+    // This suite exercises the complete tool surface.
+    server = createFastrMcpServer(ctx, { profile: 'full' });
 
     const [client, serverTr] = InMemoryTransport.createLinkedPair();
     clientTransport = client;
@@ -97,13 +98,13 @@ describe('MCP v2 Server (Tools & Resources)', () => {
 
     const toolNames = res.tools.map((t: any) => t.name).sort();
     expect(toolNames).toEqual([
-      'fastr_action_create', 'fastr_action_update', 'fastr_assemble', 'fastr_compress',
+      'fastr_action_create', 'fastr_action_update', 'fastr_assemble', 'fastr_call', 'fastr_compress',
       'fastr_conflicts', 'fastr_diagnose', 'fastr_diff', 'fastr_drill', 'fastr_federate', 'fastr_feedback',
       'fastr_file_history', 'fastr_forget', 'fastr_frontier', 'fastr_get', 'fastr_graph_query',
       'fastr_handoff', 'fastr_heal', 'fastr_list', 'fastr_next', 'fastr_obsidian_export',
       'fastr_pin', 'fastr_predict', 'fastr_predict_baserate', 'fastr_recall', 'fastr_remember', 'fastr_replay',
       'fastr_resolve', 'fastr_risk_predict', 'fastr_rollback', 'fastr_slot_get', 'fastr_slot_list',
-      'fastr_slot_set', 'fastr_snapshot', 'fastr_status', 'fastr_supersede', 'fastr_timeline',
+      'fastr_slot_set', 'fastr_snapshot', 'fastr_status', 'fastr_supersede', 'fastr_timeline', 'fastr_tools',
       'fastr_trap_log', 'fastr_trap_recall', 'fastr_verify_provenance', 'fastr_vision_search',
       'fastr_vision_tag'
     ]);

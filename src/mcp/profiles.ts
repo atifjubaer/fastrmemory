@@ -1,17 +1,20 @@
 /**
- * MCP tool profiles keep the default surface complete while offering a smaller
- * schema for clients that only need the daily memory loop.
+ * MCP tool profiles. `core` is the default surface: the daily memory loop plus two
+ * meta-tools that can discover and run anything in the `full` profile.
  */
 export const MCP_TOOL_PROFILE_NAMES = ['full', 'core'] as const;
 
 export type McpToolProfile = (typeof MCP_TOOL_PROFILE_NAMES)[number];
 
-export const DEFAULT_MCP_TOOL_PROFILE: McpToolProfile = 'full';
+export const DEFAULT_MCP_TOOL_PROFILE: McpToolProfile = 'core';
 
 /**
- * The core profile is the 12-tool daily loop:
- * read (recall/get/timeline/status), write (remember/traps/handoff),
- * recover (diff/replay), compress, and diagnose.
+ * The core profile is 10 daily tools plus discovery/dispatch:
+ * read (recall/get/status), write (remember/traps/handoff),
+ * recover (replay), compress, diagnose, fastr_tools, and fastr_call.
+ *
+ * `fastr_timeline` and `fastr_diff` stay in the full profile and remain reachable
+ * through `fastr_call`, which keeps the core `tools/list` payload small.
  */
 export const CORE_MCP_TOOL_NAMES = [
   'fastr_recall',
@@ -21,11 +24,11 @@ export const CORE_MCP_TOOL_NAMES = [
   'fastr_trap_log',
   'fastr_status',
   'fastr_get',
-  'fastr_timeline',
-  'fastr_diff',
   'fastr_replay',
   'fastr_compress',
-  'fastr_diagnose'
+  'fastr_diagnose',
+  'fastr_tools',
+  'fastr_call'
 ] as const;
 
 const CORE_MCP_TOOL_SET: ReadonlySet<string> = new Set(CORE_MCP_TOOL_NAMES);

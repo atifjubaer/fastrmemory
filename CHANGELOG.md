@@ -4,6 +4,11 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ## [Unreleased]
 
+### Added
+
+- `fastr_tools` lists every tool the server can run, with its JSON input schema, filtered by name or description. `fastr_call` runs any listed tool after validating arguments against that tool's schema; it rejects unknown tools, meta-tools, and invalid arguments. Both are part of the core profile, so the complete surface stays reachable without loading every schema up front.
+- `fastr mcp --profile full` exposes all 43 tools. `fastr mcp init` now always writes an explicit `--profile <profile>` into generated configs, so a config never depends on the server default.
+
 ### Fixed
 
 - The feature-hash vectorizer is opt-in (`FASTR_VECTOR_MODE=hash`). `enableVector` now defaults to true only when a semantic provider is loaded, so the shipped default is BM25-only. On the 120-case LongMemEval cleaned slice the hash stream degraded 11 cases, improved none, and lowered Hit@1 from 89.2% to 81.7%. Rows tagged with the hash model stay inert unless hash mode is explicitly enabled, including after an upgrade.
@@ -11,10 +16,11 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ### Changed
 
+- The MCP **core profile is now the default**: 12 tools with an 8,715-byte `tools/list` payload (~2,179 tokens) instead of 43 tools and 29,829 bytes (~7,457 tokens). `fastr_timeline` and `fastr_diff` left the core schema and remain available through `fastr_call` and `--profile full`.
 - Write path: the memory row, file links, and three queue rows commit in one savepoint; conflict analysis, entity extraction, and FTS tokenization are deferred by default (`write.conflictMode`, `write.nerMode`, `write.ftsMode`). Measured on 120 documents (1,225,535 chars): 13.342 ms/doc synchronous vs 0.124 ms/doc deferred, a 107.60x reduction; the conflict scan was 99.1% of the synchronous path. `write.*Mode: 'sync'` reproduces the old behaviour and is tested.
 - Readers drain the FTS queue before BM25, so a memory is searchable immediately after `insertMemory()` returns. `fastr doctor` / `fastr heal` drain all three queues and report their depth.
 - LongMemEval pin moved to `xiaowu0162/longmemeval-cleaned` at `98d7416c` (`longmemeval_s_cleaned.json`, SHA-256 `D6F21EA9D60A0D56F34A05B609C79C88A451D2AE03597821EA3D5A9678C3A442`). The public harness adds a stable 60/60 dev/test split and `--slice-per-type`.
-- Test suite is 311 tests across 56 files.
+- Test suite is 316 tests across 56 files.
 
 ## [0.5.0] - 2026-10-23
 
