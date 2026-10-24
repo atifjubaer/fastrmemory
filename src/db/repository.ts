@@ -11,6 +11,8 @@ import { computeProvenanceHash, verifyProvenanceHash } from './provenance.js';
 import { confidenceTier, ConfidenceTier } from './confidence.js';
 import { scrubSecrets } from '../privacy/scrubber.js';
 import { globalBroadcaster } from '../ui/sse.js';
+import { resolveConflictMode, resolveNerMode, resolveFtsMode, type ConflictMode, type NerMode, type FtsMode } from '../config.js';
+import { drainFtsQueue, indexMemoryFtsNow, pendingFtsCount } from './fts-queue.js';
 
 export interface CreateMemoryParams {
   projectId: string;
@@ -36,15 +38,48 @@ export interface ProjectStatus {
   rawEventCount: number;
   pendingSpoolCount: number;
   embeddingCoveragePercent: number;
+  pendingConflictCount: number;
+  pendingNerCount: number;
+  pendingFtsCount: number;
+}
+
+export interface RepositoryOptions {
+  /** Overrides write.conflictMode. Used by tests and the sync/deferred equivalence suite. */
+  conflictMode?: ConflictMode;
+  /** Overrides write.nerMode. 'sync' restores entity extraction inside insertMemory(). */
+  nerMode?: NerMode;
+  /** Overrides write.ftsMode. 'sync' restores inline FTS indexing inside insertMemory(). */
+  ftsMode?: FtsMode;
 }
 
 export class FastrRepository {
   private db: DatabaseSync;
   private spool?: SpoolManager;
+  private conflictMode: ConflictMode;
+  private nerMode: NerMode;
+  private ftsMode: FtsMode;
 
-  constructor(db: DatabaseSync, spool?: SpoolManager) {
+  constructor(db: DatabaseSync, spool?: SpoolManager, options: RepositoryOptions = {}) {
     this.db = db;
     this.spool = spool;
+    this.conflictMode = options.conflictMode ?? resolveConflictMode();
+    this.nerMode = options.nerMode ?? resolveNerMode();
+    this.ftsMode = options.ftsMode ?? resolveFtsMode();
+  }
+
+  /** Active conflict-analysis mode for this repository instance. */
+  getConflictMode(): ConflictMode {
+    return this.conflictMode;
+  }
+
+  /** Active entity-extraction mode for this repository instance. */
+  getNerMode(): NerMode {
+    return this.nerMode;
+  }
+
+  /** Active full-text indexing mode for this repository instance. */
+  getFtsMode(): FtsMode {
+    return this.ftsMode;
   }
 
   hasGlobalDb(): boolean {
@@ -183,24 +218,57 @@ export class FastrRepository {
       createdAt: nowIso
     });
 
-    this.db.prepare(`
-      INSERT INTO ${targetTable} (
-        id, project_id, agent_id, module, kind, title, content, status, pinned, source_event_ids, created_at, provenance_hash
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      id,
-      targetProject,
-      agentId,
-      module,
-      kind,
-      params.title,
-      params.content,
-      status,
-      pinned,
-      sourceIds,
-      nowIso,
-      provenanceHash
-    );
+    // Durability: the memory row and its deferred conflict job are committed together.
+    // Nothing else (file links, NER, conflict scan) is allowed to delay this write.
+    this.db.exec('SAVEPOINT fastr_memory_insert');
+    try {
+      this.db.prepare(`
+        INSERT INTO ${targetTable} (
+          id, project_id, agent_id, module, kind, title, content, status, pinned, source_event_ids, created_at, provenance_hash
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        id,
+        targetProject,
+        agentId,
+        module,
+        kind,
+        params.title,
+        params.content,
+        status,
+        pinned,
+        sourceIds,
+        nowIso,
+        provenanceHash
+      );
+
+      if (this.conflictMode === 'deferred' && !isGlobal) {
+        this.db.prepare(`
+          INSERT INTO memory_conflict_queue (project_id, memory_id, created_at)
+          VALUES (?, ?, ?)
+        `).run(targetProject, id, nowIso);
+      }
+      if (this.nerMode === 'deferred') {
+        this.db.prepare(`
+          INSERT INTO memory_ner_queue (project_id, memory_id, created_at)
+          VALUES (?, ?, ?)
+        `).run(params.projectId, id, nowIso);
+      }
+      this.db.exec('RELEASE fastr_memory_insert');
+    } catch (err) {
+      this.db.exec('ROLLBACK TO fastr_memory_insert');
+      this.db.exec('RELEASE fastr_memory_insert');
+      throw err;
+    }
+
+    // Full-text indexing: the insert trigger queued this row. 'sync' pays the tokenization
+    // cost before returning; 'deferred' (default) leaves it for the next reader or drain.
+    if (this.ftsMode === 'sync') {
+      try {
+        indexMemoryFtsNow(this.db, id, isGlobal && this.hasGlobalDb() ? 'global_db' : 'main');
+      } catch {
+        // Indexing failure must never lose a committed memory.
+      }
+    }
 
     // Explicit file links
     if (params.files && params.files.length > 0) {
@@ -208,59 +276,25 @@ export class FastrRepository {
     }
 
     // 1. Zero-LLM Fast-Path Named Entity Extraction (NER)
-    try {
-      const extracted = extractEntities(`${params.title} ${params.content}`);
-      const autoFiles: string[] = [];
-
-      for (const ent of extracted) {
-        const entId = `ent_${crypto.createHash('sha256').update(`${params.projectId}:${ent.name.toLowerCase()}`).digest('hex').slice(0, 12)}`;
-        
-        // Upsert entity
-        this.db.prepare(`
-          INSERT INTO entities (id, project_id, name, entity_type)
-          VALUES (?, ?, ?, ?)
-          ON CONFLICT(id) DO NOTHING
-        `).run(entId, params.projectId, ent.name, ent.type);
-
-        // Link memory to entity in knowledge graph
-        const edgeId = `edge_${crypto.randomBytes(6).toString('hex')}`;
-        this.db.prepare(`
-          INSERT INTO graph_edges (id, project_id, source_id, target_id, edge_type, weight)
-          VALUES (?, ?, ?, ?, 'entity_link', 1.0)
-          ON CONFLICT(id) DO NOTHING
-        `).run(edgeId, params.projectId, id, entId);
-
-        if (ent.type === 'file' && (!params.files || params.files.length === 0)) {
-          autoFiles.push(ent.name);
-        }
+    // Deferred by default: entity + graph writes are analysis, not durability.
+    if (this.nerMode === 'sync') {
+      try {
+        this.extractEntitiesForMemory(id, params.projectId, params.title, params.content, params.files);
+      } catch {
+        // Non-blocking NER failure protection
       }
-
-      if (autoFiles.length > 0 && (!params.files || params.files.length === 0)) {
-        this.linkFiles(id, autoFiles.slice(0, 5));
-      }
-    } catch {
-      // Non-blocking NER failure protection
     }
 
     // 2. Proactive Contradiction & Conflict Detection
-    try {
-      const candidates = this.db.prepare(`
-        SELECT id, title, content FROM memories
-        WHERE project_id = ? AND valid_to IS NULL AND id != ?
-        ORDER BY created_at DESC LIMIT 50
-      `).all(params.projectId, id) as unknown as Array<{ id: string; title: string; content: string }>;
-
-      for (const c of candidates) {
-        const check = detectConflict(params.title, params.content, c.title, c.content);
-        if (check.hasConflict) {
-          this.db.prepare(`
-            INSERT INTO memory_conflicts (project_id, memory_a_id, memory_b_id, reason, score)
-            VALUES (?, ?, ?, ?, ?)
-          `).run(params.projectId, id, c.id, check.reason, check.score);
-        }
+    // 'deferred' (default) queued a job in the insert transaction above; the scan runs in
+    // drainConflicts(). 'sync' reproduces the historical inline behaviour for tests and for
+    // operators who explicitly want conflicts resolved before the call returns.
+    if (this.conflictMode === 'sync') {
+      try {
+        this.recordConflicts(id, targetProject, params.title, params.content);
+      } catch {
+        // Non-blocking conflict check protection
       }
-    } catch {
-      // Non-blocking conflict check protection
     }
 
     const createdMemory = this.getMemory(id)!;
@@ -277,6 +311,201 @@ export class FastrRepository {
     }
 
     return createdMemory;
+  }
+
+  /**
+   * The historical conflict window: the 50 most recent active memories in the project that
+   * were inserted before the target row. Ordering by rowid makes the window reproducible
+   * later: drainConflicts() sees exactly the rows that existed when the memory was written,
+   * even if more memories arrived in the meantime.
+   */
+  private conflictCandidates(memoryId: string, projectId: string): Array<{ id: string; title: string; content: string }> {
+    const row = this.db.prepare('SELECT rowid AS rid FROM main.memories WHERE id = ?').get(memoryId) as
+      | { rid: number }
+      | undefined;
+    if (!row) return [];
+    return this.db.prepare(`
+      SELECT id, title, content FROM main.memories
+      WHERE project_id = ? AND valid_to IS NULL AND rowid < ?
+      ORDER BY created_at DESC, rowid DESC LIMIT 50
+    `).all(projectId, row.rid) as unknown as Array<{ id: string; title: string; content: string }>;
+  }
+
+  /** Runs detectConflict() over the historical window and records new conflict rows. */
+  private recordConflicts(memoryId: string, projectId: string, title: string, content: string): number {
+    let created = 0;
+    for (const candidate of this.conflictCandidates(memoryId, projectId)) {
+      const check = detectConflict(title, content, candidate.title, candidate.content);
+      if (!check.hasConflict) continue;
+      const result = this.db.prepare(`
+        INSERT INTO memory_conflicts (project_id, memory_a_id, memory_b_id, reason, score)
+        SELECT ?, ?, ?, ?, ?
+        WHERE NOT EXISTS (
+          SELECT 1 FROM memory_conflicts WHERE memory_a_id = ? AND memory_b_id = ?
+        )
+      `).run(projectId, memoryId, candidate.id, check.reason, check.score, memoryId, candidate.id);
+      created += Number(result.changes ?? 0);
+    }
+    return created;
+  }
+
+  /** Extracts entities and writes entity + graph rows for one memory. */
+  private extractEntitiesForMemory(
+    memoryId: string,
+    projectId: string,
+    title: string,
+    content: string,
+    files?: string[]
+  ): void {
+    const extracted = extractEntities(`${title} ${content}`);
+    if (extracted.length === 0) return;
+
+    const existingLinks = this.db
+      .prepare('SELECT COUNT(*) AS c FROM file_links WHERE memory_id = ?')
+      .get(memoryId) as { c?: number } | undefined;
+    const hasExplicitFiles = (files && files.length > 0) || Number(existingLinks?.c ?? 0) > 0;
+    const autoFiles: string[] = [];
+
+    for (const ent of extracted) {
+      const entId = `ent_${crypto.createHash('sha256').update(`${projectId}:${ent.name.toLowerCase()}`).digest('hex').slice(0, 12)}`;
+
+      this.db.prepare(`
+        INSERT INTO entities (id, project_id, name, entity_type)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(id) DO NOTHING
+      `).run(entId, projectId, ent.name, ent.type);
+
+      const edgeId = `edge_${crypto.randomBytes(6).toString('hex')}`;
+      this.db.prepare(`
+        INSERT INTO graph_edges (id, project_id, source_id, target_id, edge_type, weight)
+        VALUES (?, ?, ?, ?, 'entity_link', 1.0)
+        ON CONFLICT(id) DO NOTHING
+      `).run(edgeId, projectId, memoryId, entId);
+
+      if (ent.type === 'file' && !hasExplicitFiles) {
+        autoFiles.push(ent.name);
+      }
+    }
+
+    if (autoFiles.length > 0) {
+      this.linkFiles(memoryId, autoFiles.slice(0, 5));
+    }
+  }
+
+  /** Number of memories waiting for entity extraction. */
+  pendingNerCount(projectId?: string): number {
+    const row = projectId
+      ? this.db.prepare('SELECT COUNT(*) AS c FROM memory_ner_queue WHERE project_id = ?').get(projectId)
+      : this.db.prepare('SELECT COUNT(*) AS c FROM memory_ner_queue').get();
+    return Number((row as { c?: number } | undefined)?.c ?? 0);
+  }
+
+  /** Drains the deferred entity-extraction queue in one transaction. */
+  drainNer(batchSize: number = 20): { drained: number } {
+    const limit = Math.max(0, Math.floor(batchSize));
+    if (limit === 0) return { drained: 0 };
+
+    const rows = this.db.prepare(`
+      SELECT id, project_id, memory_id FROM memory_ner_queue ORDER BY id ASC LIMIT ?
+    `).all(limit) as unknown as Array<{ id: number; project_id: string; memory_id: string }>;
+    if (rows.length === 0) return { drained: 0 };
+
+    this.db.exec('SAVEPOINT fastr_drain_ner');
+    try {
+      for (const row of rows) {
+        const memory = this.db.prepare('SELECT title, content FROM main.memories WHERE id = ?').get(row.memory_id) as
+          | { title: string; content: string }
+          | undefined;
+        if (memory) {
+          try {
+            this.extractEntitiesForMemory(row.memory_id, row.project_id, memory.title, memory.content);
+          } catch {
+            // Non-blocking: a bad row must never stall the queue.
+          }
+        }
+        this.db.prepare('DELETE FROM memory_ner_queue WHERE id = ?').run(row.id);
+      }
+      this.db.exec('RELEASE fastr_drain_ner');
+    } catch (err) {
+      this.db.exec('ROLLBACK TO fastr_drain_ner');
+      this.db.exec('RELEASE fastr_drain_ner');
+      throw err;
+    }
+
+    return { drained: rows.length };
+  }
+
+  /** Number of memories waiting for full-text indexing. */
+  pendingFtsCount(): number {
+    return pendingFtsCount(this.db, 'main');
+  }
+
+  /** Indexes queued memories in one transaction. Idempotent. */
+  drainFts(batchSize: number = 500): { drained: number } {
+    return drainFtsQueue(this.db, { limit: batchSize, schema: 'main' });
+  }
+
+  /** Drains both deferred queues. This is what the maintenance loop calls. */
+  drainAnalysis(batchSize: number = 20): {
+    conflictsDrained: number;
+    conflictsCreated: number;
+    entitiesDrained: number;
+    ftsDrained: number;
+  } {
+    const conflicts = this.drainConflicts(batchSize);
+    const entities = this.drainNer(batchSize);
+    const fts = this.drainFts(Math.max(batchSize, 500));
+    return {
+      conflictsDrained: conflicts.drained,
+      conflictsCreated: conflicts.created,
+      entitiesDrained: entities.drained,
+      ftsDrained: fts.drained
+    };
+  }
+
+  /** Number of memories waiting for conflict analysis. */
+  pendingConflictCount(projectId?: string): number {
+    const row = projectId
+      ? this.db.prepare('SELECT COUNT(*) AS c FROM memory_conflict_queue WHERE project_id = ?').get(projectId)
+      : this.db.prepare('SELECT COUNT(*) AS c FROM memory_conflict_queue').get();
+    return Number((row as { c?: number } | undefined)?.c ?? 0);
+  }
+
+  /**
+   * Drains the deferred conflict queue in one transaction. Each drained memory is compared
+   * against the same 50-row window the synchronous path would have used, so 'sync' and
+   * 'deferred' converge on identical memory_conflicts rows.
+   */
+  drainConflicts(batchSize: number = 20): { drained: number; created: number } {
+    const limit = Math.max(0, Math.floor(batchSize));
+    if (limit === 0) return { drained: 0, created: 0 };
+
+    const rows = this.db.prepare(`
+      SELECT id, project_id, memory_id FROM memory_conflict_queue
+      ORDER BY id ASC LIMIT ?
+    `).all(limit) as unknown as Array<{ id: number; project_id: string; memory_id: string }>;
+    if (rows.length === 0) return { drained: 0, created: 0 };
+
+    let created = 0;
+    this.db.exec('SAVEPOINT fastr_drain_conflicts');
+    try {
+      for (const row of rows) {
+        const memory = this.db.prepare('SELECT title, content FROM main.memories WHERE id = ?').get(row.memory_id) as
+          | { title: string; content: string }
+          | undefined;
+        if (memory) {
+          created += this.recordConflicts(row.memory_id, row.project_id, memory.title, memory.content);
+        }
+        this.db.prepare('DELETE FROM memory_conflict_queue WHERE id = ?').run(row.id);
+      }
+      this.db.exec('RELEASE fastr_drain_conflicts');
+    } catch (err) {
+      this.db.exec('ROLLBACK TO fastr_drain_conflicts');
+      this.db.exec('RELEASE fastr_drain_conflicts');
+      throw err;
+    }
+
+    return { drained: rows.length, created };
   }
 
   getMemory(id: string): Memory | null {
@@ -869,7 +1098,10 @@ export class FastrRepository {
       dormantCount: counts.dormantCount || 0,
       rawEventCount: rawEvents.count || 0,
       pendingSpoolCount: pendingSpool,
-      embeddingCoveragePercent: coverage
+      embeddingCoveragePercent: coverage,
+      pendingConflictCount: this.pendingConflictCount(projectId),
+      pendingNerCount: this.pendingNerCount(projectId),
+      pendingFtsCount: this.pendingFtsCount()
     };
   }
 

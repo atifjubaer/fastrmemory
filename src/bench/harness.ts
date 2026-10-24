@@ -4,6 +4,7 @@ import { FastrRepository } from '../db/repository.js';
 import { searchMemories, type RetrievalConfig } from '../search/hybrid-rrf.js';
 import { estimateTokens } from '../search/budget.js';
 import { backfillEmbeddings } from '../search/backfill.js';
+import { drainFtsQueue } from '../db/fts-queue.js';
 import type { BenchCase, BenchCategory, BenchCorpus, BenchSplit } from './corpus.js';
 
 export interface CorpusSetup {
@@ -77,6 +78,10 @@ export function setupCorpusDatabase(
       );
     }
   }
+
+  // Seeding is not timed, so index everything now: baselines that read memories_fts
+  // directly (the lexical engine) must not depend on a later recall call draining the queue.
+  drainFtsQueue(db, { limit: 1_000_000, schema: 'main' });
 
   return { repo, embedded: 0 };
 }

@@ -119,7 +119,7 @@ describe('FastrMemory Web UI Server', () => {
     const { FastrRepository } = await import('../src/db/repository.js');
     const { SpoolManager } = await import('../src/db/spool.js');
     const db = initDatabase(config.dbPath);
-    const repo = new FastrRepository(db, new SpoolManager(config.spoolPath));
+    const repo = new FastrRepository(db, new SpoolManager(config.spoolPath), { conflictMode: 'sync' });
 
     const taskA = repo.createAction({
       projectId: config.projectId,

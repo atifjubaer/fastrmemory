@@ -1,4 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
+import { FastrRepository } from './repository.js';
 
 export interface DiagnosticIssue {
   category: 'integrity' | 'fts5' | 'file_links' | 'actions' | 'storage';
@@ -20,6 +21,8 @@ export interface DiagnosticReport {
     fileLinkCount: number;
     actionCount: number;
     walMode: string;
+    pendingConflicts: number;
+    pendingFts: number;
   };
 }
 
@@ -28,6 +31,10 @@ export interface HealResult {
   fixedCount: number;
   actionsTaken: string[];
   remainingIssues: number;
+  conflictsDrained?: number;
+  conflictsCreated?: number;
+  entitiesDrained?: number;
+  ftsDrained?: number;
   reportBefore: DiagnosticReport;
   reportAfter?: DiagnosticReport;
 }
@@ -77,6 +84,7 @@ export function diagnoseDatabase(db: DatabaseSync, projectId: string): Diagnosti
     const missingRow = db.prepare(`
       SELECT COUNT(*) as c FROM main.memories m
       WHERE NOT EXISTS (SELECT 1 FROM main.memories_fts f WHERE f.id = m.id)
+        AND NOT EXISTS (SELECT 1 FROM main.memory_fts_queue q WHERE q.memory_id = m.id)
     `).get() as any;
     const missing = Number(missingRow?.c || 0);
     const staleRow = db.prepare(`
@@ -190,6 +198,36 @@ export function diagnoseDatabase(db: DatabaseSync, projectId: string): Diagnosti
 
   const fixableIssues = issues.filter(i => i.fixable).length;
 
+  let pendingConflicts = 0;
+  let pendingFts = 0;
+  try {
+    const queueRow = db.prepare('SELECT COUNT(*) AS c FROM memory_conflict_queue').get() as any;
+    pendingConflicts = Number(queueRow?.c || 0);
+    if (pendingConflicts > 0) {
+      issues.push({
+        category: 'integrity',
+        severity: 'info',
+        description: `${pendingConflicts} memories are queued for deferred conflict analysis.`,
+        fixable: true,
+        affectedCount: pendingConflicts
+      });
+    }
+  } catch {}
+
+  try {
+    const ftsQueueRow = db.prepare('SELECT COUNT(*) AS c FROM memory_fts_queue').get() as any;
+    pendingFts = Number(ftsQueueRow?.c || 0);
+    if (pendingFts > 0) {
+      issues.push({
+        category: 'fts5',
+        severity: 'info',
+        description: `${pendingFts} memories are queued for deferred full-text indexing (readers index them on demand).`,
+        fixable: true,
+        affectedCount: pendingFts
+      });
+    }
+  } catch {}
+
   return {
     healthy: issues.filter(i => i.severity === 'error').length === 0,
     timestamp: new Date().toISOString(),
@@ -201,7 +239,9 @@ export function diagnoseDatabase(db: DatabaseSync, projectId: string): Diagnosti
       ftsRowCount,
       fileLinkCount,
       actionCount,
-      walMode
+      walMode,
+      pendingConflicts,
+      pendingFts
     }
   };
 }
@@ -209,12 +249,16 @@ export function diagnoseDatabase(db: DatabaseSync, projectId: string): Diagnosti
 export function healDatabase(
   db: DatabaseSync,
   projectId: string,
-  options: { dryRun?: boolean } = {}
+  options: { dryRun?: boolean; drainConflicts?: boolean; conflictBatchSize?: number } = {}
 ): HealResult {
   const { dryRun = false } = options;
   const reportBefore = diagnoseDatabase(db, projectId);
   const actionsTaken: string[] = [];
   let fixedCount = 0;
+  let conflictsDrained = 0;
+  let conflictsCreated = 0;
+  let entitiesDrained = 0;
+  let ftsDrained = 0;
 
   if (dryRun) {
     return {
@@ -287,6 +331,30 @@ export function healDatabase(
     actionsTaken.push('Executed PRAGMA wal_checkpoint(TRUNCATE).');
   } catch {}
 
+  // 5. Drain the deferred analysis queues in bounded batches.
+  if (options.drainConflicts) {
+    const batchSize = Math.max(1, Math.floor(options.conflictBatchSize ?? 20));
+    const repo = new FastrRepository(db);
+    let guard = 0;
+    while (guard++ < 10_000) {
+      const result = repo.drainAnalysis(batchSize);
+      conflictsDrained += result.conflictsDrained;
+      conflictsCreated += result.conflictsCreated;
+      entitiesDrained += result.entitiesDrained;
+      ftsDrained += result.ftsDrained;
+      if (
+        result.conflictsDrained === 0 &&
+        result.entitiesDrained === 0 &&
+        result.ftsDrained === 0
+      ) break;
+    }
+    actionsTaken.push(
+      `Drained ${conflictsDrained} queued conflict checks (${conflictsCreated} conflicts recorded), ` +
+        `${entitiesDrained} queued entity extractions, and ${ftsDrained} queued full-text index rows.`
+    );
+    fixedCount += conflictsDrained + entitiesDrained + ftsDrained;
+  }
+
   const reportAfter = diagnoseDatabase(db, projectId);
 
   return {
@@ -294,6 +362,10 @@ export function healDatabase(
     fixedCount,
     actionsTaken,
     remainingIssues: reportAfter.totalIssues,
+    conflictsDrained,
+    conflictsCreated,
+    entitiesDrained,
+    ftsDrained,
     reportBefore,
     reportAfter
   };
@@ -311,6 +383,8 @@ export function rebuildMemoriesFts(db: DatabaseSync): number {
       INSERT INTO main.memories_fts (id, title, module, content)
       SELECT id, title, module, content FROM main.memories
     `).run();
+    // Everything is indexed now, so the pending queue is redundant.
+    db.exec('DELETE FROM main.memory_fts_queue');
     db.exec('COMMIT');
     return Number(res.changes);
   } catch (err) {

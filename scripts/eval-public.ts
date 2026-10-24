@@ -32,6 +32,7 @@ import {
   type PublicHarnessOptions
 } from '../src/bench/public-harness.js';
 import { ensureEmbeddingModel } from '../src/search/embeddings.js';
+import { selectSplit, slicePerType, type BenchSplitName } from '../src/bench/split.js';
 
 type DatasetName = 'longmemeval' | 'locomo' | 'repo';
 type EmbeddingName = 'hash' | 'minilm';
@@ -46,6 +47,8 @@ interface Args {
   maxCases: number;
   revision: string;
   allowMismatch: boolean;
+  split: BenchSplitName | 'all';
+  slicePerType?: number;
 }
 
 function parseArgs(argv: string[]): Args {
@@ -61,7 +64,8 @@ function parseArgs(argv: string[]): Args {
     engines: [],
     maxCases: 250,
     revision: 'HEAD',
-    allowMismatch: false
+    allowMismatch: false,
+    split: 'all'
   };
   for (let i = 1; i < argv.length; i++) {
     const arg = argv[i];
@@ -77,6 +81,12 @@ function parseArgs(argv: string[]): Args {
     else if (arg === '--limit') args.limit = Number(next());
     else if (arg === '--max-cases') args.maxCases = Number(next());
     else if (arg === '--revision') args.revision = next();
+    else if (arg === '--split') {
+      const value = next();
+      if (!['dev', 'test', 'all'].includes(value)) throw new Error('--split must be dev, test, or all');
+      args.split = value as BenchSplitName | 'all';
+    }
+    else if (arg === '--slice-per-type') args.slicePerType = Number(next());
     else if (arg === '--allow-mismatch') args.allowMismatch = true;
     else throw new Error(`Unknown argument: ${arg}`);
   }
@@ -218,6 +228,19 @@ async function main() {
     dataset = args.dataset === 'longmemeval'
       ? parseLongMemEval(raw, { limit: args.limit })
       : parseLoCoMo(raw, { limit: args.limit });
+    if (args.slicePerType !== undefined) {
+      dataset = { ...dataset, cases: slicePerType(dataset.cases, args.slicePerType) };
+    }
+    if (args.split !== 'all') {
+      dataset = { ...dataset, cases: selectSplit(dataset.cases, args.split) };
+    }
+    if (args.slicePerType !== undefined || args.split !== 'all') {
+      const projects = new Set(dataset.cases.map((item) => item.projectId));
+      dataset = {
+        ...dataset,
+        memories: dataset.memories.filter((memory) => projects.has(memory.projectId))
+      };
+    }
     pin = { ...expected, sha256 };
     details = {
       rawFile: path.relative(repoRoot, file).replaceAll('\\', '/'),
@@ -275,6 +298,8 @@ async function main() {
     config: {
       embeddings: args.embeddings,
       limit: args.limit ?? null,
+      split: args.split,
+      slicePerType: args.slicePerType ?? null,
       engines: engines.map((engine) => engine.name),
       budgetTokens: 1_000_000,
       retrievalLimit: 10,

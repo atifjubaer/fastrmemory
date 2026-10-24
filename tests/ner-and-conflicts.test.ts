@@ -52,7 +52,8 @@ describe('FastrRepository NER & Conflict Integration', () => {
 
   beforeEach(() => {
     db = initDatabase(':memory:');
-    repo = new FastrRepository(db);
+    // This suite covers inline NER + the synchronous conflict contract.
+    repo = new FastrRepository(db, undefined, { conflictMode: 'sync', nerMode: 'sync' });
   });
 
   it('auto-extracts entities into graph on memory insert', () => {

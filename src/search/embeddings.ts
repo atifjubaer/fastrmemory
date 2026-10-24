@@ -228,6 +228,40 @@ export function decodeTaggedEmbedding(buf: Uint8Array | null | undefined): { mod
   return { modelId, vector: new Float32Array(payload.buffer) };
 }
 
+// ---------------------------------------------------------------------------
+// Vector mode resolution
+//
+// The feature-hash vectorizer is a lexical duplicate of BM25: it never adds
+// independent signal, and on the shipped evaluation slice it costs 3.33 pp
+// Hit@1. It must therefore never run unless the operator asks for it.
+// The default is "semantic when a real model is already loaded, otherwise off".
+// ---------------------------------------------------------------------------
+
+export type VectorMode = 'off' | 'hash' | 'semantic';
+
+/** True when a real semantic embedding provider is resident right now. */
+export function hasSemanticProvider(): boolean {
+  return featureExtractor !== null;
+}
+
+/**
+ * Resolves the active vector mode.
+ *
+ * Precedence:
+ *   1. `override` passed by the caller (benchmark/ablation config).
+ *   2. FASTR_VECTOR_MODE env var: 'hash' | 'semantic' | 'off'.
+ *   3. Default: 'semantic' only when a semantic provider is already loaded.
+ */
+export function resolveVectorMode(override?: string, env: NodeJS.ProcessEnv = process.env): VectorMode {
+  const raw = (override ?? env.FASTR_VECTOR_MODE ?? '').trim().toLowerCase();
+  if (raw === 'hash' || raw === 'feature' || raw === 'feature-hash') return 'hash';
+  if (raw === 'off' || raw === 'none' || raw === 'disabled') return 'off';
+  if (raw === 'semantic' || raw === 'model' || raw === 'minilm' || raw === 'static') {
+    return hasSemanticProvider() ? 'semantic' : 'off';
+  }
+  return hasSemanticProvider() ? 'semantic' : 'off';
+}
+
 export interface EmbeddingProvider {
   modelId: EmbeddingModelId;
   embed(text: string): Promise<Float32Array>;
@@ -257,9 +291,13 @@ export function getAvailableEmbeddingProvider(): EmbeddingProvider {
   return featureHashProvider;
 }
 
-/** Returns a provider for a specific model id if usable right now (no downloads), else null. */
-export function getProviderForModel(modelId: number): EmbeddingProvider | null {
-  if (modelId === EMBEDDING_MODEL_IDS.FEATURE_HASH_384) return featureHashProvider;
+/**
+ * Returns a provider for a specific model id if usable right now (no downloads), else null.
+ * `allowHash` is false on the production recall path: feature-hash vectors are an explicit
+ * opt-in (FASTR_VECTOR_MODE=hash), never a silent fallback.
+ */
+export function getProviderForModel(modelId: number, allowHash = true): EmbeddingProvider | null {
+  if (modelId === EMBEDDING_MODEL_IDS.FEATURE_HASH_384) return allowHash ? featureHashProvider : null;
   if (modelId === EMBEDDING_MODEL_IDS.MINILM_L6_V2 && featureExtractor) return getAvailableEmbeddingProvider();
   return null;
 }

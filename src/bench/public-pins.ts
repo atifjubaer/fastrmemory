@@ -20,11 +20,11 @@ export type PinnedDatasetName = 'longmemeval' | 'locomo';
 
 export const PUBLIC_DATASET_PINS: Record<PinnedDatasetName, DatasetPin> = {
   longmemeval: {
-    file: 'longmemeval_s.json',
-    revision: '2ec2a557f339b6c0369619b1ed5793734cc87533',
-    sha256: '08D8DAD4BE43EE2049A22FF5674EB86725D0CE5FF434CDE2627E5E8E7E117894',
-    url: 'https://huggingface.co/datasets/xiaowu0162/longmemeval',
-    source: 'huggingface:xiaowu0162/longmemeval'
+    file: 'longmemeval_s_cleaned.json',
+    revision: '98d7416c24c778c2fee6e6f3006e7a073259d48f',
+    sha256: 'D6F21EA9D60A0D56F34A05B609C79C88A451D2AE03597821EA3D5A9678C3A442',
+    url: 'https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned',
+    source: 'huggingface:xiaowu0162/longmemeval-cleaned'
   },
   locomo: {
     file: 'locomo10.json',

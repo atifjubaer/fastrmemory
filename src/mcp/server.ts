@@ -736,6 +736,12 @@ export function createFastrMcpServer(
       annotations: { readOnlyHint: true, openWorldHint: false }
     },
     async ({ status }) => {
+      // Conflicts are analysed off the write path, so a read of the open registry first
+      // drains any pending checks. This keeps the answer complete without slowing inserts.
+      if (status === 'open') {
+        let guard = 0;
+        while (guard++ < 50 && repo.drainConflicts(20).drained > 0) { /* bounded catch-up */ }
+      }
       const conflicts = repo.listConflicts(config.projectId, status);
       if (conflicts.length === 0) {
         return {

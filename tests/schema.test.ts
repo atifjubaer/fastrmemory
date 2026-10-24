@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { initDatabase } from '../src/db/schema.js';
+import { drainFtsQueue } from '../src/db/fts-queue.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -45,6 +46,11 @@ describe('SQLite Schema & Triggers', () => {
     expect(memory.id).toBe('mem_1');
     expect(memory.status).toBe('staging');
     expect(memory.reward_score).toBe(1.0);
+
+    // Verify the insert trigger queues the row, and that draining indexes it
+    const queued = db.prepare('SELECT COUNT(*) AS c FROM memory_fts_queue WHERE memory_id = ?').get('mem_1') as any;
+    expect(queued.c).toBe(1);
+    drainFtsQueue(db, { limit: 100 });
 
     // Verify FTS5 search
     const ftsResults = db.prepare(`

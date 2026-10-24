@@ -205,7 +205,12 @@ describe('Recall correctness fixes', () => {
     repo.updateEmbedding(b.id, encodeTaggedEmbedding(qv, EMBEDDING_MODEL_IDS.MINILM_L6_V2)); // other model (not loaded)
     repo.updateEmbedding(c.id, qv); // legacy untagged blob
 
-    const res = await searchMemories(db, { projectId: P, query, backfill: false });
+    // Default recall: hash-tagged rows are inert because the hash vectorizer is opt-in.
+    const defaults = await searchMemories(db, { projectId: P, query, backfill: false });
+    expect(defaults.memories.map((m) => m.memory.title)).toEqual([]);
+
+    // Explicit hash mode compares only vectors tagged with the same model id.
+    const res = await searchMemories(db, { projectId: P, query, backfill: false, retrieval: { vectorMode: 'hash' } });
     expect(res.memories.map((m) => m.memory.title)).toEqual(['Alpha']);
     expect(res.memories[0].vectorRank).toBe(1);
   });

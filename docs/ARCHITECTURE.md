@@ -22,6 +22,9 @@ FastrMemory takes a third path: keep immutable raw events, keep a bi-temporal me
 | `memories` | Rules/decisions/traps with `valid_from`, `valid_to`, `superseded_by_id`, `status`, `reward_score`, optional embedding |
 | `memory_feedback` | Append-only per-ID outcome events with score before/after, status before/after, confidence tier, and consecutive-bad count |
 | `memories_fts` | FTS5 index over title/module/content (porter + unicode61) |
+| `memory_fts_queue` | Memories waiting for deferred full-text indexing (drained by readers and the doctor) |
+| `memory_conflict_queue` | Memories waiting for deferred conflict analysis |
+| `memory_ner_queue` | Memories waiting for deferred entity extraction |
 | `file_links` | Memory ↔ file/symbol links used by the graph stream |
 | `handoffs` | Cross-agent session milestones |
 | `entities` / `graph_edges` | Lightweight entity and relationship graph for spreading activation |
@@ -37,11 +40,15 @@ Supersession sets `valid_to` and `status='superseded'` on the old row; it does n
 ```text
 hook/CLI/MCP
    -> secret scrubber
-   -> SQLite write (WAL)
+   -> SQLite write (WAL), one savepoint:
+        -> memories row
+        -> file/entity links
+        -> queue rows (FTS index, conflict scan, entity extraction)
         -> on SQLITE_BUSY: append to .fastr/spool/pending.jsonl
-   -> FTS triggers + file/entity links
    -> markdown mirror
 ```
+
+The memory row is committed before `insertMemory()` returns. Indexing and analysis are deferred by default (`write.ftsMode`, `write.conflictMode`, `write.nerMode`) and drained by the next reader, the doctor, or the maintenance loop. Readers drain the FTS queue before running BM25, so a memory is searchable as soon as the insert returns. `write.*Mode: 'sync'` restores the historical inline path and is covered by tests.
 
 Hooks exit after each event; there is no resident process. The optional `daemon start` command exists for cross-process HTTP/SSE use and is not required.
 
@@ -50,7 +57,7 @@ Hooks exit after each event; there is no resident process. The optional `daemon 
 Three streams are fused with Reciprocal Rank Fusion (RRF):
 
 1. **BM25**: weighted FTS5 `bm25(memories_fts, 0.0, 10.0, 5.0, 1.0)` over active memories, plus the attached global DB when present. Each branch is locally capped at 50 before the union.
-2. **Vector**: cosine similarity over model-tagged embeddings. This stream is **optional**; the offline fallback uses deterministic hash vectors (lexical n-grams), and semantic embeddings require an explicit model install. Semantic vectors are weighted 3.0 when present; hash vectors use 1.0.
+2. **Vector**: cosine similarity over model-tagged embeddings. This stream is **off by default** unless a semantic provider is loaded. The deterministic feature-hash vectorizer is opt-in (`FASTR_VECTOR_MODE=hash`); it duplicates BM25 lexically and lowered LongMemEval Hit@1 from 89.2% to 81.7% on the 120-case slice. Semantic vectors are weighted 3.0 when present; hash vectors use 1.0.
 3. **Graph**: file links supplied by the caller, query entities, and 1-2 hop spreading activation over `graph_edges`. Seeding the graph from BM25/vector candidates is off by default.
 
 ```text

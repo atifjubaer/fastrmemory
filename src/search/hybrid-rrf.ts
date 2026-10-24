@@ -5,10 +5,13 @@ import {
   decodeTaggedEmbedding,
   EMBEDDING_MODEL_IDS,
   getProviderForModel,
+  resolveVectorMode,
   VECTOR_SIMILARITY_THRESHOLDS,
-  warmupEmbeddingModel
+  warmupEmbeddingModel,
+  type VectorMode
 } from './embeddings.js';
 import { scheduleBackfill } from './backfill.js';
+import { drainFtsQueue } from '../db/fts-queue.js';
 import { packMemoriesIntoBudget, ScoredMemory, TOKEN_LEVELS } from './budget.js';
 import { extractEntities } from '../learn/ner.js';
 
@@ -96,7 +99,18 @@ export interface RetrievalConfig {
   /** Per-stream RRF weights (default 1.0; semantic vectors default to 3.0 when present). */
   streamWeights?: StreamWeights;
   enableBm25?: boolean;
+  /**
+   * Legacy explicit vector switch. `true` runs whatever provider is available (including
+   * the feature-hash vectorizer) and exists for benchmark ablations; `false` forces vectors
+   * off. Omit it to use the production default: vectors run only when a real semantic
+   * provider is loaded, or when FASTR_VECTOR_MODE selects a mode.
+   */
   enableVector?: boolean;
+  /**
+   * Explicit vector mode. 'hash' opts into the feature-hash vectorizer, 'semantic' runs only
+   * with a loaded semantic model, 'off' disables the stream. Overrides enableVector.
+   */
+  vectorMode?: VectorMode;
   enableGraph?: boolean;
   /** Seed graph activation from the first BM25/vector candidates (default false). */
   graphSeedFromCandidates?: boolean;
@@ -194,7 +208,7 @@ export async function searchMemories(
     budgetTokens = TOKEN_LEVELS.L2_TASK_RECALL,
     maxPerSession = 3,
     limit,
-    backfill = process.env.FASTR_EMBEDDINGS_MODEL === '1'
+    backfill
   } = params;
 
   const retrieval = params.retrieval ?? {};
@@ -205,7 +219,23 @@ export async function searchMemories(
     graph: retrieval.streamWeights?.graph ?? 1
   };
   const enableBm25 = retrieval.enableBm25 ?? true;
-  const enableVector = retrieval.enableVector ?? true;
+  /**
+   * Production default: the vector stream is off unless a real semantic provider is loaded.
+   * Feature-hash vectors duplicate BM25 lexically and measurably regress Hit@1, so they are
+   * reachable only via an explicit vectorMode: 'hash' or FASTR_VECTOR_MODE=hash.
+   */
+  const vectorMode: VectorMode = retrieval.vectorMode
+    ? resolveVectorMode(retrieval.vectorMode)
+    : retrieval.enableVector === true
+      ? 'hash'
+      : retrieval.enableVector === false
+        ? 'off'
+        : resolveVectorMode();
+  const enableVector = vectorMode !== 'off';
+  const allowHashVectors = vectorMode === 'hash';
+  // Embedding backfill follows the same rule as recall: it never generates hash vectors
+  // implicitly. A caller may still force it explicitly.
+  const shouldBackfill = backfill ?? enableVector;
   const enableGraph = retrieval.enableGraph ?? true;
   const graphSeedFromCandidates = retrieval.graphSeedFromCandidates ?? false;
   const trapBoost = retrieval.trapBoost ?? 2.0;
@@ -230,6 +260,16 @@ export async function searchMemories(
   };
 
   // --- STREAM A: BM25 FTS5 Keyword Search ---
+  // Read-your-writes: index anything the writer deferred before running BM25. This is a
+  // bounded, idempotent batch and a no-op once the queue is empty.
+  if (enableBm25) {
+    try {
+      drainFtsQueue(db, { limit: 500, schema: 'main' });
+      if (hasGlobalDb(db)) drainFtsQueue(db, { limit: 500, schema: 'global_db' });
+    } catch {
+      // A stale index must never fail a search.
+    }
+  }
   const ftsQuery = enableBm25 ? sanitizeFtsQuery(query) : '';
   if (ftsQuery) {
     try {
@@ -295,9 +335,9 @@ export async function searchMemories(
   // if memories in scope are already embedded, and only with a provider for the SAME
   // model id that is usable right now (offline feature-hash, or an already-loaded model).
   // Vectors from different/unknown models are never compared.
-  if (enableVector) {
-    warmupEmbeddingModel(); // no-op unless FASTR_EMBEDDINGS_MODEL=1; never awaited
-  }
+  // Model warmup is an explicit operator opt-in (FASTR_EMBEDDINGS_MODEL=1) and is never
+  // awaited, so it stays independent of the vector stream being enabled for this query.
+  warmupEmbeddingModel();
   if (enableVector && query.trim().length > 0) {
     const isGlobalAttached = hasGlobalDb(db);
     let vecSql = `
@@ -328,10 +368,13 @@ export async function searchMemories(
       if (!passesFilter(row)) continue;
       const decoded = decodeTaggedEmbedding(row.embedding);
       if (!decoded) continue; // legacy / untagged vector: unknown model, never compared
+      // Rows embedded by the feature-hash vectorizer are inert unless hash mode is on.
+      // This keeps a database written by an older default from re-enabling the regression.
+      if (decoded.modelId === EMBEDDING_MODEL_IDS.FEATURE_HASH_384 && !allowHashVectors) continue;
       if (decoded.modelId === EMBEDDING_MODEL_IDS.MINILM_L6_V2) semanticVectorSeen = true;
 
       if (!queryVecs.has(decoded.modelId)) {
-        const provider = getProviderForModel(decoded.modelId);
+        const provider = getProviderForModel(decoded.modelId, allowHashVectors);
         let qv: Float32Array | null = null;
         if (provider) {
           try { qv = await provider.embed(query); } catch { qv = null; }
@@ -582,7 +625,7 @@ export async function searchMemories(
   // Bounded, non-blocking embedding backfill. Enabled by default only when the
   // local semantic model is explicitly enabled; hash vectors duplicate lexical BM25
   // and should not be generated implicitly.
-  if (backfill) {
+  if (shouldBackfill) {
     scheduleBackfill(db, projectId);
   }
 

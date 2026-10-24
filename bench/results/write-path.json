@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-24T13:37:50.700Z",
+  "probe": {
+    "docs": 120,
+    "chars": 1225535,
+    "source": "longmemeval-cleaned@98d7416c sha256=D6F21EA9D60A"
+  },
+  "environment": {
+    "platform": "win32 x64",
+    "node": "v24.15.0",
+    "cpu": "AMD Ryzen 7 7700 8-Core Processor              ",
+    "cpus": 16
+  },
+  "runs": 5,
+  "results": [
+    {
+      "mode": "sync",
+      "runs": 5,
+      "medianTotalMs": 1601.01,
+      "msPerDoc": 13.342,
+      "docsPerSecond": 75
+    },
+    {
+      "mode": "deferred",
+      "runs": 5,
+      "medianTotalMs": 14.89,
+      "msPerDoc": 0.124,
+      "docsPerSecond": 8061
+    },
+    {
+      "mode": "off",
+      "runs": 5,
+      "medianTotalMs": 13.09,
+      "msPerDoc": 0.109,
+      "docsPerSecond": 9167
+    },
+    {
+      "mode": "append_floor",
+      "runs": 5,
+      "medianTotalMs": 11.75,
+      "msPerDoc": 0.098,
+      "docsPerSecond": 10210
+    }
+  ],
+  "attribution": {
+    "conflictScanRemovedMs": 1586.12,
+    "conflictScanShareOfSyncPercent": 99.1,
+    "deferredBookkeepingMsPerDoc": 0.015
+  },
+  "gates": {
+    "G1_msPerDoc": 1.2,
+    "g1Passed": true,
+    "G2_foregroundAppendMsPerDoc": 0.3,
+    "g2AppendFloorMsPerDoc": 0.098,
+    "g2FloorPassed": true
+  }
+}

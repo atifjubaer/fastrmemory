@@ -10,6 +10,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { applySchema } from '../db/schema.js';
 import { FastrRepository } from '../db/repository.js';
 import { backfillEmbeddings } from '../search/backfill.js';
+import { drainFtsQueue } from '../db/fts-queue.js';
 import { searchMemories, type RetrievalConfig } from '../search/hybrid-rrf.js';
 import type { PublicCase, PublicDataset } from './public-datasets.js';
 
@@ -26,10 +27,16 @@ export const PUBLIC_ENGINES: PublicEngine[] = [
     retrieval: { enableBm25: true, enableVector: false, enableGraph: false, trapBoost: 1, verifiedBoost: 1 }
   },
   {
+    // The shipped default after P0: full pipeline, vector stream off unless a semantic
+    // provider is loaded. This is what a user gets with no configuration at all.
+    name: 'default_config',
+    retrieval: {}
+  },
+  {
     name: 'full_hash',
     retrieval: {
       enableBm25: true,
-      enableVector: true,
+      vectorMode: 'hash',
       enableGraph: true,
       graphSeedFromCandidates: false,
       trapBoost: 2.0,
@@ -43,7 +50,7 @@ export const PUBLIC_ENGINES: PublicEngine[] = [
     name: 'full_minilm',
     retrieval: {
       enableBm25: true,
-      enableVector: true,
+      vectorMode: 'semantic',
       enableGraph: true,
       graphSeedFromCandidates: false,
       trapBoost: 2.0,
@@ -137,6 +144,9 @@ export function loadPublicDataset(dataset: PublicDataset): { db: DatabaseSync; r
     db.exec('ROLLBACK');
     throw error;
   }
+
+  // Seeding is not timed; index everything so the first measured query is a warm query.
+  drainFtsQueue(db, { limit: 1_000_000, schema: 'main' });
 
   return { db, repo };
 }

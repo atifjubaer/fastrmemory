@@ -9,7 +9,8 @@ describe('Spreading Activation Graph Search', () => {
 
   beforeEach(() => {
     db = initDatabase(':memory:');
-    repo = new FastrRepository(db);
+    // Graph seeding reads entity rows, so this suite pins inline NER.
+    repo = new FastrRepository(db, undefined, { nerMode: 'sync' });
   });
 
   it('spreads activation across shared entity nodes to surface 2-hop connected rules', async () => {

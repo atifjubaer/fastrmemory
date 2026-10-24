@@ -14,7 +14,8 @@ describe('Obsidian Vault Exporter', () => {
 
   beforeEach(() => {
     db = initDatabase(':memory:');
-    repo = new FastrRepository(db);
+    // Entities are exported from the graph, so this suite pins inline NER.
+    repo = new FastrRepository(db, undefined, { nerMode: 'sync' });
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fastr-obsidian-'));
   });
 

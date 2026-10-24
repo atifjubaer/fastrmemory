@@ -216,9 +216,22 @@ CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
   tokenize='porter unicode61'
 );
 
--- Keep FTS5 automatically synced via triggers
+-- 3b. Deferred full-text indexing queue
+-- The insert trigger only enqueues, so the writer never pays tokenization cost. Readers
+-- drain the queue before running BM25 (read-your-writes), and the doctor can drain it too.
+CREATE TABLE IF NOT EXISTS memory_fts_queue (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id TEXT NOT NULL,
+  memory_id TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fts_queue_project ON memory_fts_queue(project_id, id);
+
+-- Keep FTS5 synced via triggers. Inserts are queued (see write.ftsMode); updates and
+-- deletes stay synchronous so a superseded or deleted row can never be matched.
 CREATE TRIGGER IF NOT EXISTS memories_ai AFTER INSERT ON memories BEGIN
-  INSERT INTO memories_fts(id, title, module, content) VALUES (new.id, new.title, new.module, new.content);
+  INSERT INTO memory_fts_queue(project_id, memory_id, created_at)
+  VALUES (new.project_id, new.id, COALESCE(new.created_at, strftime('%Y-%m-%dT%H:%M:%SZ', 'now')));
 END;
 
 CREATE TRIGGER IF NOT EXISTS memories_ad AFTER DELETE ON memories BEGIN
@@ -337,6 +350,27 @@ CREATE TABLE IF NOT EXISTS memory_conflicts (
 );
 CREATE INDEX IF NOT EXISTS idx_conflicts_status ON memory_conflicts(project_id, status);
 
+-- 9b. Deferred conflict-analysis queue
+-- One row is written in the same transaction as the memory insert. The 50-window
+-- detectConflict() scan runs later, off the write path, in bounded batches.
+CREATE TABLE IF NOT EXISTS memory_conflict_queue (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id TEXT NOT NULL,
+  memory_id TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_conflict_queue_project ON memory_conflict_queue(project_id, id);
+
+-- 9c. Deferred entity-extraction queue
+-- NER + graph-edge writes are analysis, not durability. They run in the same drain cycle.
+CREATE TABLE IF NOT EXISTS memory_ner_queue (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id TEXT NOT NULL,
+  memory_id TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ner_queue_project ON memory_ner_queue(project_id, id);
+
 -- 10. Planning Fallacy Predictions & Baserate
 CREATE TABLE IF NOT EXISTS predictions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -421,6 +455,36 @@ export function applySchema(db: DatabaseSync): void {
   } catch {}
 
   migrateMemoriesUpdateTrigger(db);
+  migrateMemoriesInsertTrigger(db);
+}
+
+const MEMORIES_AI_TRIGGER_SQL = `
+CREATE TRIGGER memories_ai AFTER INSERT ON memories BEGIN
+  INSERT INTO memory_fts_queue(project_id, memory_id, created_at)
+  VALUES (new.project_id, new.id, COALESCE(new.created_at, strftime('%Y-%m-%dT%H:%M:%SZ', 'now')));
+END;
+`;
+
+/**
+ * Older databases index FTS inline from the insert trigger. That costs ~0.27 ms per 10 KB
+ * document on the write path, so the trigger is swapped for one that enqueues instead.
+ * Rows written before the migration are already indexed; nothing needs backfilling.
+ */
+function migrateMemoriesInsertTrigger(db: DatabaseSync): void {
+  const row = db.prepare(
+    "SELECT sql FROM sqlite_master WHERE type = 'trigger' AND name = 'memories_ai'"
+  ).get() as { sql?: string } | undefined;
+  if (row?.sql && /memory_fts_queue/i.test(row.sql)) return;
+
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    db.exec('DROP TRIGGER IF EXISTS memories_ai;');
+    db.exec(MEMORIES_AI_TRIGGER_SQL);
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
 }
 
 const MEMORIES_AU_TRIGGER_SQL = `

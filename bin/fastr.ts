@@ -1102,10 +1102,19 @@ program
 // 18. Diagnose command
 program
   .command('diagnose')
+  .alias('doctor')
   .description('Run deep health check across SQLite, FTS5 indices, file links, and task DAGs')
-  .action(() => {
+  .option('--drain-conflicts', 'Drain the deferred conflict queue before reporting', false)
+  .action((opts: any = {}) => {
     try {
       const ctx = createFastrServerContext();
+      if (opts.drainConflicts) {
+        const drained = healDatabase(ctx.db, ctx.config.projectId, { drainConflicts: true });
+        console.log(
+          `\nDrained ${drained.conflictsDrained ?? 0} queued conflict check(s); recorded ${drained.conflictsCreated ?? 0} conflict(s); ` +
+            `extracted entities for ${drained.entitiesDrained ?? 0} memory(ies).`
+        );
+      }
       const report = diagnoseDatabase(ctx.db, ctx.config.projectId);
       console.log(`\n=== FastrMemory Health Diagnostic ===`);
       console.log(`Status:    ${report.healthy ? '✅ HEALTHY' : '⚠️ ISSUES DETECTED'}`);
@@ -1114,6 +1123,8 @@ program
       console.log(`FTS5 Rows: ${report.metrics.ftsRowCount}`);
       console.log(`Links:     ${report.metrics.fileLinkCount}`);
       console.log(`Actions:   ${report.metrics.actionCount}`);
+      console.log(`Conflicts: ${report.metrics.pendingConflicts} queued`);
+      console.log(`FTS queue: ${report.metrics.pendingFts} pending`);
       console.log(`Mode:      ${report.metrics.walMode}`);
       if (report.issues.length > 0) {
         console.log(`\nIssues List:`);
@@ -1181,16 +1192,34 @@ program
 // 19. Heal command
 program
   .command('heal')
-  .description('Auto-repair database indices, orphaned file links, and WAL fragmentation')
+  .description('Auto-repair database indices, orphaned file links, WAL fragmentation, and the deferred conflict queue')
   .option('-d, --dry-run', 'Preview repairs without modifying database', false)
+  .option('--drain-conflicts', 'Run every queued deferred conflict check now', false)
+  .option('--conflict-batch-size <n>', 'Conflict queue rows per transaction', '20')
   .action((opts: any) => {
     try {
       const ctx = createFastrServerContext();
-      const res = healDatabase(ctx.db, ctx.config.projectId, { dryRun: opts.dryRun });
+      const batchSize = Number.parseInt(opts.conflictBatchSize, 10);
+      const res = healDatabase(ctx.db, ctx.config.projectId, {
+        dryRun: opts.dryRun,
+        drainConflicts: opts.drainConflicts,
+        conflictBatchSize: Number.isFinite(batchSize) && batchSize > 0 ? batchSize : 20
+      });
       console.log(`\n=== FastrMemory Self-Healing Doctor ===`);
       console.log(`Mode:      ${res.dryRun ? '🔍 DRY RUN' : '⚡ LIVE REPAIR'}`);
       console.log(`Fixed:     ${res.fixedCount} issue(s)`);
       console.log(`Remaining: ${res.remainingIssues} issue(s)`);
+      if (res.conflictsDrained !== undefined) {
+        console.log(
+          `Conflicts: drained ${res.conflictsDrained} queued check(s), recorded ${res.conflictsCreated ?? 0}`
+        );
+      }
+      if (res.entitiesDrained !== undefined) {
+        console.log(`Entities:  extracted for ${res.entitiesDrained} queued memory(ies)`);
+      }
+      if (res.ftsDrained !== undefined) {
+        console.log(`FTS index: ${res.ftsDrained} queued row(s) indexed`);
+      }
       if (res.actionsTaken.length > 0) {
         console.log(`\nActions:`);
         for (const a of res.actionsTaken) {

@@ -31,7 +31,8 @@ The runner verifies the SHA-256 before a run and writes the revision, hash, file
 
 | Dataset | Revision | File | SHA-256 |
 |---|---|---|---|
-| LongMemEval | `2ec2a557f339b6c0369619b1ed5793734cc87533` | `longmemeval_s` (278,025,796 bytes) | `08D8DAD4BE43EE2049A22FF5674EB86725D0CE5FF434CDE2627E5E8E7E117894` |
+| LongMemEval (cleaned) | `98d7416c24c778c2fee6e6f3006e7a073259d48f` | `longmemeval_s_cleaned.json` (277,383,467 bytes) | `D6F21EA9D60A0D56F34A05B609C79C88A451D2AE03597821EA3D5A9678C3A442` |
+| LongMemEval (deprecated file, pre-cleaned) | `2ec2a557f339b6c0369619b1ed5793734cc87533` | `longmemeval_s` (278,025,796 bytes) | `08D8DAD4BE43EE2049A22FF5674EB86725D0CE5FF434CDE2627E5E8E7E117894` |
 | LoCoMo | `3eb6f2c585f5e1699204e3c3bdf7adc5c28cb376` | `data/locomo10.json` (2,805,274 bytes) | `79FA87E90F04081343B8C8DEBECB80A9A6842B76A7AA537DC9FDF651EA698FF4` |
 | FastrMemory repository | `d708e3aad437c82168ef37b4039bd87ef1731c59` | tracked text files at that commit | n/a |
 
@@ -39,9 +40,11 @@ Download commands:
 
 ```bash
 mkdir -p bench/data
-curl -L https://huggingface.co/datasets/xiaowu0162/longmemeval/resolve/2ec2a557f339b6c0369619b1ed5793734cc87533/longmemeval_s -o bench/data/longmemeval_s.json
-curl -L https://raw.githubusercontent.com/snap-research/locomo/3eb6f2c585f5e1699204e3c3bdf7adc5c28cb376/data/locomo10.json -o bench/data/locomo10.json
+curl -L --fail https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned/resolve/98d7416c24c778c2fee6e6f3006e7a073259d48f/longmemeval_s_cleaned.json -o bench/data/longmemeval_s_cleaned.json
+curl -L --fail https://raw.githubusercontent.com/snap-research/locomo/3eb6f2c585f5e1699204e3c3bdf7adc5c28cb376/data/locomo10.json -o bench/data/locomo10.json
 ```
+
+The 500-case LongMemEval tables below were measured on the deprecated pre-cleaned file with the hash engine explicitly enabled. New runs use the cleaned file; the pinned runner rejects a file whose SHA-256 does not match.
 
 ## Results
 
@@ -62,6 +65,20 @@ curl -L https://raw.githubusercontent.com/snap-research/locomo/3eb6f2c585f5e1699
 | temporal-reasoning | 133 | 83.5% | 96.2% | 0.887 |
 
 The 500 questions index 23,882 sessions. No question was skipped and no gold session id was missing.
+
+#### Cleaned file, 120-case slice (2026-10-24)
+
+The cleaned file changes the case set, so the numbers above are not directly comparable. This slice takes the first 20 cases of each `question_type` in dataset order: 66 single-gold, 31 two-gold, 13 three-gold, 8 four-gold, 1 five-gold, and 1 six-gold case. Splits are assigned by a stable SHA-256 of the question id before any tuning: the first 60 sorted hashes are `dev`, the rest are `test`.
+
+| Engine | Cases | Hit@1 | Hit@5 | Hit@10 | MRR | Evidence recall@5 | Full recall@5 | Tokens | p50 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| BM25-only | 120 | 89.2% | 96.7% | 99.2% | 0.923 | 0.935 | 89.2% | 31,427 | 17.75 ms |
+| Default config | 120 | 89.2% | 96.7% | 99.2% | 0.923 | 0.935 | 89.2% | 31,427 | 18.11 ms |
+| Full + hash vectors (opt-in) | 120 | 81.7% | 96.7% | 99.2% | 0.874 | 0.932 | 89.2% | 31,453 | 18.38 ms |
+
+`dev` only (n = 60, the split used for tuning): BM25-only 91.7% Hit@1, default config 91.7%, full hash 81.7%. The `test` split was not used for any decision in this change.
+
+The default configuration is now identical to BM25-only because the feature-hash vectorizer is opt-in (`FASTR_VECTOR_MODE=hash`). On this slice the hash stream degrades 11 cases, improves none, and leaves 109 unchanged. `bench/fixtures/hash-regression.json` pins 20 of those cases (10 degraded, 10 unchanged) so a regression test fails if hash vectors become the default again.
 
 ### LoCoMo
 

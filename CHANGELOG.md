@@ -2,6 +2,20 @@
 
 All notable changes to FastrMemory are recorded here. Versions follow semantic versioning.
 
+## [Unreleased]
+
+### Fixed
+
+- The feature-hash vectorizer is opt-in (`FASTR_VECTOR_MODE=hash`). `enableVector` now defaults to true only when a semantic provider is loaded, so the shipped default is BM25-only. On the 120-case LongMemEval cleaned slice the hash stream degraded 11 cases, improved none, and lowered Hit@1 from 89.2% to 81.7%. Rows tagged with the hash model stay inert unless hash mode is explicitly enabled, including after an upgrade.
+- `bench/fixtures/hash-regression.json` pins 20 of those cases (10 degraded, 10 unchanged) with a self-contained test that fails if hash vectors return to the default path.
+
+### Changed
+
+- Write path: the memory row, file links, and three queue rows commit in one savepoint; conflict analysis, entity extraction, and FTS tokenization are deferred by default (`write.conflictMode`, `write.nerMode`, `write.ftsMode`). Measured on 120 documents (1,225,535 chars): 13.342 ms/doc synchronous vs 0.124 ms/doc deferred, a 107.60x reduction; the conflict scan was 99.1% of the synchronous path. `write.*Mode: 'sync'` reproduces the old behaviour and is tested.
+- Readers drain the FTS queue before BM25, so a memory is searchable immediately after `insertMemory()` returns. `fastr doctor` / `fastr heal` drain all three queues and report their depth.
+- LongMemEval pin moved to `xiaowu0162/longmemeval-cleaned` at `98d7416c` (`longmemeval_s_cleaned.json`, SHA-256 `D6F21EA9D60A0D56F34A05B609C79C88A451D2AE03597821EA3D5A9678C3A442`). The public harness adds a stable 60/60 dev/test split and `--slice-per-type`.
+- Test suite is 311 tests across 56 files.
+
 ## [0.5.0] - 2026-10-23
 
 Published 2026-10-23 15:20:41 UTC from tag `v0.5.0` (`54a79ab`) by `.github/workflows/release.yml` using GitHub Actions OIDC trusted publishing. `npm view fastrmemory version` returns `0.5.0` and `latest` is `0.5.0`; release workflow run `39977196250` passed the full gate, clean tarball install, provenance publish, registry verification, and GitHub Release upload. The GitHub Release tarball SHA-256 is `10420ed6c70e6db52984ad6b895949f0f1d849dff06e2cb9227b7b56540cfb0e`; `npm audit signatures` reports 5 verified registry signatures and 4 verified attestations. `0.4.0` remains published historical.

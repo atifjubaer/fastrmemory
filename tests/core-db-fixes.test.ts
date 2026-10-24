@@ -47,7 +47,7 @@ afterEach(() => {
 describe('attachGlobalDatabase', () => {
   it('binds the path as a parameter (apostrophes and injection payloads are just filenames)', () => {
     const db = open(path.join(tempDir, 'project.db'));
-    const repo = new FastrRepository(db);
+    const repo = new FastrRepository(db, undefined, { ftsMode: 'sync' });
     rule(repo, 'Local rule survives');
 
     const nasty = path.join(tempDir, "it's x.db' AS g; DROP TABLE memories; --.db");
@@ -62,7 +62,7 @@ describe('attachGlobalDatabase', () => {
 
   it('re-attaches when asked for a different global database file', () => {
     const db = open(path.join(tempDir, 'project.db'));
-    const repo = new FastrRepository(db);
+    const repo = new FastrRepository(db, undefined, { ftsMode: 'sync' });
     const first = path.join(tempDir, 'g1.db');
     const second = path.join(tempDir, 'g2.db');
 
@@ -78,7 +78,7 @@ describe('attachGlobalDatabase', () => {
 describe('doctor FTS rebuild', () => {
   it('rebuilds a wiped FTS index so recall works again', async () => {
     const db = open(path.join(tempDir, 'doctor.db'));
-    const repo = new FastrRepository(db);
+    const repo = new FastrRepository(db, undefined, { ftsMode: 'sync' });
     rule(repo, 'Kubernetes ingress annotations');
     rule(repo, 'Postgres vacuum schedule');
     repo.insertMemory({ projectId, scope: 'global', kind: 'rule', title: 'Org wide rule', content: 'global row' });
@@ -102,7 +102,7 @@ describe('doctor FTS rebuild', () => {
 
   it('detects and removes duplicate FTS rows', () => {
     const db = open(path.join(tempDir, 'dup.db'));
-    const repo = new FastrRepository(db);
+    const repo = new FastrRepository(db, undefined, { ftsMode: 'sync' });
     const mem = rule(repo, 'Duplicate me');
     db.prepare('INSERT INTO memories_fts (id, title, module, content) VALUES (?, ?, ?, ?)').run(mem.id, mem.title, mem.module, mem.content);
 
@@ -118,7 +118,7 @@ describe('spool fallback & drain', () => {
     const db = open(dbPath);
     db.exec('PRAGMA busy_timeout = 0');
     const spool = new SpoolManager(path.join(tempDir, 'pending.jsonl'));
-    const repo = new FastrRepository(db, spool);
+    const repo = new FastrRepository(db, spool, { ftsMode: 'sync' });
 
     const locker = new DatabaseSync(dbPath);
     openDbs.push(locker);
@@ -172,8 +172,8 @@ describe('spool fallback & drain', () => {
 describe('concurrent writers on the same file', () => {
   it('a second supersede of the same memory fails instead of forking the chain', () => {
     const dbPath = path.join(tempDir, 'chain.db');
-    const repoA = new FastrRepository(open(dbPath));
-    const repoB = new FastrRepository(open(dbPath));
+    const repoA = new FastrRepository(open(dbPath), undefined, { ftsMode: 'sync' });
+    const repoB = new FastrRepository(open(dbPath), undefined, { ftsMode: 'sync' });
     const base = rule(repoA, 'Original rule');
 
     repoA.supersedeMemory(base.id, 'Version A', 'from A', 'A edit');
@@ -185,8 +185,8 @@ describe('concurrent writers on the same file', () => {
 
   it('two agents never claim the same action', () => {
     const dbPath = path.join(tempDir, 'dag.db');
-    const repoA = new FastrRepository(open(dbPath));
-    const repoB = new FastrRepository(open(dbPath));
+    const repoA = new FastrRepository(open(dbPath), undefined, { ftsMode: 'sync' });
+    const repoB = new FastrRepository(open(dbPath), undefined, { ftsMode: 'sync' });
     repoA.createAction({ projectId, title: 'Task 1', priority: 9 });
     repoA.createAction({ projectId, title: 'Task 2', priority: 5 });
 
@@ -208,7 +208,7 @@ describe('federated (global_db) memory writes', () => {
 
   beforeEach(() => {
     db = open(path.join(tempDir, 'project.db'));
-    repo = new FastrRepository(db);
+    repo = new FastrRepository(db, undefined, { ftsMode: 'sync' });
     expect(repo.attachGlobalDatabase(path.join(tempDir, 'global.db'))).toBe(true);
   });
 
@@ -257,7 +257,7 @@ describe('federated (global_db) memory writes', () => {
 describe('rollback restores a clean chain head', () => {
   it('clears superseded_by_id / superseded_reason on restored rows', () => {
     const db = open(path.join(tempDir, 'rb.db'));
-    const repo = new FastrRepository(db);
+    const repo = new FastrRepository(db, undefined, { ftsMode: 'sync' });
     const base = rule(repo, 'Before');
     const snap = repo.createSnapshot(projectId, 'v1');
     repo.supersedeMemory(base.id, 'After', 'after', 'edit');
@@ -273,7 +273,7 @@ describe('rollback restores a clean chain head', () => {
 describe('memories_au trigger', () => {
   it('does not re-index FTS on counter updates but does on content edits', () => {
     const db = open(path.join(tempDir, 'trig.db'));
-    const repo = new FastrRepository(db);
+    const repo = new FastrRepository(db, undefined, { ftsMode: 'sync' });
     const mem = rule(repo, 'Trigger target');
     rule(repo, 'Later row so a re-index cannot reuse the same rowid');
     const ftsRowid = () => (db.prepare('SELECT rowid AS r FROM memories_fts WHERE id = ?').get(mem.id) as any).r;
@@ -307,7 +307,7 @@ describe('memories_au trigger', () => {
 
 describe('pin / forget / resolveConflict results', () => {
   it('reports failure for unknown ids', () => {
-    const repo = new FastrRepository(open(path.join(tempDir, 'pin.db')));
+    const repo = new FastrRepository(open(path.join(tempDir, 'pin.db')), undefined, { ftsMode: 'sync' });
     expect(repo.pinMemory('mem_missing', true).success).toBe(false);
     expect(repo.forgetMemory('mem_missing').success).toBe(false);
 
@@ -318,7 +318,7 @@ describe('pin / forget / resolveConflict results', () => {
 
   it('floors a weakened conflict loser at 0.1 like feedback does', () => {
     const db = open(path.join(tempDir, 'conf.db'));
-    const repo = new FastrRepository(db);
+    const repo = new FastrRepository(db, undefined, { ftsMode: 'sync' });
     const a = rule(repo, 'Winner');
     const b = rule(repo, 'Loser');
     db.prepare('UPDATE memories SET reward_score = 0.2 WHERE id = ?').run(b.id);

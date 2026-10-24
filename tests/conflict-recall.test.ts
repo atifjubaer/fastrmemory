@@ -12,7 +12,8 @@ describe('Conflict-aware recall', () => {
 
   beforeEach(() => {
     db = initDatabase(':memory:');
-    repo = new FastrRepository(db);
+    // Conflict rows must exist before recall runs, so this suite pins the synchronous path.
+    repo = new FastrRepository(db, undefined, { conflictMode: 'sync' });
   });
 
   afterEach(() => {
