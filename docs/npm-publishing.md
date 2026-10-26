@@ -57,6 +57,47 @@ The release surface is the deferred write path, the 12-tool MCP core profile, th
 
 Registry listing is a separate, on-demand step: run **Actions → Publish to MCP Registry → Run workflow** with `v0.6.0` after the npm release is verified. It waits for `npm view fastrmemory@0.6.0 version`, verifies the `mcp-publisher` Sigstore bundle and SHA-256, authenticates with GitHub OIDC, publishes the root `server.json`, and polls the registry API until `io.github.atifjubaer/fastrmemory@0.6.0` appears. See [mcp-registry-submission.md](mcp-registry-submission.md).
 
+## Unattended release (tag-driven, no npm token)
+
+The only publish trigger is a `v*` tag pushed to `origin`. `.github/workflows/release.yml`
+checks out that tag, runs the full gate, audits production dependencies, packs the tarball,
+installs it into a clean directory, publishes over npm OIDC trusted publishing with
+provenance, verifies the registry, and creates the GitHub Release. No npm credential exists
+on the machine or in the repository.
+
+`npm run release` drives that chain end to end:
+
+```bash
+npm run release patch            # 0.6.0 -> 0.6.1
+npm run release minor --registry # then dispatch publish-mcp.yml
+npm run release 0.7.0 --dry-run
+```
+
+It refuses to run when the tree is dirty, the branch is not `main`, the tag already exists
+locally or on `origin`, the requested version is not greater than `package.json`, or npm
+already serves that version. It bumps `package.json`, `server.json` (both `version` and
+`packages[0].version`), `.claude-plugin/plugin.json` (including the pinned `fastrmemory@X`
+argument), `.claude-plugin/marketplace.json`, and `skills/skills.json`, then runs
+`scripts/check-release-version.mjs` and `npm run check:ci` before committing.
+
+| Flag | Effect |
+|---|---|
+| `--dry-run` | Print the plan; write, commit, and push nothing |
+| `--skip-gate` | Skip the local `check:ci` (the workflow still runs it) |
+| `--no-push` | Commit and tag locally, leave the push to the operator |
+| `--registry` | Dispatch `publish-mcp.yml` once the npm release succeeds |
+| `--co-author` | Append the Claude Code co-author trailer to the release commit |
+| `--branch=NAME` | Branch that receives the commit and tag (default `main`) |
+
+**Do not run `npm publish` locally.** The account is `auth-and-writes`, so it fails with
+`EOTP` outside an interactive shell; it carries no provenance attestation; and it makes the
+later tag run fail with `E409` because npm versions are immutable.
+
+npm is also removing direct publish from 2FA-bypass granular access tokens, targeting
+January 2027 (they reduce to staging a publish that a maintainer approves with 2FA), so OIDC
+is the only durable unattended path. `scripts/publish-when-ready.mjs` remains a local-only
+fallback for manual use and is not part of the release path.
+
 ## Release 0.5.0 (published 2026-10-23)
 
 `fastrmemory@0.5.0` was published on **2026-10-23 15:20:41 UTC** from tag `v0.5.0` (`54a79ab`) by `.github/workflows/release.yml` using GitHub Actions OIDC trusted publishing. Release workflow run `39977196250` passed the full gate, clean tarball install, provenance publish, registry verification, and GitHub Release upload.
