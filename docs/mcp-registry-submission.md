@@ -1,8 +1,8 @@
 # Official Model Context Protocol Registry Submission
 
-> **Status (2026-10-26): 0.6.0 published; ready to submit.** The canonical unscoped `fastrmemory@0.6.0` is published and `latest`; root `server.json` pins `0.6.0`. `npm view fastrmemory version` returns `0.6.0`. The old scoped `@atifjubaer/fastrmemory@0.2.1` npm entry was removed on 2026-10-23. This entry has not been submitted to the MCP registry yet.
+> **Status (2026-10-26): `0.6.0` is published on npm; the registry record is not live yet.** The canonical unscoped `fastrmemory@0.6.0` is published and `latest`; root `server.json` pins `0.6.0`; `npm view fastrmemory version` returns `0.6.0`. `https://registry.modelcontextprotocol.io/v0.1/servers?search=fastrmemory` returns `{"servers":[],"metadata":{"count":0}}` until the publish workflow runs. The old scoped `@atifjubaer/fastrmemory@0.2.1` npm entry was removed on 2026-10-23.
 
-Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers) under the **Memory & Cognitive Engines** section.
+**A pull request does not publish to the official registry.** The registry's own README states that adding a `server.json`, a server directory, or a `seed.json` entry to [modelcontextprotocol/registry](https://github.com/modelcontextprotocol/registry) does not list a server, even if the PR is merged. Listing is done by the `mcp-publisher` CLI. The pull-request material further down is for the separate community list at [modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers) under **Memory & Cognitive Engines**, which is optional.
 
 ---
 
@@ -72,12 +72,20 @@ Every one of those checks runs offline in `check:ci`, so a manifest that cannot 
 
 ### Publishing
 
-Publishing needs an interactive GitHub login, so it cannot run inside CI:
+The official path is `.github/workflows/publish-mcp.yml`, which authenticates with GitHub OIDC, so no long-lived registry token exists:
+
+1. Release to npm first. The registry refuses a `server.json` whose version does not resolve to a published package, so the workflow waits up to ten minutes for `npm view fastrmemory@<version>` to return the version.
+2. Run **Actions → Publish to MCP Registry → Run workflow** with the release tag (for example `v0.6.0`).
+3. The job checks out that tag, runs `scripts/check-release-version.mjs` so the tag, `package.json`, `server.json`, and `plugin.json` all agree, downloads `mcp-publisher` `v1.8.4`, verifies its Sigstore bundle with `cosign` and its SHA-256, runs `mcp-publisher login github-oidc`, publishes, then polls the registry API until the exact name and version appear.
+
+The registry is in preview and may reset its data, which is why publishing is a separate workflow from `release.yml`: it can be re-run without touching npm, and an npm version is immutable once published.
+
+Manual fallback, if CI is unavailable:
 
 ```bash
 # 1. Install the publisher (Go binary from modelcontextprotocol/registry releases)
 brew install mcp-publisher          # macOS/Linux
-# Windows: download mcp-publisher_windows_amd64.zip from the releases page
+# Windows: download mcp-publisher_windows_amd64.tar.gz from the releases page
 
 # 2. Authenticate as the repo owner; opens a device-code flow in the browser
 mcp-publisher login github
@@ -86,4 +94,4 @@ mcp-publisher login github
 mcp-publisher publish
 ```
 
-The published record is `io.github.atifjubaer/fastrmemory@0.6.0`. Re-running `mcp-publisher publish` after a version bump publishes the new version under the same name; it does not create a duplicate.
+Either path publishes `io.github.atifjubaer/fastrmemory@0.6.0`. Re-running after a version bump publishes the new version under the same name; it does not create a duplicate.

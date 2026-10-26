@@ -139,10 +139,10 @@ npm install -g fastrmemory@0.5.0
 For a one-shot run without a global install:
 
 ```bash
-npx -y fastrmemory@0.5.0 --version
+npx -y fastrmemory@0.6.0 --version
 ```
 
-`0.5.0` is built from tag `v0.5.0` by `.github/workflows/release.yml`, which runs the full gate, publishes with npm provenance, and attaches the same tarball to the GitHub Release. Verify the registry result with `npm view fastrmemory@0.5.0 version` and `npm view fastrmemory dist-tags --json`; a first E404 for a few minutes is registry propagation, not a failed publish. The old scoped npm entries remain removed. Do not republish `0.3.0`. `0.4.0` and `0.3.1` remain published historical.
+`0.6.0` is built from tag `v0.6.0` by `.github/workflows/release.yml`, which runs the full gate, publishes with npm provenance, and attaches the same tarball to the GitHub Release. Verify the registry result with `npm view fastrmemory@0.6.0 version` and `npm view fastrmemory dist-tags --json`; a first E404 for a few minutes is registry propagation, not a failed publish. The old scoped npm entries remain removed. Do not republish `0.3.0`. `0.5.0`, `0.4.0`, and `0.3.1` remain published historical.
 
 ### Update an Existing Install
 
