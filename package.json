@@ -75,7 +75,8 @@
     "start": "node bin/fastr-guard.mjs",
     "check:query-plans": "tsx scripts/check-query-plans.ts",
     "check:recall-latency": "tsx scripts/check-recall-latency.ts",
-    "check:install-size": "node scripts/check-install-size.mjs"
+    "check:install-size": "node scripts/check-install-size.mjs",
+    "release": "node scripts/release.mjs"
   },
   "keywords": [
     "ai",
