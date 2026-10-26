@@ -55,6 +55,8 @@ The release manifests all agree at `0.6.0`: `package.json`, `package-lock.json`,
 
 The release surface is the deferred write path, the 12-tool MCP core profile, the optional static semantic reranker, aggregate and temporal retrieval, the cross-engine benchmark, and reversible hook installs. The schema change is additive only (three queue tables created on first open). `0.5.0` remains published historical.
 
+Registry listing is a separate, on-demand step: run **Actions → Publish to MCP Registry → Run workflow** with `v0.6.0` after the npm release is verified. It waits for `npm view fastrmemory@0.6.0 version`, verifies the `mcp-publisher` Sigstore bundle and SHA-256, authenticates with GitHub OIDC, publishes the root `server.json`, and polls the registry API until `io.github.atifjubaer/fastrmemory@0.6.0` appears. See [mcp-registry-submission.md](mcp-registry-submission.md).
+
 ## Release 0.5.0 (published 2026-10-23)
 
 `fastrmemory@0.5.0` was published on **2026-10-23 15:20:41 UTC** from tag `v0.5.0` (`54a79ab`) by `.github/workflows/release.yml` using GitHub Actions OIDC trusted publishing. Release workflow run `39977196250` passed the full gate, clean tarball install, provenance publish, registry verification, and GitHub Release upload.
