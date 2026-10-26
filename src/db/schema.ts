@@ -249,6 +249,8 @@ CREATE TABLE IF NOT EXISTS file_links (
   memory_id TEXT NOT NULL,
   file_path TEXT NOT NULL,
   symbol_name TEXT DEFAULT '',
+  symbol_id TEXT DEFAULT NULL,
+  declaration_id TEXT DEFAULT NULL,
   PRIMARY KEY (memory_id, file_path, symbol_name),
   FOREIGN KEY (memory_id) REFERENCES memories(id) ON DELETE CASCADE
 );
@@ -451,6 +453,7 @@ CREATE TABLE IF NOT EXISTS symbols (
   line_end INTEGER NOT NULL DEFAULT 0,
   exported INTEGER NOT NULL DEFAULT 0,
   signature_hash TEXT NOT NULL DEFAULT '',
+  declaration_id TEXT NOT NULL DEFAULT '',
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
   UNIQUE (project_id, file_path, name, kind)
 );
@@ -472,6 +475,27 @@ export function applySchema(db: DatabaseSync): void {
   // Auto-migrate: add provenance_hash if missing from older DB versions
   try {
     db.exec('ALTER TABLE memories ADD COLUMN provenance_hash TEXT DEFAULT NULL;');
+  } catch {}
+
+  // Auto-migrate: symbol anchoring. Older links keep a null symbol_id and resolve by path
+  // exactly as before, so nothing needs rewriting on upgrade.
+  try {
+    db.exec('ALTER TABLE file_links ADD COLUMN symbol_id TEXT DEFAULT NULL;');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE file_links ADD COLUMN declaration_id TEXT DEFAULT NULL;');
+  } catch {}
+  try {
+    db.exec('CREATE INDEX IF NOT EXISTS idx_file_links_symbol ON file_links(symbol_id);');
+  } catch {}
+  try {
+    db.exec('CREATE INDEX IF NOT EXISTS idx_file_links_decl ON file_links(declaration_id);');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE symbols ADD COLUMN declaration_id TEXT NOT NULL DEFAULT \'\';');
+  } catch {}
+  try {
+    db.exec('CREATE INDEX IF NOT EXISTS idx_symbols_decl ON symbols(project_id, declaration_id);');
   } catch {}
 
   migrateMemoriesUpdateTrigger(db);

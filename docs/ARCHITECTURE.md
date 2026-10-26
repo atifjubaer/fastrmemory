@@ -115,7 +115,7 @@ The dashboard `/replay` route calls `GET /api/replay?from=<iso>&to=<iso>`, which
 ## 7. MCP surface
 
 - **Server name:** `fastrmemory` (registry ID: `io.github.atifjubaer/fastrmemory`).
-- **43 tools** in the full profile (memory CRUD, recall/drill, traps, conflicts, DAG actions, planning, slots, federation, snapshot/rollback, replay/diff, compression, doctor, vision, plus `fastr_tools` and `fastr_call`).
+- **44 tools** in the full profile (memory CRUD, recall/drill, traps, conflicts, DAG actions, planning, slots, federation, snapshot/rollback, replay/diff, compression, doctor, vision, plus `fastr_tools` and `fastr_call`).
 - **12 tools** in the default core profile: `fastr_recall`, `fastr_remember`, `fastr_handoff`, `fastr_trap_recall`, `fastr_trap_log`, `fastr_status`, `fastr_get`, `fastr_replay`, `fastr_compress`, `fastr_diagnose`, `fastr_tools`, and `fastr_call`.
 - **2 prompts**: `pre-edit-check`, `session-wrap-up`.
 - **5 resources**: `fastr://project/overview`, `fastr://project/traps`, `fastr://session/handoff`, the `fastr://memory/{id}` template, and the `fastr://memory/{id}/envelope` template (metadata, provenance, file/graph links, and conflict state).

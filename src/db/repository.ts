@@ -13,6 +13,7 @@ import { scrubSecrets } from '../privacy/scrubber.js';
 import { globalBroadcaster } from '../ui/sse.js';
 import { resolveConflictMode, resolveNerMode, resolveFtsMode, type ConflictMode, type NerMode, type FtsMode } from '../config.js';
 import { drainFtsQueue, indexMemoryFtsNow, pendingFtsCount } from './fts-queue.js';
+import { resolveSymbolId } from '../code/indexer.js';
 
 export interface CreateMemoryParams {
   projectId: string;
@@ -272,7 +273,13 @@ export class FastrRepository {
 
     // Explicit file links
     if (params.files && params.files.length > 0) {
-      this.linkFiles(id, params.files, params.symbols, isGlobal && this.hasGlobalDb());
+      this.linkFiles(
+        id,
+        params.files,
+        params.symbols,
+        isGlobal && this.hasGlobalDb(),
+        params.projectId
+      );
     }
 
     // 1. Zero-LLM Fast-Path Named Entity Extraction (NER)
@@ -388,7 +395,7 @@ export class FastrRepository {
     }
 
     if (autoFiles.length > 0) {
-      this.linkFiles(memoryId, autoFiles.slice(0, 5));
+      this.linkFiles(memoryId, autoFiles.slice(0, 5), undefined, false, projectId);
     }
   }
 
@@ -642,7 +649,7 @@ export class FastrRepository {
       // 3. Link files
       const targetFiles = files && files.length > 0 ? files : this.getFilesForMemory(oldMemoryId);
       if (targetFiles.length > 0) {
-        this.linkFiles(newId, targetFiles, undefined, inGlobal);
+        this.linkFiles(newId, targetFiles, undefined, inGlobal, oldMem.project_id);
       }
 
       this.db.exec('COMMIT');
@@ -812,11 +819,17 @@ export class FastrRepository {
 
   // --- FILE LINKS ---
 
-  linkFiles(memoryId: string, files: string[], symbols?: string[], inGlobal: boolean = false): void {
+  linkFiles(
+    memoryId: string,
+    files: string[],
+    symbols?: string[],
+    inGlobal: boolean = false,
+    projectId?: string
+  ): void {
     const table = inGlobal && this.hasGlobalDb() ? 'global_db.file_links' : 'file_links';
     const stmt = this.db.prepare(`
-      INSERT OR IGNORE INTO ${table} (memory_id, file_path, symbol_name)
-      VALUES (?, ?, ?)
+      INSERT OR IGNORE INTO ${table} (memory_id, file_path, symbol_name, symbol_id, declaration_id)
+      VALUES (?, ?, ?, ?, ?)
     `);
 
     const symbolList = symbols && symbols.length > 0 ? symbols : [''];
@@ -824,7 +837,27 @@ export class FastrRepository {
       const normalized = f.replace(/\\/g, '/').trim();
       if (!normalized) continue;
       for (const s of symbolList) {
-        stmt.run(memoryId, normalized, s);
+        if (!s) {
+          stmt.run(memoryId, normalized, '', null, null);
+          continue;
+        }
+
+        // Anchor the link to a real symbol when the index knows one, so the link can follow
+        // the symbol when the file moves or the symbol is renamed. A link with no matching
+        // symbol stays a plain path link and behaves exactly as it did before.
+        // The symbol index is project-scoped, so resolution always reads `main.symbols`
+        // even when the link itself is stored in the global database.
+        const resolved = projectId
+          ? resolveSymbolId(this.db, projectId, normalized, s, { schema: 'main' })
+          : null;
+
+        stmt.run(
+          memoryId,
+          normalized,
+          s,
+          resolved?.symbolId ?? null,
+          resolved?.declarationId ?? null
+        );
       }
     }
   }
@@ -873,6 +906,48 @@ export class FastrRepository {
     const rows = this.db.prepare(query).all(...params) as unknown as Memory[];
 
     return rows;
+  }
+
+  /**
+   * Memories anchored to a named symbol.
+   *
+   * The lookup is by symbol name, not by id, because the caller knows the name it is
+   * working with; the id is how the link survives a rename or a move. When the index
+   * knows the symbol, the memory is found even if the file it was written against has
+   * since been renamed.
+   */
+  getMemoriesForSymbol(projectId: string, symbolName: string): Memory[] {
+    const name = String(symbolName ?? '').trim();
+    if (!name) return [];
+
+    let innerQuery = `
+      SELECT DISTINCT m.*
+      FROM memories m
+      JOIN file_links fl ON fl.memory_id = m.id
+      WHERE (m.project_id = ? OR m.project_id = 'global')
+        AND fl.symbol_name = ?
+        AND m.valid_to IS NULL
+        AND m.status != 'superseded'
+        AND m.status != 'dormant'
+    `;
+    const params: any[] = [projectId, name];
+
+    if (this.hasGlobalDb()) {
+      innerQuery += `
+        UNION ALL
+        SELECT DISTINCT gm.*
+        FROM global_db.memories gm
+        JOIN global_db.file_links gfl ON gfl.memory_id = gm.id
+        WHERE gfl.symbol_name = ?
+          AND gm.valid_to IS NULL
+          AND gm.status != 'superseded'
+          AND gm.status != 'dormant'
+      `;
+      params.push(name);
+    }
+
+    const query = `SELECT * FROM (${innerQuery}) ORDER BY kind = 'error_trap' DESC, reward_score DESC`;
+    return this.db.prepare(query).all(...params) as unknown as Memory[];
   }
 
   listGlobalMemories(): Memory[] {

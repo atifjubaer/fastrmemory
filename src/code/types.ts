@@ -20,6 +20,12 @@ export interface ExtractedSymbol {
   exported: boolean;
   /** Declaration text with the body stripped, used to detect a signature change. */
   signature: string;
+  /**
+   * The declaration's source region with the symbol's own name masked out and whitespace
+   * collapsed. Two declarations with the same normalized body are the same declaration
+   * regardless of what they are called or which file they live in.
+   */
+  normalizedBody: string;
 }
 
 /** A row from the `symbols` table. */

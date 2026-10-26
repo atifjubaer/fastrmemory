@@ -258,6 +258,44 @@ export function createFastrMcpServer(
   );
 
   // ==========================================
+  // TOOL 3b: fastr_symbol_history
+  // ==========================================
+  registerTool(
+    'fastr_symbol_history',
+    {
+      description:
+        'Returns active rules, [TRAP] warnings, and historical decisions anchored to a named function, class, or type. Survives renames and file moves, because the link follows the declaration rather than the path.',
+      inputSchema: z.object({
+        symbol: z.string().min(1).max(200).describe('Symbol name (e.g. signToken)')
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false }
+    },
+    async ({ symbol }) => {
+      const memories = repo.getMemoriesForSymbol(config.projectId, symbol);
+      if (memories.length === 0) {
+        return {
+          content: [{ type: 'text', text: `_No active rules or traps recorded for symbol: ${symbol}_` }]
+        };
+      }
+
+      const formatted = memories.map((m) => {
+        const kindBadge = m.kind === 'error_trap' ? 'TRAP' : m.kind.toUpperCase();
+        const files = repo.getFilesForMemory(m.id).join(', ');
+        return (
+          `### [${m.id}] [${kindBadge}] ${m.title}\n` +
+          `- Kind: \`${m.kind}\` | Status: \`${m.status}\` | Score: ${m.reward_score}` +
+          (files ? ` | Files: ${files}` : '') +
+          `\n\n${m.content}`
+        );
+      }).join('\n\n---\n\n');
+
+      return {
+        content: [{ type: 'text', text: formatted }]
+      };
+    }
+  );
+
+  // ==========================================
   // TOOL 4: fastr_remember
   // ==========================================
   registerTool(

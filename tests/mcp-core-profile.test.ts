@@ -95,7 +95,7 @@ describe('MCP tool profiles', () => {
 
     await withTools('full', async (full) => {
       const names = toolNames(full);
-      expect(names).toHaveLength(43);
+      expect(names).toHaveLength(44);
       for (const toolName of CORE_MCP_TOOL_NAMES) {
         expect(names).toContain(toolName);
       }

@@ -234,6 +234,7 @@ program
   .option('-m, --module <module>', 'Module name', 'general')
   .option('-k, --kind <kind>', 'rule | decision | error_trap | workflow', 'rule')
   .option('-f, --files <files...>', 'Related file paths')
+  .option('-s, --symbols <symbols...>', 'Related symbol or function names (anchors the memory to a declaration)')
   .option('--verified', 'Mark as verified immediately', false)
   .action((title: string, opts: any) => {
     const ctx = createFastrServerContext();
@@ -247,6 +248,7 @@ program
       title: scrubbedTitle,
       content: scrubbedContent,
       files: opts.files || [],
+      symbols: opts.symbols || [],
       verified: opts.verified
     });
 
@@ -428,7 +430,36 @@ program
     console.log(`Files scanned:   ${result.files} (${result.skipped} skipped)`);
     console.log(`Symbols indexed: ${result.symbols}`);
     console.log(`Stale removed:   ${result.removed}`);
+    console.log(`Links followed:  ${result.followed}`);
+    console.log(`Links dropped:   ${result.unlinked}`);
     console.log(`Total symbols:   ${total}\n`);
+  });
+
+// 7b. Memories anchored to a named symbol
+program
+  .command('symbol <name>')
+  .description('Show rules and traps anchored to a named function, class, or type')
+  .option('--json', 'Print the result as JSON', false)
+  .action((name: string, opts: any) => {
+    const ctx = createFastrServerContext();
+    const memories = ctx.repo.getMemoriesForSymbol(ctx.config.projectId, name);
+    if (opts.json) {
+      console.log(JSON.stringify(memories, null, 2));
+      return;
+    }
+    if (memories.length === 0) {
+      console.log(`\nNo rules or traps anchored to symbol: ${name}\n`);
+      return;
+    }
+    console.log(`\n=== ${name} (${memories.length}) ===`);
+    for (const memory of memories) {
+      const badge = memory.kind === 'error_trap' ? 'TRAP' : memory.kind.toUpperCase();
+      const files = ctx.repo.getFilesForMemory(memory.id).join(', ');
+      console.log(`\n[${memory.id}] [${badge}] ${memory.title}`);
+      console.log(`  kind=${memory.kind} status=${memory.status} score=${memory.reward_score}` +
+        (files ? ` files=${files}` : ''));
+      console.log(`\n${memory.content}\n`);
+    }
   });
 
 // 7. Local memory import (JSONL snapshot or Markdown rules)
