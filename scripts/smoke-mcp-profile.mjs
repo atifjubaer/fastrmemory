@@ -1,13 +1,24 @@
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url));
 const CLI = path.join(REPO_ROOT, 'dist', 'bin', 'fastr.js');
+
+/**
+ * The full profile exposes every registered tool, so its count is derived from the server
+ * source. Hardcoding it meant every new tool failed this smoke check on all six runners.
+ */
+const serverSource = fs.readFileSync(path.join(REPO_ROOT, 'src', 'mcp', 'server.ts'), 'utf8');
+const fullToolCount = new Set(
+  [...serverSource.matchAll(/registerTool\(\s*['"](fastr_[a-z_]+)['"]/g)].map((match) => match[1])
+).size;
+
 const PROFILES = [
   { name: 'core', expectedTools: 12 },
-  { name: 'full', expectedTools: 43 }
+  { name: 'full', expectedTools: fullToolCount }
 ];
 
 function listTools(profileName) {

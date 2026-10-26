@@ -431,9 +431,9 @@ For user-scoped clients, the generated entry includes `--project /absolute/path/
 
 Built using the official **v2 `@modelcontextprotocol/server`** SDK. The tool list below describes **0.5.0** (tool surface unchanged from 0.4.0); the v0.2.1 release has 4 resources.
 
-### 43 MCP Tools
+### 44 MCP Tools
 
-The default **core profile** exposes 12 tools: the daily loop (`fastr_recall`, `fastr_remember`, `fastr_handoff`, `fastr_trap_recall`, `fastr_trap_log`, `fastr_status`, `fastr_get`, `fastr_replay`, `fastr_compress`, `fastr_diagnose`) plus `fastr_tools` for discovery and `fastr_call` for dispatch. Its `tools/list` payload is 8,715 bytes (~2,179 tokens). The **full profile** exposes all 43 tools; start it with `fastrmemory mcp --profile full` or `FASTR_MCP_PROFILE=full`. Every full-profile tool stays reachable from the core profile through `fastr_call`. Resources and prompts are the same in both profiles. Pass `--project /absolute/path/to/repo` when the host starts the server outside the repository, so memory is written to the intended `.fastr/fastr.db`.
+The default **core profile** exposes 12 tools: the daily loop (`fastr_recall`, `fastr_remember`, `fastr_handoff`, `fastr_trap_recall`, `fastr_trap_log`, `fastr_status`, `fastr_get`, `fastr_replay`, `fastr_compress`, `fastr_diagnose`) plus `fastr_tools` for discovery and `fastr_call` for dispatch. Its `tools/list` payload is 8,715 bytes (~2,179 tokens). The **full profile** exposes all 44 tools; start it with `fastrmemory mcp --profile full` or `FASTR_MCP_PROFILE=full`. Every full-profile tool stays reachable from the core profile through `fastr_call`. Resources and prompts are the same in both profiles. Pass `--project /absolute/path/to/repo` when the host starts the server outside the repository, so memory is written to the intended `.fastr/fastr.db`.
 
 #### Cognitive Retrieval & Memory Core
 1. `fastr_recall`: Triple-stream hybrid search (BM25 + Vector + Spreading Activation Graph) with progressive L0–L3 token budgeting and air-gapped offline vector fallback.
@@ -441,64 +441,65 @@ The default **core profile** exposes 12 tools: the daily loop (`fastr_recall`, `
 3. `fastr_list`: Lists memories with bounded filtering by module, kind, status, limit, and offset.
 4. `fastr_drill`: Resolves `source_event_ids` to retrieve untruncated verbatim stack traces, diffs, and tool outputs from `raw_events`.
 5. `fastr_file_history`: Returns active rules, `[TRAP]` warnings, and past supersessions for a specific file path.
-6. `fastr_remember`: Records new rules, decisions, or traps. Automatically extracts NER entities, scrubs secrets, and re-renders Markdown mirrors. Supports `scope: 'project' | 'global'`.
-7. `fastr_pin`: Pins critical rules so they are permanently preserved and prioritized in L0 assembly without time decay.
-8. `fastr_forget`: Tombstones and deactivates an outdated memory cleanly with audit logging.
-9. `fastr_supersede`: Retires an outdated rule (`valid_to = now`), records the rationale, and inserts a replacement verified rule.
-10. `fastr_feedback`: Updates `reward_score` and the confidence tier on one memory ID (+0.2 good, -0.5 bad). Three consecutive bad outcomes make it dormant; never penalizes innocent memories.
-11. `fastr_handoff`: Saves or retrieves cross-agent session milestones and promotes staging memories to verified.
-12. `fastr_status`: Returns active/staging counts, spool health, and embedding coverage %.
-13. `fastr_graph_query`: Explores 1-hop and 2-hop structural file-link dependencies, entity links, and connected error traps.
-14. `fastr_timeline`: Chronological audit trail of memory events, newly verified rules, error traps, and historical supersessions.
+6. `fastr_symbol_history`: Returns active rules, [TRAP] warnings, and past supersessions anchored to a named function, class, or type. The anchor follows the declaration through a rename or a file move, so a trap written against `signToken` is still found after it becomes `signJwt`.
+7. `fastr_remember`: Records new rules, decisions, or traps. Automatically extracts NER entities, scrubs secrets, and re-renders Markdown mirrors. Supports `scope: 'project' | 'global'`.
+8. `fastr_pin`: Pins critical rules so they are permanently preserved and prioritized in L0 assembly without time decay.
+9. `fastr_forget`: Tombstones and deactivates an outdated memory cleanly with audit logging.
+10. `fastr_supersede`: Retires an outdated rule (`valid_to = now`), records the rationale, and inserts a replacement verified rule.
+11. `fastr_feedback`: Updates `reward_score` and the confidence tier on one memory ID (+0.2 good, -0.5 bad). Three consecutive bad outcomes make it dormant; never penalizes innocent memories.
+12. `fastr_handoff`: Saves or retrieves cross-agent session milestones and promotes staging memories to verified.
+13. `fastr_status`: Returns active/staging counts, spool health, and embedding coverage %.
+14. `fastr_graph_query`: Explores 1-hop and 2-hop structural file-link dependencies, entity links, and connected error traps.
+15. `fastr_timeline`: Chronological audit trail of memory events, newly verified rules, error traps, and historical supersessions.
 
 #### Versioning & Error Traps
-15. `fastr_snapshot`: Creates named point-in-time memory snapshots for branch tracking and experiment safety.
-16. `fastr_rollback`: Instant Git-like rollback to any previous memory snapshot.
-17. `fastr_trap_log`: One-line rapid logging of error traps and bug solutions with a conditional 2.0x recall boost.
-18. `fastr_trap_recall`: Targeted lookup of high-priority error traps protecting specific target files before editing.
+16. `fastr_snapshot`: Creates named point-in-time memory snapshots for branch tracking and experiment safety.
+17. `fastr_rollback`: Instant Git-like rollback to any previous memory snapshot.
+18. `fastr_trap_log`: One-line rapid logging of error traps and bug solutions with a conditional 2.0x recall boost.
+19. `fastr_trap_recall`: Targeted lookup of high-priority error traps protecting specific target files before editing.
 
 #### Proactive Contradiction Detection & Resolution
-19. `fastr_conflicts`: Proactive contradiction detection using Jaccard token overlap (minimum 0.35) and 50-word opposing-polarity analysis.
-20. `fastr_resolve`: Resolves contradictions by keeping preferred rule and superseding or weakening the loser.
+20. `fastr_conflicts`: Proactive contradiction detection using Jaccard token overlap (minimum 0.35) and 50-word opposing-polarity analysis.
+21. `fastr_resolve`: Resolves contradictions by keeping preferred rule and superseding or weakening the loser.
 
 #### Kahneman Planning Fallacy & Base-Rate Calibrator
-21. `fastr_predict`: Records effort/time/risk predictions and closes predictions with actual empirical outcomes.
-22. `fastr_predict_baserate`: Computes historical reference-class statistics (Mean, Median p50 ratio, MAE) to debias agent estimates.
+22. `fastr_predict`: Records effort/time/risk predictions and closes predictions with actual empirical outcomes.
+23. `fastr_predict_baserate`: Computes historical reference-class statistics (Mean, Median p50 ratio, MAE) to debias agent estimates.
 
 #### Multi-Agent Action DAG & Frontier
-23. `fastr_action_create`: Creates structured work item actions with prerequisite (`requires`) and conflict (`conflicts_with`) constraints.
-24. `fastr_action_update`: Updates task lifecycle (`pending`, `active`, `done`, `blocked`), assignments, and memory crystallization.
-25. `fastr_frontier`: Computes unblocked, ready-to-execute frontier actions with satisfied dependencies.
-26. `fastr_next`: Atomically claims and returns the highest-priority frontier action for autonomous worker agents.
+24. `fastr_action_create`: Creates structured work item actions with prerequisite (`requires`) and conflict (`conflicts_with`) constraints.
+25. `fastr_action_update`: Updates task lifecycle (`pending`, `active`, `done`, `blocked`), assignments, and memory crystallization.
+26. `fastr_frontier`: Computes unblocked, ready-to-execute frontier actions with satisfied dependencies.
+27. `fastr_next`: Atomically claims and returns the highest-priority frontier action for autonomous worker agents.
 
 #### Bounded Working Memory & Obsidian Vault Export
-27. `fastr_slot_get`: Retrieves bounded working memory slot (e.g. `current_goal`, `user_preferences`, `active_hypothesis`).
-28. `fastr_slot_set`: Updates working memory slot with hard character ceiling enforcement to prevent context bloat.
-29. `fastr_slot_list`: Lists all working memory slots and active character usage.
-30. `fastr_obsidian_export`: Exports all memories, entities, and relationships into an Obsidian-compatible markdown vault with YAML frontmatter, `[[wikilinks]]`, and `MOC.md`.
+28. `fastr_slot_get`: Retrieves bounded working memory slot (e.g. `current_goal`, `user_preferences`, `active_hypothesis`).
+29. `fastr_slot_set`: Updates working memory slot with hard character ceiling enforcement to prevent context bloat.
+30. `fastr_slot_list`: Lists all working memory slots and active character usage.
+31. `fastr_obsidian_export`: Exports all memories, entities, and relationships into an Obsidian-compatible markdown vault with YAML frontmatter, `[[wikilinks]]`, and `MOC.md`.
 
 #### Multi-Repository Federation & Context Assembly
-31. `fastr_federate`: Manages cross-repository organization-wide shared rules and error traps via SQLite native `ATTACH DATABASE` (`~/.fastr/global.db`).
-32. `fastr_assemble`: Dynamically formats and packs high-density structured prompt context (`<fastr_context>`) with token budgeting.
-33. `fastr_risk_predict`: Computes historical failure probability and active trap hazard score for target codebase files.
-34. `fastr_verify_provenance`: Cryptographically verifies SHA-256 provenance hashes for recorded agent attribution.
+32. `fastr_federate`: Manages cross-repository organization-wide shared rules and error traps via SQLite native `ATTACH DATABASE` (`~/.fastr/global.db`).
+33. `fastr_assemble`: Dynamically formats and packs high-density structured prompt context (`<fastr_context>`) with token budgeting.
+34. `fastr_risk_predict`: Computes historical failure probability and active trap hazard score for target codebase files.
+35. `fastr_verify_provenance`: Cryptographically verifies SHA-256 provenance hashes for recorded agent attribution.
 
 #### Token Compression & Autonomous Doctor
-35. `fastr_compress`: Compresses markdown files or prompt context while strictly preserving headings, URLs, and code blocks with `.original.md` backup.
-36. `fastr_diagnose`: Deep health audit of SQLite B-Tree integrity, FTS5 BM25 search indices, orphaned file links, and task DAGs.
-37. `fastr_heal`: Automatic repair of database indices, dangling edges, and WAL page reclamation.
+36. `fastr_compress`: Compresses markdown files or prompt context while strictly preserving headings, URLs, and code blocks with `.original.md` backup.
+37. `fastr_diagnose`: Deep health audit of SQLite B-Tree integrity, FTS5 BM25 search indices, orphaned file links, and task DAGs.
+38. `fastr_heal`: Automatic repair of database indices, dangling edges, and WAL page reclamation.
 
 #### Memory Replay & Diff
-38. `fastr_replay`: Reconstructs memory state at a timestamp and returns the active snapshot for audit or recovery.
-39. `fastr_diff`: Compares two snapshots and reports added, superseded, and removed memories.
+39. `fastr_replay`: Reconstructs memory state at a timestamp and returns the active snapshot for audit or recovery.
+40. `fastr_diff`: Compares two snapshots and reports added, superseded, and removed memories.
 
 #### Multimodal Visual Memory
-40. `fastr_vision_tag`: Tags screenshots, UI diagrams, and wireframes with OCR and semantic descriptions with 384-dim embeddings.
-41. `fastr_vision_search`: Hybrid vector and keyword search across stored visual assets for multimodal coding agents.
+41. `fastr_vision_tag`: Tags screenshots, UI diagrams, and wireframes with OCR and semantic descriptions with 384-dim embeddings.
+42. `fastr_vision_search`: Hybrid vector and keyword search across stored visual assets for multimodal coding agents.
 
 #### Tool Discovery & Dispatch
-42. `fastr_tools`: Lists every tool the server can run, with its JSON input schema, filtered by name or description. Part of the core profile.
-43. `fastr_call`: Runs any tool from `fastr_tools` by name after validating arguments against that tool's schema. Part of the core profile.
+43. `fastr_tools`: Lists every tool the server can run, with its JSON input schema, filtered by name or description. Part of the core profile.
+44. `fastr_call`: Runs any tool from `fastr_tools` by name after validating arguments against that tool's schema. Part of the core profile.
 
 ### 2 MCP Prompt Templates
 
@@ -598,7 +599,7 @@ flowchart TD
 
     subgraph Protocol["4. Official MCP Protocol"]
         Budget --> MCPServer["Official MCP v2 Server\n(@modelcontextprotocol/server)"]
-        MCPServer --> Tools["43 tools • 2 prompts • 5 resources"]
+        MCPServer --> Tools["44 tools • 2 prompts • 5 resources"]
         Tools --> Agent
     end
 ```

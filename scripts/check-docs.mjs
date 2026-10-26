@@ -80,7 +80,8 @@ if (badge && ledger && badge[1] !== ledger[1]) {
 }
 
 // The README tool catalog must match the server registrations, not just the count.
-const toolSectionStart = readme.indexOf('### 43 MCP Tools');
+const toolHeading = /### (\d+) MCP Tools/.exec(readme);
+const toolSectionStart = toolHeading ? toolHeading.index : -1;
 const toolSectionEnd = readme.indexOf('### 2 MCP Prompt Templates');
 if (toolSectionStart < 0 || toolSectionEnd < 0 || toolSectionEnd < toolSectionStart) {
   fail('README.md is missing the MCP tool or prompt sections');
@@ -92,8 +93,15 @@ if (toolSectionStart < 0 || toolSectionEnd < 0 || toolSectionEnd < toolSectionSt
   const readmeToolSet = new Set(readmeTools);
   const serverToolSet = new Set(serverTools);
 
-  if (readmeToolSet.size !== 43) fail(`README.md lists ${readmeToolSet.size} tools, expected 43`);
-  if (serverToolSet.size !== 43) fail(`src/mcp/server.ts registers ${serverToolSet.size} tools, expected 43`);
+  // The server is the source of truth for the count; the README and its heading must agree
+  // with it. Hardcoding the number here meant every new tool broke the docs check.
+  const expectedTools = serverToolSet.size;
+  if (readmeToolSet.size !== expectedTools) {
+    fail(`README.md lists ${readmeToolSet.size} tools, but the server registers ${expectedTools}`);
+  }
+  if (toolHeading && Number(toolHeading[1]) !== expectedTools) {
+    fail(`README.md heading says ${toolHeading[1]} tools, but the server registers ${expectedTools}`);
+  }
   for (const name of readmeToolSet) {
     if (!serverToolSet.has(name)) fail(`README.md lists ${name}, but the server does not register it`);
   }

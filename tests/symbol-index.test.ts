@@ -77,15 +77,24 @@ describe('symbol extraction', () => {
     expect(symbols.map((s) => s.exported)).toEqual([true, false, true, true, true, false, true, true]);
   });
 
-  it('keeps declaration order and non-overlapping line ranges', () => {
+  it('keeps declaration order and covers each declaration body', () => {
     const symbols = extractSymbols(TS_SOURCE, 'tokens.ts');
 
     for (let index = 0; index < symbols.length; index++) {
       expect(symbols[index].lineEnd).toBeGreaterThanOrEqual(symbols[index].lineStart);
       if (index > 0) {
-        expect(symbols[index].lineStart).toBeGreaterThan(symbols[index - 1].lineEnd);
+        expect(symbols[index].lineStart).toBeGreaterThan(symbols[index - 1].lineStart);
       }
     }
+
+    // A class contains its methods, so ranges nest rather than tile the file.
+    const tokenService = symbols.find((s) => s.name === 'TokenService');
+    const createToken = symbols.find((s) => s.name === 'createToken');
+    expect(tokenService).toBeDefined();
+    expect(createToken).toBeDefined();
+    expect(tokenService!.lineEnd).toBeGreaterThan(tokenService!.lineStart);
+    expect(createToken!.lineEnd).toBeGreaterThan(createToken!.lineStart);
+    expect(createToken!.lineStart).toBeGreaterThan(tokenService!.lineStart);
   });
 
   it('captures the signature without the body', () => {

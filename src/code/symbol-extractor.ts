@@ -183,11 +183,65 @@ function signatureOf(line: string): string {
   return head.replace(/\s+/g, ' ').trim();
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Masks the symbol's own name inside its source region.
+ *
+ * This is what makes an anchor survive a rename: `signToken` and `signJwt` have the same
+ * body once their own name is removed. The name is also masked in recursive calls, so a
+ * function that calls itself still matches after being renamed.
+ */
+function normalizeBody(source: string, name: string): string {
+  const masked = name ? source.replace(new RegExp(`\\b${escapeRegExp(name)}\\b`, 'g'), '*') : source;
+  return masked.replace(/\s+/g, ' ').trim();
+}
+
 function lastContentLine(lines: string[], fromIndex: number): number {
   for (let index = lines.length - 1; index >= fromIndex; index--) {
     if (lines[index].trim().length > 0) return index + 1;
   }
   return fromIndex + 1;
+}
+
+/**
+ * Last line of a declaration's body.
+ *
+ * Brace languages are matched by counting braces, so a nested block does not end the
+ * declaration early. Python has no braces, so the body ends at the first non-empty line
+ * indented no further than the declaration itself.
+ */
+function findBodyEnd(lines: string[], startIndex: number, language: Language): number {
+  const declaration = lines[startIndex];
+  const declIndent = /^(\s*)/.exec(declaration)?.[1].length ?? 0;
+
+  if (language === 'python') {
+    for (let index = startIndex + 1; index < lines.length; index++) {
+      const line = lines[index];
+      if (!line.trim()) continue;
+      const indent = /^(\s*)/.exec(line)?.[1].length ?? 0;
+      if (indent <= declIndent) return index;
+    }
+    return lines.length;
+  }
+
+  let depth = 0;
+  let opened = false;
+  for (let index = startIndex; index < lines.length; index++) {
+    const line = lines[index];
+    for (const char of line) {
+      if (char === '{') {
+        depth++;
+        opened = true;
+      } else if (char === '}') {
+        depth--;
+        if (opened && depth <= 0) return index + 1;
+      }
+    }
+  }
+  return lastContentLine(lines, startIndex);
 }
 
 export function extractSymbols(content: string, filePath: string): ExtractedSymbol[] {
@@ -220,17 +274,20 @@ export function extractSymbols(content: string, filePath: string): ExtractedSymb
         lineStart: index + 1,
         lineEnd: index + 1,
         exported: result.exported,
-        signature: signatureOf(line)
+        signature: signatureOf(line),
+        normalizedBody: ''
       });
       break;
     }
   }
 
   found.sort((a, b) => a.lineStart - b.lineStart);
-  for (let index = 0; index < found.length; index++) {
-    const next = found[index + 1];
-    const end = next ? next.lineStart - 1 : lastContentLine(lines, found[index].lineStart - 1);
-    found[index].lineEnd = Math.max(found[index].lineStart, end);
+  for (const symbol of found) {
+    const startIndex = symbol.lineStart - 1;
+    const endIndex = findBodyEnd(lines, startIndex, language);
+    symbol.lineEnd = Math.max(symbol.lineStart, endIndex);
+    const body = lines.slice(startIndex, endIndex).join('\n');
+    symbol.normalizedBody = normalizeBody(body, symbol.name);
   }
 
   return found;
