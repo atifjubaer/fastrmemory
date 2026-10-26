@@ -12,3 +12,6 @@ export * from './config.js';
 export * from './mcp/server.js';
 export * from './mcp/stdio.js';
 export * from './replay/backup.js';
+export * from './code/types.js';
+export * from './code/symbol-extractor.js';
+export * from './code/indexer.js';

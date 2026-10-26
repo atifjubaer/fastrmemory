@@ -46,6 +46,7 @@ import { importMarkdownFile } from '../src/import/local.js';
 import type { LocalImportKind } from '../src/import/local.js';
 import { consolidateMemories } from '../src/db/consolidate.js';
 import { runMemoryCi } from '../src/ci/memory-ci.js';
+import { countSymbols, indexProjectSymbols } from '../src/code/indexer.js';
 
 const BANNER = `
 \x1b[38;2;56;189;248m   ______           __        __  ___                                \x1b[0m
@@ -408,6 +409,26 @@ program
     const ctx = createFastrServerContext();
     const files = syncAllModulePages(ctx.db, ctx.config.projectRoot, ctx.config.projectId);
     console.log(`Synced ${files.length} module markdown pages in .fastr/pages/`);
+  });
+
+// 7a. Code symbol index (derived; rebuilt from source at any time)
+program
+  .command('index')
+  .description('Index code symbols so memories can anchor to functions and classes')
+  .option('--json', 'Print the result as JSON', false)
+  .action((opts: any) => {
+    const ctx = createFastrServerContext();
+    const result = indexProjectSymbols(ctx.db, ctx.config.projectId, ctx.config.projectRoot);
+    const total = countSymbols(ctx.db, ctx.config.projectId);
+    if (opts.json) {
+      console.log(JSON.stringify({ ...result, total }, null, 2));
+      return;
+    }
+    console.log(`\n=== FastrMemory Symbol Index (${ctx.config.projectName}) ===`);
+    console.log(`Files scanned:   ${result.files} (${result.skipped} skipped)`);
+    console.log(`Symbols indexed: ${result.symbols}`);
+    console.log(`Stale removed:   ${result.removed}`);
+    console.log(`Total symbols:   ${total}\n`);
   });
 
 // 7. Local memory import (JSONL snapshot or Markdown rules)

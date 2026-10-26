@@ -436,6 +436,26 @@ CREATE TABLE IF NOT EXISTS vision_assets (
 );
 CREATE INDEX IF NOT EXISTS idx_vision_project ON vision_assets(project_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_vision_memory ON vision_assets(memory_id);
+
+-- 14. Code symbol index
+-- Derived from source files, never a source of truth: the whole table can be dropped and
+-- rebuilt from disk. It exists so a memory can anchor to a symbol such as jwt.ts::signToken
+-- rather than to a path, and so retrieval can follow it through a rename or a move.
+CREATE TABLE IF NOT EXISTS symbols (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  file_path TEXT NOT NULL,
+  name TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('function', 'class', 'method', 'interface', 'type', 'enum', 'const')),
+  line_start INTEGER NOT NULL DEFAULT 0,
+  line_end INTEGER NOT NULL DEFAULT 0,
+  exported INTEGER NOT NULL DEFAULT 0,
+  signature_hash TEXT NOT NULL DEFAULT '',
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  UNIQUE (project_id, file_path, name, kind)
+);
+CREATE INDEX IF NOT EXISTS idx_symbols_file ON symbols(project_id, file_path);
+CREATE INDEX IF NOT EXISTS idx_symbols_name ON symbols(project_id, name);
 `;
 
 export function configurePragmas(db: DatabaseSync): void {
