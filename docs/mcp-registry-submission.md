@@ -75,8 +75,10 @@ Every one of those checks runs offline in `check:ci`, so a manifest that cannot 
 The official path is `.github/workflows/publish-mcp.yml`, which authenticates with GitHub OIDC, so no long-lived registry token exists:
 
 1. Release to npm first. The registry refuses a `server.json` whose version does not resolve to a published package, so the workflow waits up to ten minutes for `npm view fastrmemory@<version>` to return the version.
-2. Run **Actions → Publish to MCP Registry → Run workflow** with the release tag (for example `v0.6.0`).
-3. The job checks out that tag, runs `scripts/check-release-version.mjs` so the tag, `package.json`, `server.json`, and `plugin.json` all agree, downloads `mcp-publisher` `v1.8.4`, verifies its Sigstore bundle with `cosign` and its SHA-256, runs `mcp-publisher login github-oidc`, publishes, then polls the registry API until the exact name and version appear.
+2. Run **Actions → Publish to MCP Registry → Run workflow** with the release tag (for example `v0.6.0`) and the ref that holds `server.json` (default `main`).
+3. The job checks out that ref, runs `scripts/check-release-version.mjs` so the tag, `package.json`, `server.json`, and `plugin.json` all agree, downloads `mcp-publisher` `v1.8.4`, verifies its Sigstore bundle with `cosign` and its SHA-256, runs `mcp-publisher login github-oidc`, publishes, then polls the registry API until the exact name and version appear.
+
+`server.json` is read from `ref`, not from the tag, because a release tag is immutable and registry metadata is not part of the package's behaviour. The version check still forces `ref` to describe the same release, so this can fix a manifest without a retag, and it cannot publish the wrong version. The first `v0.6.0` attempt failed exactly this way: the tag still carried the 108-character description, the registry returned `422 expected length <= 100`, and nothing was published.
 
 The registry is in preview and may reset its data, which is why publishing is a separate workflow from `release.yml`: it can be re-run without touching npm, and an npm version is immutable once published.
 

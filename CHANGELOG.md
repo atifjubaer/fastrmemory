@@ -7,6 +7,7 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 ### Added
 
 - `.github/workflows/publish-mcp.yml` publishes the root `server.json` to the official MCP registry over GitHub OIDC, after verifying the tag, waiting for npm to serve the version, and checking the `mcp-publisher` Sigstore bundle and SHA-256. It is `workflow_dispatch`-only so a registry re-publish never needs a second npm release.
+- The published `0.6.0` tarball still contains the 108-character `server.json` description, because the fix landed after the tag. It has no runtime effect and the registry reads the repo manifest, not the tarball; the next release ships the corrected file.
 - `npm run check:package` now enforces the registry's own manifest constraints offline: the `namespace/server` name pattern, the `package.json` `mcpName` match, the 1-100 character `description`, the `title` limit, the `repository` fields, and the package version. The 0.6.0 `server.json` description was 108 characters and would have been rejected after an immutable npm publish; it is now 97.
 
 ## [0.6.0] - 2026-10-26

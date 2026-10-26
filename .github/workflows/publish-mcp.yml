@@ -19,6 +19,11 @@ on:
         description: 'Release tag to publish (for example v0.6.0)'
         required: true
         type: string
+      ref:
+        description: 'Branch or tag holding server.json (default: main)'
+        required: false
+        default: main
+        type: string
 
 permissions:
   contents: read
@@ -41,10 +46,13 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - name: Check out the release tag
+      # server.json is repo metadata, not part of the npm tarball's behaviour, and a release tag
+      # is immutable. Checking out `ref` (default main) lets a metadata fix ship without a
+      # retag; the version check below still forces ref to describe the same release.
+      - name: Check out server.json
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ inputs.ref }}
 
       - name: Use Node.js 24
         uses: actions/setup-node@v4
@@ -54,7 +62,19 @@ jobs:
       # The registry rejects a server.json whose version does not resolve to a published
       # package, so the tag, package.json, and server.json must all agree before we start.
       - name: Verify the tag matches the manifests
-        run: node scripts/check-release-version.mjs "${{ inputs.tag }}"
+        run: |
+          node scripts/check-release-version.mjs "${{ inputs.tag }}"
+          node -e '
+            const tag = process.env.TAG;
+            const server = require("./server.json");
+            if (server.version !== tag.replace(/^v/, "")) {
+              console.error(`server.json version ${server.version} != tag ${tag}`);
+              process.exit(1);
+            }
+            console.log(`server.json ${server.version} matches ${tag}; description ${server.description.length}/100 characters`);
+          '
+        env:
+          TAG: ${{ inputs.tag }}
 
       - name: Wait for npm to serve the version
         env:
