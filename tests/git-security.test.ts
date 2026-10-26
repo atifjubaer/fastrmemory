@@ -45,7 +45,7 @@ describe('Git command injection hardening', () => {
   });
 
   afterEach(() => {
-    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
   });
 
   it('commits messages with shell metacharacters verbatim without executing them', () => {
@@ -136,7 +136,7 @@ describe('Git learner hardening', () => {
 
   afterEach(() => {
     db.close();
-    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
   });
 
   it('does not insert duplicate traps when learn is re-run', () => {

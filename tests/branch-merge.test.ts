@@ -125,7 +125,9 @@ describe('memory branches and merges', () => {
     expect(repo.getMemory(updated.newMemory.id)?.superseded_by_id).toBe(active[0].id);
     expect(repo.getMemory(original.id)?.status).toBe('superseded');
 
-    const mergeLog = db.prepare('SELECT * FROM memory_branch_merges WHERE branch_id = ? ORDER BY created_at ASC').all(branch.id) as any[];
+    // created_at has one-second resolution, so two sequential merges can share it and
+    // ORDER BY created_at would return them in arbitrary order. rowid is insertion order.
+    const mergeLog = db.prepare('SELECT * FROM memory_branch_merges WHERE branch_id = ? ORDER BY rowid ASC').all(branch.id) as any[];
     expect(mergeLog).toHaveLength(2);
     expect(mergeLog[0].applied).toBe(0);
     expect(mergeLog[0].conflict_count).toBe(1);
