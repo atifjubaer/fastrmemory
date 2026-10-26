@@ -1,0 +1,32 @@
+name: Npx smoke
+
+# Verifies the package an agent actually installs: `npx --yes fastrmemory@<version>` from a
+# directory with no checkout and no global install, on every supported OS and Node line.
+#
+# Runs on a release tag (after the registry has the version; the script retries a 404 for up to
+# ten minutes) and on demand against whatever version is in package.json.
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  npx:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-15-intel]
+        node-version: [22.x, 24.x]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Verify clean-machine npx install
+        run: npm run smoke:npx

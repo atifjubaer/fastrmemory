@@ -6,6 +6,8 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 First release with the deferred write path, the 12-tool MCP core, the optional static semantic reranker, aggregate and temporal retrieval, the cross-engine benchmark, and reversible hook installs.
 
+Published 2026-10-26 from tag `v0.6.0` (`a57a656`) by `.github/workflows/release.yml` using GitHub Actions OIDC trusted publishing. Release workflow run `40261328937` passed the full gate, clean tarball install, provenance publish, registry verification, and GitHub Release upload. `npm view fastrmemory version` returns `0.6.0` and `latest` is `0.6.0`; the npm tarball is 319 files, 725,938 bytes packed, 2,929,061 bytes unpacked, and the GitHub Release asset SHA-256 is `17fc8071e5b2f715d5a79b0da542268606bf32dc37b034f5e8fa94c58f8e7a10`. The schema change is additive only (three queue tables created on first open); no memory row is rewritten. `0.5.0` remains published historical.
+
 ### Added
 
 - `fastr model install` downloads the optional static semantic model (`minishlab/potion-base-8M`, 256-dim, 30.2 MB, revision `bf8b0566`), verifies both files against pinned SHA-256 hashes, and loads it once at server start when present. `fastr model status` and `fastr model remove` manage it. The asset is never downloaded implicitly and is not part of the npm package.
@@ -20,6 +22,7 @@ First release with the deferred write path, the 12-tool MCP core, the optional s
 - `scripts/fetch-bench-data.ts` (`npm run bench:fetch`) downloads the pinned LongMemEval-clean and LoCoMo files and the optional static model, verifying every SHA-256 before moving a file into place. `--check` verifies what is already on disk and never downloads.
 - `fastr hook uninstall` removes exactly what `fastr hook install` wrote, for all five project-scoped clients (Claude Code, Cursor, OpenCode, Gemini CLI, GitHub Copilot CLI). Install and uninstall share one client registry (`src/installer/hooks.ts`), so the two directions cannot drift. Empty JSON files and empty directories are removed, `AGENTS.md` is restored around the discipline block, and a JSON file that still holds any user key is never deleted. Both commands are idempotent and accept `--client <ids|all>`, `--project <dir>`, `--no-agents-md`, and `--json`. `docs/CLIENT_SUPPORT.md` publishes the matrix.
 - `scripts/smoke-hooks.mjs` (`npm run smoke:hooks`) runs the real CLI through install → idempotent install → uninstall → idempotent uninstall on a throwaway project that already contains user-owned config, and is part of the six-job CI matrix.
+- `scripts/smoke-npx.mjs` (`npm run smoke:npx`) installs the published package with `npx` in an empty directory, runs `--version` and `status`, and retries a registry 404 for up to ten minutes. `.github/workflows/npx-smoke.yml` runs it on Ubuntu, Windows, and Intel macOS for Node 22.x and 24.x.
 
 ### Fixed
 

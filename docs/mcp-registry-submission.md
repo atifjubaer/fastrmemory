@@ -1,6 +1,6 @@
 # Official Model Context Protocol Registry Submission
 
-> **Status (2026-10-23): 0.5.0 published; ready to submit.** The canonical unscoped `fastrmemory@0.5.0` is published and `latest`; root `server.json` pins `0.5.0`. `npm view fastrmemory version` returns `0.5.0`. The old scoped `@atifjubaer/fastrmemory@0.2.1` npm entry was removed on 2026-10-23. This entry has not been submitted to the MCP registry yet.
+> **Status (2026-10-26): 0.6.0 published; ready to submit.** The canonical unscoped `fastrmemory@0.6.0` is published and `latest`; root `server.json` pins `0.6.0`. `npm view fastrmemory version` returns `0.6.0`. The old scoped `@atifjubaer/fastrmemory@0.2.1` npm entry was removed on 2026-10-23. This entry has not been submitted to the MCP registry yet.
 
 Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers) under the **Memory & Cognitive Engines** section.
 
@@ -11,7 +11,7 @@ Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://gi
 
 ### Table Entry for `README.md`
 ```markdown
-| [FastrMemory](https://github.com/atifjubaer/fastrmemory) | High-Performance Cognitive Agent Memory Engine with native `node:sqlite` WAL storage (Node >= 22.16), Bi-Temporal Git Sync, Triple-Stream RRF ($k=20$), Conditional 2.0x Error Trap Shield, and High-DPI React 19 Dashboard. Zero background daemons, zero open ports. | `npx -y fastrmemory@0.5.0 mcp` |
+| [FastrMemory](https://github.com/atifjubaer/fastrmemory) | High-Performance Cognitive Agent Memory Engine with native `node:sqlite` WAL storage (Node >= 22.16), Bi-Temporal Git Sync, Triple-Stream RRF ($k=20$), Conditional 2.0x Error Trap Shield, and High-DPI React 19 Dashboard. Zero background daemons, zero open ports. | `npx -y fastrmemory@0.6.0 mcp` |
 ```
 
 ### Full Server Description & Metadata
@@ -37,7 +37,7 @@ Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://gi
   "mcpServers": {
     "fastrmemory": {
       "command": "npx",
-      "args": ["-y", "fastrmemory@0.5.0", "mcp", "--project", "/absolute/path/to/repo"]
+      "args": ["-y", "fastrmemory@0.6.0", "mcp", "--project", "/absolute/path/to/repo"]
     }
   }
 }
@@ -47,10 +47,10 @@ Submit this entry as a Pull Request to [modelcontextprotocol/servers](https://gi
   "mcpServers": {
     "fastrmemory": {
       "command": "npx",
-      "args": ["-y", "fastrmemory@0.5.0", "mcp"]
+      "args": ["-y", "fastrmemory@0.6.0", "mcp"]
     }
   }
 }
 ```
 
-> Version note: `fastrmemory@0.5.0` is published and `latest`; pin it for registry installs. `0.4.0` and `0.3.1` remain published historical. The default core profile exposes 12 tools (8,715-byte `tools/list`); pass `--profile full` for all 43. On native Windows, use `cmd /c npx ...` if the client cannot launch `npx` directly.
+> Version note: `fastrmemory@0.6.0` is published and `latest`; pin it for registry installs. `0.5.0`, `0.4.0`, and `0.3.1` remain published historical. The default core profile exposes 12 tools (8,715-byte `tools/list`); pass `--profile full` for all 43. On native Windows, use `cmd /c npx ...` if the client cannot launch `npx` directly.

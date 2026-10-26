@@ -53,6 +53,7 @@
     "smoke:copilot": "npm run build:core && node scripts/smoke-copilot.mjs",
     "smoke:opencode": "npm run build:core && node scripts/smoke-opencode.mjs",
     "smoke:hooks": "npm run build:core && node scripts/smoke-hooks.mjs",
+    "smoke:npx": "node scripts/smoke-npx.mjs",
     "test:crash": "node scripts/crash-test.mjs",
     "check:skills": "node scripts/check-skills.mjs",
     "check:dist-ui": "node scripts/check-dist-ui.mjs",

@@ -164,6 +164,14 @@ expectNumber(readme, 'bm25 holdout Hit@1', readmeBm25Holdout?.hitAt1, 'README.md
 expectNumber(claims, 'full_minilm holdout Hit@3', fullMiniHoldout?.hitAt3, 'CLAIMS.md');
 expectNumber(claims, 'full_minilm holdout MRR', fullMiniHoldout?.mrr, 'CLAIMS.md');
 
+// Cross-engine marker benchmark: the README row must quote the committed artifact.
+const vsEngines = readJson('bench/results/vs-engines.json');
+const fastrVs = vsEngines?.engines?.find((entry) => entry.id === 'fastrmemory');
+expectNumber(readme, 'cross-engine fastrmemory overall Hit@1 %', fastrVs?.overall?.hitAt1Percent, 'README.md');
+expectNumber(readme, 'cross-engine fastrmemory exact Hit@1', fastrVs?.tiers?.exact?.hitAt1, 'README.md');
+expectNumber(readme, 'cross-engine fastrmemory ingest ms/doc', fastrVs?.ingest?.msPerDoc, 'README.md');
+expectNumber(readme, 'cross-engine fastrmemory recall p50 ms', fastrVs?.recall?.p50Ms, 'README.md');
+
 for (const rel of ['README.md', 'BENCHMARKS.md', 'CLAIMS.md', 'RELEASE_v0.1.0.md', 'ROADMAP.md']) {
   const text = readText(rel);
   if (text.includes('latest.json')) {
