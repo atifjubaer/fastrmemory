@@ -16,6 +16,8 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 - `fastr mcp --profile full` exposes all 43 tools. `fastr mcp init` now always writes an explicit `--profile <profile>` into generated configs, so a config never depends on the server default.
 - Cross-engine benchmark (`scripts/bench-vs.ts`, `src/bench/marker-corpus.ts`, `src/bench/mcp-stdio.ts`, `src/bench/vs-engines.ts`). FastrMemory, `@agentmemory/mcp@0.9.30`, and `hippo-memory@2.1.0` are driven over MCP stdio on a deterministic 1,200-document marker corpus with 120 queries in three tiers (`exact`, `multi`, `paraphrase`). It reports ingest cost per document, first-to-last decile degradation, recall p50/p95, returned tokens, distinct documents, Hit@1 per tier with Wilson intervals, and paired McNemar plus bootstrap against FastrMemory. `npm run bench:vs` runs it; `npm run bench:setup` installs the pinned engines.
 - `scripts/fetch-bench-data.ts` (`npm run bench:fetch`) downloads the pinned LongMemEval-clean and LoCoMo files and the optional static model, verifying every SHA-256 before moving a file into place. `--check` verifies what is already on disk and never downloads.
+- `fastr hook uninstall` removes exactly what `fastr hook install` wrote, for all five project-scoped clients (Claude Code, Cursor, OpenCode, Gemini CLI, GitHub Copilot CLI). Install and uninstall share one client registry (`src/installer/hooks.ts`), so the two directions cannot drift. Empty JSON files and empty directories are removed, `AGENTS.md` is restored around the discipline block, and a JSON file that still holds any user key is never deleted. Both commands are idempotent and accept `--client <ids|all>`, `--project <dir>`, `--no-agents-md`, and `--json`. `docs/CLIENT_SUPPORT.md` publishes the matrix.
+- `scripts/smoke-hooks.mjs` (`npm run smoke:hooks`) runs the real CLI through install → idempotent install → uninstall → idempotent uninstall on a throwaway project that already contains user-owned config, and is part of the six-job CI matrix.
 
 ### Fixed
 
@@ -29,7 +31,8 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 - Write path: the memory row, file links, and three queue rows commit in one savepoint; conflict analysis, entity extraction, and FTS tokenization are deferred by default (`write.conflictMode`, `write.nerMode`, `write.ftsMode`). Measured on 120 documents (1,225,535 chars): 13.342 ms/doc synchronous vs 0.124 ms/doc deferred, a 107.60x reduction; the conflict scan was 99.1% of the synchronous path. `write.*Mode: 'sync'` reproduces the old behaviour and is tested.
 - Readers drain the FTS queue before BM25, so a memory is searchable immediately after `insertMemory()` returns. `fastr doctor` / `fastr heal` drain all three queues and report their depth.
 - LongMemEval pin moved to `xiaowu0162/longmemeval-cleaned` at `98d7416c` (`longmemeval_s_cleaned.json`, SHA-256 `D6F21EA9D60A0D56F34A05B609C79C88A451D2AE03597821EA3D5A9678C3A442`). The public harness adds a stable 60/60 dev/test split and `--slice-per-type`.
-- Test suite is 372 tests across 60 files.
+- `fastr hook install` only writes client configuration; it no longer opens the project database first. `installAgentHooks` remains as a backwards-compatible wrapper over `installHookClients`, so the setup wizard keeps its previous behaviour.
+- Test suite is 388 tests across 61 files.
 
 ## [0.5.0] - 2026-10-23
 

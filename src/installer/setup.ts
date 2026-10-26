@@ -76,6 +76,37 @@ export function ensureAgentsDiscipline(projectRoot: string): 'added' | 'present'
   return 'added';
 }
 
+/**
+ * Removes the discipline block this installer appended, leaving every other line of AGENTS.md
+ * exactly as the user wrote it. Deletes the file when the block was its only content.
+ *
+ * Returns true when a block was found and removed.
+ */
+export function removeAgentsDiscipline(projectRoot: string): boolean {
+  const agentsPath = path.join(projectRoot, 'AGENTS.md');
+  if (!fs.existsSync(agentsPath)) return false;
+  const current = fs.readFileSync(agentsPath, 'utf-8');
+  const startMarker = '<!-- fastrmemory:start -->';
+  const endMarker = '<!-- fastrmemory:end -->';
+  const start = current.indexOf(startMarker);
+  if (start < 0) return false;
+  const end = current.indexOf(endMarker, start);
+  if (end < 0) return false;
+
+  let before = current.slice(0, start);
+  const after = current.slice(end + endMarker.length);
+  // install() writes `content.trimEnd() + '\n'` before a block that starts with '\n'.
+  if (before.endsWith('\n\n')) before = before.slice(0, -1);
+  const remainder = (before + after.replace(/^\r?\n/, '')).replace(/\s+$/, '');
+
+  if (!remainder) {
+    fs.unlinkSync(agentsPath);
+    return true;
+  }
+  fs.writeFileSync(agentsPath, `${remainder}\n`, 'utf-8');
+  return true;
+}
+
 export function runInteractiveSetup(options: SetupOptions = {}): void {
   const homeDir = options.homeDir ?? os.homedir();
   const projectRoot = path.resolve(options.projectRoot ?? process.cwd());

@@ -9,7 +9,7 @@ import { scrubSecrets } from '../src/privacy/scrubber.js';
 import { runInteractiveSetup } from '../src/installer/setup.js';
 import { formatBenchmarkMarkdown } from '../src/bench/benchmark.js';
 import { startUiServer } from '../src/ui/server.js';
-import { installAgentHooks } from '../src/installer/hooks.js';
+import { installHookClients, parseHookClients, uninstallHookClients } from '../src/installer/hooks.js';
 import {
   installStaticModel,
   removeStaticModel,
@@ -811,15 +811,46 @@ const hookCmd = program.command('hook').description('Autonomous agent lifecycle 
 
 hookCmd
   .command('install')
-  .description('Install FastrMemory MCP and hooks into Claude Code, Cursor, Gemini CLI, Copilot CLI, OpenCode, and AGENTS.md')
-  .action(() => {
-    const ctx = createFastrServerContext();
-    const res = installAgentHooks(ctx.config.projectRoot);
-    console.log(`\n=== FastrMemory Autonomous Hook Installation ===`);
-    for (const d of res.details) {
-      console.log(`- ${d}`);
+  .description('Install FastrMemory MCP and hooks into Claude Code, Cursor, Gemini CLI, Copilot CLI, and OpenCode')
+  .option('--client <clients>', 'Comma-separated client ids, or all', 'all')
+  .option('--project <path>', 'Project root (defaults to the current directory)')
+  .option('--no-agents-md', 'Do not touch AGENTS.md')
+  .option('--json', 'Print a machine-readable result', false)
+  .action((opts) => {
+    const projectRoot = path.resolve(opts.project ?? process.cwd());
+    const clients = parseHookClients(opts.client);
+    const res = installHookClients(projectRoot, clients, { agentsMd: opts.agentsMd });
+    if (opts.json) {
+      console.log(JSON.stringify({ projectRoot, clients: res.clients, agentsMdUpdated: res.agentsMdUpdated }, null, 2));
+    } else {
+      console.log(`\n=== FastrMemory Autonomous Hook Installation ===`);
+      console.log(`Project: ${projectRoot}`);
+      for (const d of res.details) console.log(`- ${d}`);
+      console.log(`\nAgent autonomous discipline active.\n`);
     }
-    console.log(`\nAgent autonomous discipline active.\n`);
+    if (res.clients.some((client) => client.status === 'error')) process.exitCode = 1;
+  });
+
+hookCmd
+  .command('uninstall')
+  .description('Remove the FastrMemory MCP entries, hooks, OpenCode plugin, and AGENTS.md block this installer added')
+  .option('--client <clients>', 'Comma-separated client ids, or all', 'all')
+  .option('--project <path>', 'Project root (defaults to the current directory)')
+  .option('--no-agents-md', 'Do not touch AGENTS.md')
+  .option('--json', 'Print a machine-readable result', false)
+  .action((opts) => {
+    const projectRoot = path.resolve(opts.project ?? process.cwd());
+    const clients = parseHookClients(opts.client);
+    const res = uninstallHookClients(projectRoot, clients, { agentsMd: opts.agentsMd });
+    if (opts.json) {
+      console.log(JSON.stringify({ projectRoot, changed: res.changed, clients: res.clients, agentsMdRemoved: res.agentsMdRemoved }, null, 2));
+    } else {
+      console.log(`\n=== FastrMemory Hook Removal ===`);
+      console.log(`Project: ${projectRoot}`);
+      for (const d of res.details) console.log(`- ${d}`);
+      console.log(res.changed ? `\nFastrMemory integration removed.\n` : `\nNothing to remove.\n`);
+    }
+    if (res.clients.some((client) => client.status === 'error')) process.exitCode = 1;
   });
 
 hookCmd

@@ -44,6 +44,9 @@ jobs:
       - name: Verify MCP profile surfaces
         run: node scripts/smoke-mcp-profile.mjs
 
+      - name: Verify hook install/uninstall round trip
+        run: node scripts/smoke-hooks.mjs
+
       - name: Build UI and verify tracked bundle
         if: matrix.os == 'ubuntu-latest' && matrix.node-version == '24.x'
         run: |

@@ -1,6 +1,14 @@
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { buildHookCommand } from './commands.js';
-import { isFastrHookCommand, JsonUpdateResult, McpServerEntry, updateJsonConfig } from './json-config.js';
+import {
+  deleteJsonConfigIfTrivial,
+  isFastrHookCommand,
+  JsonUpdateResult,
+  McpServerEntry,
+  removeMcpServer,
+  updateJsonConfig
+} from './json-config.js';
 
 export interface CopilotHookSpec {
   event: string;
@@ -120,4 +128,85 @@ export function installCopilot(projectRoot: string, mcpEntry: McpServerEntry): C
     mergeCopilotHooks(config, copilotHookSpecs());
   });
   return { changed: mcp.changed || hooks.changed, mcp, hooks };
+}
+
+/** Removes this installer's Copilot hook entries and prunes empty events. Returns entries removed. */
+export function removeCopilotHooks(config: Record<string, any>): number {
+  const hooks = config.hooks;
+  if (!hooks || typeof hooks !== 'object' || Array.isArray(hooks)) return 0;
+
+  let removed = 0;
+  for (const event of Object.keys(hooks)) {
+    const current = hooks[event];
+    if (!Array.isArray(current)) continue;
+    const kept = current.filter((entry: any) => {
+      if (!isFastrCopilotHook(entry)) return true;
+      removed++;
+      return false;
+    });
+    if (kept.length === 0) delete hooks[event];
+    else hooks[event] = kept;
+  }
+
+  if (Object.keys(hooks).length === 0) delete config.hooks;
+  return removed;
+}
+
+export interface CopilotUninstallResult {
+  changed: boolean;
+  removedHooks: number;
+  removedMcp: boolean;
+  mcpFileDeleted: boolean;
+  hooksFileDeleted: boolean;
+  mcpPath: string;
+  hooksPath: string;
+}
+
+/**
+ * Removes FastrMemory from Copilot's project MCP file and from the hook file this installer owns.
+ * The hook file is deleted entirely when nothing but its `version` key remains.
+ */
+export function uninstallCopilot(projectRoot: string): CopilotUninstallResult {
+  const mcpPath = path.join(projectRoot, '.github', 'mcp.json');
+  const hooksPath = path.join(projectRoot, '.github', 'hooks', 'fastrmemory.json');
+  let removedMcp = false;
+  let removedHooks = 0;
+
+  const mcpResult = fs.existsSync(mcpPath)
+    ? updateJsonConfig(mcpPath, (config) => {
+      removedMcp = removeCopilotMcpServer(config);
+    }, { backup: false })
+    : undefined;
+  const hooksResult = fs.existsSync(hooksPath)
+    ? updateJsonConfig(hooksPath, (config) => {
+      removedHooks = removeCopilotHooks(config);
+    }, { backup: false })
+    : undefined;
+
+  const mcpFileDeleted = deleteJsonConfigIfTrivial(mcpPath);
+  const hooksFileDeleted = deleteJsonConfigIfTrivial(hooksPath, (config) => Object.keys(config).every((key) => key === 'version'));
+
+  return {
+    changed: Boolean(mcpResult?.changed) || Boolean(hooksResult?.changed) || mcpFileDeleted || hooksFileDeleted,
+    removedHooks,
+    removedMcp,
+    mcpFileDeleted,
+    hooksFileDeleted,
+    mcpPath,
+    hooksPath
+  };
+}
+
+/**
+ * Removes the FastrMemory server from a Copilot MCP file, whichever of the two accepted shapes
+ * the project uses.
+ */
+export function removeCopilotMcpServer(config: Record<string, any>): boolean {
+  if (removeMcpServer(config, 'fastrmemory')) return true;
+  const bare = config.fastrmemory;
+  if (bare && typeof bare === 'object' && (typeof bare.command === 'string' || typeof bare.url === 'string')) {
+    delete config.fastrmemory;
+    return true;
+  }
+  return false;
 }

@@ -22,7 +22,11 @@ export interface JsonUpdateResult {
  * - Writes atomically (temp file + rename) so a concurrent reader never sees a half-written file.
  * - Skips the write entirely when the mutation produces no change.
  */
-export function updateJsonConfig(filePath: string, mutate: (config: Record<string, any>) => void): JsonUpdateResult {
+export function updateJsonConfig(
+  filePath: string,
+  mutate: (config: Record<string, any>) => void,
+  options: { backup?: boolean } = {}
+): JsonUpdateResult {
   const exists = fs.existsSync(filePath);
   let original = '';
   let config: Record<string, any> = {};
@@ -50,7 +54,9 @@ export function updateJsonConfig(filePath: string, mutate: (config: Record<strin
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
 
   let backupPath: string | undefined;
-  if (exists && original.trim()) {
+  // Uninstall passes backup: false so removing an entry never overwrites the recovery point
+  // that install wrote, and never creates one for a file it is about to delete.
+  if (options.backup !== false && exists && original.trim()) {
     backupPath = `${filePath}.fastr.bak`;
     if (!fs.existsSync(backupPath)) {
       fs.writeFileSync(backupPath, original, 'utf-8');
@@ -81,6 +87,20 @@ export function upsertMcpServer(config: Record<string, any>, name: string, entry
     config.mcpServers = {};
   }
   config.mcpServers[name] = entry;
+}
+
+/**
+ * Removes one server entry and prunes the containers it leaves empty, so an uninstall returns
+ * the file to the shape the user had before install instead of leaving `{"mcpServers": {}}`.
+ * Returns true when an entry was actually removed.
+ */
+export function removeMcpServer(config: Record<string, any>, name: string): boolean {
+  const servers = config.mcpServers;
+  if (!servers || typeof servers !== 'object' || Array.isArray(servers)) return false;
+  if (!Object.prototype.hasOwnProperty.call(servers, name)) return false;
+  delete servers[name];
+  if (Object.keys(servers).length === 0) delete config.mcpServers;
+  return true;
 }
 
 export interface ClaudeHookSpec {
@@ -135,4 +155,76 @@ export function mergeClaudeHooks(config: Record<string, any>, specs: ClaudeHookS
 
     config.hooks[spec.event] = groups;
   }
+}
+
+/**
+ * Removes every hook group this installer wrote and prunes the events and the `hooks` object
+ * that are left empty. User hooks in the same file survive untouched.
+ *
+ * Returns the number of command hooks removed.
+ */
+export function removeClaudeHooks(config: Record<string, any>): number {
+  const hooks = config.hooks;
+  if (!hooks || typeof hooks !== 'object' || Array.isArray(hooks)) return 0;
+
+  let removed = 0;
+  for (const event of Object.keys(hooks)) {
+    const current = hooks[event];
+    if (typeof current === 'string') {
+      // Legacy bare-string form written by older versions.
+      if (isFastrHookCommand(current)) {
+        delete hooks[event];
+        removed++;
+      }
+      continue;
+    }
+    if (!Array.isArray(current)) continue;
+
+    const keptGroups: any[] = [];
+    for (const group of current) {
+      if (!group || !Array.isArray(group.hooks)) {
+        keptGroups.push(group);
+        continue;
+      }
+      const kept = group.hooks.filter((hook: any) => {
+        if (!isFastrHookCommand(hook?.command)) return true;
+        removed++;
+        return false;
+      });
+      if (kept.length > 0) keptGroups.push({ ...group, hooks: kept });
+    }
+
+    if (keptGroups.length === 0) delete hooks[event];
+    else hooks[event] = keptGroups;
+  }
+
+  if (Object.keys(hooks).length === 0) delete config.hooks;
+  return removed;
+}
+
+/**
+ * Deletes a JSON file when the mutation left nothing of the user's own in it, so an uninstall
+ * does not leave a `{}` file behind in a project that had no such config before install.
+ *
+ * Deliberately does not touch the one-time `.fastr.bak` that install may have written: the
+ * backup is a recovery point, and restoring it here could resurrect keys the user deleted
+ * after installing.
+ */
+export function deleteJsonConfigIfTrivial(
+  filePath: string,
+  isTrivial: (config: Record<string, any>) => boolean = (config) => Object.keys(config).length === 0
+): boolean {
+  if (!fs.existsSync(filePath)) return false;
+  const raw = fs.readFileSync(filePath, 'utf-8');
+  if (!raw.trim()) return false;
+  let config: Record<string, any>;
+  try {
+    config = JSON.parse(raw);
+  } catch {
+    return false;
+  }
+  if (config === null || typeof config !== 'object' || Array.isArray(config)) return false;
+  if (!isTrivial(config)) return false;
+  fs.unlinkSync(filePath);
+  return true;
 }

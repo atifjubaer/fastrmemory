@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { JsonUpdateResult, McpServerEntry, updateJsonConfig } from './json-config.js';
+import { deleteJsonConfigIfTrivial, JsonUpdateResult, McpServerEntry, updateJsonConfig } from './json-config.js';
 
 export interface OpenCodeInstallResult {
   changed: boolean;
@@ -161,6 +161,90 @@ export function installOpenCode(projectRoot: string, mcpEntry: McpServerEntry): 
     pluginPath: plugin.filePath,
     pluginChanged: plugin.changed,
     pluginSkipped: plugin.skipped,
+    details
+  };
+}
+
+/** Removes the `mcp.servers.fastrmemory` entry and prunes the containers it leaves empty. */
+export function removeOpenCodeMcpServer(config: Record<string, any>): boolean {
+  const mcp = config.mcp;
+  if (!mcp || typeof mcp !== 'object' || Array.isArray(mcp)) return false;
+  const servers = mcp.servers;
+  if (!servers || typeof servers !== 'object' || Array.isArray(servers)) return false;
+  if (!Object.prototype.hasOwnProperty.call(servers, 'fastrmemory')) return false;
+
+  delete servers.fastrmemory;
+  if (Object.keys(servers).length === 0) delete mcp.servers;
+  if (Object.keys(mcp).length === 0) delete config.mcp;
+  return true;
+}
+
+/** Removes the managed OpenCode plugin, and only when it still carries the managed marker. */
+export function removeManagedPlugin(projectRoot: string): { filePath: string; deleted: boolean; skipped?: string } {
+  const filePath = path.join(projectRoot, '.opencode', 'plugins', 'fastrmemory', 'index.ts');
+  if (!fs.existsSync(filePath)) return { filePath, deleted: false };
+  const current = fs.readFileSync(filePath, 'utf-8');
+  if (!current.includes(MANAGED_MARKER)) {
+    return { filePath, deleted: false, skipped: 'existing user-owned plugin was not removed' };
+  }
+  fs.unlinkSync(filePath);
+  // Remove only the directories this installer created, and only while they are empty.
+  for (const dir of [
+    path.dirname(filePath),
+    path.join(projectRoot, '.opencode', 'plugins'),
+    path.join(projectRoot, '.opencode')
+  ]) {
+    try {
+      if (fs.existsSync(dir) && fs.readdirSync(dir).length === 0) fs.rmdirSync(dir);
+    } catch {
+      // A non-empty or locked directory is not an uninstall failure.
+    }
+  }
+  return { filePath, deleted: true };
+}
+
+export interface OpenCodeUninstallResult {
+  changed: boolean;
+  removedMcp: boolean;
+  configDeleted: boolean;
+  pluginDeleted: boolean;
+  configSkipped?: string;
+  details: string[];
+}
+
+/** Removes the OpenCode MCP server and managed plugin, leaving every other setting untouched. */
+export function uninstallOpenCode(projectRoot: string): OpenCodeUninstallResult {
+  const details: string[] = [];
+  const target = resolveOpenCodeConfigPath(projectRoot);
+  let removedMcp = false;
+  let configDeleted = false;
+  let configSkipped: string | undefined;
+
+  if (!fs.existsSync(target.filePath)) {
+    details.push('OpenCode MCP server: not configured');
+  } else if (target.jsonc) {
+    configSkipped = `OpenCode config is JSONC (${path.relative(projectRoot, target.filePath)}); remove the fastrmemory MCP server manually`;
+    details.push(`OpenCode MCP server: ${configSkipped}`);
+  } else {
+    updateJsonConfig(target.filePath, (draft) => {
+      removedMcp = removeOpenCodeMcpServer(draft);
+    }, { backup: false });
+    configDeleted = deleteJsonConfigIfTrivial(target.filePath);
+    const rel = path.relative(projectRoot, target.filePath) || target.filePath;
+    details.push(removedMcp ? `OpenCode MCP server: removed from ${rel}` : `OpenCode MCP server: not present in ${rel}`);
+  }
+
+  const plugin = removeManagedPlugin(projectRoot);
+  const pluginRel = path.relative(projectRoot, plugin.filePath) || plugin.filePath;
+  if (plugin.skipped) details.push(`OpenCode plugin: ${plugin.skipped} (${pluginRel})`);
+  else details.push(plugin.deleted ? `OpenCode plugin: removed ${pluginRel}` : 'OpenCode plugin: not present');
+
+  return {
+    changed: removedMcp || configDeleted || plugin.deleted,
+    removedMcp,
+    configDeleted,
+    pluginDeleted: plugin.deleted,
+    configSkipped,
     details
   };
 }

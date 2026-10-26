@@ -1,6 +1,15 @@
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { buildHookCommand } from './commands.js';
-import { isFastrHookCommand, JsonUpdateResult, McpServerEntry, updateJsonConfig, upsertMcpServer } from './json-config.js';
+import {
+  deleteJsonConfigIfTrivial,
+  isFastrHookCommand,
+  JsonUpdateResult,
+  McpServerEntry,
+  removeMcpServer,
+  updateJsonConfig,
+  upsertMcpServer
+} from './json-config.js';
 
 export interface GeminiHookSpec {
   event: string;
@@ -94,4 +103,73 @@ export function installGemini(projectRoot: string, mcpEntry: McpServerEntry): Js
     upsertMcpServer(config, 'fastrmemory', mcpEntry);
     mergeGeminiHooks(config, geminiHookSpecs());
   });
+}
+
+/** True for a hook entry this installer owns, matched by command or by its `fastrmemory-*` name. */
+export function isFastrGeminiHook(hook: any): boolean {
+  if (isFastrHookCommand(hook?.command)) return true;
+  return /^fastrmemory(?:[-_:]|$)/i.test(String(hook?.name ?? ''));
+}
+
+/** Removes this installer's Gemini hooks and prunes empty events. Returns hooks removed. */
+export function removeGeminiHooks(config: Record<string, any>): number {
+  const hooks = config.hooks;
+  if (!hooks || typeof hooks !== 'object' || Array.isArray(hooks)) return 0;
+
+  let removed = 0;
+  for (const event of Object.keys(hooks)) {
+    const current = hooks[event];
+    if (typeof current === 'string') {
+      if (isFastrHookCommand(current)) {
+        delete hooks[event];
+        removed++;
+      }
+      continue;
+    }
+    if (!Array.isArray(current)) continue;
+
+    const keptGroups: any[] = [];
+    for (const group of current) {
+      if (!group || !Array.isArray(group.hooks)) {
+        keptGroups.push(group);
+        continue;
+      }
+      const kept = group.hooks.filter((hook: any) => {
+        if (!isFastrGeminiHook(hook)) return true;
+        removed++;
+        return false;
+      });
+      if (kept.length > 0) keptGroups.push({ ...group, hooks: kept });
+    }
+
+    if (keptGroups.length === 0) delete hooks[event];
+    else hooks[event] = keptGroups;
+  }
+
+  if (Object.keys(hooks).length === 0) delete config.hooks;
+  return removed;
+}
+
+export interface GeminiUninstallResult {
+  filePath: string;
+  changed: boolean;
+  removedHooks: number;
+  removedMcp: boolean;
+  fileDeleted: boolean;
+}
+
+/** Removes the FastrMemory MCP server and hooks from Gemini CLI project settings. */
+export function uninstallGemini(projectRoot: string): GeminiUninstallResult {
+  const filePath = path.join(projectRoot, '.gemini', 'settings.json');
+  if (!fs.existsSync(filePath)) {
+    return { filePath, changed: false, removedHooks: 0, removedMcp: false, fileDeleted: false };
+  }
+  let removedHooks = 0;
+  let removedMcp = false;
+  const result = updateJsonConfig(filePath, (config) => {
+    removedMcp = removeMcpServer(config, 'fastrmemory');
+    removedHooks = removeGeminiHooks(config);
+  }, { backup: false });
+  const fileDeleted = deleteJsonConfigIfTrivial(filePath);
+  return { filePath, changed: result.changed, removedHooks, removedMcp, fileDeleted };
 }
