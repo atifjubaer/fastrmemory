@@ -6,6 +6,9 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ### Added
 
+- `fastr model install` downloads the optional static semantic model (`minishlab/potion-base-8M`, 256-dim, 30.2 MB, revision `bf8b0566`), verifies both files against pinned SHA-256 hashes, and loads it once at server start when present. `fastr model status` and `fastr model remove` manage it. The asset is never downloaded implicitly and is not part of the npm package.
+- Pure-TypeScript model2vec inference (`src/search/static-model.ts`): BERT normalizer, BertPreTokenizer, greedy WordPiece, safetensors reader, mean pooling and L2 normalization, with no runtime dependency and no native binary. It reproduces the HuggingFace tokenizer on 20 edge cases exactly and the reference embeddings to `2.98e-8` max absolute error.
+- Query-vector LRU (256 entries, keyed by model id + query text) so repeated agent queries do not re-embed.
 - `fastr_tools` lists every tool the server can run, with its JSON input schema, filtered by name or description. `fastr_call` runs any listed tool after validating arguments against that tool's schema; it rejects unknown tools, meta-tools, and invalid arguments. Both are part of the core profile, so the complete surface stays reachable without loading every schema up front.
 - `fastr mcp --profile full` exposes all 43 tools. `fastr mcp init` now always writes an explicit `--profile <profile>` into generated configs, so a config never depends on the server default.
 
@@ -20,7 +23,7 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 - Write path: the memory row, file links, and three queue rows commit in one savepoint; conflict analysis, entity extraction, and FTS tokenization are deferred by default (`write.conflictMode`, `write.nerMode`, `write.ftsMode`). Measured on 120 documents (1,225,535 chars): 13.342 ms/doc synchronous vs 0.124 ms/doc deferred, a 107.60x reduction; the conflict scan was 99.1% of the synchronous path. `write.*Mode: 'sync'` reproduces the old behaviour and is tested.
 - Readers drain the FTS queue before BM25, so a memory is searchable immediately after `insertMemory()` returns. `fastr doctor` / `fastr heal` drain all three queues and report their depth.
 - LongMemEval pin moved to `xiaowu0162/longmemeval-cleaned` at `98d7416c` (`longmemeval_s_cleaned.json`, SHA-256 `D6F21EA9D60A0D56F34A05B609C79C88A451D2AE03597821EA3D5A9678C3A442`). The public harness adds a stable 60/60 dev/test split and `--slice-per-type`.
-- Test suite is 316 tests across 56 files.
+- Test suite is 332 tests across 57 files.
 
 ## [0.5.0] - 2026-10-23
 

@@ -57,15 +57,18 @@ Hooks exit after each event; there is no resident process. The optional `daemon 
 Three streams are fused with Reciprocal Rank Fusion (RRF):
 
 1. **BM25**: weighted FTS5 `bm25(memories_fts, 0.0, 10.0, 5.0, 1.0)` over active memories, plus the attached global DB when present. Each branch is locally capped at 50 before the union.
-2. **Vector**: cosine similarity over model-tagged embeddings. This stream is **off by default** unless a semantic provider is loaded. The deterministic feature-hash vectorizer is opt-in (`FASTR_VECTOR_MODE=hash`); it duplicates BM25 lexically and lowered LongMemEval Hit@1 from 89.2% to 81.7% on the 120-case slice. Semantic vectors are weighted 3.0 when present; hash vectors use 1.0.
+2. **Vector**: cosine similarity over model-tagged embeddings. This stream is **off by default** unless a semantic provider is loaded. The deterministic feature-hash vectorizer is opt-in (`FASTR_VECTOR_MODE=hash`); it duplicates BM25 lexically and lowered LongMemEval Hit@1 from 89.2% to 81.7% on the 120-case slice. MiniLM vectors are weighted 3.0 when present; hash vectors use 1.0. The optional static tier (model id 3) never contributes a rank: it adds a bounded cosine bonus (`staticBlendWeight`, default 0.15) to BM25 candidates only, so it can settle near-ties but cannot outvote the first stage.
 3. **Graph**: file links supplied by the caller, query entities, and 1-2 hop spreading activation over `graph_edges`. Seeding the graph from BM25/vector candidates is off by default.
 
 ```text
 score  = sum(stream_weight / (20 + rank_stream))   # BM25 1.0, vector 1.0 or 3.0, graph 1.0
+score += 0.15 * max(0, cos) / 21                   # static tier only, BM25 candidates only
 score *= reward_score                              # 0.1 .. 3.0
 score *= 2.0 if kind == 'error_trap' AND (query has trap intent OR a linked file is supplied)
 score *= 1.25 if status == 'verified'
 ```
+
+Query vectors pass through a 256-entry LRU keyed by model id and query text, so a repeated agent query does not re-embed. The static model is loaded once from `~/.fastr/models/potion-base-8M` at server start when present; recall never downloads it.
 
 Results are sorted, capped at 3 per source session, then packed into a token budget. If the top result alone exceeds the budget, the current packer truncates it rather than silently dropping it.
 

@@ -4,6 +4,7 @@ import {
   cosineSimilarity,
   decodeTaggedEmbedding,
   EMBEDDING_MODEL_IDS,
+  embedQueryCached,
   getProviderForModel,
   resolveVectorMode,
   VECTOR_SIMILARITY_THRESHOLDS,
@@ -126,6 +127,13 @@ export interface RetrievalConfig {
   verifiedBoost?: number;
   /** Optional cosine-similarity floor for the vector stream (default is model-specific). */
   vectorThreshold?: number;
+  /**
+   * Static-tier fusion strength (default 0.15). The static model is a bounded reranker:
+   * its cosine similarity is blended into the BM25 score instead of contributing a rank,
+   * and the bonus is capped at this fraction of a rank-1 BM25 hit. A value of 0 drops the
+   * static stream's influence entirely.
+   */
+  staticBlendWeight?: number;
 }
 
 export interface SearchParams {
@@ -243,9 +251,9 @@ export async function searchMemories(
   const verifiedBoost = retrieval.verifiedBoost ?? 1.25;
   const queryHasTrapIntent = /\b(trap|avoid|mistake|error|fail(?:ed|ure)?|bug|regression|before editing|warning|guard)\b/i.test(query);
 
-  const candidatesMap = new Map<string, { memory: Memory; rankA?: number; rankB?: number; rankC?: number }>();
+  const candidatesMap = new Map<string, { memory: Memory; rankA?: number; rankB?: number; rankC?: number; staticSim?: number }>();
   // Semantic vectors and feature-hash vectors need different fusion weights:
-  // hash vectors are lexical duplicates of BM25, while MiniLM adds independent signal.
+  // hash vectors are lexical duplicates of BM25, while a semantic model adds independent signal.
   let semanticVectorSeen = false;
 
   // Helper to test if a memory passes filters
@@ -339,6 +347,15 @@ export async function searchMemories(
   // awaited, so it stays independent of the vector stream being enabled for this query.
   warmupEmbeddingModel();
   if (enableVector && query.trim().length > 0) {
+    // Static vectors rerank only the BM25 candidate set. BM25 already caps at 50 rows;
+    // 100 is the ceiling if that cap grows, so query cost does not scale with the database.
+    const bm25CandidateIds: ReadonlySet<string> = new Set(
+      [...candidatesMap.values()]
+        .filter((candidate) => candidate.rankA !== undefined)
+        .sort((a, b) => (a.rankA ?? 0) - (b.rankA ?? 0))
+        .slice(0, 100)
+        .map((candidate) => candidate.memory.id)
+    );
     const isGlobalAttached = hasGlobalDb(db);
     let vecSql = `
       SELECT * FROM memories
@@ -363,7 +380,7 @@ export async function searchMemories(
 
     // Query vectors are computed lazily, once per model id actually present in scope
     const queryVecs = new Map<number, Float32Array | null>();
-    const scoredVectors: Array<{ memory: Memory; sim: number }> = [];
+    const scoredVectors: Array<{ memory: Memory; sim: number; modelId: number }> = [];
     for (const row of embeddedRows) {
       if (!passesFilter(row)) continue;
       const decoded = decodeTaggedEmbedding(row.embedding);
@@ -371,13 +388,27 @@ export async function searchMemories(
       // Rows embedded by the feature-hash vectorizer are inert unless hash mode is on.
       // This keeps a database written by an older default from re-enabling the regression.
       if (decoded.modelId === EMBEDDING_MODEL_IDS.FEATURE_HASH_384 && !allowHashVectors) continue;
-      if (decoded.modelId === EMBEDDING_MODEL_IDS.MINILM_L6_V2) semanticVectorSeen = true;
+      if (
+        decoded.modelId === EMBEDDING_MODEL_IDS.MINILM_L6_V2 ||
+        decoded.modelId === EMBEDDING_MODEL_IDS.STATIC_POTION_256
+      ) {
+        semanticVectorSeen = true;
+      }
+      // The static tier is a bounded reranker, not a full scan: it only scores the BM25
+      // candidate set (top 50 today, capped at 100) so query cost stays flat as the
+      // database grows.
+      if (
+        decoded.modelId === EMBEDDING_MODEL_IDS.STATIC_POTION_256 &&
+        !bm25CandidateIds.has(row.id)
+      ) {
+        continue;
+      }
 
       if (!queryVecs.has(decoded.modelId)) {
         const provider = getProviderForModel(decoded.modelId, allowHashVectors);
         let qv: Float32Array | null = null;
         if (provider) {
-          try { qv = await provider.embed(query); } catch { qv = null; }
+          try { qv = await embedQueryCached(provider, query); } catch { qv = null; }
         }
         queryVecs.set(decoded.modelId, qv);
       }
@@ -386,18 +417,26 @@ export async function searchMemories(
 
       const sim = cosineSimilarity(queryVec, decoded.vector);
       const threshold = retrieval.vectorThreshold ?? VECTOR_SIMILARITY_THRESHOLDS[decoded.modelId] ?? 0.5;
-      if (sim >= threshold) {
-        scoredVectors.push({ memory: row, sim });
+      // A zero cosine means an empty or orthogonal vector; it is never a match.
+      if (sim > 0 && sim >= threshold) {
+        scoredVectors.push({ memory: row, sim, modelId: decoded.modelId });
       }
     }
 
     scoredVectors.sort((a, b) => b.sim - a.sim);
     let rank = 1;
     for (const item of scoredVectors.slice(0, 50)) {
-      if (!candidatesMap.has(item.memory.id)) {
-        candidatesMap.set(item.memory.id, { memory: item.memory, rankB: rank });
+      const existing = candidatesMap.get(item.memory.id);
+      const isStatic = item.modelId === EMBEDDING_MODEL_IDS.STATIC_POTION_256;
+      if (!existing) {
+        candidatesMap.set(item.memory.id, isStatic
+          ? { memory: item.memory, staticSim: item.sim }
+          : { memory: item.memory, rankB: rank });
+      } else if (isStatic) {
+        // A static vector is a bounded rerank score, never a rank contribution.
+        existing.staticSim = item.sim;
       } else {
-        candidatesMap.get(item.memory.id)!.rankB = rank;
+        existing.rankB = rank;
       }
       rank++;
     }
@@ -561,14 +600,21 @@ export async function searchMemories(
 
   // --- RRF FUSION & MULTIPLIERS ---
   const effectiveVectorWeight = retrieval.streamWeights?.vector ?? (semanticVectorSeen ? 3 : 1);
+  const staticBlendWeight = retrieval.staticBlendWeight ?? 0.15;
   const allScored: ScoredMemory[] = [];
   for (const [, item] of candidatesMap) {
-    const { memory, rankA, rankB, rankC } = item;
+    const { memory, rankA, rankB, rankC, staticSim } = item;
 
     let rrf = 0;
     if (rankA !== undefined) rrf += streamWeights.bm25 / (rrfK + rankA);
     if (rankB !== undefined) rrf += effectiveVectorWeight / (rrfK + rankB);
     if (rankC !== undefined) rrf += streamWeights.graph / (rrfK + rankC);
+    // The static tier reranks BM25 candidates by adding a bounded cosine bonus: at most
+    // `staticBlendWeight` of a rank-1 BM25 hit, so it can settle near-ties but never
+    // displace a clearly better lexical match.
+    if (staticSim !== undefined && staticBlendWeight > 0) {
+      rrf += (staticBlendWeight * Math.max(0, staticSim)) / (rrfK + 1);
+    }
     if (rrf === 0) continue;
 
     // Multipliers (both are configurable so ablations can disable them cleanly).

@@ -6,6 +6,7 @@ import { FastrRepository } from '../db/repository.js';
 import { SpoolManager } from '../db/spool.js';
 import { initDatabase } from '../db/schema.js';
 import { searchMemories } from '../search/hybrid-rrf.js';
+import { ensureInstalledStaticModel } from '../search/embeddings.js';
 import { scrubSecrets } from '../privacy/scrubber.js';
 import { syncModulePage, syncAllModulePages } from '../mirror/markdown-pages.js';
 import { FastrConfig, loadConfig } from '../config.js';
@@ -90,6 +91,10 @@ export function createFastrServerContext(customRoot?: string, homeDir?: string):
       repo.attachGlobalDatabase(config.globalDbPath);
     } catch {}
   }
+
+  // Load the optional static semantic model once when it is installed. It never
+  // downloads and adds ~65 ms of startup cost only when the asset is present.
+  ensureInstalledStaticModel(homeDir);
 
   // Auto-drain any pending spool events on startup
   if (spool.hasPending()) {

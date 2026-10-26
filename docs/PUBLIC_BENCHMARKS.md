@@ -125,6 +125,61 @@ FastrMemory clears the `+5pp Hit@5` target on LongMemEval (`+10.4pp` vs MiniSear
 
 The MCP adapter is keyword-coverage ranking over the server's substring search, not a native relevance score. Full adapter rules, pins, install commands, and caveats are in [`docs/EXTERNAL_BASELINE.md`](EXTERNAL_BASELINE.md). The self-repository runner was not repeated against an external engine.
 
+## Static semantic tier (P1 gate)
+
+The optional semantic tier is a pure-TypeScript model2vec lookup table: `minishlab/potion-base-8M`
+at revision `bf8b056651a2c21b8d2565580b8569da283cab23`, 256 dimensions, `model.safetensors`
+30,236,760 bytes (SHA-256 `f65d0f32...223de2`). It adds no runtime dependency and no native binary;
+`fastr model install` downloads it explicitly, verifies the hash, and `fastr model remove` deletes it.
+
+Two correctness gates run before any quality number is trusted:
+
+| Gate | Result |
+|---|---|
+| Tokenizer vs HuggingFace `tokenizers` (20 edge cases: casing, accents, CJK, emoji, tabs/newlines, over-long words) | 20/20 exact token-id match |
+| Mean-pooled embedding vs NumPy reference (20 cases, 256 dims) | max abs diff `2.98e-8`, min cosine `1.0` |
+
+Retrieval uses the tier as a **bounded reranker**: cosine similarity is blended into the BM25
+score with a coefficient that caps the bonus at 15% of a rank-1 BM25 hit, and only BM25 candidates
+are scored. The first implementation fused the static stream through free RRF at the semantic
+weight (3.0) and lost **10.0 pp** Hit@1 on dev (91.7% → 81.7%, n=60). That is a fusion bug, not a
+model result: a reranker must not outvote the first stage.
+
+Dev split (tuning), n=60, Wilson 95% CI:
+
+| Engine | Hit@1 | 95% CI | Hit@5 | MRR | Fixed / broken | Backfill |
+|---|---:|---|---:|---:|---|---:|
+| BM25 only | 91.7% | 81.9–96.4 | 96.7% | 0.939 | — | — |
+| + potion, title only, blend 0.15 | 91.7% | 81.9–96.4 | 96.7% | 0.939 | 0 / 0 | 0.07 ms/doc |
+| + potion, title+content, blend 0.10 | 91.7% | 81.9–96.4 | 96.7% | 0.939 | 0 / 0 | 2.12 ms/doc |
+| + potion, title+content, blend 0.15 | 93.3% | 84.1–97.4 | 96.7% | 0.948 | 1 / 0 | 2.12 ms/doc |
+| + potion, title+content, blend 0.30 | 91.7% | 81.9–96.4 | 95.0% | 0.939 | 1 / 1 | 2.12 ms/doc |
+| + potion, title+content, blend 0.60 | 90.0% | 79.9–95.3 | 96.7% | 0.929 | 1 / 2 | 2.12 ms/doc |
+| + potion, title+content, blend 1.00 | 86.7% | 75.8–93.1 | 96.7% | 0.912 | 1 / 4 | 2.12 ms/doc |
+
+Held-out test split (reported once, never used to choose the blend), n=60:
+
+| Engine | Hit@1 | 95% CI | Hit@5 | MRR | Fixed / broken |
+|---|---:|---|---:|---:|---|
+| BM25 only | 85.0% | 73.9–91.9 | 96.7% | 0.901 | — |
+| + potion, title+content, blend 0.15 | 85.0% | 73.9–91.9 | 96.7% | 0.901 | 0 / 0 |
+
+**Negative result.** Across both halves the tier fixes 1 case and breaks 1 (107/120 vs 106/120,
++0.8 pp). With one discordant pair in each direction, an exact McNemar test gives p = 1.00: there is
+no detectable difference. The static model does **not** deliver a measurable accuracy win on this
+slice, and it is not claimed as one. What it does deliver is a non-regressive semantic option: the
+bounded blend removes the 10 pp regression the free-RRF fusion caused, and the tier stays inert
+unless the asset is installed and the vector mode resolves to `semantic`. Backfill is deferred
+(2.0 ms/doc, background only), so ingestion cost is unchanged.
+
+Reproduce (needs the pinned 277 MB dataset and the 30 MB model):
+
+```bash
+python scripts/potion-golden.py bench/external/potion-base-8M
+npx tsx scripts/gate-static-model.ts --split dev
+npx tsx scripts/gate-static-model.ts --split test
+```
+
 ## Environment
 
 - CPU: AMD Ryzen 7 7700, 8 cores / 16 threads

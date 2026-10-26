@@ -1,0 +1,563 @@
+{
+  "model": "minishlab/potion-base-8M",
+  "revision": "bf8b056651a2c21b8d2565580b8569da283cab23",
+  "unkId": 1,
+  "dim": 256,
+  "vocab": 29528,
+  "cases": [
+    {
+      "text": "The quick brown fox jumps over the lazy dog.",
+      "tokens": [
+        "the",
+        "quick",
+        "brown",
+        "fox",
+        "jumps",
+        "over",
+        "the",
+        "lazy",
+        "dog",
+        "."
+      ],
+      "ids": [
+        1002,
+        3254,
+        1835,
+        3425,
+        13529,
+        1064,
+        1002,
+        12977,
+        2905,
+        18
+      ]
+    },
+    {
+      "text": "UNBELIEVABLE! How does JWT exp work?",
+      "tokens": [
+        "unbelievable",
+        "!",
+        "how",
+        "does",
+        "j",
+        "##wt",
+        "ex",
+        "##p",
+        "work",
+        "?"
+      ],
+      "ids": [
+        22659,
+        5,
+        1135,
+        1521,
+        52,
+        25683,
+        3660,
+        1367,
+        1153,
+        35
+      ]
+    },
+    {
+      "text": "café naïve résumé — co-operate re-entrant",
+      "tokens": [
+        "cafe",
+        "naive",
+        "resume",
+        "—",
+        "co",
+        "-",
+        "operate",
+        "re",
+        "-",
+        "en",
+        "##tra",
+        "##nt"
+      ],
+      "ids": [
+        6674,
+        14749,
+        12752,
+        523,
+        1528,
+        17,
+        4458,
+        1134,
+        17,
+        3378,
+        5500,
+        2378
+      ]
+    },
+    {
+      "text": "auth/jwt.ts:Date.now() milliseconds",
+      "tokens": [
+        "au",
+        "##th",
+        "/",
+        "j",
+        "##wt",
+        ".",
+        "ts",
+        ":",
+        "date",
+        ".",
+        "now",
+        "(",
+        ")",
+        "mill",
+        "##ise",
+        "##con",
+        "##ds"
+      ],
+      "ids": [
+        7746,
+        1711,
+        19,
+        52,
+        25683,
+        18,
+        23535,
+        30,
+        2064,
+        18,
+        1091,
+        12,
+        13,
+        3977,
+        4568,
+        7669,
+        4110
+      ]
+    },
+    {
+      "text": "数据库连接失败，请重试",
+      "tokens": [
+        "[UNK]",
+        "[UNK]",
+        "[UNK]",
+        "[UNK]",
+        "[UNK]",
+        "[UNK]",
+        "[UNK]",
+        "，",
+        "[UNK]",
+        "[UNK]",
+        "[UNK]"
+      ],
+      "ids": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        995,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "text": "emoji 😀 and symbols @#$%^&*()",
+      "tokens": [
+        "em",
+        "##oj",
+        "##i",
+        "[UNK]",
+        "and",
+        "symbols",
+        "@",
+        "#",
+        "$",
+        "%",
+        "^",
+        "&",
+        "*",
+        "(",
+        ")"
+      ],
+      "ids": [
+        6867,
+        28153,
+        1078,
+        1,
+        1004,
+        8261,
+        36,
+        7,
+        8,
+        9,
+        40,
+        10,
+        14,
+        12,
+        13
+      ]
+    },
+    {
+      "text": "   multiple     spaces\tand\nnewlines   ",
+      "tokens": [
+        "multiple",
+        "spaces",
+        "and",
+        "new",
+        "##lines"
+      ],
+      "ids": [
+        2680,
+        6264,
+        1004,
+        1053,
+        11741
+      ]
+    },
+    {
+      "text": "pneumonoultramicroscopicsilicovolcanoconiosis",
+      "tokens": [
+        "p",
+        "##ne",
+        "##um",
+        "##ono",
+        "##ult",
+        "##ram",
+        "##ic",
+        "##ros",
+        "##copic",
+        "##sil",
+        "##ico",
+        "##vo",
+        "##lc",
+        "##ano",
+        "##con",
+        "##ios",
+        "##is"
+      ],
+      "ids": [
+        58,
+        1644,
+        1825,
+        16181,
+        10320,
+        5450,
+        1600,
+        6358,
+        25467,
+        26578,
+        10267,
+        5773,
+        14478,
+        5767,
+        7669,
+        9741,
+        1489
+      ]
+    },
+    {
+      "text": "BM25 FTS5 SQLite WAL",
+      "tokens": [
+        "b",
+        "##m",
+        "##25",
+        "ft",
+        "##s",
+        "##5",
+        "sql",
+        "##ite",
+        "wal"
+      ],
+      "ids": [
+        44,
+        1219,
+        16794,
+        2033,
+        1021,
+        1635,
+        28302,
+        3227,
+        23553
+      ]
+    },
+    {
+      "text": "a",
+      "tokens": [
+        "a"
+      ],
+      "ids": [
+        43
+      ]
+    },
+    {
+      "text": "",
+      "tokens": [],
+      "ids": []
+    },
+    {
+      "text": "What did I decide about the payment provider migration?",
+      "tokens": [
+        "what",
+        "did",
+        "i",
+        "decide",
+        "about",
+        "the",
+        "payment",
+        "provider",
+        "migration",
+        "?"
+      ],
+      "ids": [
+        1060,
+        1112,
+        51,
+        4636,
+        1061,
+        1002,
+        6915,
+        9808,
+        8236,
+        35
+      ]
+    },
+    {
+      "text": "I prefer dark mode and short commit messages.",
+      "tokens": [
+        "i",
+        "prefer",
+        "dark",
+        "mode",
+        "and",
+        "short",
+        "commit",
+        "messages",
+        "."
+      ],
+      "ids": [
+        51,
+        8550,
+        1607,
+        4555,
+        1004,
+        1466,
+        9803,
+        6702,
+        18
+      ]
+    },
+    {
+      "text": "The user's sister's birthday is on March 3rd.",
+      "tokens": [
+        "the",
+        "user",
+        "'",
+        "s",
+        "sister",
+        "'",
+        "s",
+        "birthday",
+        "is",
+        "on",
+        "march",
+        "3rd",
+        "."
+      ],
+      "ids": [
+        1002,
+        4316,
+        11,
+        61,
+        1911,
+        11,
+        61,
+        4804,
+        1009,
+        1012,
+        1239,
+        2828,
+        18
+      ]
+    },
+    {
+      "text": "supercalifragilisticexpialidocious",
+      "tokens": [
+        "super",
+        "##cal",
+        "##if",
+        "##rag",
+        "##ilis",
+        "##tic",
+        "##ex",
+        "##pia",
+        "##lid",
+        "##oc",
+        "##ious"
+      ],
+      "ids": [
+        2571,
+        8295,
+        9134,
+        28187,
+        23417,
+        3594,
+        9294,
+        18318,
+        20279,
+        9091,
+        5319
+      ]
+    },
+    {
+      "text": "C++ vs C# vs .NET 8",
+      "tokens": [
+        "c",
+        "+",
+        "+",
+        "vs",
+        "c",
+        "#",
+        "vs",
+        ".",
+        "net",
+        "8"
+      ],
+      "ids": [
+        45,
+        15,
+        15,
+        4449,
+        45,
+        7,
+        4449,
+        18,
+        4664,
+        28
+      ]
+    },
+    {
+      "text": "email me at dev@example.com or call +1-555-0100",
+      "tokens": [
+        "email",
+        "me",
+        "at",
+        "dev",
+        "@",
+        "example",
+        ".",
+        "com",
+        "or",
+        "call",
+        "+",
+        "1",
+        "-",
+        "555",
+        "-",
+        "01",
+        "##00"
+      ],
+      "ids": [
+        9379,
+        1039,
+        1018,
+        15481,
+        36,
+        1748,
+        18,
+        3018,
+        1036,
+        1661,
+        15,
+        21,
+        17,
+        28547,
+        17,
+        4896,
+        7895
+      ]
+    },
+    {
+      "text": "hyphenated-word and snake_case and camelCase",
+      "tokens": [
+        "h",
+        "##yp",
+        "##hen",
+        "##ated",
+        "-",
+        "word",
+        "and",
+        "snake",
+        "_",
+        "case",
+        "and",
+        "camel",
+        "##case"
+      ],
+      "ids": [
+        50,
+        21577,
+        9228,
+        3389,
+        17,
+        1779,
+        1004,
+        6494,
+        41,
+        1559,
+        1004,
+        18136,
+        17388
+      ]
+    },
+    {
+      "text": "ÅNGSTRÖM İstanbul ﬁnancial",
+      "tokens": [
+        "ang",
+        "##strom",
+        "istanbul",
+        "ﬁ",
+        "##nan",
+        "##cial"
+      ],
+      "ids": [
+        16082,
+        14693,
+        8966,
+        990,
+        6235,
+        12253
+      ]
+    },
+    {
+      "text": "1,234.56 USD 42% 3.14159",
+      "tokens": [
+        "1",
+        ",",
+        "234",
+        ".",
+        "56",
+        "usd",
+        "42",
+        "%",
+        "3",
+        ".",
+        "141",
+        "##59"
+      ],
+      "ids": [
+        21,
+        16,
+        21024,
+        18,
+        4185,
+        12757,
+        3419,
+        9,
+        23,
+        18,
+        14477,
+        27160
+      ]
+    }
+  ]
+}

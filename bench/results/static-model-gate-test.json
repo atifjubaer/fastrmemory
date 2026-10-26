@@ -1,0 +1,214 @@
+{
+  "generatedAt": "2026-10-26T00:31:44.087Z",
+  "model": {
+    "name": "minishlab/potion-base-8M",
+    "revision": "bf8b056651a2c21b8d2565580b8569da283cab23",
+    "dim": 256,
+    "bytes": 30236760,
+    "sha256": "f65d0f325faadc1e121c319e2faa41170d3fa07d8c89abd48ca5358d9a223de2"
+  },
+  "dataset": {
+    "name": "longmemeval_s_cleaned",
+    "revision": "98d7416c24c778c2fee6e6f3006e7a073259d48f",
+    "sha256": "D6F21EA9D60A0D56F34A05B609C79C88A451D2AE03597821EA3D5A9678C3A442",
+    "slicePerType": 20,
+    "split": "test",
+    "cases": 60,
+    "memories": 2885
+  },
+  "metric": "Hit@1 over 60 dev / 60 test cases; 95% CI is Wilson on the binomial count",
+  "rows": [
+    {
+      "engine": "bm25_only",
+      "blend": null,
+      "n": 60,
+      "hitAt1": 85,
+      "hitAt5": 96.7,
+      "mrr": 0.901,
+      "p50Ms": 9.33,
+      "hitAt1Ci": [
+        73.9,
+        91.9
+      ],
+      "fixed": 0,
+      "broken": 0,
+      "perType": {
+        "knowledge-update": 92.3,
+        "multi-session": 50,
+        "single-session-assistant": 100,
+        "single-session-preference": 64.3,
+        "single-session-user": 100,
+        "temporal-reasoning": 100
+      },
+      "backfillMsPerDoc": null
+    },
+    {
+      "engine": "bm25_potion_title",
+      "blend": 0.15,
+      "n": 60,
+      "hitAt1": 85,
+      "hitAt5": 98.3,
+      "mrr": 0.901,
+      "p50Ms": 10.39,
+      "hitAt1Ci": [
+        73.9,
+        91.9
+      ],
+      "fixed": 0,
+      "broken": 0,
+      "perType": {
+        "knowledge-update": 92.3,
+        "multi-session": 50,
+        "single-session-assistant": 100,
+        "single-session-preference": 64.3,
+        "single-session-user": 100,
+        "temporal-reasoning": 100
+      },
+      "backfillMsPerDoc": 0.067
+    },
+    {
+      "engine": "bm25_potion_title_content",
+      "blend": 0.1,
+      "n": 60,
+      "hitAt1": 85,
+      "hitAt5": 96.7,
+      "mrr": 0.901,
+      "p50Ms": 10.7,
+      "hitAt1Ci": [
+        73.9,
+        91.9
+      ],
+      "fixed": 0,
+      "broken": 0,
+      "perType": {
+        "knowledge-update": 92.3,
+        "multi-session": 50,
+        "single-session-assistant": 100,
+        "single-session-preference": 64.3,
+        "single-session-user": 100,
+        "temporal-reasoning": 100
+      },
+      "backfillMsPerDoc": 2.103
+    },
+    {
+      "engine": "bm25_potion_title_content",
+      "blend": 0.15,
+      "n": 60,
+      "hitAt1": 85,
+      "hitAt5": 96.7,
+      "mrr": 0.901,
+      "p50Ms": 11.75,
+      "hitAt1Ci": [
+        73.9,
+        91.9
+      ],
+      "fixed": 0,
+      "broken": 0,
+      "perType": {
+        "knowledge-update": 92.3,
+        "multi-session": 50,
+        "single-session-assistant": 100,
+        "single-session-preference": 64.3,
+        "single-session-user": 100,
+        "temporal-reasoning": 100
+      },
+      "backfillMsPerDoc": 2.103
+    },
+    {
+      "engine": "bm25_potion_title_content",
+      "blend": 0.3,
+      "n": 60,
+      "hitAt1": 85,
+      "hitAt5": 98.3,
+      "mrr": 0.901,
+      "p50Ms": 11.58,
+      "hitAt1Ci": [
+        73.9,
+        91.9
+      ],
+      "fixed": 1,
+      "broken": 1,
+      "perType": {
+        "knowledge-update": 84.6,
+        "multi-session": 50,
+        "single-session-assistant": 100,
+        "single-session-preference": 71.4,
+        "single-session-user": 100,
+        "temporal-reasoning": 100
+      },
+      "backfillMsPerDoc": 2.103
+    },
+    {
+      "engine": "bm25_potion_title_content",
+      "blend": 0.6,
+      "n": 60,
+      "hitAt1": 85,
+      "hitAt5": 98.3,
+      "mrr": 0.907,
+      "p50Ms": 10.59,
+      "hitAt1Ci": [
+        73.9,
+        91.9
+      ],
+      "fixed": 2,
+      "broken": 2,
+      "perType": {
+        "knowledge-update": 92.3,
+        "multi-session": 50,
+        "single-session-assistant": 100,
+        "single-session-preference": 64.3,
+        "single-session-user": 100,
+        "temporal-reasoning": 100
+      },
+      "backfillMsPerDoc": 2.103
+    },
+    {
+      "engine": "bm25_potion_title_content",
+      "blend": 1,
+      "n": 60,
+      "hitAt1": 83.3,
+      "hitAt5": 98.3,
+      "mrr": 0.898,
+      "p50Ms": 11.31,
+      "hitAt1Ci": [
+        72,
+        90.7
+      ],
+      "fixed": 2,
+      "broken": 3,
+      "perType": {
+        "knowledge-update": 92.3,
+        "multi-session": 50,
+        "single-session-assistant": 100,
+        "single-session-preference": 64.3,
+        "single-session-user": 88.9,
+        "temporal-reasoning": 100
+      },
+      "backfillMsPerDoc": 2.103
+    },
+    {
+      "engine": "bm25_potion_content",
+      "blend": 0.15,
+      "n": 60,
+      "hitAt1": 85,
+      "hitAt5": 96.7,
+      "mrr": 0.901,
+      "p50Ms": 10.51,
+      "hitAt1Ci": [
+        73.9,
+        91.9
+      ],
+      "fixed": 0,
+      "broken": 0,
+      "perType": {
+        "knowledge-update": 92.3,
+        "multi-session": 50,
+        "single-session-assistant": 100,
+        "single-session-preference": 64.3,
+        "single-session-user": 100,
+        "temporal-reasoning": 100
+      },
+      "backfillMsPerDoc": 2.204
+    }
+  ]
+}

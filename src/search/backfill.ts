@@ -1,6 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 import { FastrRepository } from '../db/repository.js';
-import { encodeTaggedEmbedding, embeddingHeader, getAvailableEmbeddingProvider } from './embeddings.js';
+import { encodeTaggedEmbedding, embeddingHeader, EMBEDDING_MODEL_IDS, getAvailableEmbeddingProvider } from './embeddings.js';
 
 export interface BackfillOptions {
   /** Max memories embedded per call (keeps each batch small and bounded). */
@@ -40,7 +40,12 @@ export async function backfillEmbeddings(
     // as explicit scope text: titles often omit or abbreviate it, while queries
     // frequently name the module. Keep the full body out so long templates do
     // not dilute the concept signal that BM25 already covers.
-    const vec = await provider.embed(`${row.title}. module: ${row.module}`);
+    // The static tier is the exception: its cosine only reranks BM25 candidates, so it
+    // needs the body text to distinguish candidates that share a title stem.
+    const text = provider.modelId === EMBEDDING_MODEL_IDS.STATIC_POTION_256
+      ? `${row.title}\n${row.content}`
+      : `${row.title}. module: ${row.module}`;
+    const vec = await provider.embed(text);
     repo.updateEmbedding(row.id, encodeTaggedEmbedding(vec, provider.modelId));
     count++;
   }

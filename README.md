@@ -373,9 +373,15 @@ fastrmemory vision search "modal error 401"
 
 # Pre-merge CI/CD gate checking PR diffs against active error traps:
 fastrmemory guard --strict
+
+# Optional 30 MB static semantic model (never downloaded implicitly):
+fastrmemory model status
+fastrmemory model install
 ```
 
 `fastrmemory hygiene` reports orphaned file links, conflict rows, and feedback rows; duplicate active memories by normalized title or exact content; and stale unpinned active memories (default 90 days since the last recall or creation). `npm run check:hygiene` runs the same inspector against a deterministic fixture inside `check:ci`; it does not mutate a project database. Use `--fail-on-issues` when a script should exit nonzero on findings.
+
+`fastrmemory model install` fetches `minishlab/potion-base-8M` (256-dim, 30,236,760 bytes), verifies both files against pinned SHA-256 hashes, and stores them under `~/.fastr/models/`. The tier is a bounded reranker over BM25 candidates: it fixes 1 case and breaks 1 across the 120-case LongMemEval slice, so it is documented as non-regressive, not as an accuracy win. Default recall is BM25-only until the asset is installed and backfill has produced vectors.
 
 ---
 

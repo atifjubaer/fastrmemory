@@ -4,6 +4,10 @@
  * Gracefully falls back to null if dependencies are missing or offline.
  */
 
+import type { StaticModel } from './static-model.js';
+import { loadStaticModel } from './static-model.js';
+import { staticModelStatus } from './static-model-install.js';
+
 let featureExtractor: any = null;
 let initAttempted = false;
 
@@ -195,7 +199,8 @@ export function float32ArrayToBuffer(array: Float32Array): Buffer {
 
 export const EMBEDDING_MODEL_IDS = {
   FEATURE_HASH_384: 1,
-  MINILM_L6_V2: 2
+  MINILM_L6_V2: 2,
+  STATIC_POTION_256: 3
 } as const;
 export type EmbeddingModelId = (typeof EMBEDDING_MODEL_IDS)[keyof typeof EMBEDDING_MODEL_IDS];
 
@@ -239,9 +244,57 @@ export function decodeTaggedEmbedding(buf: Uint8Array | null | undefined): { mod
 
 export type VectorMode = 'off' | 'hash' | 'semantic';
 
+/**
+ * The optional pure-TypeScript static model (model2vec `potion-base-8M`). It is loaded
+ * explicitly, never downloaded during recall, and is preferred over the feature-hash
+ * vectorizer because it carries real semantic signal.
+ */
+let staticModel: StaticModel | null = null;
+
+export function setStaticModel(model: StaticModel | null): void {
+  staticModel = model;
+}
+
+/** Loads a model2vec directory; returns false (and stays hash-only) when it is absent. */
+export function loadStaticModelFromDir(dir: string): boolean {
+  try {
+    staticModel = loadStaticModel(dir);
+    return true;
+  } catch {
+    staticModel = null;
+    return false;
+  }
+}
+
 /** True when a real semantic embedding provider is resident right now. */
 export function hasSemanticProvider(): boolean {
-  return featureExtractor !== null;
+  return featureExtractor !== null || staticModel !== null;
+}
+
+let staticLoadAttempted = false;
+
+/**
+ * Loads the installed static model once. Returns true when it is resident.
+ * Never downloads and never runs in tests: CI has no model and must stay hermetic.
+ */
+export function ensureInstalledStaticModel(homeDir?: string): boolean {
+  if (staticModel) return true;
+  if (staticLoadAttempted) return false;
+  staticLoadAttempted = true;
+  if (process.env.NODE_ENV === 'test') return false;
+  if (process.env.FASTR_DISABLE_STATIC_MODEL === '1') return false;
+  const mode = (process.env.FASTR_VECTOR_MODE ?? '').trim().toLowerCase();
+  if (mode === 'off' || mode === 'hash') return false;
+
+  const status = staticModelStatus(homeDir);
+  if (!status.installed) return false;
+  return loadStaticModelFromDir(status.dir);
+}
+
+/** Test seam: forget the one-shot load attempt. */
+export function __resetStaticModelForTests(): void {
+  staticModel = null;
+  staticLoadAttempted = false;
 }
 
 /**
@@ -288,6 +341,12 @@ export function getAvailableEmbeddingProvider(): EmbeddingProvider {
       }
     };
   }
+  if (staticModel) {
+    return {
+      modelId: EMBEDDING_MODEL_IDS.STATIC_POTION_256,
+      embed: async (text: string) => staticModel!.embed(text)
+    };
+  }
   return featureHashProvider;
 }
 
@@ -299,11 +358,54 @@ export function getAvailableEmbeddingProvider(): EmbeddingProvider {
 export function getProviderForModel(modelId: number, allowHash = true): EmbeddingProvider | null {
   if (modelId === EMBEDDING_MODEL_IDS.FEATURE_HASH_384) return allowHash ? featureHashProvider : null;
   if (modelId === EMBEDDING_MODEL_IDS.MINILM_L6_V2 && featureExtractor) return getAvailableEmbeddingProvider();
+  if (modelId === EMBEDDING_MODEL_IDS.STATIC_POTION_256 && staticModel) return getAvailableEmbeddingProvider();
   return null;
 }
 
 /** Minimum cosine similarity for a vector hit to count as a real match, per model. */
 export const VECTOR_SIMILARITY_THRESHOLDS: Record<number, number> = {
   [EMBEDDING_MODEL_IDS.FEATURE_HASH_384]: 0.35,
-  [EMBEDDING_MODEL_IDS.MINILM_L6_V2]: 0.35
+  [EMBEDDING_MODEL_IDS.MINILM_L6_V2]: 0.35,
+  // The static tier reranks only the BM25 candidate set, so every candidate is scored;
+  // the threshold just drops degenerate (zero-norm) vectors.
+  [EMBEDDING_MODEL_IDS.STATIC_POTION_256]: 0
 };
+
+// ---------------------------------------------------------------------------
+// Query-vector LRU
+//
+// Agents repeat the same query inside a session (retry, re-render, tool loop), and
+// embedding a query costs the same as embedding a document. A small process-wide LRU
+// makes repeats free without letting memory grow with the number of distinct queries.
+// ---------------------------------------------------------------------------
+
+export const QUERY_VECTOR_CACHE_LIMIT = 256;
+const queryVectorCache = new Map<string, Float32Array>();
+
+/** Embeds a query through the cache. Recency is refreshed on every hit. */
+export async function embedQueryCached(provider: EmbeddingProvider, query: string): Promise<Float32Array> {
+  const key = `${provider.modelId}\u0000${query}`;
+  const hit = queryVectorCache.get(key);
+  if (hit) {
+    queryVectorCache.delete(key);
+    queryVectorCache.set(key, hit);
+    return hit;
+  }
+
+  const vector = await provider.embed(query);
+  queryVectorCache.set(key, vector);
+  while (queryVectorCache.size > QUERY_VECTOR_CACHE_LIMIT) {
+    const oldest = queryVectorCache.keys().next().value;
+    if (oldest === undefined) break;
+    queryVectorCache.delete(oldest);
+  }
+  return vector;
+}
+
+export function queryVectorCacheSize(): number {
+  return queryVectorCache.size;
+}
+
+export function clearQueryVectorCache(): void {
+  queryVectorCache.clear();
+}

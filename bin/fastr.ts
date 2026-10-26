@@ -11,6 +11,11 @@ import { formatBenchmarkMarkdown } from '../src/bench/benchmark.js';
 import { startUiServer } from '../src/ui/server.js';
 import { installAgentHooks } from '../src/installer/hooks.js';
 import {
+  installStaticModel,
+  removeStaticModel,
+  staticModelStatus
+} from '../src/search/static-model-install.js';
+import {
   formatMcpInitResult,
   initMcpClients,
   parseMcpChannel,
@@ -1325,6 +1330,54 @@ program
       console.error(`Guardian error: ${err.message}`);
       process.exit(1);
     }
+  });
+
+// 22. Optional static semantic model (30 MB, never downloaded implicitly)
+const modelCmd = program
+  .command('model')
+  .description('Manage the optional static semantic model (30 MB, opt-in)');
+
+modelCmd
+  .command('status')
+  .description('Show whether the static semantic model is installed')
+  .action(() => {
+    const status = staticModelStatus();
+    console.log(`Static model: ${status.installed ? 'installed' : 'not installed'}`);
+    console.log(`Directory:    ${status.dir}`);
+    if (status.installed) {
+      console.log(`Size:         ${(status.bytes / 1_000_000).toFixed(1)} MB`);
+      console.log(`Vector mode:  semantic (model id 3, 256-dim)`);
+    } else {
+      console.log(`Missing:      ${status.missing.join(', ')}`);
+      console.log(`Install with: fastr model install`);
+    }
+  });
+
+modelCmd
+  .command('install')
+  .description('Download and verify the static semantic model')
+  .option('-f, --force', 'Re-download even when a verified copy exists', false)
+  .action(async (opts: any) => {
+    try {
+      const result = await installStaticModel({
+        force: opts.force,
+        onProgress: (message) => console.log(message)
+      });
+      console.log(result.alreadyPresent
+        ? `\nModel already present in ${result.dir}`
+        : `\nInstalled to ${result.dir}`);
+      console.log('Recall now uses the semantic tier automatically when vectors exist.');
+    } catch (err: any) {
+      console.error(`Model install failed: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+modelCmd
+  .command('remove')
+  .description('Delete the installed static semantic model')
+  .action(() => {
+    console.log(removeStaticModel() ? 'Static model removed.' : 'Static model is not installed.');
   });
 
 program.parse(process.argv);
