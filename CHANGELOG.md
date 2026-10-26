@@ -2,7 +2,9 @@
 
 All notable changes to FastrMemory are recorded here. Versions follow semantic versioning.
 
-## [Unreleased]
+## [0.6.0] - 2026-10-26
+
+First release with the deferred write path, the 12-tool MCP core, the optional static semantic reranker, aggregate and temporal retrieval, the cross-engine benchmark, and reversible hook installs.
 
 ### Added
 

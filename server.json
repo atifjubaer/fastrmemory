@@ -3,7 +3,7 @@
   "name": "io.github.atifjubaer/fastrmemory",
   "title": "FastrMemory",
   "description": "Local-first cognitive agent memory with bi-temporal SQLite, replayable history, and triple-stream retrieval.",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "websiteUrl": "https://github.com/atifjubaer/fastrmemory",
   "repository": {
     "url": "https://github.com/atifjubaer/fastrmemory",
