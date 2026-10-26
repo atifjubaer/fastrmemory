@@ -60,6 +60,11 @@ Three streams are fused with Reciprocal Rank Fusion (RRF):
 2. **Vector**: cosine similarity over model-tagged embeddings. This stream is **off by default** unless a semantic provider is loaded. The deterministic feature-hash vectorizer is opt-in (`FASTR_VECTOR_MODE=hash`); it duplicates BM25 lexically and lowered LongMemEval Hit@1 from 89.2% to 81.7% on the 120-case slice. MiniLM vectors are weighted 3.0 when present; hash vectors use 1.0. The optional static tier (model id 3) never contributes a rank: it adds a bounded cosine bonus (`staticBlendWeight`, default 0.15) to BM25 candidates only, so it can settle near-ties but cannot outvote the first stage.
 3. **Graph**: file links supplied by the caller, query entities, and 1-2 hop spreading activation over `graph_edges`. Seeding the graph from BM25/vector candidates is off by default.
 
+Two query-shaping passes run before those streams:
+
+- **Aggregate coverage** (default on, `retrieval.aggregateCoverage`). A counting or enumeration query ("how many projects have I led?", "list all the books I read") is detected by `detectAggregateIntent`. Its scaffolding words — `how`, `many`, `times`, `past`, `two`, `weeks`, the pronouns, the prepositions — are removed by `aggregateContentTerms`, and a second BM25 pass runs over the remaining content terms. The two rank lists are fused with the same reciprocal-rank rule used between streams, so a document found by both passes outranks one found by only one. That preserves the original query's rank-1 precision while admitting the deeper sessions the stripped query reaches. The result set widens to `retrieval.aggregateLimit` rows (default 20) only for aggregate questions.
+- **Temporal windows** (opt-in, `retrieval.temporalFilter`). `detectTemporalWindow` parses relative ranges ("past two weeks", "past few months", "last month", "since the start of the year") against the question date, and absolute ranges ("in 2022", "in March 2023") without one. `withinWindow` then filters candidates on `valid_from` after fusion and before diversification, so the window never reorders the rows it keeps. The first-stage caps widen (BM25 200, vector 100) because a window makes most candidates irrelevant. If a window excludes every candidate, retrieval falls back to the unfiltered ranking and sets `temporalFallback: true` rather than returning nothing.
+
 ```text
 score  = sum(stream_weight / (20 + rank_stream))   # BM25 1.0, vector 1.0 or 3.0, graph 1.0
 score += 0.15 * max(0, cos) / 21                   # static tier only, BM25 candidates only
@@ -70,13 +75,15 @@ score *= 1.25 if status == 'verified'
 
 Query vectors pass through a 256-entry LRU keyed by model id and query text, so a repeated agent query does not re-embed. The static model is loaded once from `~/.fastr/models/potion-base-8M` at server start when present; recall never downloads it.
 
-Results are sorted, capped at 3 per source session, then packed into a token budget. If the top result alone exceeds the budget, the current packer truncates it rather than silently dropping it.
+Results are sorted, capped at 3 per source session, then packed into a token budget. Aggregate questions raise the returned-row cap to `aggregateLimit` (20) so a caller can count or enumerate. If the top result alone exceeds the budget, the current packer truncates it rather than silently dropping it. `SearchResult` annotates `temporalWindow` / `temporalFallback` when a window ran, and `ScoredMemory.temporalMatch` marks the rows inside it.
 
 Known retrieval gaps (tracked in `ROADMAP.md`):
 
 - The 240-case benchmark is synthetic; it is separate from the public LongMemEval, LoCoMo, and self-repository retrieval-only harnesses.
 - External baselines are limited to two pinned retrieval engines: MiniSearch `7.2.0` and the MCP reference memory server `2.0.0`. No unverified competitor or QA-leaderboard comparison is claimed.
 - The 48-case holdout leaves a wide Hit@1 interval, and semantic paraphrase is the weakest category.
+- Aggregate coverage fixes 4 cases and breaks 0 across the 120-case LongMemEval slice, which is inside its paired-bootstrap interval; 4-gold strict@5 stays at 25.0% because the aggregate pass changes the candidate set, not the ranking.
+- Temporal filtering is structurally inert on LongMemEval-s: every haystack spans about ten days, so every relative window covers the whole corpus. It is unit-tested and opt-in, not a measured accuracy gain.
 - The graph stream is not exercised beyond cases that are already rank 1 on this corpus.
 - A reranker for title-concept collisions is not implemented.
 

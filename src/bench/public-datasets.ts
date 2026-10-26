@@ -25,6 +25,8 @@ export interface PublicCase {
   goldIds: string[];
   goldCount: number;
   missingGoldCount: number;
+  /** ISO timestamp of the question, when the dataset provides one. Anchors temporal windows. */
+  questionDate?: string;
 }
 
 export interface PublicDataset {
@@ -49,6 +51,7 @@ interface LongMemEvalItem {
   question_id?: string;
   question_type?: string;
   question?: string;
+  question_date?: string;
   haystack_dates?: string[];
   haystack_session_ids?: string[];
   haystack_sessions?: LongMemEvalTurn[][];
@@ -193,7 +196,8 @@ export function parseLongMemEval(raw: unknown, options: ParseOptions = {}): Publ
       category: item.question_type ?? 'unknown',
       goldIds,
       goldCount: goldSessionIds.size,
-      missingGoldCount: goldSessionIds.size - goldIds.length
+      missingGoldCount: goldSessionIds.size - goldIds.length,
+      questionDate: typeof item.question_date === 'string' ? longMemEvalDate(item.question_date) : undefined
     });
   }
 

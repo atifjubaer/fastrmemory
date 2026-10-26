@@ -73,12 +73,96 @@ The cleaned file changes the case set, so the numbers above are not directly com
 | Engine | Cases | Hit@1 | Hit@5 | Hit@10 | MRR | Evidence recall@5 | Full recall@5 | Tokens | p50 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | BM25-only | 120 | 89.2% | 96.7% | 99.2% | 0.923 | 0.935 | 89.2% | 31,427 | 17.75 ms |
-| Default config | 120 | 89.2% | 96.7% | 99.2% | 0.923 | 0.935 | 89.2% | 31,427 | 18.11 ms |
+| Default config (pre-P3) | 120 | 89.2% | 96.7% | 99.2% | 0.923 | 0.935 | 89.2% | 31,427 | 18.11 ms |
+| Default config (current) | 120 | 90.0% | 96.7% | 99.2% | 0.931 | 0.940 | 90.0% | 43,876 | 22.03 ms |
 | Full + hash vectors (opt-in) | 120 | 81.7% | 96.7% | 99.2% | 0.874 | 0.932 | 89.2% | 31,453 | 18.38 ms |
 
 `dev` only (n = 60, the split used for tuning): BM25-only 91.7% Hit@1, default config 91.7%, full hash 81.7%. The `test` split was not used for any decision in this change.
 
-The default configuration is now identical to BM25-only because the feature-hash vectorizer is opt-in (`FASTR_VECTOR_MODE=hash`). On this slice the hash stream degrades 11 cases, improves none, and leaves 109 unchanged. `bench/fixtures/hash-regression.json` pins 20 of those cases (10 degraded, 10 unchanged) so a regression test fails if hash vectors become the default again.
+The feature-hash vectorizer is opt-in (`FASTR_VECTOR_MODE=hash`). On this slice the hash stream degrades 11 cases, improves none, and leaves 109 unchanged. `bench/fixtures/hash-regression.json` pins 20 of those cases (10 degraded, 10 unchanged) so a regression test fails if hash vectors become the default again.
+
+The default configuration is no longer byte-identical to BM25-only: it also runs the aggregate-coverage pass described below. On the 120-case slice that moves Hit@1 from 89.2% to 90.0%, strict@5 from 89.2% to 90.0%, and strict@10 from 95.8% to 97.5%, and raises the average packed context from 31,427 to 43,876 tokens because counting questions return up to 20 rows instead of 10.
+
+#### Aggregate coverage and temporal windows (P3/P4, 2026-10-26)
+
+Counting questions ("how many projects have I led?") are not topical queries. FTS5 ORs every
+term, so scaffolding words that are frequent across the whole corpus (`how`, `many`, `times`,
+`past`, `two`, `weeks`) outvote the one content word that identifies the activity being counted.
+Two changes address this:
+
+1. **Aggregate coverage** (on by default). When the query matches a counting or enumeration
+   pattern, a second lexical pass runs over the content terms only and is fused with the
+   original pass using the same reciprocal-rank rule the streams use. A document found by both
+   passes outranks a document found by only one, so the original query keeps its precision
+   while the deeper rows become reachable. Aggregate questions return up to 20 rows
+   (`retrieval.aggregateLimit`), which is what a caller needs in order to count.
+2. **Temporal windows** (opt-in, `retrieval.temporalFilter`). Relative and absolute date ranges
+   are parsed into an absolute interval using the dataset's `question_date`, then applied as a
+   filter on `valid_from` before ranking. When the window excludes every candidate, retrieval
+   falls back to the unfiltered set and reports `temporalFallback: true`.
+
+Both are measured with `npx tsx scripts/gate-aggregate-temporal.ts --split <dev|test>`, which
+writes `bench/results/gate-aggregate-temporal-<split>.json` with per-case rows, Wilson intervals,
+paired bootstrap deltas, and exact McNemar p-values.
+
+Dev split (tuning), n=60:
+
+| Engine | Hit@1 | strict@5 | strict@10 | 4-gold strict@10 | Temporal strict@5 | Preference strict@5 |
+|---|---:|---:|---:|---:|---:|---:|
+| BM25 only | 91.7% (55/60) | 90.0% (54/60) | 98.3% (59/60) | 66.7% (2/3) | 90.9% (10/11) | 66.7% (4/6) |
+| + aggregate | 91.7% (55/60) | 91.7% (55/60) | 98.3% (59/60) | 66.7% (2/3) | 90.9% (10/11) | 66.7% (4/6) |
+| + temporal | 91.7% (55/60) | 90.0% (54/60) | 98.3% (59/60) | 66.7% (2/3) | 90.9% (10/11) | 66.7% (4/6) |
+
+Held-out test split (reported once), n=60:
+
+| Engine | Hit@1 | strict@5 | strict@10 | 4-gold strict@10 | Temporal strict@5 | Preference strict@5 |
+|---|---:|---:|---:|---:|---:|---:|
+| BM25 only | 85.0% (51/60) | 88.3% (53/60) | 93.3% (56/60) | 40.0% (2/5) | 77.8% (7/9) | 85.7% (12/14) |
+| + aggregate | 88.3% (53/60) | 88.3% (53/60) | 96.7% (58/60) | 80.0% (4/5) | 77.8% (7/9) | 85.7% (12/14) |
+| + temporal | 85.0% (51/60) | 88.3% (53/60) | 93.3% (56/60) | 40.0% (2/5) | 77.8% (7/9) | 85.7% (12/14) |
+
+Aggregate coverage against BM25-only, paired per case:
+
+| Split | Hit@1 | strict@5 | strict@10 | 4-gold strict@10 |
+|---|---|---|---|---|
+| dev (n=60) | +0.0 pp (0 fixed / 0 broken) | +1.7 pp (1 fixed / 0 broken) | +0.0 pp (0 / 0) | +0.0 pp (0 / 0) |
+| test (n=60) | +3.3 pp (2 fixed / 0 broken) | +0.0 pp (0 / 0) | +3.3 pp (2 fixed / 0 broken) | +40.0 pp (2 fixed / 0 broken) |
+
+**The aggregate delta is inside its confidence interval.** Combined over all 120 cases it fixes
+4 cases and breaks none (Hit@1 106/120 → 108/120, strict@10 115/120 → 117/120). With zero
+broken cases the exact McNemar p-value is 0.5 on two discordant pairs and 1.0 on one, so this is
+reported as a **non-regressive mechanism with a measured direction**, not as a demonstrated win.
+What it does establish is the aggregate slice itself: 4-gold strict@10 rises from 50.0% (4/8)
+to 75.0% (6/8), which clears the 60% target on that reading.
+
+Two sub-targets on the same slice are **not** met and are published as misses:
+
+- **4-gold strict@5 stays at 25.0% (2/8).** Getting all four gold sessions into the top five
+  needs a ranking change, not a candidate change; the aggregate pass moves two cases from
+  outside the top ten to inside it, and none from outside the top five to inside it.
+- **Temporal strict@5 stays at 85.0% (17/20).** This one is structural on this dataset. Every
+  LongMemEval-s haystack is clustered within roughly ten days of the question date, so "past two
+  weeks", "past few months", and "since the start of the year" all cover 100% of the corpus.
+  Measured ranges: `gpt4_15e38248` spans 2023-05-20 to 2023-05-29 for a 2023-05-30 question,
+  `88432d0a` spans 2023-05-20 to 2023-05-30, `gpt4_d84a3211` spans a single day. The filter is
+  correct and its unit tests pin the boundaries, but on this dataset it removes nothing, so it
+  cannot move the metric. It stays opt-in rather than default-on for that reason.
+- **Preference strict@5 stays at 80.0% (16/20)** and **Hit@5 stays at 96.7% (116/120)**; neither
+  change targets those cells.
+
+One 4-gold case is a genuine semantic gap rather than a lexical one: `gpt4_15e38248` asks about
+"pieces of furniture I bought, assembled, sold, or fixed", and its fourth gold session describes
+a mattress, a coffee table, and throw pillows without using the word "furniture" or any of those
+verbs. No term-level method reaches it; that is the case for the optional semantic tier, which
+fixes one case and breaks one across the same 120 cases (see above).
+
+Disclosure: the mechanism was identified by inspecting all 120 cases, so the dev split was not
+the only source of insight. No parameter was chosen from a test-split outcome; `aggregateLimit`
+(20) and the scaffolding word list were fixed before the test split was run. The test split was
+run twice: once for the first gate, and once after unit tests found two date-parsing defects
+(a month subtraction that rolled 2023-05-30 minus three months to 2023-03-02 instead of
+2023-02-28, and an unparsed "since the start of the year"). Both runs produced identical
+retrieval metrics.
 
 ### LoCoMo
 

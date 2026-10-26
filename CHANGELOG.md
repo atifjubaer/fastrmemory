@@ -9,6 +9,9 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 - `fastr model install` downloads the optional static semantic model (`minishlab/potion-base-8M`, 256-dim, 30.2 MB, revision `bf8b0566`), verifies both files against pinned SHA-256 hashes, and loads it once at server start when present. `fastr model status` and `fastr model remove` manage it. The asset is never downloaded implicitly and is not part of the npm package.
 - Pure-TypeScript model2vec inference (`src/search/static-model.ts`): BERT normalizer, BertPreTokenizer, greedy WordPiece, safetensors reader, mean pooling and L2 normalization, with no runtime dependency and no native binary. It reproduces the HuggingFace tokenizer on 20 edge cases exactly and the reference embeddings to `2.98e-8` max absolute error.
 - Query-vector LRU (256 entries, keyed by model id + query text) so repeated agent queries do not re-embed.
+- Aggregate coverage (`src/search/aggregate.ts`, on by default). Counting and enumeration questions ("how many projects have I led?") run a second lexical pass over their content terms only and fuse it with the original pass through the same reciprocal-rank rule the streams use. A document found by both passes outranks a document found by one, so the original query keeps its precision while the deeper sessions become reachable. Aggregate questions return up to `retrieval.aggregateLimit` rows (default 20) so a caller can count; ordinary queries are never widened. `retrieval.aggregateCoverage: false` restores the single-pass behaviour.
+- Temporal windows (`src/search/temporal.ts`, opt-in via `retrieval.temporalFilter`). Relative and absolute ranges ("past two weeks", "past few months", "this year", "since the start of the year", "in March 2023") are parsed against the question date into an absolute interval, applied as a filter on `valid_from` before ranking, and annotated on the response (`temporalWindow`, `temporalMatch`). If a window excludes every candidate, retrieval falls back to the unfiltered ranking and reports `temporalFallback: true`.
+- Public harness fields `fullRecallAt10` (strict@10), `byGoldCount` buckets, `PublicEngine.limit`, and `questionDate` plumbing, plus four engines (`bm25_temporal`, `bm25_aggregate`, `bm25_temporal_aggregate`, and the existing pair). `scripts/lib/stats.ts` adds Wilson intervals, an exact McNemar test, and a deterministic paired bootstrap.
 - `fastr_tools` lists every tool the server can run, with its JSON input schema, filtered by name or description. `fastr_call` runs any listed tool after validating arguments against that tool's schema; it rejects unknown tools, meta-tools, and invalid arguments. Both are part of the core profile, so the complete surface stays reachable without loading every schema up front.
 - `fastr mcp --profile full` exposes all 43 tools. `fastr mcp init` now always writes an explicit `--profile <profile>` into generated configs, so a config never depends on the server default.
 
@@ -16,6 +19,7 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 - The feature-hash vectorizer is opt-in (`FASTR_VECTOR_MODE=hash`). `enableVector` now defaults to true only when a semantic provider is loaded, so the shipped default is BM25-only. On the 120-case LongMemEval cleaned slice the hash stream degraded 11 cases, improved none, and lowered Hit@1 from 89.2% to 81.7%. Rows tagged with the hash model stay inert unless hash mode is explicitly enabled, including after an upgrade.
 - `bench/fixtures/hash-regression.json` pins 20 of those cases (10 degraded, 10 unchanged) with a self-contained test that fails if hash vectors return to the default path.
+- Four date-parsing defects in the temporal window, found by `tests/temporal.test.ts` before the feature shipped: the ISO parser dropped seconds; a weekday marker (`(Tue)`) blocked the time from being parsed; subtracting months rolled `2023-05-30` minus three months to `2023-03-02` instead of clamping to `2023-02-28`; and "since the start of the year" never matched. All four are pinned by boundary tests.
 
 ### Changed
 
@@ -23,7 +27,7 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 - Write path: the memory row, file links, and three queue rows commit in one savepoint; conflict analysis, entity extraction, and FTS tokenization are deferred by default (`write.conflictMode`, `write.nerMode`, `write.ftsMode`). Measured on 120 documents (1,225,535 chars): 13.342 ms/doc synchronous vs 0.124 ms/doc deferred, a 107.60x reduction; the conflict scan was 99.1% of the synchronous path. `write.*Mode: 'sync'` reproduces the old behaviour and is tested.
 - Readers drain the FTS queue before BM25, so a memory is searchable immediately after `insertMemory()` returns. `fastr doctor` / `fastr heal` drain all three queues and report their depth.
 - LongMemEval pin moved to `xiaowu0162/longmemeval-cleaned` at `98d7416c` (`longmemeval_s_cleaned.json`, SHA-256 `D6F21EA9D60A0D56F34A05B609C79C88A451D2AE03597821EA3D5A9678C3A442`). The public harness adds a stable 60/60 dev/test split and `--slice-per-type`.
-- Test suite is 332 tests across 57 files.
+- Test suite is 354 tests across 59 files.
 
 ## [0.5.0] - 2026-10-23
 

@@ -16,6 +16,8 @@ export interface ScoredMemory {
   graphRank?: number;
   /** Open contradiction attached to this memory, when one exists. */
   conflict?: ConflictLink;
+  /** True when a temporal window was applied and this row falls inside it. */
+  temporalMatch?: boolean;
 }
 
 export const TOKEN_LEVELS = {

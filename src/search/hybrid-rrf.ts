@@ -15,6 +15,8 @@ import { scheduleBackfill } from './backfill.js';
 import { drainFtsQueue } from '../db/fts-queue.js';
 import { packMemoriesIntoBudget, ScoredMemory, TOKEN_LEVELS } from './budget.js';
 import { extractEntities } from '../learn/ner.js';
+import { detectTemporalWindow, parseQuestionDate, withinWindow, type TemporalWindow } from './temporal.js';
+import { detectAggregateIntent } from './aggregate.js';
 
 interface ConflictRow {
   id: number;
@@ -134,6 +136,22 @@ export interface RetrievalConfig {
    * static stream's influence entirely.
    */
   staticBlendWeight?: number;
+  /**
+   * Apply a parsed temporal window as a hard pre-ranking filter (default false until the
+   * benchmark gate passes). When the window matches nothing, retrieval falls back to the
+   * unfiltered set and reports `temporalFallback: true`.
+   */
+  temporalFilter?: boolean;
+  /** ISO timestamp of the question. Required to resolve relative ranges like "past two weeks". */
+  questionDate?: string;
+  /**
+   * Aggregate-intent coverage pass (default on). Counting questions search with their
+   * content terms only, fused with the original query, and return up to `aggregateLimit`
+   * rows. Set false to restore the single-pass lexical behaviour.
+   */
+  aggregateCoverage?: boolean;
+  /** Maximum candidates the aggregate path returns (default 20). */
+  aggregateLimit?: number;
 }
 
 export interface SearchParams {
@@ -158,6 +176,12 @@ export interface SearchResult {
   text: string;
   memories: ScoredMemory[];
   totalTokens: number;
+  /** Parsed temporal window, when one was detected and applied. */
+  temporalWindow?: TemporalWindow;
+  /** True when the window excluded every candidate and retrieval fell back to the full set. */
+  temporalFallback?: boolean;
+  /** Present when the query was classified as an aggregate (counting) question. */
+  aggregate?: { detected: boolean; limit: number };
 }
 
 const STOP_WORDS = new Set(['do', 'a', 'an', 'the', 'in', 'on', 'at', 'is', 'it', 'to', 'of', 'for', 'by', 'i', 'me', 'my', 'we', 'our']);
@@ -221,6 +245,30 @@ export async function searchMemories(
 
   const retrieval = params.retrieval ?? {};
   const rrfK = Math.max(1, retrieval.rrfK ?? 20);
+  /**
+   * Temporal window: parsed once from the query and the question date, then applied at
+   * fusion time. Date-bounded questions ("how many times did I bake in the past two
+   * weeks") share words with every session, so BM25 alone ranks by topic and loses the
+   * rows that actually fall inside the range. The window is a filter, never a score.
+   */
+  const temporalWindow: TemporalWindow | null = retrieval.temporalFilter
+    ? detectTemporalWindow(query, parseQuestionDate(retrieval.questionDate))
+    : null;
+  // A window makes most candidates irrelevant, so the first stage keeps a deeper pool;
+  // without one the caps stay at 50 and query cost is unchanged.
+  const bm25Limit = temporalWindow ? 200 : 50;
+  const vectorLimit = temporalWindow ? 100 : 50;
+  /**
+   * Aggregate intent. A counting question is answered by collecting every session that
+   * mentions the activity, so the lexical query drops the scaffolding words that are
+   * frequent across the corpus and keeps only the content terms.
+   */
+  const aggregate = retrieval.aggregateCoverage === false
+    ? { detected: false, terms: [] as string[] }
+    : detectAggregateIntent(query);
+  const lexicalQuery = aggregate.detected && aggregate.terms.length > 0
+    ? aggregate.terms.join(' ')
+    : query;
   const streamWeights = {
     bm25: retrieval.streamWeights?.bm25 ?? 1,
     vector: retrieval.streamWeights?.vector ?? 1,
@@ -278,51 +326,88 @@ export async function searchMemories(
       // A stale index must never fail a search.
     }
   }
-  const ftsQuery = enableBm25 ? sanitizeFtsQuery(query) : '';
-  if (ftsQuery) {
-    try {
-      const isGlobalAttached = hasGlobalDb(db);
-      // Column order is id (UNINDEXED), title, module, content. The leading 0.0 weight
-      // keeps the unindexed id column out of the score while boosting title and module.
-      const bm25Expr = 'bm25(memories_fts, 0.0, 10.0, 5.0, 1.0)';
-      let querySql = `
+  /**
+   * Runs one FTS5 MATCH and returns the matching rows in BM25 order. The main and global
+   * databases are queried separately and merged locally so each branch is capped on its
+   * own; a global row never displaces a project row before the cap.
+   */
+  const runBm25 = (expression: string): Array<Memory & { rank: number }> => {
+    if (!expression) return [];
+    const isGlobalAttached = hasGlobalDb(db);
+    // Column order is id (UNINDEXED), title, module, content. The leading 0.0 weight
+    // keeps the unindexed id column out of the score while boosting title and module.
+    const bm25Expr = 'bm25(memories_fts, 0.0, 10.0, 5.0, 1.0)';
+    let querySql = `
+      SELECT * FROM (
+        SELECT m.*, ${bm25Expr} AS rank
+        FROM memories_fts f
+        JOIN memories m ON m.id = f.id
+        WHERE (m.project_id = ? OR m.project_id = 'global')
+          AND memories_fts MATCH ?
+        ORDER BY rank ASC
+        LIMIT ${bm25Limit}
+      )
+    `;
+    const ftsParams: any[] = [projectId, expression];
+
+    if (isGlobalAttached) {
+      // FTS5's bm25() and MATCH both take the table name, not a schema-qualified
+      // name or an alias. Keeping the FTS table unaliased makes the unqualified
+      // `memories_fts` resolve to the attached table in this subquery.
+      const globalBm25Expr = 'bm25(memories_fts, 0.0, 10.0, 5.0, 1.0)';
+      querySql += `
+        UNION ALL
         SELECT * FROM (
-          SELECT m.*, ${bm25Expr} AS rank
-          FROM memories_fts f
-          JOIN memories m ON m.id = f.id
-          WHERE (m.project_id = ? OR m.project_id = 'global')
-            AND memories_fts MATCH ?
+          SELECT gm.*, ${globalBm25Expr} AS rank
+          FROM global_db.memories_fts
+          JOIN global_db.memories gm ON gm.id = memories_fts.id
+          WHERE memories_fts MATCH ?
           ORDER BY rank ASC
-          LIMIT 50
+          LIMIT ${bm25Limit}
         )
       `;
-      const ftsParams: any[] = [projectId, ftsQuery];
+      ftsParams.push(expression);
+    }
 
-      if (isGlobalAttached) {
-        // FTS5's bm25() and MATCH both take the table name, not a schema-qualified
-        // name or an alias. Keeping the FTS table unaliased makes the unqualified
-        // `memories_fts` resolve to the attached table in this subquery.
-        const globalBm25Expr = 'bm25(memories_fts, 0.0, 10.0, 5.0, 1.0)';
-        querySql += `
-          UNION ALL
-          SELECT * FROM (
-            SELECT gm.*, ${globalBm25Expr} AS rank
-            FROM global_db.memories_fts
-            JOIN global_db.memories gm ON gm.id = memories_fts.id
-            WHERE memories_fts MATCH ?
-            ORDER BY rank ASC
-            LIMIT 50
-          )
-        `;
-        ftsParams.push(ftsQuery);
+    // Merge the two locally-limited streams and cap the combined candidate set.
+    querySql = `SELECT * FROM (${querySql}) ORDER BY rank ASC LIMIT ${bm25Limit}`;
+    return db.prepare(querySql).all(...ftsParams) as unknown as Array<Memory & { rank: number }>;
+  };
+
+  const ftsQuery = enableBm25 ? sanitizeFtsQuery(query) : '';
+  const aggregateFtsQuery = enableBm25 && lexicalQuery !== query ? sanitizeFtsQuery(lexicalQuery) : '';
+  if (ftsQuery || aggregateFtsQuery) {
+    try {
+      const primary = runBm25(ftsQuery);
+      const secondary = aggregateFtsQuery ? runBm25(aggregateFtsQuery) : [];
+
+      /**
+       * When an aggregate question runs two lexical queries, a document found by both
+       * outranks a document found by only one: the two rank lists are fused with the same
+       * reciprocal-rank rule the streams use. That keeps the original query's precision
+       * (its rank-1 is almost always also in the stripped list) while admitting the
+       * deeper rows only the stripped query reaches.
+       */
+      let ordered: Array<{ row: Memory; score: number }>;
+      if (secondary.length === 0) {
+        ordered = primary.map((row) => ({ row, score: row.rank }));
+      } else {
+        const fused = new Map<string, { row: Memory; score: number }>();
+        primary.forEach((row, index) => {
+          fused.set(row.id, { row, score: 1 / (rrfK + index + 1) });
+        });
+        secondary.forEach((row, index) => {
+          const contribution = 1 / (rrfK + index + 1);
+          const existing = fused.get(row.id);
+          if (existing) existing.score += contribution;
+          else fused.set(row.id, { row, score: contribution });
+        });
+        // Higher fused score first; ties keep the primary query's order via insertion.
+        ordered = [...fused.values()].sort((a, b) => b.score - a.score);
       }
 
-      // Merge the two locally-limited streams and cap the combined candidate set.
-      querySql = `SELECT * FROM (${querySql}) ORDER BY rank ASC LIMIT 50`;
-      const rows = db.prepare(querySql).all(...ftsParams) as unknown as (Memory & { rank: number })[];
-
       let rank = 1;
-      for (const row of rows) {
+      for (const { row } of ordered) {
         if (passesFilter(row)) {
           if (!candidatesMap.has(row.id)) {
             candidatesMap.set(row.id, { memory: row, rankA: rank });
@@ -408,7 +493,7 @@ export async function searchMemories(
         const provider = getProviderForModel(decoded.modelId, allowHashVectors);
         let qv: Float32Array | null = null;
         if (provider) {
-          try { qv = await embedQueryCached(provider, query); } catch { qv = null; }
+          try { qv = await embedQueryCached(provider, lexicalQuery); } catch { qv = null; }
         }
         queryVecs.set(decoded.modelId, qv);
       }
@@ -425,7 +510,7 @@ export async function searchMemories(
 
     scoredVectors.sort((a, b) => b.sim - a.sim);
     let rank = 1;
-    for (const item of scoredVectors.slice(0, 50)) {
+    for (const item of scoredVectors.slice(0, vectorLimit)) {
       const existing = candidatesMap.get(item.memory.id);
       const isStatic = item.modelId === EMBEDDING_MODEL_IDS.STATIC_POTION_256;
       if (!existing) {
@@ -601,7 +686,7 @@ export async function searchMemories(
   // --- RRF FUSION & MULTIPLIERS ---
   const effectiveVectorWeight = retrieval.streamWeights?.vector ?? (semanticVectorSeen ? 3 : 1);
   const staticBlendWeight = retrieval.staticBlendWeight ?? 0.15;
-  const allScored: ScoredMemory[] = [];
+  let allScored: ScoredMemory[] = [];
   for (const [, item] of candidatesMap) {
     const { memory, rankA, rankB, rankC, staticSim } = item;
 
@@ -638,6 +723,25 @@ export async function searchMemories(
   // Sort by final score FIRST, then diversify, so per-session caps drop the weakest items.
   allScored.sort((a, b) => b.score - a.score);
 
+  /**
+   * Temporal filter. Applied after fusion and before diversification so the window can
+   * never change the relative order of the rows it keeps. If the window excludes every
+   * candidate the parse was wrong for this corpus, so retrieval falls back to the
+   * unfiltered ranking and says so instead of returning nothing.
+   */
+  let temporalFallback = false;
+  let temporalRows = allScored;
+  if (temporalWindow) {
+    const inWindow = allScored.filter((item) => withinWindow(item.memory.valid_from, temporalWindow));
+    if (inWindow.length > 0) {
+      for (const item of inWindow) item.temporalMatch = true;
+      temporalRows = inWindow;
+    } else {
+      temporalFallback = true;
+    }
+  }
+  allScored = temporalRows;
+
   // Session Diversification: only applies to memories with a known source session;
   // memories without provenance (empty source_event_ids) are never capped.
   const scoredMemories: ScoredMemory[] = [];
@@ -659,7 +763,11 @@ export async function searchMemories(
     scoredMemories.push(scored);
   }
 
-  const maxItems = limit !== undefined && limit >= 0 ? Math.floor(limit) : Number.POSITIVE_INFINITY;
+  // An aggregate question needs the whole set, not the usual handful, so the caller can
+  // count or enumerate. The cap is explicit and bounded; it never widens a normal query.
+  const aggregateLimit = aggregate.detected ? Math.max(0, Math.floor(retrieval.aggregateLimit ?? 20)) : 0;
+  const requested = limit !== undefined && limit >= 0 ? Math.floor(limit) : Number.POSITIVE_INFINITY;
+  const maxItems = aggregateLimit > 0 ? Math.max(requested, aggregateLimit) : requested;
   // `memories` is the ranked result set (metadata + full content). `text` is the
   // compact prompt context and is the only part constrained by budgetTokens.
   // Keeping the two separate means a small context never hides the full ranked
@@ -678,6 +786,8 @@ export async function searchMemories(
   return {
     text: packed.text,
     memories: ranked,
-    totalTokens: packed.totalTokens
+    totalTokens: packed.totalTokens,
+    ...(temporalWindow ? { temporalWindow, temporalFallback } : {}),
+    ...(aggregate.detected ? { aggregate: { detected: true, limit: aggregateLimit } } : {})
   };
 }

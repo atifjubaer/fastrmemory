@@ -19,12 +19,62 @@ export interface PublicEngine {
   retrieval: RetrievalConfig;
   requiresEmbeddings?: boolean;
   embeddingModel?: 'hash' | 'minilm';
+  /** Result depth the engine returns (default 10). */
+  limit?: number;
 }
 
 export const PUBLIC_ENGINES: PublicEngine[] = [
   {
     name: 'bm25_only',
-    retrieval: { enableBm25: true, enableVector: false, enableGraph: false, trapBoost: 1, verifiedBoost: 1 }
+    retrieval: {
+      enableBm25: true,
+      enableVector: false,
+      enableGraph: false,
+      trapBoost: 1,
+      verifiedBoost: 1,
+      aggregateCoverage: false
+    }
+  },
+  {
+    // Same first stage, plus the parsed date window as a pre-ranking filter.
+    name: 'bm25_temporal',
+    retrieval: {
+      enableBm25: true,
+      enableVector: false,
+      enableGraph: false,
+      trapBoost: 1,
+      verifiedBoost: 1,
+      temporalFilter: true,
+      aggregateCoverage: false
+    }
+  },
+  {
+    // Counting questions search with their content terms only and return the full set.
+    name: 'bm25_aggregate',
+    retrieval: {
+      enableBm25: true,
+      enableVector: false,
+      enableGraph: false,
+      trapBoost: 1,
+      verifiedBoost: 1,
+      aggregateCoverage: true,
+      aggregateLimit: 20
+    }
+  },
+  {
+    // Both stages: the window removes out-of-range rows, the aggregate pass removes
+    // scaffolding from the lexical query.
+    name: 'bm25_temporal_aggregate',
+    retrieval: {
+      enableBm25: true,
+      enableVector: false,
+      enableGraph: false,
+      trapBoost: 1,
+      verifiedBoost: 1,
+      temporalFilter: true,
+      aggregateCoverage: true,
+      aggregateLimit: 20
+    }
   },
   {
     // The shipped default after P0: full pipeline, vector stream off unless a semantic
@@ -41,7 +91,8 @@ export const PUBLIC_ENGINES: PublicEngine[] = [
       graphSeedFromCandidates: false,
       trapBoost: 2.0,
       trapBoostMode: 'conditional',
-      verifiedBoost: 1.25
+      verifiedBoost: 1.25,
+      aggregateCoverage: false
     },
     requiresEmbeddings: true,
     embeddingModel: 'hash'
@@ -55,7 +106,8 @@ export const PUBLIC_ENGINES: PublicEngine[] = [
       graphSeedFromCandidates: false,
       trapBoost: 2.0,
       trapBoostMode: 'conditional',
-      verifiedBoost: 1.25
+      verifiedBoost: 1.25,
+      aggregateCoverage: false
     },
     requiresEmbeddings: true,
     embeddingModel: 'minilm'
@@ -73,11 +125,16 @@ export interface PublicCaseResult {
   hitAt10: number;
   recallAt5: number;
   fullRecallAt5: number;
+  /** Strict@10: every gold id is present in the top 10. */
+  fullRecallAt10: number;
   goldCount: number;
   retrieved: string[];
   goldIds: string[];
   tokens: number;
   latencyMs: number;
+  /** Parsed temporal window applied to this case, when the engine used one. */
+  temporalWindow?: string;
+  temporalFallback?: boolean;
 }
 
 export interface PublicMetrics {
@@ -88,6 +145,8 @@ export interface PublicMetrics {
   mrr: number;
   evidenceRecallAt5: number;
   fullRecallAt5: number;
+  /** Strict@10 = all gold ids in the top 10, averaged over cases. */
+  fullRecallAt10: number;
   avgTokens: number;
   p50LatencyMs: number;
   p95LatencyMs: number;
@@ -97,11 +156,17 @@ export interface PublicCategoryMetrics extends PublicMetrics {
   category: string;
 }
 
+/** Metrics restricted to cases with an exact gold count (the aggregate-question slice). */
+export interface PublicGoldBucket extends PublicMetrics {
+  goldCount: number;
+}
+
 export interface PublicEngineEval {
   name: string;
   config: RetrievalConfig;
   overall: PublicMetrics;
   byCategory: PublicCategoryMetrics[];
+  byGoldCount: PublicGoldBucket[];
   cases: PublicCaseResult[];
 }
 
@@ -188,6 +253,7 @@ export function metricsFromCases(cases: PublicCaseResult[]): PublicMetrics {
       mrr: 0,
       evidenceRecallAt5: 0,
       fullRecallAt5: 0,
+      fullRecallAt10: 0,
       avgTokens: 0,
       p50LatencyMs: 0,
       p95LatencyMs: 0
@@ -202,6 +268,7 @@ export function metricsFromCases(cases: PublicCaseResult[]): PublicMetrics {
     mrr: round(cases.reduce((sum, item) => sum + item.reciprocalRank, 0) / count, 3),
     evidenceRecallAt5: round(cases.reduce((sum, item) => sum + item.recallAt5, 0) / count, 3),
     fullRecallAt5: round((cases.reduce((sum, item) => sum + item.fullRecallAt5, 0) / count) * 100, 1),
+    fullRecallAt10: round((cases.reduce((sum, item) => sum + item.fullRecallAt10, 0) / count) * 100, 1),
     avgTokens: Math.round(cases.reduce((sum, item) => sum + item.tokens, 0) / count),
     p50LatencyMs: round(percentile(latencies, 50), 2),
     p95LatencyMs: round(percentile(latencies, 95), 2)
@@ -220,6 +287,8 @@ export function caseResult(
   const top5 = retrieved.slice(0, 5);
   const foundAt5 = top5.filter((id) => gold.has(id)).length;
   const recallAt5 = gold.size === 0 ? 0 : foundAt5 / gold.size;
+  const foundAt10 = retrieved.slice(0, 10).filter((id) => gold.has(id)).length;
+  const fullRecallAt10 = gold.size > 0 && foundAt10 === gold.size ? 1 : 0;
   return {
     caseId: item.id,
     category: item.category,
@@ -231,6 +300,7 @@ export function caseResult(
     hitAt10: rank > 0 && rank <= 10 ? 1 : 0,
     recallAt5: round(recallAt5, 3),
     fullRecallAt5: recallAt5 === 1 ? 1 : 0,
+    fullRecallAt10,
     goldCount: item.goldIds.length,
     retrieved,
     goldIds: item.goldIds,
@@ -247,6 +317,7 @@ export async function evaluatePublicEngine(
 ): Promise<PublicEngineEval> {
   const selected = options.limit ? dataset.cases.slice(0, options.limit) : dataset.cases;
   const budgetTokens = options.budgetTokens ?? 1_000_000;
+  const resultLimit = engine.limit ?? 10;
   const results: PublicCaseResult[] = [];
 
   for (const item of selected) {
@@ -255,22 +326,26 @@ export async function evaluatePublicEngine(
       projectId: item.projectId,
       query: item.query,
       budgetTokens,
-      limit: 10,
+      limit: resultLimit,
       backfill: false,
-      retrieval: engine.retrieval
+      retrieval: { ...engine.retrieval, questionDate: item.questionDate }
     });
     const latencyMs = performance.now() - start;
-    results.push(
-      caseResult(
-        item,
-        response.memories.map((memory) => memory.memory.id),
-        response.totalTokens,
-        latencyMs
-      )
+    const caseRow = caseResult(
+      item,
+      response.memories.map((memory) => memory.memory.id),
+      response.totalTokens,
+      latencyMs
     );
+    if (response.temporalWindow) {
+      caseRow.temporalWindow = response.temporalWindow.label;
+      caseRow.temporalFallback = response.temporalFallback === true;
+    }
+    results.push(caseRow);
   }
 
   const categories = Array.from(new Set(results.map((item) => item.category))).sort();
+  const goldCounts = Array.from(new Set(results.map((item) => item.goldCount))).sort((a, b) => a - b);
   return {
     name: engine.name,
     config: engine.retrieval,
@@ -278,6 +353,10 @@ export async function evaluatePublicEngine(
     byCategory: categories.map((category) => ({
       category,
       ...metricsFromCases(results.filter((item) => item.category === category))
+    })),
+    byGoldCount: goldCounts.map((goldCount) => ({
+      goldCount,
+      ...metricsFromCases(results.filter((item) => item.goldCount === goldCount))
     })),
     cases: results
   };
