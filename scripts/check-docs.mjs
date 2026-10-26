@@ -129,7 +129,11 @@ const publicDocs = [
 
 for (const rel of publicDocs) {
   const text = read(rel);
-  if (/hippo|memoria/i.test(text)) {
+  // Two files name third-party engines on purpose: they publish a head-to-head benchmark and
+  // the evidence row for it. Naming the engine is what makes the comparison falsifiable. Every
+  // other public doc keeps the ban, so engine names never become product vocabulary.
+  const namesThirdPartyEngine = rel === 'CLAIMS.md' || rel === 'docs/PUBLIC_BENCHMARKS.md';
+  if (!namesThirdPartyEngine && /hippo|memoria/i.test(text)) {
     fail(`${rel} mentions a forbidden external-engine name`);
   }
   if (text.includes('latest.json')) {

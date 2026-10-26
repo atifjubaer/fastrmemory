@@ -14,6 +14,8 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 - Public harness fields `fullRecallAt10` (strict@10), `byGoldCount` buckets, `PublicEngine.limit`, and `questionDate` plumbing, plus four engines (`bm25_temporal`, `bm25_aggregate`, `bm25_temporal_aggregate`, and the existing pair). `scripts/lib/stats.ts` adds Wilson intervals, an exact McNemar test, and a deterministic paired bootstrap.
 - `fastr_tools` lists every tool the server can run, with its JSON input schema, filtered by name or description. `fastr_call` runs any listed tool after validating arguments against that tool's schema; it rejects unknown tools, meta-tools, and invalid arguments. Both are part of the core profile, so the complete surface stays reachable without loading every schema up front.
 - `fastr mcp --profile full` exposes all 43 tools. `fastr mcp init` now always writes an explicit `--profile <profile>` into generated configs, so a config never depends on the server default.
+- Cross-engine benchmark (`scripts/bench-vs.ts`, `src/bench/marker-corpus.ts`, `src/bench/mcp-stdio.ts`, `src/bench/vs-engines.ts`). FastrMemory, `@agentmemory/mcp@0.9.30`, and `hippo-memory@2.1.0` are driven over MCP stdio on a deterministic 1,200-document marker corpus with 120 queries in three tiers (`exact`, `multi`, `paraphrase`). It reports ingest cost per document, first-to-last decile degradation, recall p50/p95, returned tokens, distinct documents, Hit@1 per tier with Wilson intervals, and paired McNemar plus bootstrap against FastrMemory. `npm run bench:vs` runs it; `npm run bench:setup` installs the pinned engines.
+- `scripts/fetch-bench-data.ts` (`npm run bench:fetch`) downloads the pinned LongMemEval-clean and LoCoMo files and the optional static model, verifying every SHA-256 before moving a file into place. `--check` verifies what is already on disk and never downloads.
 
 ### Fixed
 
@@ -27,7 +29,7 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 - Write path: the memory row, file links, and three queue rows commit in one savepoint; conflict analysis, entity extraction, and FTS tokenization are deferred by default (`write.conflictMode`, `write.nerMode`, `write.ftsMode`). Measured on 120 documents (1,225,535 chars): 13.342 ms/doc synchronous vs 0.124 ms/doc deferred, a 107.60x reduction; the conflict scan was 99.1% of the synchronous path. `write.*Mode: 'sync'` reproduces the old behaviour and is tested.
 - Readers drain the FTS queue before BM25, so a memory is searchable immediately after `insertMemory()` returns. `fastr doctor` / `fastr heal` drain all three queues and report their depth.
 - LongMemEval pin moved to `xiaowu0162/longmemeval-cleaned` at `98d7416c` (`longmemeval_s_cleaned.json`, SHA-256 `D6F21EA9D60A0D56F34A05B609C79C88A451D2AE03597821EA3D5A9678C3A442`). The public harness adds a stable 60/60 dev/test split and `--slice-per-type`.
-- Test suite is 354 tests across 59 files.
+- Test suite is 372 tests across 60 files.
 
 ## [0.5.0] - 2026-10-23
 

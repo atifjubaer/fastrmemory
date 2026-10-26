@@ -209,6 +209,115 @@ FastrMemory clears the `+5pp Hit@5` target on LongMemEval (`+10.4pp` vs MiniSear
 
 The MCP adapter is keyword-coverage ranking over the server's substring search, not a native relevance score. Full adapter rules, pins, install commands, and caveats are in [`docs/EXTERNAL_BASELINE.md`](EXTERNAL_BASELINE.md). The self-repository runner was not repeated against an external engine.
 
+## Cross-engine marker corpus (FastrMemory vs agentmemory vs Hippo)
+
+The LongMemEval and LoCoMo runs measure retrieval quality against a fixed corpus. They do not
+answer the question a user actually asks: *if I install FastrMemory instead of the memory server I
+run today, what changes?* This run drives all three engines over **MCP stdio** — the surface an
+agent uses — on a deterministic marker corpus, so accuracy, write cost, read cost, and
+returned-context size are measured through the same door.
+
+Protocol:
+
+- **1,200 documents** over 30 systems × 40 problem words. Every document starts with a unique
+  `MKR-` marker, so "did the engine return the right memory" is a string check that works across
+  three incompatible output formats. The corpus is regenerated from a seed
+  (`src/bench/marker-corpus.ts`) and never committed as data.
+- **120 queries**, 40 per tier, reported separately and never collapsed into one headline:
+  - `exact` — system name + problem word, both present in the gold document.
+  - `multi` — system name + a symptom shared by ~22 documents + an event shared by ~171. Only
+    the gold document has all three (30 × 54 × 7 has lcm 1,890, so no triple repeats).
+  - `paraphrase` — system name + a synonym that appears in **no** document, so a lexical engine
+    has no signal for the discriminating term.
+- **2,000-token budget for all three.** Hit@1 = the gold document's marker is the *first* marker
+  in the returned text; "gold present" = it appears anywhere in the returned context.
+- Fresh on-disk state per engine per run, and three unscored warm-up reads before timing, so the
+  latency columns are steady state. `first read` is reported separately because FastrMemory
+  defers FTS indexing to the first reader (500 rows per search).
+
+Run 1 (`bench/results/vs-engines.json`), n=40 per tier:
+
+| Engine | Version | Ingest ms/doc | First→last decile | Recall p50 | Recall p95 | First read | Tokens | Docs | Exact Hit@1 | Multi Hit@1 | Paraphrase Hit@1 | Overall |
+|---|---|---:|---|---:|---:|---:|---:|---:|---|---|---|---|
+| FastrMemory | 0.5.0 | 1.09 | 1.07 → 1.15 | 1.86 ms | 6.75 ms | 9.94 ms | 1,824 | 7.1 | 100% (40/40) | 100% (40/40) | 0% (0/40) | 66.7% (80/120) |
+| agentmemory | 0.9.30 | 1.74 | 0.50 → 2.74 | 1.09 ms | 1.52 ms | 1.91 ms | 290 | 0.8 | 95% (38/40) | 100% (40/40) | 0% (0/40) | 65.0% (78/120) |
+| Hippo | 2.1.0 | 88.9 | 13.98 → 133.65 | 15.28 ms | 386.46 ms | 15.05 ms | 1,758 | 6.9 | 55% (22/40) | 25% (10/40) | 0% (0/40) | 26.7% (32/120) |
+
+Wilson 95% intervals, n=40 per cell: FastrMemory exact and multi `[91.2, 100]`, overall
+`[57.8, 74.5]`; agentmemory exact `[83.5, 98.6]`, multi `[91.2, 100]`, overall `[56.1, 72.9]`;
+Hippo exact `[39.8, 69.3]`, multi `[14.2, 40.2]`, overall `[19.6, 35.2]`. Paraphrase is `[0, 8.8]`
+for all three.
+
+Paired against FastrMemory on the same queries (exact McNemar on discordant pairs, paired
+bootstrap over per-query differences):
+
+| Comparison | Tier | Δ Hit@1 | 95% CI | Fixed / broken | McNemar p |
+|---|---|---:|---|---:|---:|
+| agentmemory | exact | −5.0 pp | −12.5 … 0.0 | 0 / 2 | 0.50 |
+| agentmemory | multi | 0.0 pp | 0.0 … 0.0 | 0 / 0 | 1.00 |
+| agentmemory | paraphrase | 0.0 pp | 0.0 … 0.0 | 0 / 0 | 1.00 |
+| Hippo | exact | −45.0 pp | −60.0 … −30.0 | 0 / 18 | 8.0e−6 |
+| Hippo | multi | −57.5 pp | −72.5 … −42.5 | 0 / 23 | < 1e−6 |
+| Hippo | paraphrase | 0.0 pp | 0.0 … 0.0 | 0 / 0 | 1.00 |
+
+**What this says, including where FastrMemory does not win:**
+
+1. **Against Hippo, the accuracy gap is large and reproducible.** 100% vs 55% on `exact` and 100%
+   vs 25–42.5% on `multi`, 0 fixed / 18 and 0 / 23 broken. Hippo returns the gold document
+   somewhere in its context 70.8% of the time, but ranks it first on only 55% of `exact` queries
+   and 25% of `multi` queries: its ranking is dominated by
+   recency and strength rather than by the query. FastrMemory also writes 81× faster (1.09 vs
+   88.9 ms/doc), reads 8× faster at p50, and does not degrade with corpus size (1.07 → 1.15 ms/doc
+   against Hippo's 13.98 → 133.65, a 9.6× slowdown across the same 1,200 writes).
+2. **Against agentmemory, the accuracy difference is not a win.** +5.0 pp on `exact` with a
+   confidence interval that includes zero and p = 0.50; a dead tie on `multi` and `paraphrase`.
+   agentmemory is also **faster to read** (1.09 vs 1.86 ms p50, 1.52 vs 6.75 ms p95). It pays for
+   that by returning 0.8 documents and 290 tokens per query against 7.1 documents and 1,824
+   tokens, so its 65.0% overall is achieved on a sixth of the context. Reporting only Hit@1 would
+   hide that trade; both columns are published for that reason.
+3. **agentmemory degrades with corpus size; FastrMemory does not.** Its first decile is 0.50 ms/doc
+   and its last is 2.74 ms/doc over 1,200 writes (5.5×), because the standalone store rewrites a
+   growing JSON file. FastrMemory's write path is flat (1.07 → 1.15, 1.08×). Over a long-lived
+   agent session this is the difference that compounds.
+4. **No engine answers a paraphrase.** 0/40 for all three, `[0, 8.8]`. When the discriminating word
+   appears in no document, lexical retrieval has nothing to rank on and every engine falls back to
+   the 40 documents that share the system name. This is a published negative result, and it is the
+   gap the optional static tier exists to close; the P1 gate above shows that on LongMemEval it
+   does not close it measurably either.
+5. **Reproducibility is not uniform.** Two independent runs of the full benchmark
+   (`vs-engines.json` and `vs-engines-rep2.json`) produced **identical hit sets** for FastrMemory
+   (40/40 and 40/40 both times) and for agentmemory (38/40 and 40/40 both times). Hippo did not
+   reproduce: `multi` moved from 10/40 to 17/40 and recall p95 from 386 ms to 74 ms on identical
+   input, because its ranking depends on mutable per-memory state that each query updates. The
+   Hippo delta in the table above uses the **better** of its two runs, which is the conservative
+   choice; the run-1 delta would be −75.0 pp.
+
+Caveats specific to this run:
+
+- **Query style is keyword-style for all three.** agentmemory requires *every* query term to be
+  present, so a natural-language question containing one word that appears in no document returns
+  an empty result set. Measured directly: `crash feature-flags` returns the gold document,
+  `What caused the crash in feature-flags` returns `{"results": []}`. Sending natural questions
+  would have measured that parser behaviour rather than retrieval, so all three engines receive
+  the same keyword queries.
+- **The corpus is synthetic.** It measures identification of one memory among 1,200, not answer
+  quality, and not the long multi-session reasoning LongMemEval targets. It is deliberately small
+  enough to run through MCP stdio in about four minutes.
+- **Ingest includes the engine's own durability work.** Each `remember` round trip is timed
+  end-to-end; FastrMemory commits the row before returning and defers indexing, which is why its
+  first read costs 9.94 ms while its writes stay flat.
+- **Hippo and agentmemory were configured as their MCP servers ship.** No tuning was applied to
+  any engine, and no parameter was changed after seeing a result.
+
+Reproduce:
+
+```bash
+npm run build:core
+npm run bench:setup     # pinned engines into bench/external (gitignored)
+npm run bench:vs        # full run, ~4 minutes
+npx tsx scripts/bench-vs.ts --quick   # 180 documents, 90 queries, smoke only
+```
+
 ## Static semantic tier (P1 gate)
 
 The optional semantic tier is a pure-TypeScript model2vec lookup table: `minishlab/potion-base-8M`
