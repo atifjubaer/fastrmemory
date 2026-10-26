@@ -108,6 +108,21 @@ if (server) {
   check(pkgEntry?.identifier === PKG_NAME, `server.json package identifier must be ${PKG_NAME}`);
   check(pkgEntry?.transport?.type === 'stdio', 'server.json transport must be stdio');
   check(pkgEntry?.packageArguments?.[0]?.value === 'mcp', 'server.json packageArguments must select mcp');
+
+  // The official registry validates server.json against
+  // https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json before it
+  // accepts a publish. These are the constraints that reject a release, mirrored locally so
+  // a bad manifest fails here instead of after the npm version is already immutable.
+  check(/^[a-zA-Z0-9.-]+\/[a-zA-Z0-9._-]+$/.test(server.name ?? ''), 'server.json name must be namespace/server');
+  check((server.description ?? '').length >= 1 && (server.description ?? '').length <= 100,
+    `server.json description must be 1-100 characters (is ${(server.description ?? '').length})`);
+  check((server.title ?? '').length <= 100, 'server.json title must be at most 100 characters');
+  check(server.repository?.url === 'https://github.com/atifjubaer/fastrmemory', 'server.json repository.url must point at the source repo');
+  check(server.repository?.source === 'github', 'server.json repository.source must be github');
+  check(server.websiteUrl === server.repository?.url, 'server.json websiteUrl must match repository.url');
+  check(pkgEntry?.version === pkg.version, `server.json package version ${pkgEntry?.version} != package version ${pkg.version}`);
+  // The registry resolves npm ownership by requiring this field on the published package.
+  check(pkg.mcpName === MCP_NAME, `package.json mcpName must be ${MCP_NAME}`);
 }
 check(fs.existsSync(path.join(ROOT, 'llms-install.md')), 'llms-install.md is missing');
 const generatedManifests = JSON.stringify({ plugin, marketplace, server });
