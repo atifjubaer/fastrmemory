@@ -321,10 +321,21 @@ fastrmemory snapshot create "pre-refactor-checkpoint"
 fastrmemory snapshot list
 fastrmemory snapshot rollback "pre-refactor-checkpoint"
 
-# 0.3.0: Portable backup with a sidecar provenance manifest:
+# Portable backup with a sidecar provenance manifest:
 fastrmemory backup backups/pre-upgrade.jsonl
 fastrmemory backup --verify backups/pre-upgrade.jsonl
 fastrmemory backup --restore backups/pre-upgrade.jsonl --dry-run
+fastrmemory backup --restore backups/pre-upgrade.jsonl
+
+# Bidirectional Team Memory Sync (Git-backed .fastr/pages/*.md):
+fastrmemory sync
+
+# Passive Cognitive Distillation (harvest traps from recent session errors):
+fastrmemory distill
+
+# Check self-verifying memory assertions and retire fixed traps:
+fastrmemory trap verify
+fastrmemory trap verify --apply
 
 # Immutable memory branch and one-way merge with a conflict report:
 fastrmemory branch create feature/auth
@@ -363,7 +374,7 @@ fastrmemory diagnose
 # Auto-repair FTS5 indices, orphaned file links, and WAL fragmentation:
 fastrmemory heal
 
-# 0.3.0: Report orphaned records, duplicate active memories, and stale rows:
+# Report orphaned records, duplicate active memories, and stale rows:
 fastrmemory hygiene
 fastrmemory hygiene --stale-days 30 --json --fail-on-issues
 

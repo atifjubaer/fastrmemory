@@ -28,8 +28,13 @@ fastr snapshot export ("fastr-backup-" + (Get-Date -Format "yyyyMMdd-HHmmss") + 
 On a `0.3.x` build, prefer the backup command. It writes the same portable JSONL plus a sidecar manifest with the file SHA-256, content hash, record counts, tool version, environment, and source integrity:
 
 ```bash
+# Create a portable backup with cryptographic sidecar manifest:
 fastr backup fastr-backup.jsonl
 fastr backup --verify fastr-backup.jsonl
+
+# Restore on a new computer or clean installation:
+fastr backup --restore fastr-backup.jsonl --dry-run
+fastr backup --restore fastr-backup.jsonl
 ```
 
 The JSONL export is a portable, content-hashed logical backup. It is safe to commit only if your memory content is safe to commit; it is not encrypted. For a physical backup, stop all processes and copy these three files together:
