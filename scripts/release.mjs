@@ -121,6 +121,26 @@ function bumpManifests(next) {
     changed.push('package.json');
   }
 
+  // The lockfile carries the package version in two places, and npm warns when it drifts
+  // from package.json.
+  const lockPath = path.join(ROOT, 'package-lock.json');
+  if (fs.existsSync(lockPath)) {
+    const lock = readJson('package-lock.json');
+    let lockChanged = false;
+    if (lock.version !== next) {
+      lock.version = next;
+      lockChanged = true;
+    }
+    if (lock.packages?.[''] && lock.packages[''].version !== next) {
+      lock.packages[''].version = next;
+      lockChanged = true;
+    }
+    if (lockChanged) {
+      writeJson('package-lock.json', lock);
+      changed.push('package-lock.json');
+    }
+  }
+
   const server = readJson('server.json');
   let serverChanged = false;
   if (server.version !== next) {
