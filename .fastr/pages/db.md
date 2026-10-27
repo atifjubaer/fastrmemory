@@ -6,6 +6,16 @@
 
 ## Compiled Truth (Active Rules & Traps)
 
+### [mem_e2392980] [TRAP] 32-bit row ids collide at ~78k rows
+- **Kind**: `error_trap`
+- **Status**: `verified` (Reward Score: 1)
+- **Linked Files**: `scripts/soak.ts`, `src/db/repository.ts`, `tests/repository.test.ts`
+- **Active Since**: `2026-10-27T13:19:06Z`
+
+Memory and feedback row ids were generated from four random bytes (`mem_` + 8 hex chars). The birthday bound makes a collision a coin flip at about 78,000 rows, and a three-writer soak hit `UNIQUE constraint failed: memories.id` at 68k writes. Any id that accumulates per project needs enough entropy for the lifetime row count, not the per-run count: eight bytes (64 bits) is the floor here. The regression test asserts /^mem_[0-9a-f]{16}$/ so a revert to four bytes fails CI.
+
+---
+
 ### [mem_pg_pool_trap] [TRAP] Postgres Client Must Always Call client.release() in Finally Block
 - **Kind**: `error_trap`
 - **Status**: `verified` (Reward Score: 1)
