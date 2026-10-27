@@ -13,6 +13,9 @@ import { SpoolManager } from '../db/spool.js';
 import { RetrievalQueue } from '../db/retrieval-queue.js';
 import { searchMemories } from '../search/hybrid-rrf.js';
 import { diagnoseDatabase, healDatabase } from '../db/doctor.js';
+import { evaluateMemoryAssertion } from '../db/assertions.js';
+import { syncTeamMemory } from '../mirror/team-sync.js';
+import { distillSessionTraps } from '../learn/passive-distillation.js';
 import type { Memory } from '../db/schema.js';
 import {
   diffSnapshots,
@@ -203,23 +206,50 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
   const retrievalQueue = new RetrievalQueue(resolveRetrievalQueuePath(config));
   const repo = new FastrRepository(db, spool, { retrievalQueue, projectRoot: config.projectRoot });
 
-  /** Strips the binary embedding (huge as JSON) and attaches linked files with batched queries. */
-  const serializeMemories = (rows: Memory[]): Array<Omit<Memory, 'embedding'> & { linked_files: string[] }> => {
+  /** Strips the binary embedding (huge as JSON) and attaches linked files, symbols, and assertion verdicts. */
+  const serializeMemories = (rows: Memory[]): Array<Omit<Memory, 'embedding'> & {
+    linked_files: string[];
+    linked_symbols: string[];
+    assertion_verdict?: 'holds' | 'fails' | 'unknown' | null;
+  }> => {
     if (rows.length === 0) return [];
     const links = new Map<string, string[]>();
+    const symbols = new Map<string, string[]>();
     const ids = rows.map((r) => r.id);
     for (let i = 0; i < ids.length; i += 500) {
       const chunk = ids.slice(i, i + 500);
       const linkRows = db
-        .prepare(`SELECT DISTINCT memory_id, file_path FROM file_links WHERE memory_id IN (${chunk.map(() => '?').join(',')})`)
-        .all(...chunk) as Array<{ memory_id: string; file_path: string }>;
+        .prepare(`SELECT DISTINCT memory_id, file_path, symbol_name FROM file_links WHERE memory_id IN (${chunk.map(() => '?').join(',')})`)
+        .all(...chunk) as Array<{ memory_id: string; file_path: string; symbol_name: string }>;
       for (const l of linkRows) {
         const list = links.get(l.memory_id) ?? [];
-        list.push(l.file_path);
+        if (!list.includes(l.file_path)) list.push(l.file_path);
         links.set(l.memory_id, list);
+
+        if (l.symbol_name) {
+          const symList = symbols.get(l.memory_id) ?? [];
+          if (!symList.includes(l.symbol_name)) symList.push(l.symbol_name);
+          symbols.set(l.memory_id, symList);
+        }
       }
     }
-    return rows.map(({ embedding: _embedding, ...rest }) => ({ ...rest, linked_files: links.get(rest.id) ?? [] }));
+    return rows.map(({ embedding: _embedding, ...rest }) => {
+      let assertion_verdict: 'holds' | 'fails' | 'unknown' | null = null;
+      if (rest.assertion) {
+        try {
+          const evalRes = evaluateMemoryAssertion(db, rest, config.projectRoot);
+          assertion_verdict = evalRes.verdict;
+        } catch {
+          assertion_verdict = 'unknown';
+        }
+      }
+      return {
+        ...rest,
+        linked_files: links.get(rest.id) ?? [],
+        linked_symbols: symbols.get(rest.id) ?? [],
+        assertion_verdict
+      };
+    });
   };
 
   /** Memories in a non-active status (superseded / dormant) are not returned by listActiveMemories. */
@@ -421,7 +451,19 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
 
         if (!memoryRoute[2]) {
           const [serialized] = serializeMemories([memory]);
-          sendJson(res, 200, { ...serialized, provenance: repo.verifyMemoryProvenance(memory.id) });
+          let assertionResult: any = null;
+          if (memory.assertion) {
+            try {
+              assertionResult = evaluateMemoryAssertion(db, memory, config.projectRoot);
+            } catch {
+              assertionResult = { verdict: 'unknown', reason: 'Failed to evaluate' };
+            }
+          }
+          sendJson(res, 200, {
+            ...serialized,
+            assertion_result: assertionResult,
+            provenance: repo.verifyMemoryProvenance(memory.id)
+          });
           return;
         }
 
@@ -565,6 +607,46 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
         handleJsonPost(req, res, 'Failed to forget memory', (data) => {
           const result = repo.forgetMemory(String(data.memoryId), data.reason);
           globalBroadcaster.broadcast('memory_updated', { id: data.memoryId, status: 'superseded' });
+          return { body: result };
+        });
+        return;
+      }
+
+      // API: Update Memory Assertion
+      if (req.method === 'POST' && url.pathname === '/api/memories/assertion') {
+        handleJsonPost(req, res, 'Failed to update memory assertion', (data) => {
+          const memoryId = String(data.memoryId || data.id);
+          const rawAssertion = data.assertion !== undefined ? String(data.assertion).trim() : null;
+          const result = repo.setAssertion(memoryId, rawAssertion || null);
+          if (!result.success) {
+            throw new HttpError(400, result.error || 'Invalid assertion');
+          }
+          globalBroadcaster.broadcast('memory_updated', { id: memoryId, assertion: rawAssertion });
+          return { body: { success: true, memoryId, assertion: rawAssertion } };
+        });
+        return;
+      }
+
+      // API: Trigger Team Memory Sync
+      if (req.method === 'POST' && url.pathname === '/api/sync') {
+        handleJsonPost(req, res, 'Team memory sync failed', () => {
+          const result = syncTeamMemory(db, config.projectRoot, config.projectId);
+          globalBroadcaster.broadcast('sync_completed', result);
+          return { body: result };
+        });
+        return;
+      }
+
+      // API: Trigger Passive Distillation
+      if (req.method === 'POST' && url.pathname === '/api/distill') {
+        handleJsonPost(req, res, 'Passive distillation failed', (data) => {
+          if (spool.hasPending()) {
+            try { spool.drain(db); } catch {}
+          }
+          const result = distillSessionTraps(db, config.projectId, data?.sessionId);
+          if (result.distilledCount > 0) {
+            globalBroadcaster.broadcast('distill_completed', result);
+          }
           return { body: result };
         });
         return;

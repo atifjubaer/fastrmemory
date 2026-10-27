@@ -1,5 +1,8 @@
 import * as React from 'react';
-import { FileCode2, FileSearch, Plus, ShieldAlert, ShieldCheck, X } from 'lucide-react';
+import { FileCode2, FileSearch, Loader2, Plus, ShieldAlert, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +11,8 @@ import { CreateMemoryDialog } from '@/components/CreateMemoryDialog';
 import { useTraps } from '@/hooks/queries';
 import { navigate, openMemory, useRoute } from '@/lib/router';
 import { formatReward, pluralize, relativeTime } from '@/lib/format';
-import type { TrapMatch } from '@/lib/api';
+import { api, type TrapMatch } from '@/lib/api';
+import { cn } from '@/lib/utils';
 
 const UNLINKED = '(not linked to a file)';
 
@@ -23,6 +27,19 @@ function TrapItem({ t }: { t: TrapMatch }) {
         <span className="flex min-w-0 items-center gap-2">
           <ShieldAlert className="size-4 shrink-0 text-trap" aria-hidden />
           <span className="truncate text-sm font-medium">{t.title}</span>
+          {t.assertion && (
+            <Badge
+              variant="outline"
+              className={cn(
+                'font-mono text-[9px] uppercase font-semibold shrink-0',
+                t.assertion_verdict === 'holds' && 'border-success text-success bg-success/10',
+                t.assertion_verdict === 'fails' && 'border-risk text-risk bg-risk/10',
+                (!t.assertion_verdict || t.assertion_verdict === 'unknown') && 'border-trap text-trap bg-trap/10'
+              )}
+            >
+              {t.assertion_verdict ?? 'asserted'}
+            </Badge>
+          )}
           <span className="ml-auto shrink-0"><StatusBadge status={t.status} /></span>
         </span>
         <span className="line-clamp-2 pl-6 text-xs text-muted-foreground">{t.content}</span>
@@ -41,6 +58,20 @@ export function TrapsPage() {
   const [input, setInput] = React.useState(filesParam.replace(/,/g, '\n'));
   const [createOpen, setCreateOpen] = React.useState(false);
   const traps = useTraps(files);
+  const qc = useQueryClient();
+
+  const distill = useMutation({
+    mutationFn: () => api.distill(),
+    onSuccess: (res) => {
+      if (res.result.distilledCount > 0) {
+        toast.success(`Distilled ${res.result.distilledCount} new error trap(s) from recent sessions.`);
+        void qc.invalidateQueries();
+      } else {
+        toast.info('No new error traps distilled from recent tool errors.');
+      }
+    },
+    onError: (err) => toast.error('Distillation failed', { description: (err as Error).message })
+  });
 
   const groups = React.useMemo(() => {
     const map = new Map<string, TrapMatch[]>();
@@ -76,9 +107,15 @@ export function TrapsPage() {
           </>
         }
         actions={
-          <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)}>
-            <Plus aria-hidden /> Log a trap
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => distill.mutate()} disabled={distill.isPending}>
+              {distill.isPending ? <Loader2 className="animate-spin size-3.5" aria-hidden /> : <Sparkles className="size-3.5" aria-hidden />}
+              Distill traps
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)}>
+              <Plus aria-hidden /> Log a trap
+            </Button>
+          </div>
         }
       />
 

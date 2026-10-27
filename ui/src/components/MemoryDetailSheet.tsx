@@ -7,6 +7,7 @@ import {
   Link2,
   Pin,
   PinOff,
+  ShieldAlert,
   ShieldCheck,
   ShieldQuestion,
   Trash2,
@@ -198,7 +199,8 @@ function MemoryDetailBody({ id }: { id: string }) {
               </div>
             )}
             <MarkdownView content={m.content} />
-            <LinkedFiles files={m.linked_files} />
+            <AssertionSection assertion={m.assertion} result={m.assertion_result} />
+            <LinkedFiles files={m.linked_files} symbols={m.linked_symbols} />
           </TabsContent>
 
           <TabsContent value="details">
@@ -220,25 +222,78 @@ function MemoryDetailBody({ id }: { id: string }) {
   );
 }
 
-function LinkedFiles({ files }: { files: string[] }) {
+function AssertionSection({
+  assertion,
+  result
+}: {
+  assertion?: string | null;
+  result?: { verdict: 'holds' | 'fails' | 'unknown'; reason: string } | null;
+}) {
+  if (!assertion) return null;
+  const verdict = result?.verdict ?? 'unknown';
   return (
-    <section aria-labelledby="linked-files-h">
-      <h3 id="linked-files-h" className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase">
-        <Link2 className="size-3.5" aria-hidden /> Linked files ({files.length})
-      </h3>
-      {files.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Project-wide: not linked to specific files.</p>
-      ) : (
-        <ul className="flex flex-wrap gap-1.5">
-          {files.map((f) => (
-            <li key={f}>
-              <Badge variant="outline" className="max-w-full font-mono text-[11px]">
-                <FileCode2 aria-hidden />
-                <span className="truncate">{f}</span>
-              </Badge>
-            </li>
-          ))}
-        </ul>
+    <section aria-labelledby="assertion-h" className="rounded-lg border p-3 bg-muted/20">
+      <div className="flex items-center justify-between gap-2 mb-1.5">
+        <h3 id="assertion-h" className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase">
+          <ShieldAlert className="size-3.5 text-trap" aria-hidden /> Self-Verifying Assertion
+        </h3>
+        <Badge
+          variant="outline"
+          className={cn(
+            'font-mono text-[10px] uppercase font-semibold',
+            verdict === 'holds' && 'border-success text-success bg-success/10',
+            verdict === 'fails' && 'border-risk text-risk bg-risk/10',
+            verdict === 'unknown' && 'border-trap text-trap bg-trap/10'
+          )}
+        >
+          {verdict}
+        </Badge>
+      </div>
+      <code className="text-xs font-mono break-all block bg-muted/60 p-1.5 rounded">{assertion}</code>
+      {result?.reason && (
+        <p className="text-xs text-muted-foreground mt-1.5">{result.reason}</p>
+      )}
+    </section>
+  );
+}
+
+function LinkedFiles({ files, symbols }: { files: string[]; symbols?: string[] }) {
+  return (
+    <section aria-labelledby="linked-files-h" className="flex flex-col gap-3">
+      <div>
+        <h3 id="linked-files-h" className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase">
+          <Link2 className="size-3.5" aria-hidden /> Linked files ({files.length})
+        </h3>
+        {files.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Project-wide: not linked to specific files.</p>
+        ) : (
+          <ul className="flex flex-wrap gap-1.5">
+            {files.map((f) => (
+              <li key={f}>
+                <Badge variant="outline" className="max-w-full font-mono text-[11px]">
+                  <FileCode2 aria-hidden />
+                  <span className="truncate">{f}</span>
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      {symbols && symbols.length > 0 && (
+        <div>
+          <h4 className="mb-1.5 text-xs font-medium text-muted-foreground uppercase">
+            Anchored declarations ({symbols.length})
+          </h4>
+          <ul className="flex flex-wrap gap-1.5">
+            {symbols.map((s) => (
+              <li key={s}>
+                <Badge variant="secondary" className="font-mono text-[11px] text-cyan-600 dark:text-cyan-400">
+                  <span className="truncate">{s}()</span>
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </section>
   );

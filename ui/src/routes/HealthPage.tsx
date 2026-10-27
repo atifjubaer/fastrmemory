@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, CheckCircle2, Database, HeartPulse, Info, Loader2, Stethoscope, Wrench, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Database, HeartPulse, Info, Loader2, RefreshCw, Stethoscope, Wrench, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -43,6 +43,17 @@ export function HealthPage() {
     onError: (err) => toast.error('Heal failed', { description: (err as Error).message }),
   });
 
+  const syncTeam = useMutation({
+    mutationFn: () => api.syncTeam(),
+    onSuccess: (res) => {
+      toast.success('Team memory synchronized', {
+        description: `Read ${res.result.pagesRead} pages; ingested ${res.result.newMemoriesIngested} new memories; updated ${res.result.supersededUpdated} superseded.`
+      });
+      void qc.invalidateQueries();
+    },
+    onError: (err) => toast.error('Sync failed', { description: (err as Error).message })
+  });
+
   const data = health.data;
   const report = data?.report;
 
@@ -54,6 +65,9 @@ export function HealthPage() {
         description="Integrity of the SQLite store, the keyword index, file links and the action graph, plus search coverage."
         actions={
           <>
+            <Button variant="outline" size="sm" onClick={() => syncTeam.mutate()} disabled={syncTeam.isPending}>
+              {syncTeam.isPending ? <Loader2 className="animate-spin size-3.5" aria-hidden /> : <RefreshCw className="size-3.5" aria-hidden />} Sync team
+            </Button>
             <Button variant="outline" size="sm" onClick={() => health.refetch()} disabled={health.isFetching}>
               {health.isFetching ? <Loader2 className="animate-spin" aria-hidden /> : <Stethoscope aria-hidden />} Re-run diagnosis
             </Button>
