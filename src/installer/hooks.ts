@@ -60,6 +60,9 @@ export function claudeHookSpecs(platform: NodeJS.Platform = process.platform): C
   return [
     // Plain stdout from SessionStart is added to Claude's context (prior handoff, frontier tasks).
     { event: 'SessionStart', command: buildHookCommand('SessionStart', platform) },
+    // Inject a small memory block on every user prompt, so memory stops depending on the
+    // model choosing to call `fastr_recall`. No matcher: the event fires on every prompt.
+    { event: 'UserPromptSubmit', command: buildHookCommand('UserPromptSubmit', platform), timeout: 10 },
     // Warn about active error traps before Claude edits a file (returned as additionalContext).
     { event: 'PreToolUse', matcher: 'Edit|Write|MultiEdit|NotebookEdit', command: buildHookCommand('PreToolUse', platform), timeout: 10 },
     { event: 'PreCompact', command: buildHookCommand('PreCompact', platform), timeout: 15 },

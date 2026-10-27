@@ -52,6 +52,8 @@ The memory row is committed before `insertMemory()` returns. Indexing and analys
 
 Hooks exit after each event; there is no resident process. The optional `daemon start` command exists for cross-process HTTP/SSE use and is not required.
 
+Claude Code's `UserPromptSubmit` hook injects a ≤150-token block on every user prompt: the next step from the latest handoff, the traps for the files the agent last edited, and the open conflict count. `PreToolUse` records the files it is asked to edit into the bounded `file_edits` table — 20 rows per project, pruned on every drain — and the per-turn block reads the last two back. The budget is enforced by dropping content in order of least value: the prompt echo, then traps, then the next step.
+
 ## 4. Retrieval
 
 Three streams are fused with Reciprocal Rank Fusion (RRF):

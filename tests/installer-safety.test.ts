@@ -133,6 +133,11 @@ describe('Installer config safety', () => {
     expect(settings.permissions.allow).toEqual(['Bash(npm test)']);
     expect(settings.mcpServers).toBeUndefined();
     expect(Array.isArray(settings.hooks.SessionStart)).toBe(true);
+    // The per-turn hook has no matcher: it fires on every prompt.
+    expect(Array.isArray(settings.hooks.UserPromptSubmit)).toBe(true);
+    expect(settings.hooks.UserPromptSubmit[0].matcher).toBeUndefined();
+    expect(settings.hooks.UserPromptSubmit.flatMap((group: any) => group.hooks)
+      .some((hook: any) => hook.command.includes('hook run UserPromptSubmit'))).toBe(true);
 
     const gemini = JSON.parse(fs.readFileSync(path.join(dir, '.gemini', 'settings.json'), 'utf-8'));
     expect(gemini.mcpServers.fastrmemory.args).toContain('mcp');

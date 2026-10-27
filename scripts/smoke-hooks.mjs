@@ -17,6 +17,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { claudeHookSpecs } from '../dist/src/installer/hooks.js';
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url));
 const CLI = path.join(REPO_ROOT, 'dist', 'bin', 'fastr.js');
@@ -103,7 +104,10 @@ try {
   check('claude mcp', claudeMcp.mcpServers?.fastrmemory?.args?.includes('mcp'), 'fastrmemory entry must point at mcp');
   const claudeHooks = JSON.parse(fs.readFileSync(path.join(project, '.claude', 'settings.json'), 'utf-8'));
   const hookCommands = Object.values(claudeHooks.hooks ?? {}).flatMap((groups) => groups.flatMap((group) => group.hooks ?? []));
-  check('claude hooks', hookCommands.length === 4, `expected 4 hook commands, found ${hookCommands.length}`);
+  // The expected count comes from the installer's own hook specs, so adding a hook does not
+  // require editing this smoke test.
+  const expectedHooks = claudeHookSpecs(process.platform).length;
+  check('claude hooks', hookCommands.length === expectedHooks, `expected ${expectedHooks} hook commands, found ${hookCommands.length}`);
   check('claude hooks', hookCommands.every((hook) => /hook\s+run/.test(hook.command)), 'every hook must call `hook run`');
 
   const second = run('install');
