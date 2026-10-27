@@ -4,6 +4,16 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-10-28
+
+Documentation and comparison release. Adds the comprehensive 4-way Architectural & Performance Comparison table to the README and benchmark documentation (comparing FastrMemory against Hippo, Memoria, and AgentMemory across runtime footprint, ingest speed, recall latency, AST symbol anchoring, self-verifying assertions, token overhead, passive learning, and team sync), documents the backup restore and disaster recovery workflow, and adds the automated VS Code / Cursor extension packaging script (`scripts/package-extension.mjs`). Test suite is 461 tests across 69 files.
+
+### Added
+
+- Comprehensive 4-way Architectural & Performance Comparison table in README.md and docs/PUBLIC_BENCHMARKS.md.
+- Automated VS Code / Cursor extension packaging script (`scripts/package-extension.mjs`, invoked via `npm run package:extension`).
+- Documented machine migration and disaster recovery workflows with `fastr backup --restore`.
+
 ## [0.8.1] - 2026-10-28
 
 Web dashboard refinement release. Renders the official Neural Synapse Core logo mark in the dashboard shell and favicon, surfaces live machine-checkable assertion verdicts (`holds`, `fails`, `unknown`) and code declaration anchors in the memory detail sheet and traps views, and adds one-click "Sync team" and "Distill traps" actions directly to the dashboard. Test suite is 461 tests across 69 files.
