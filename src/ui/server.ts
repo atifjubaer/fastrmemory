@@ -201,7 +201,7 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
   const db = initDatabase(config.dbPath);
   const spool = new SpoolManager(config.spoolPath);
   const retrievalQueue = new RetrievalQueue(resolveRetrievalQueuePath(config));
-  const repo = new FastrRepository(db, spool, { retrievalQueue });
+  const repo = new FastrRepository(db, spool, { retrievalQueue, projectRoot: config.projectRoot });
 
   /** Strips the binary embedding (huge as JSON) and attaches linked files with batched queries. */
   const serializeMemories = (rows: Memory[]): Array<Omit<Memory, 'embedding'> & { linked_files: string[] }> => {
@@ -498,7 +498,7 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
 
       if (req.method === 'POST' && url.pathname === '/api/health/heal') {
         handleJsonPost(req, res, 'Failed to heal database', (data) => {
-          const result = healDatabase(db, config.projectId, { dryRun: Boolean(data?.dryRun) });
+          const result = healDatabase(db, config.projectId, { dryRun: Boolean(data?.dryRun), projectRoot: config.projectRoot });
           if (!result.dryRun) globalBroadcaster.broadcast('sync_complete', { healed: result.fixedCount });
           return { body: result };
         });

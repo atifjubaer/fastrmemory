@@ -374,4 +374,34 @@ describe('MCP server hardening (errors, bounds, annotations, new tools, prompts)
       expect(wrapText).toContain(s);
     }
   });
+
+  it('accepts an assertion on fastr_remember and fastr_trap_log', async () => {
+    const id = await remember({ assertion: 'file_present:package.json' });
+    const row = ctx.db.prepare('SELECT assertion FROM memories WHERE id = ?').get(id) as any;
+    expect(row.assertion).toBe('file_present:package.json');
+
+    const trap = await call('fastr_trap_log', {
+      title: 'Never Use Date.now() for JWT Exp',
+      content: 'jwt exp is seconds; Date.now() is milliseconds.',
+      files: ['src/auth/jwt.ts'],
+      assertion: 'text_present:src/auth/jwt.ts::Date.now()'
+    });
+    expect(trap.isError).toBeFalsy();
+    const trapId = text(trap).match(/\[(mem_[a-f0-9]+)\]/)![1];
+    const trapRow = ctx.db.prepare('SELECT assertion FROM memories WHERE id = ?').get(trapId) as any;
+    expect(trapRow.assertion).toBe('text_present:src/auth/jwt.ts::Date.now()');
+  });
+
+  it('rejects a malformed assertion instead of storing an unchecked string', async () => {
+    for (const assertion of ['text_present:src/a.ts', 'regex:src/a.ts::x', 'file_present:']) {
+      const res = await call('fastr_remember', {
+        module: 'auth',
+        kind: 'rule',
+        title: 'Bad assertion',
+        content: 'Should not be stored.',
+        assertion
+      });
+      expect(res.isError, assertion).toBe(true);
+    }
+  });
 });

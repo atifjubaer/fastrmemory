@@ -122,11 +122,15 @@ export function resolveFtsMode(projectRoot?: string): FtsMode {
 }
 
 export function findProjectRoot(startDir: string = process.cwd()): string {
+  const home = path.resolve(resolveFastrHome());
   let cur = path.resolve(startDir);
   while (true) {
+    // `$FASTR_HOME/.fastr` holds the global database and the model cache. It is not a
+    // project marker, so it must not capture every directory under the user's home.
+    const isFastrHome = cur === home;
     if (
       fs.existsSync(path.join(cur, '.git')) ||
-      fs.existsSync(path.join(cur, '.fastr')) ||
+      (!isFastrHome && fs.existsSync(path.join(cur, '.fastr'))) ||
       fs.existsSync(path.join(cur, 'package.json'))
     ) {
       return cur;

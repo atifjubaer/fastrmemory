@@ -13,6 +13,7 @@ import {
 } from './embeddings.js';
 import { scheduleBackfill } from './backfill.js';
 import { drainFtsQueue, pendingFtsCount } from '../db/fts-queue.js';
+import { filterByAssertion } from '../db/assertions.js';
 import { packMemoriesIntoBudget, ScoredMemory, TOKEN_LEVELS } from './budget.js';
 import { extractEntities } from '../learn/ner.js';
 import { detectTemporalWindow, parseQuestionDate, withinWindow, type TemporalWindow } from './temporal.js';
@@ -172,6 +173,9 @@ export interface SearchParams {
    * so a caller that must not block on SQLite's write lock can turn it off and read a
    * slightly stale index instead. Defaults to true. */
   drainFts?: boolean;
+  /** Project root, used to evaluate memory assertions on the read path. Without it, a
+   * memory with an assertion is treated as still holding. */
+  projectRoot?: string;
   /** Optional retrieval configuration for ablations and offline benchmarks. */
   retrieval?: RetrievalConfig;
 }
@@ -300,7 +304,8 @@ export async function searchMemories(
     maxPerSession = 3,
     limit,
     backfill,
-    drainFts = true
+    drainFts = true,
+    projectRoot
   } = params;
 
   const retrieval = params.retrieval ?? {};
@@ -797,6 +802,17 @@ export async function searchMemories(
       vectorRank: rankB,
       graphRank: rankC
     });
+  }
+
+  // A memory whose assertion has stopped holding is spent: the defect it warns about was
+  // fixed, so surfacing it (with a 2.0x trap boost) wastes the caller's context on a bug
+  // that no longer exists. Filter before sorting so the budget goes to live memories.
+  if (projectRoot) {
+    const live = filterByAssertion(db, allScored.map((item) => item.memory), projectRoot);
+    if (live.length !== allScored.length) {
+      const liveIds = new Set(live.map((memory) => memory.id));
+      allScored = allScored.filter((item) => liveIds.has(item.memory.id));
+    }
   }
 
   // Sort by final score FIRST, then diversify, so per-session caps drop the weakest items.

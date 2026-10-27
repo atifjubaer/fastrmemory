@@ -16,6 +16,7 @@ import { assemblePromptContext } from './assemble.js';
 import { predictFileBaseRate } from './predict.js';
 import { compressFile, compressContent } from '../compress/markdown.js';
 import { diagnoseDatabase, healDatabase } from '../db/doctor.js';
+import { parseAssertion } from '../db/assertions.js';
 import { tagVisionAsset, searchVisionAssets } from '../vision/assets.js';
 import { diffSnapshots, formatDiffMarkdown, replayAt } from '../replay/snapshot.js';
 import {
@@ -37,6 +38,19 @@ const AGENT = z.string().min(1).max(200);
 const TITLE = z.string().min(1).max(300);
 const CONTENT = z.string().min(1).max(20_000);
 const NOTE = z.string().max(2000);
+const ASSERTION = z
+  .string()
+  .min(1)
+  .max(1024)
+  .refine((value) => parseAssertion(value) !== null, {
+    message:
+      'Unsupported assertion. Use text_present:<path>::<text>, symbol_present:<path>::<name>, or file_present:<path>.'
+  })
+  .describe(
+    'Condition that keeps this memory relevant, checked against the working tree: ' +
+      'text_present:<path>::<text>, symbol_present:<path>::<name>, or file_present:<path>. ' +
+      'Once it stops holding, recall stops returning the memory.'
+  );
 const SLOT_KEY = z.string().min(1).max(100);
 const LIMIT = z.number().int().min(1).max(200);
 const BUDGET = z.number().int().min(50).max(16_000);
@@ -85,7 +99,7 @@ export function createFastrServerContext(customRoot?: string, homeDir?: string):
   const db = initDatabase(config.dbPath);
   const spool = new SpoolManager(config.spoolPath);
   const retrievalQueue = new RetrievalQueue(resolveRetrievalQueuePath(config));
-  const repo = new FastrRepository(db, spool, { retrievalQueue });
+  const repo = new FastrRepository(db, spool, { retrievalQueue, projectRoot: config.projectRoot });
 
   // Auto-attach global database for cross-repository federation
   if (config.globalDbPath) {
@@ -163,7 +177,8 @@ export function createFastrMcpServer(
         files,
         module,
         budgetTokens,
-        includeHistory
+        includeHistory,
+        projectRoot: config.projectRoot
       });
 
       // Increment retrieval counter for recalled memories
@@ -313,11 +328,12 @@ export function createFastrMcpServer(
         symbols: z.array(z.string().min(1).max(300)).max(200).default([]).describe('Related symbol or function names'),
         verified: z.boolean().default(false).describe('Set true if already verified by passing tests'),
         pinned: z.boolean().default(false).describe('Pin to always surface during recall'),
-        scope: z.enum(['project', 'global']).default('project').describe('Storage scope: project-local or organization-wide global')
+        scope: z.enum(['project', 'global']).default('project').describe('Storage scope: project-local or organization-wide global'),
+        assertion: ASSERTION.optional()
       }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false }
     },
-    async ({ module, kind, title, content, files, symbols, verified, pinned, scope }) => {
+    async ({ module, kind, title, content, files, symbols, verified, pinned, scope, assertion }) => {
       // 1. Scrub secrets
       const scrubbedTitle = scrubSecrets(title);
       const scrubbedContent = scrubSecrets(content);
@@ -333,7 +349,8 @@ export function createFastrMcpServer(
         files,
         symbols,
         verified,
-        pinned
+        pinned,
+        assertion
       });
 
       // 3. Re-render Two-Zone Markdown page (only for project scope)
@@ -699,11 +716,12 @@ export function createFastrMcpServer(
         title: TITLE.describe('Clear, imperative rule title (e.g. Never Use Date.now() for JWT Exp)'),
         content: CONTENT.describe('Exact explanation of the error trap and the concrete workaround/fix'),
         files: PATHS.describe('Code files affected by this error trap'),
-        module: MODULE.default('general').describe('Module name (e.g. auth, db, api)')
+        module: MODULE.default('general').describe('Module name (e.g. auth, db, api)'),
+        assertion: ASSERTION.optional()
       }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false }
     },
-    async ({ title, content, files, module: trapModule }) => {
+    async ({ title, content, files, module: trapModule, assertion }) => {
       const scrubbedTitle = scrubSecrets(title);
       const scrubbedContent = scrubSecrets(content);
 
@@ -714,7 +732,8 @@ export function createFastrMcpServer(
         title: scrubbedTitle,
         content: scrubbedContent,
         files,
-        verified: true
+        verified: true,
+        assertion
       });
 
       // The trap is already persisted; a mirror failure must not surface as a tool
@@ -1508,7 +1527,7 @@ export function createFastrMcpServer(
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false }
     },
     async ({ dryRun }) => {
-      const result = healDatabase(db, config.projectId, { dryRun });
+      const result = healDatabase(db, config.projectId, { dryRun, projectRoot: config.projectRoot });
       let out = `### 💉 FastrMemory Self-Healing Doctor\n\n`;
       out += `- **Mode**: ${result.dryRun ? '🔍 **DRY RUN (Preview Only)**' : '⚡ **EXECUTED LIVE**'}\n`;
       out += `- **Issues Fixed**: ${result.fixedCount}\n`;

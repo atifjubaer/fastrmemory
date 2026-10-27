@@ -47,6 +47,7 @@ import type { LocalImportKind } from '../src/import/local.js';
 import { consolidateMemories } from '../src/db/consolidate.js';
 import { runMemoryCi } from '../src/ci/memory-ci.js';
 import { countSymbols, indexProjectSymbols } from '../src/code/indexer.js';
+import { evaluateMemoryAssertion } from '../src/db/assertions.js';
 
 const BANNER = `
 \x1b[38;2;56;189;248m   ______           __        __  ___                                \x1b[0m
@@ -235,6 +236,7 @@ program
   .option('-k, --kind <kind>', 'rule | decision | error_trap | workflow', 'rule')
   .option('-f, --files <files...>', 'Related file paths')
   .option('-s, --symbols <symbols...>', 'Related symbol or function names (anchors the memory to a declaration)')
+  .option('--assert <spec>', 'Condition that keeps this memory relevant (e.g. "text_present:src/a.ts::Date.now(" or "symbol_present:src/a.ts::signToken")')
   .option('--verified', 'Mark as verified immediately', false)
   .action((title: string, opts: any) => {
     const ctx = createFastrServerContext();
@@ -249,6 +251,7 @@ program
       content: scrubbedContent,
       files: opts.files || [],
       symbols: opts.symbols || [],
+      assertion: opts.assert,
       verified: opts.verified
     });
 
@@ -307,6 +310,7 @@ trapCmd
   .requiredOption('-c, --content <content>', 'Error cause, symptom, and preventive solution')
   .option('-m, --module <module>', 'Affected module or domain', 'general')
   .option('-f, --files <files...>', 'Related file paths')
+  .option('--assert <spec>', 'Condition that keeps this trap relevant; when it stops holding the trap auto-dormants')
   .action((title: string, opts: any) => {
     const ctx = createFastrServerContext();
     const mem = ctx.repo.insertMemory({
@@ -316,10 +320,64 @@ trapCmd
       title: scrubSecrets(title),
       content: scrubSecrets(opts.content),
       files: opts.files || [],
+      assertion: opts.assert,
       verified: false,
     });
     syncAllModulePages(ctx.db, ctx.config.projectRoot, ctx.config.projectId);
     console.log(`⚠️ Logged error trap [${mem.id}] in module "${mem.module}" with 2.0x recall boost.`);
+  });
+
+trapCmd
+  .command('verify')
+  .description('Check every memory assertion and retire the ones that no longer hold')
+  .option('--apply', 'Persist the dormancy instead of only reporting', false)
+  .option('--json', 'Print the result as JSON', false)
+  .action((opts: any) => {
+    const ctx = createFastrServerContext();
+    const rows = ctx.db.prepare(`
+      SELECT id, title, assertion FROM main.memories
+      WHERE project_id = ? AND valid_to IS NULL AND status IN ('staging', 'verified')
+        AND assertion IS NOT NULL AND assertion != ''
+      ORDER BY created_at DESC
+    `).all(ctx.config.projectId) as Array<{ id: string; title: string; assertion: string }>;
+
+    const stale = opts.apply
+      ? ctx.repo.dormantFailedAssertions(ctx.config.projectId, ctx.config.projectRoot)
+      : [];
+    const report = rows.map((row) => {
+      const retired = stale.find((item) => item.id === row.id);
+      if (retired) return { ...row, verdict: 'fails', reason: retired.reason };
+      // Surviving rows are checked again so the report distinguishes `holds` from
+      // `unknown` instead of calling every unretired memory valid.
+      const result = evaluateMemoryAssertion(
+        ctx.db,
+        { project_id: ctx.config.projectId, assertion: row.assertion },
+        ctx.config.projectRoot
+      );
+      return { ...row, verdict: result.verdict, reason: result.reason };
+    });
+
+    if (opts.json) {
+      console.log(JSON.stringify({ applied: Boolean(opts.apply), checked: report.length, retired: stale.length, report }, null, 2));
+      return;
+    }
+    if (report.length === 0) {
+      console.log('\nNo memories carry an assertion.\n');
+      return;
+    }
+    console.log(`\n=== FastrMemory Assertion Check (${report.length}) ===`);
+    for (const item of report) {
+      const icon = item.verdict === 'fails' ? '[FAIL]' : item.verdict === 'unknown' ? '[?]' : '[OK]';
+      console.log(`${icon} [${item.id}] ${item.verdict.toUpperCase()} - ${item.title}`);
+      console.log(`   assertion: ${item.assertion}`);
+      console.log(`   ${item.reason}`);
+    }
+    if (opts.apply) {
+      console.log(`\nRetired ${stale.length} memory(ies) whose assertion no longer holds.`);
+    } else if (report.some((item) => item.verdict === 'fails')) {
+      console.log('\nRun `fastr trap verify --apply` to retire the ones marked [FAIL].');
+    }
+    console.log('');
   });
 
 trapCmd
@@ -1197,7 +1255,7 @@ program
     try {
       const ctx = createFastrServerContext();
       if (opts.drainConflicts) {
-        const drained = healDatabase(ctx.db, ctx.config.projectId, { drainConflicts: true });
+        const drained = healDatabase(ctx.db, ctx.config.projectId, { drainConflicts: true, projectRoot: ctx.config.projectRoot });
         console.log(
           `\nDrained ${drained.conflictsDrained ?? 0} queued conflict check(s); recorded ${drained.conflictsCreated ?? 0} conflict(s); ` +
             `extracted entities for ${drained.entitiesDrained ?? 0} memory(ies).`
@@ -1291,7 +1349,8 @@ program
       const res = healDatabase(ctx.db, ctx.config.projectId, {
         dryRun: opts.dryRun,
         drainConflicts: opts.drainConflicts,
-        conflictBatchSize: Number.isFinite(batchSize) && batchSize > 0 ? batchSize : 20
+        conflictBatchSize: Number.isFinite(batchSize) && batchSize > 0 ? batchSize : 20,
+        projectRoot: ctx.config.projectRoot
       });
       console.log(`\n=== FastrMemory Self-Healing Doctor ===`);
       console.log(`Mode:      ${res.dryRun ? '🔍 DRY RUN' : '⚡ LIVE REPAIR'}`);

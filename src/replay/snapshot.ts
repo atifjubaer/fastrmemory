@@ -41,6 +41,7 @@ export interface ReplayMemory {
   superseded_reason: string | null;
   source_event_ids: string[];
   created_at: string;
+  assertion: string | null;
   provenance_hash: string | null;
   files: string[];
 }
@@ -112,6 +113,7 @@ function memoryFromRow(row: any, files: string[]): ReplayMemory {
     superseded_reason: row.superseded_reason == null ? null : String(row.superseded_reason),
     source_event_ids: parseEventIds(String(row.source_event_ids ?? '[]')),
     created_at: String(row.created_at),
+    assertion: row.assertion == null ? null : String(row.assertion),
     provenance_hash: row.provenance_hash == null ? null : String(row.provenance_hash),
     files
   };

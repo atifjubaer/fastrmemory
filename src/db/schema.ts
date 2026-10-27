@@ -37,6 +37,11 @@ export interface Memory {
   created_at: string;
   last_recalled_at: string | null;
   provenance_hash: string | null;
+  /**
+   * A machine-checkable claim that must stay true for this memory to remain relevant.
+   * Null means the memory never expires on its own. See `src/db/assertions.ts`.
+   */
+  assertion: string | null;
 }
 
 export interface FileLink {
@@ -197,6 +202,8 @@ CREATE TABLE IF NOT EXISTS memories (
   embedding BLOB DEFAULT NULL,
   embedded INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  -- What must stay true for this memory to remain relevant. See src/db/assertions.ts.
+  assertion TEXT DEFAULT NULL,
   last_recalled_at TEXT DEFAULT NULL,
   provenance_hash TEXT DEFAULT NULL
 );
@@ -489,6 +496,12 @@ export function applySchema(db: DatabaseSync): void {
   // Auto-migrate: add provenance_hash if missing from older DB versions
   try {
     db.exec('ALTER TABLE memories ADD COLUMN provenance_hash TEXT DEFAULT NULL;');
+  } catch {}
+
+  // Auto-migrate: assertions. Older rows have none, which means they never expire on their
+  // own — exactly the behaviour they had before the column existed.
+  try {
+    db.exec('ALTER TABLE memories ADD COLUMN assertion TEXT DEFAULT NULL;');
   } catch {}
 
   // Auto-migrate: symbol anchoring. Older links keep a null symbol_id and resolve by path

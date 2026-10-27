@@ -15,6 +15,7 @@ import { globalBroadcaster } from '../ui/sse.js';
 import { resolveConflictMode, resolveNerMode, resolveFtsMode, type ConflictMode, type NerMode, type FtsMode } from '../config.js';
 import { drainFtsQueue, indexMemoryFtsNow, pendingFtsCount } from './fts-queue.js';
 import { resolveSymbolId } from '../code/indexer.js';
+import { evaluateMemoryAssertion, filterByAssertion, parseAssertion } from './assertions.js';
 
 export interface CreateMemoryParams {
   projectId: string;
@@ -29,6 +30,11 @@ export interface CreateMemoryParams {
   verified?: boolean;
   pinned?: boolean;
   sourceEventIds?: string[];
+  /**
+   * Condition that must stay true for this memory to remain relevant. When it stops
+   * holding, the memory is dormant. See `src/db/assertions.ts` for the grammar.
+   */
+  assertion?: string;
 }
 
 export interface ProjectStatus {
@@ -54,12 +60,18 @@ export interface RepositoryOptions {
   ftsMode?: FtsMode;
   /** Where recall counters are queued. Without one, counters are applied inline. */
   retrievalQueue?: RetrievalQueue;
+  /**
+   * Project root, used to evaluate memory assertions. Without it, assertions are not
+   * checked on the read path — a memory with an assertion is treated as still holding.
+   */
+  projectRoot?: string;
 }
 
 export class FastrRepository {
   private db: DatabaseSync;
   private spool?: SpoolManager;
   private retrievalQueue?: RetrievalQueue;
+  private projectRoot?: string;
   private conflictMode: ConflictMode;
   private nerMode: NerMode;
   private ftsMode: FtsMode;
@@ -68,6 +80,7 @@ export class FastrRepository {
     this.db = db;
     this.spool = spool;
     this.retrievalQueue = options.retrievalQueue;
+    this.projectRoot = options.projectRoot;
     this.conflictMode = options.conflictMode ?? resolveConflictMode();
     this.nerMode = options.nerMode ?? resolveNerMode();
     this.ftsMode = options.ftsMode ?? resolveFtsMode();
@@ -224,14 +237,23 @@ export class FastrRepository {
       createdAt: nowIso
     });
 
+    // A malformed assertion would silently never hold, so refuse it at the write.
+    if (params.assertion && !parseAssertion(params.assertion)) {
+      throw new Error(
+        `Unrecognised assertion: ${params.assertion}. ` +
+          'Use text_present:<path>::<text>, symbol_present:<path>::<name>, or file_present:<path>.'
+      );
+    }
+
     // Durability: the memory row and its deferred conflict job are committed together.
     // Nothing else (file links, NER, conflict scan) is allowed to delay this write.
     this.db.exec('SAVEPOINT fastr_memory_insert');
     try {
       this.db.prepare(`
         INSERT INTO ${targetTable} (
-          id, project_id, agent_id, module, kind, title, content, status, pinned, source_event_ids, created_at, provenance_hash
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          id, project_id, agent_id, module, kind, title, content, status, pinned, source_event_ids,
+          assertion, created_at, provenance_hash
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         id,
         targetProject,
@@ -243,6 +265,7 @@ export class FastrRepository {
         status,
         pinned,
         sourceIds,
+        params.assertion ? params.assertion.trim() : null,
         nowIso,
         provenanceHash
       );
@@ -596,7 +619,9 @@ export class FastrRepository {
       `;
     }
     query += ' ORDER BY reward_score DESC, created_at DESC';
-    return this.db.prepare(query).all(projectId) as unknown as Memory[];
+    const traps = this.db.prepare(query).all(projectId) as unknown as Memory[];
+    // A spent trap — one whose assertion no longer holds — is history, not a warning.
+    return this.projectRoot ? filterByAssertion(this.db, traps, this.projectRoot) : traps;
   }
 
   supersedeMemory(
@@ -804,6 +829,70 @@ export class FastrRepository {
     return { success: true };
   }
 
+  /** Sets or clears the assertion on one memory. */
+  setAssertion(memoryId: string, assertion: string | null): { success: boolean; error?: string } {
+    const table = this.locateMemoryTable(memoryId);
+    if (!table) return { success: false, error: `Memory not found: ${memoryId}` };
+    const value = assertion && assertion.trim() ? assertion.trim() : null;
+    if (value && !parseAssertion(value)) {
+      return { success: false, error: `Unrecognised assertion: ${value}` };
+    }
+    this.db.prepare(`UPDATE ${table} SET assertion = ? WHERE id = ?`).run(value, memoryId);
+    return { success: true };
+  }
+
+  /**
+   * Retires memories whose assertion has stopped holding.
+   *
+   * This is the write side of self-verification. The recall path only filters stale
+   * memories out of its own results; the status change is persisted here, by the doctor,
+   * so a read never writes. A memory that fails is set dormant with the reason recorded,
+   * which keeps it in history and out of every later recall.
+   */
+  dormantFailedAssertions(projectId: string, projectRoot: string | undefined): Array<{
+    id: string;
+    title: string;
+    assertion: string;
+    reason: string;
+  }> {
+    if (!projectRoot) return [];
+
+    let rows: Memory[];
+    try {
+      rows = this.db.prepare(`
+        SELECT * FROM main.memories
+        WHERE project_id = ?
+          AND valid_to IS NULL
+          AND status IN ('staging', 'verified')
+          AND assertion IS NOT NULL
+          AND assertion != ''
+      `).all(projectId) as unknown as Memory[];
+    } catch {
+      return [];
+    }
+
+    const retired: Array<{ id: string; title: string; assertion: string; reason: string }> = [];
+    const update = this.db.prepare(`
+      UPDATE main.memories
+      SET status = 'dormant', superseded_reason = ?
+      WHERE id = ? AND valid_to IS NULL
+    `);
+
+    for (const row of rows) {
+      const result = evaluateMemoryAssertion(this.db, row, projectRoot);
+      if (result.verdict !== 'fails') continue;
+      update.run(`Assertion no longer holds: ${result.reason}`, row.id);
+      retired.push({
+        id: row.id,
+        title: row.title,
+        assertion: row.assertion ?? '',
+        reason: result.reason
+      });
+    }
+
+    return retired;
+  }
+
   verifyStaging(projectId: string): number {
     const res = this.db.prepare(`
       UPDATE memories
@@ -954,7 +1043,9 @@ export class FastrRepository {
     const query = `SELECT * FROM (${innerQuery}) ORDER BY kind = 'error_trap' DESC, reward_score DESC`;
     const rows = this.db.prepare(query).all(...params) as unknown as Memory[];
 
-    return rows;
+    // Every trap surface — file history, trap recall, the per-turn block — reads through
+    // here, so filtering once retires a spent trap everywhere at the same time.
+    return this.projectRoot ? filterByAssertion(this.db, rows, this.projectRoot) : rows;
   }
 
   /**
