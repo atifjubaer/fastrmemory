@@ -50,6 +50,20 @@ hook/CLI/MCP
 
 The memory row is committed before `insertMemory()` returns. Indexing and analysis are deferred by default (`write.ftsMode`, `write.conflictMode`, `write.nerMode`) and drained by the next reader, the doctor, or the maintenance loop. Readers drain the FTS queue before running BM25, so a memory is searchable as soon as the insert returns. `write.*Mode: 'sync'` restores the historical inline path and is covered by tests.
 
+### 3b. Read-only recall
+
+The read path is not a writer. Two agents sharing one `.fastr/fastr.db` — one recalling while the other writes — would otherwise contend for SQLite's single write lock, and the recall would stall for the full `busy_timeout` or fail with `SQLITE_BUSY`. So:
+
+| Write on the read path | What happens instead |
+|---|---|
+| `incrementRetrieval` (`UPDATE memories`) | The counter is appended to `.fastr/spool/retrievals.jsonl` and applied later by a writer that already holds the lock |
+| FTS queue drain (`DELETE`/`INSERT`) | The drain runs with `busy_timeout = 0`, so it fails immediately instead of waiting; the queue rows stay for the next drain |
+| Embedding backfill (`UPDATE memories`) | The batch stops at the first busy row instead of stalling the recall that scheduled it |
+
+When the FTS drain is skipped, the queue is scanned read-only and any matching memory is added to the BM25 results behind the indexed ones. The "searchable as soon as `insertMemory()` returns" guarantee therefore survives the lock.
+
+Retrieval counters are applied by the next `insertMemory()`, by the doctor's maintenance loop, or by an explicit `drainRetrievalCounters()` call. A counter that cannot be applied is kept, not dropped.
+
 Hooks exit after each event; there is no resident process. The optional `daemon start` command exists for cross-process HTTP/SSE use and is not required.
 
 Claude Code's `UserPromptSubmit` hook injects a ≤150-token block on every user prompt: the next step from the latest handoff, the traps for the files the agent last edited, and the open conflict count. `PreToolUse` records the files it is asked to edit into the bounded `file_edits` table — 20 rows per project, pruned on every drain — and the per-turn block reads the last two back. The budget is enforced by dropping content in order of least value: the prompt echo, then traps, then the next step.

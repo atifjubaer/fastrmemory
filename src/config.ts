@@ -10,6 +10,13 @@ export interface FastrConfig {
   dbPath: string;
   globalDbPath: string;
   spoolPath: string;
+  /**
+   * Where recall counters are queued, off the read path.
+   *
+   * Optional so a hand-built config (tests, embedders) keeps working; it defaults to a
+   * sibling of the spool.
+   */
+  retrievalQueuePath?: string;
   pagesDir: string;
   write?: WriteConfig;
 }
@@ -136,6 +143,16 @@ export function resolveFastrHome(homeDir?: string): string {
   return homeDir ?? process.env.FASTR_HOME ?? os.homedir();
 }
 
+/**
+ * The path where recall counters are queued.
+ *
+ * Falls back to a sibling of the spool file, so a config built without the field still
+ * queues counters next to the rest of the project's deferred work.
+ */
+export function resolveRetrievalQueuePath(config: Pick<FastrConfig, 'spoolPath' | 'retrievalQueuePath'>): string {
+  return config.retrievalQueuePath ?? path.join(path.dirname(config.spoolPath), 'retrievals.jsonl');
+}
+
 export function loadConfig(customRoot?: string, homeDir?: string): FastrConfig {
   const projectRoot = customRoot ? path.resolve(customRoot) : findProjectRoot();
   const fastrDir = path.join(projectRoot, '.fastr');
@@ -172,6 +189,7 @@ export function loadConfig(customRoot?: string, homeDir?: string): FastrConfig {
     dbPath: path.join(fastrDir, 'fastr.db'),
     globalDbPath: path.join(resolveFastrHome(homeDir), '.fastr', 'global.db'),
     spoolPath: path.join(fastrDir, 'spool', 'pending.jsonl'),
+    retrievalQueuePath: path.join(fastrDir, 'spool', 'retrievals.jsonl'),
     pagesDir: path.join(fastrDir, 'pages'),
     write: {
       conflictMode: resolveConflictMode(projectRoot),

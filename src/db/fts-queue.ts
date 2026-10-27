@@ -43,7 +43,7 @@ export function pendingFtsCount(db: DatabaseSync, schema: FtsSchema = 'main'): n
  */
 export function drainFtsQueue(
   db: DatabaseSync,
-  options: { limit?: number; schema?: FtsSchema } = {}
+  options: { limit?: number; schema?: FtsSchema; busyTimeoutMs?: number } = {}
 ): DrainFtsResult {
   const limit = Math.max(1, Math.floor(options.limit ?? 500));
   const schema = options.schema ?? 'main';
@@ -61,23 +61,67 @@ export function drainFtsQueue(
   }
   if (!boundary || boundary.maxId === null || boundary.rows === 0) return { drained: 0 };
 
-  db.exec('SAVEPOINT fastr_drain_fts');
+  // The write below takes SQLite's single write lock. On the read path that lock must never
+  // be waited on: another agent's write would otherwise stall this caller for the full
+  // `busy_timeout`. A caller that passes `busyTimeoutMs: 0` makes the attempt fail
+  // immediately when the lock is held and falls back to a slightly stale index instead.
+  // Writers leave the timeout alone and keep the connection's normal retry behaviour.
+  const previousTimeout = options.busyTimeoutMs === undefined
+    ? null
+    : setBusyTimeout(db, options.busyTimeoutMs);
+
   try {
-    db.prepare(`DELETE FROM ${fts} WHERE id IN (SELECT memory_id FROM ${queue} WHERE id <= ?)`).run(boundary.maxId);
-    db.prepare(`
-      INSERT INTO ${fts}(id, title, module, content)
-      SELECT m.id, m.title, m.module, m.content FROM ${memories} m
-      WHERE m.id IN (SELECT memory_id FROM ${queue} WHERE id <= ?)
-    `).run(boundary.maxId);
-    db.prepare(`DELETE FROM ${queue} WHERE id <= ?`).run(boundary.maxId);
-    db.exec('RELEASE fastr_drain_fts');
+    db.exec('SAVEPOINT fastr_drain_fts');
+    try {
+      db.prepare(`DELETE FROM ${fts} WHERE id IN (SELECT memory_id FROM ${queue} WHERE id <= ?)`).run(boundary.maxId);
+      db.prepare(`
+        INSERT INTO ${fts}(id, title, module, content)
+        SELECT m.id, m.title, m.module, m.content FROM ${memories} m
+        WHERE m.id IN (SELECT memory_id FROM ${queue} WHERE id <= ?)
+      `).run(boundary.maxId);
+      db.prepare(`DELETE FROM ${queue} WHERE id <= ?`).run(boundary.maxId);
+      db.exec('RELEASE fastr_drain_fts');
+    } catch (err) {
+      db.exec('ROLLBACK TO fastr_drain_fts');
+      db.exec('RELEASE fastr_drain_fts');
+      throw err;
+    }
   } catch (err) {
-    db.exec('ROLLBACK TO fastr_drain_fts');
-    db.exec('RELEASE fastr_drain_fts');
-    throw err;
+    // The lock was held by another writer. Leave the queue rows in place: a later drain
+    // indexes them. A stale index is a worse answer, not a broken one.
+    if (!isBusyError(err)) throw err;
+    return { drained: 0 };
+  } finally {
+    if (previousTimeout !== null) setBusyTimeout(db, previousTimeout);
   }
 
   return { drained: boundary.rows };
+}
+
+function isBusyError(err: any): boolean {
+  const code = typeof err?.errcode === 'number' ? err.errcode & 0xff : -1;
+  if (code === 5 || code === 6) return true;
+  const message = String(err?.message ?? '');
+  return message.includes('SQLITE_BUSY')
+    || message.includes('database is locked')
+    || message.includes('database table is locked');
+}
+
+/**
+ * Sets the busy timeout and returns the previous value.
+ *
+ * `PRAGMA busy_timeout` returns the old value, so restoring it is a single statement.
+ * A connection that has no timeout set reports 0.
+ */
+function setBusyTimeout(db: DatabaseSync, timeoutMs: number): number {
+  try {
+    const row = db.prepare('PRAGMA busy_timeout').get() as { timeout?: number } | undefined;
+    const previous = Number(row?.timeout ?? 0);
+    db.exec(`PRAGMA busy_timeout = ${Math.max(0, Math.floor(timeoutMs))}`);
+    return previous;
+  } catch {
+    return 0;
+  }
 }
 
 /**

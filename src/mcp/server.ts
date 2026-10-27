@@ -4,12 +4,13 @@ import { MCP_SERVER_NAME, PACKAGE_VERSION } from '../version.js';
 import { DatabaseSync } from 'node:sqlite';
 import { FastrRepository } from '../db/repository.js';
 import { SpoolManager } from '../db/spool.js';
+import { RetrievalQueue } from '../db/retrieval-queue.js';
 import { initDatabase } from '../db/schema.js';
 import { searchMemories } from '../search/hybrid-rrf.js';
 import { ensureInstalledStaticModel } from '../search/embeddings.js';
 import { scrubSecrets } from '../privacy/scrubber.js';
 import { syncModulePage, syncAllModulePages } from '../mirror/markdown-pages.js';
-import { FastrConfig, loadConfig } from '../config.js';
+import { FastrConfig, loadConfig, resolveRetrievalQueuePath } from '../config.js';
 import { exportToObsidianVault } from '../export/obsidian.js';
 import { assemblePromptContext } from './assemble.js';
 import { predictFileBaseRate } from './predict.js';
@@ -83,7 +84,8 @@ export function createFastrServerContext(customRoot?: string, homeDir?: string):
   const config = loadConfig(customRoot, homeDir);
   const db = initDatabase(config.dbPath);
   const spool = new SpoolManager(config.spoolPath);
-  const repo = new FastrRepository(db, spool);
+  const retrievalQueue = new RetrievalQueue(resolveRetrievalQueuePath(config));
+  const repo = new FastrRepository(db, spool, { retrievalQueue });
 
   // Auto-attach global database for cross-repository federation
   if (config.globalDbPath) {

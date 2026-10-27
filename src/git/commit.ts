@@ -1,9 +1,10 @@
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { findProjectRoot, loadConfig } from '../config.js';
+import { findProjectRoot, loadConfig, resolveRetrievalQueuePath } from '../config.js';
 import { initDatabase } from '../db/schema.js';
 import { FastrRepository } from '../db/repository.js';
 import { SpoolManager } from '../db/spool.js';
+import { RetrievalQueue } from '../db/retrieval-queue.js';
 import { repoPathMatches } from './paths.js';
 
 export interface TrapMatch {
@@ -53,7 +54,8 @@ function withRepo<T>(root: string, fn: (repo: FastrRepository, projectId: string
   const db = initDatabase(config.dbPath);
   try {
     const spool = new SpoolManager(config.spoolPath);
-    return fn(new FastrRepository(db, spool), config.projectId);
+    const retrievalQueue = new RetrievalQueue(resolveRetrievalQueuePath(config));
+    return fn(new FastrRepository(db, spool, { retrievalQueue }), config.projectId);
   } finally {
     db.close();
   }
