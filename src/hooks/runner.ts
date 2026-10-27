@@ -4,6 +4,7 @@ import { FastrRepository } from '../db/repository.js';
 import { SpoolManager } from '../db/spool.js';
 import { syncAllModulePages } from '../mirror/markdown-pages.js';
 import { FastrConfig } from '../config.js';
+import { buildPerTurnContext } from './per-turn.js';
 
 export interface HookContext {
   db: DatabaseSync;
@@ -66,8 +67,9 @@ export function extractTargetFiles(payload: Record<string, any>, projectRoot: st
 
 /**
  * Formats a hook result for Claude Code's stdout contract. SessionStart plain text is added to the
- * model's context; PreToolUse only reaches the model through `hookSpecificOutput.additionalContext`.
- * Other events' stdout only lands in the debug log, so they print nothing.
+ * model's context; PreToolUse and UserPromptSubmit only reach the model through
+ * `hookSpecificOutput.additionalContext`. Other events' stdout only lands in the debug log, so
+ * they print nothing.
  */
 export function toClaudeHookStdout(event: string, result: { output?: string }): string | null {
   if (!result.output) return null;
@@ -76,6 +78,11 @@ export function toClaudeHookStdout(event: string, result: { output?: string }): 
   if (normalized === 'pretooluse') {
     return JSON.stringify({
       hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: result.output },
+    });
+  }
+  if (normalized === 'userpromptsubmit') {
+    return JSON.stringify({
+      hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: result.output },
     });
   }
   return null;
@@ -186,6 +193,20 @@ export function runLifecycleHook(
         }
       }
 
+      // Record the edit target so the per-turn block knows which files the agent is working
+      // in. The write is a spool append, so it costs well under a millisecond and never
+      // contends for the database lock.
+      ctx.spool.append({
+        project_id: ctx.config.projectId,
+        session_id: String(payload.session_id ?? 'hook-session'),
+        agent_id: payload.agentId || 'default',
+        event_type: 'tool_edit',
+        tool_name: payload.tool || payload.tool_name || null,
+        file_path: files[0] ?? null,
+        raw_payload: JSON.stringify({ files }),
+        content_hash: files.join('|'),
+      });
+
       if (traps.length > 0) {
         let text = `⚠️ FASTRMEMORY TRAP WARNING: ${traps.length} active error traps for target files:\n`;
         for (const t of traps) {
@@ -195,6 +216,36 @@ export function runLifecycleHook(
       }
 
       return { handled: true, message: 'Safe to proceed: no active traps.' };
+    }
+
+    case 'userpromptsubmit': {
+      // Memory that only arrives on SessionStart is gone after compaction, and memory that
+      // arrives only when the model calls `fastr_recall` depends on the model's discipline.
+      // This injects a small block every turn, so the memory arrives regardless.
+      const prompt = typeof payload.prompt === 'string'
+        ? payload.prompt
+        : typeof payload.user_prompt === 'string'
+          ? payload.user_prompt
+          : '';
+
+      // The edit events this block depends on are still in the spool; they are only drained
+      // on SessionEnd. Drain first so the block reflects the edits made this session.
+      if (ctx.spool.hasPending()) {
+        try {
+          ctx.spool.drain(ctx.db);
+        } catch {}
+      }
+
+      const block = buildPerTurnContext(ctx.db, ctx.repo, ctx.config.projectId, { prompt });
+      if (!block.text) {
+        return { handled: true, message: 'No per-turn context to inject.' };
+      }
+
+      return {
+        handled: true,
+        message: 'UserPromptSubmit hook executed',
+        output: block.text,
+      };
     }
 
     case 'posttoolusefailure': {

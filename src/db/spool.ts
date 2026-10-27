@@ -108,9 +108,21 @@ export class SpoolManager {
             id, project_id, session_id, agent_id, event_type, tool_name, file_path, raw_payload, content_hash, created_at
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now')))
         `);
+        const insertEditStmt = db.prepare(`
+          INSERT INTO file_edits (project_id, file_path, session_id, created_at)
+          VALUES (?, ?, ?, COALESCE(?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now')))
+        `);
         db.exec('BEGIN TRANSACTION');
         try {
           for (const ev of events) {
+            // Edits go to their own bounded table. raw_events has no retention policy and
+            // feeds provenance and drill, so it is the wrong home for a row per edit.
+            if (ev.event_type === 'tool_edit') {
+              for (const file of parseEditedFiles(ev.raw_payload)) {
+                insertEditStmt.run(ev.project_id, file, ev.session_id || '', ev.created_at || null);
+              }
+              continue;
+            }
             insertStmt.run(
               ev.id,
               ev.project_id,
@@ -129,6 +141,7 @@ export class SpoolManager {
           db.exec('ROLLBACK');
           throw err;
         }
+        pruneFileEdits(db);
       } catch (err) {
         // Put everything back so nothing is lost; the next drain retries.
         fs.appendFileSync(this.spoolFilePath, content, 'utf-8');
@@ -150,6 +163,42 @@ export class SpoolManager {
     const base = path.basename(this.spoolFilePath, path.extname(this.spoolFilePath));
     const ts = `${Date.now()}${String(drainSeq++).padStart(4, '0')}`;
     return path.join(dir, `${base}.${process.pid}.${ts}.draining`);
+  }
+}
+
+/** How many recent edits per project the per-turn hook keeps. */
+export const FILE_EDIT_HISTORY = 20;
+
+/** Extracts the edited file paths from a `tool_edit` spool payload. */
+export function parseEditedFiles(rawPayload: string): string[] {
+  try {
+    const parsed = JSON.parse(rawPayload);
+    const files = Array.isArray(parsed?.files) ? parsed.files : [];
+    return files.filter((file: unknown): file is string => typeof file === 'string' && file.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Keeps only the newest edits per project.
+ *
+ * The table exists to answer "what is the agent working on right now", so old rows are
+ * noise. Pruning on every drain keeps the table bounded without a separate maintenance job.
+ */
+export function pruneFileEdits(db: DatabaseSync, keep: number = FILE_EDIT_HISTORY): void {
+  try {
+    db.prepare(`
+      DELETE FROM file_edits
+      WHERE id NOT IN (
+        SELECT id FROM (
+          SELECT id, ROW_NUMBER() OVER (PARTITION BY project_id ORDER BY id DESC) AS rn
+          FROM file_edits
+        ) WHERE rn <= ?
+      )
+    `).run(keep);
+  } catch {
+    // Pruning is best-effort; a failure here must not lose the drained events.
   }
 }
 

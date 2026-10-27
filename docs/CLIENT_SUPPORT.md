@@ -4,17 +4,23 @@ FastrMemory integrates with agent clients through two surfaces:
 
 - an **MCP server** entry, which gives the client the tools, and
 - **lifecycle hooks** (or a plugin, where the client has no hook system), which push session
-  context in and capture pre-compaction snapshots.
+  context in, keep memory present on every turn, and capture pre-compaction snapshots.
 
 `fastr hook install` writes both for the five project-scoped clients below. `fastr hook
 uninstall` removes exactly what install wrote. Both commands are idempotent and are covered by
 `tests/hook-lifecycle.test.ts` and `scripts/smoke-hooks.mjs`.
 
+Claude Code is the only client with a per-prompt hook event, so it is the only one that gets
+`UserPromptSubmit` — a ≤150-token block with the next step, the traps for the files being
+edited, and the open conflict count, injected on every user prompt. The other clients have no
+equivalent event, so they keep their existing four hooks rather than a config their runtime
+would ignore.
+
 ## Project-scoped clients
 
 | Client | MCP config | Hook / plugin surface | What uninstall removes |
 |---|---|---|---|
-| Claude Code | `.mcp.json` | `.claude/settings.json` → `SessionStart`, `PreToolUse`, `PreCompact`, `SessionEnd` | the `fastrmemory` server, the four hook commands, and the file when nothing else is left |
+| Claude Code | `.mcp.json` | `.claude/settings.json` → `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PreCompact`, `SessionEnd` | the `fastrmemory` server, the five hook commands, and the file when nothing else is left |
 | Cursor | `.cursor/mcp.json` | none (no project hook API) | the `fastrmemory` server and the file when nothing else is left |
 | OpenCode | `opencode.json` (or `.opencode/opencode.json`) | `.opencode/plugins/fastrmemory/index.ts`, marked `// fastrmemory:managed` | the `fastrmemory` server, the managed plugin, and the plugin directories when empty |
 | Gemini CLI | `.gemini/settings.json` | `.gemini/settings.json` → `SessionStart`, `BeforeTool`, `PreCompress`, `SessionEnd` | the `fastrmemory` server, the four hooks, and the file when nothing else is left |

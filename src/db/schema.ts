@@ -7,7 +7,7 @@ export interface RawEvent {
   project_id: string;
   session_id: string;
   agent_id: string;
-  event_type: 'tool_use' | 'tool_error' | 'git_commit' | 'user_prompt' | 'compaction';
+  event_type: 'tool_use' | 'tool_error' | 'tool_edit' | 'git_commit' | 'user_prompt' | 'compaction';
   tool_name?: string | null;
   file_path?: string | null;
   raw_payload: string;
@@ -161,6 +161,20 @@ CREATE TABLE IF NOT EXISTS raw_events (
 CREATE INDEX IF NOT EXISTS idx_raw_events_session ON raw_events(project_id, session_id);
 CREATE INDEX IF NOT EXISTS idx_raw_events_hash ON raw_events(content_hash);
 CREATE INDEX IF NOT EXISTS idx_raw_events_project_created ON raw_events(project_id, created_at);
+
+-- 1b. Recently edited files, used by the per-turn injection hook.
+--
+-- This is deliberately its own table rather than a raw_events row per edit: raw_events has
+-- no retention policy and its rows feed provenance and drill, so a row per keystroke-level
+-- edit would grow without bound. Here only the newest few edits per project are kept.
+CREATE TABLE IF NOT EXISTS file_edits (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id TEXT NOT NULL,
+  file_path TEXT NOT NULL,
+  session_id TEXT DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_file_edits_project ON file_edits(project_id, id DESC);
 
 -- 2. Structured memories with Bi-Temporal Validity Windows & Outcome Multipliers
 CREATE TABLE IF NOT EXISTS memories (
