@@ -55,7 +55,7 @@ function withRepo<T>(root: string, fn: (repo: FastrRepository, projectId: string
   try {
     const spool = new SpoolManager(config.spoolPath);
     const retrievalQueue = new RetrievalQueue(resolveRetrievalQueuePath(config));
-    return fn(new FastrRepository(db, spool, { retrievalQueue }), config.projectId);
+    return fn(new FastrRepository(db, spool, { retrievalQueue, projectRoot: config.projectRoot }), config.projectId);
   } finally {
     db.close();
   }

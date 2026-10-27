@@ -103,6 +103,29 @@ Known retrieval gaps (tracked in `ROADMAP.md`):
 - The graph stream is not exercised beyond cases that are already rank 1 on this corpus.
 - A reranker for title-concept collisions is not implemented.
 
+## 4b. Self-verifying memories
+
+A memory records what an agent learned. Most stay true. Some describe a specific defect that someone later fixes — "never call `Date.now()` for JWT expiry in `src/auth/jwt.ts`" — and once the defect is gone the memory is not wrong, it is *spent*: it still carries its 2.0x trap boost and is still injected into every prompt for a bug that no longer exists.
+
+An optional `memories.assertion` records the condition that keeps the memory relevant:
+
+| Assertion | Holds while |
+|---|---|
+| `text_present:<path>::<text>` | the file still contains the literal text |
+| `symbol_present:<path>::<name>` | the symbol index still lists the name in that file |
+| `file_present:<path>` | the file still exists |
+
+The grammar is a literal presence check, not a query language: no regular expressions, no shell, and no SQL beyond a parameterized symbol lookup, so a memory can never become executable code. Paths are resolved inside the project root; anything that escapes it is `unknown`.
+
+Every check yields `holds`, `fails`, or `unknown`. `unknown` covers a missing project root, an escaping path, an unreadable file, and an empty symbol index — anything where absence of evidence is not evidence of absence. **A memory is only ever retired on a positive `fails`.**
+
+The two halves of the feature are deliberately split:
+
+- **Read path** (`getMemoriesForFile`, `listTraps`, `searchMemories`) drops rows whose assertion fails from its own result set and writes nothing. This preserves read-only recall (§3b) and makes a spent trap disappear on the very next prompt.
+- **Write path** (`healDatabase` with `projectRoot`, `fastr trap verify --apply`, `dormantFailedAssertions`) persists `status = 'dormant'` and records the reason in `superseded_reason`. Until it runs, the memory is filtered but still `verified` in the table.
+
+File reads are cached by path and `mtimeMs` (2 MB cap, 128-entry FIFO), so a recall that checks the same five files neither re-reads them nor misses an edit.
+
 ## 5. Token budgets
 
 | Level | Budget | Use |

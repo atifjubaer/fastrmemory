@@ -20,7 +20,7 @@ describe('Agent Skills validation', () => {
     const handoff = tools.get('fastr_handoff');
     expect(handoff.get('action')).toEqual({ required: true, enumValues: ['save', 'latest'] });
     expect(handoff.get('verifyStaging').required).toBe(false);
-    expect([...tools.get('fastr_trap_log').keys()]).toEqual(['title', 'content', 'files', 'module']);
+    expect([...tools.get('fastr_trap_log').keys()]).toEqual(['title', 'content', 'files', 'module', 'assertion']);
   });
 
   it('flags unknown tools, unknown params, missing required params, and bad enum values', () => {

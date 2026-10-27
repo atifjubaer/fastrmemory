@@ -105,7 +105,7 @@ export function cognitiveBlame(
   const config = loadConfig(root);
   const db = initDatabase(config.dbPath);
   const spool = new SpoolManager(config.spoolPath);
-  const repo = new FastrRepository(db, spool);
+  const repo = new FastrRepository(db, spool, { projectRoot: config.projectRoot });
 
   // 1. Find active error traps protecting this file
   const allTraps = repo.listTraps(config.projectId);

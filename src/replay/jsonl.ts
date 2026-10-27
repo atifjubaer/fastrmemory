@@ -68,6 +68,7 @@ function memoryData(row: any): Record<string, unknown> {
     source_event_ids: row.source_event_ids,
     created_at: row.created_at,
     last_recalled_at: row.last_recalled_at ?? null,
+    assertion: row.assertion ?? null,
     provenance_hash: row.provenance_hash ?? null
   };
 }
@@ -250,6 +251,7 @@ export function snapshotFromJsonl(jsonl: string): ReplaySnapshot {
         superseded_reason: row.superseded_reason == null ? null : String(row.superseded_reason),
         source_event_ids: sourceIds,
         created_at: String(row.created_at),
+        assertion: row.assertion == null ? null : String(row.assertion),
         provenance_hash: row.provenance_hash == null ? null : String(row.provenance_hash),
         files: []
       });
@@ -322,8 +324,8 @@ function insertMemory(db: DatabaseSync, data: any): boolean {
       id, project_id, agent_id, module, kind, title, content, status, pinned,
       reward_score, retrieval_count, valid_from, valid_to, superseded_by_id,
       superseded_reason, source_event_ids, embedding, embedded, created_at,
-      last_recalled_at, provenance_hash
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 0, ?, ?, ?)
+      last_recalled_at, assertion, provenance_hash
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 0, ?, ?, ?, ?)
   `).run(
     data.id,
     data.project_id,
@@ -343,6 +345,7 @@ function insertMemory(db: DatabaseSync, data: any): boolean {
     data.source_event_ids ?? '[]',
     data.created_at,
     data.last_recalled_at ?? null,
+    data.assertion ?? null,
     data.provenance_hash ?? null
   );
   return Number(result.changes) > 0;

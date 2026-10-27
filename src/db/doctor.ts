@@ -249,7 +249,13 @@ export function diagnoseDatabase(db: DatabaseSync, projectId: string): Diagnosti
 export function healDatabase(
   db: DatabaseSync,
   projectId: string,
-  options: { dryRun?: boolean; drainConflicts?: boolean; conflictBatchSize?: number } = {}
+  options: {
+    dryRun?: boolean;
+    drainConflicts?: boolean;
+    conflictBatchSize?: number;
+    /** Project root, needed to check memory assertions. Without it, none are checked. */
+    projectRoot?: string;
+  } = {}
 ): HealResult {
   const { dryRun = false } = options;
   const reportBefore = diagnoseDatabase(db, projectId);
@@ -353,6 +359,26 @@ export function healDatabase(
         `${entitiesDrained} queued entity extractions, and ${ftsDrained} queued full-text index rows.`
     );
     fixedCount += conflictsDrained + entitiesDrained + ftsDrained;
+  }
+
+  // 6. Retire memories whose assertion no longer holds. The recall path already filters
+  // them out of its own results; this is where the status change is persisted, so heal is
+  // the only writer and a read never mutates anything.
+  const projectRoot = options.projectRoot;
+  if (projectRoot) {
+    try {
+      const repo = new FastrRepository(db, undefined, { projectRoot });
+      const retired = repo.dormantFailedAssertions(projectId, projectRoot);
+      if (retired.length > 0) {
+        actionsTaken.push(
+          `Retired ${retired.length} memory(ies) whose assertion no longer holds: ` +
+            retired.map((item) => `[${item.id}] ${item.title}`).join(', ')
+        );
+        fixedCount += retired.length;
+      }
+    } catch (err: any) {
+      actionsTaken.push(`Failed to verify memory assertions: ${err.message}`);
+    }
   }
 
   const reportAfter = diagnoseDatabase(db, projectId);
