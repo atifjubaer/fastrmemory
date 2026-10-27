@@ -1,6 +1,6 @@
 {
   "name": "fastrmemory",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Local-first agent memory for Claude Code: MCP server plus Agent Skills for pre-edit trap checks, recall, trap logging, curation, and session handoffs.",
   "author": {
     "name": "Fastrsoft"
@@ -8,11 +8,21 @@
   "homepage": "https://github.com/atifjubaer/fastrmemory",
   "repository": "https://github.com/atifjubaer/fastrmemory",
   "license": "Apache-2.0",
-  "keywords": ["memory", "mcp", "agent", "sqlite", "skills"],
+  "keywords": [
+    "memory",
+    "mcp",
+    "agent",
+    "sqlite",
+    "skills"
+  ],
   "mcpServers": {
     "fastrmemory": {
       "command": "npx",
-      "args": ["-y", "fastrmemory@0.6.0", "mcp"]
+      "args": [
+        "-y",
+        "fastrmemory@0.7.0",
+        "mcp"
+      ]
     }
   }
 }
