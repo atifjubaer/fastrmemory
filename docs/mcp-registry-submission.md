@@ -1,6 +1,6 @@
 # Official Model Context Protocol Registry Submission
 
-> **Status (2026-10-28): live in the official MCP registry.** `io.github.atifjubaer/fastrmemory@0.7.2` is `active` and `isLatest`, published by `.github/workflows/publish-mcp.yml` over GitHub OIDC. `0.7.2` is also published on npm. The canonical unscoped `fastrmemory@0.7.2` is published and `latest`; root `server.json` pins `0.7.2`; `npm view fastrmemory version` returns `0.7.2`. `curl --get --data-urlencode "search=io.github.atifjubaer/fastrmemory" https://registry.modelcontextprotocol.io/v0.1/servers` returns the official record with `"count":4`. The old scoped `@atifjubaer/fastrmemory@0.2.1` npm entry was removed on 2026-10-23.
+> **Status (2026-10-28): live in the official MCP registry.** `io.github.atifjubaer/fastrmemory@0.8.0` is `active` and `isLatest`, published by `.github/workflows/publish-mcp.yml` over GitHub OIDC. `0.8.0` is also published on npm. The canonical unscoped `fastrmemory@0.8.0` is published and `latest`; root `server.json` pins `0.8.0`; `npm view fastrmemory version` returns `0.8.0`. `curl --get --data-urlencode "search=io.github.atifjubaer/fastrmemory" https://registry.modelcontextprotocol.io/v0.1/servers` returns the official record with `"count":5`. The old scoped `@atifjubaer/fastrmemory@0.2.1` npm entry was removed on 2026-10-23.
 
 **A pull request does not publish to the official registry.** The registry's own README states that adding a `server.json`, a server directory, or a `seed.json` entry to [modelcontextprotocol/registry](https://github.com/modelcontextprotocol/registry) does not list a server, even if the PR is merged. Listing is done by the `mcp-publisher` CLI. The pull-request material further down is for the separate community list at [modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers) under **Memory & Cognitive Engines**, which is optional.
 
@@ -11,7 +11,7 @@
 
 ### Table Entry for `README.md`
 ```markdown
-| [FastrMemory](https://github.com/atifjubaer/fastrmemory) | High-Performance Cognitive Agent Memory Engine with native `node:sqlite` WAL storage (Node >= 22.16), Bi-Temporal Git Sync, Triple-Stream RRF ($k=20$), Conditional 2.0x Error Trap Shield, and High-DPI React 19 Dashboard. Zero background daemons, zero open ports. | `npx -y fastrmemory@0.7.2 mcp` |
+| [FastrMemory](https://github.com/atifjubaer/fastrmemory) | High-Performance Cognitive Agent Memory Engine with native `node:sqlite` WAL storage (Node >= 22.16), Bi-Temporal Git Sync, Triple-Stream RRF ($k=20$), Conditional 2.0x Error Trap Shield, and High-DPI React 19 Dashboard. Zero background daemons, zero open ports. | `npx -y fastrmemory@0.8.0 mcp` |
 ```
 
 ### Full Server Description & Metadata
@@ -37,7 +37,7 @@
   "mcpServers": {
     "fastrmemory": {
       "command": "npx",
-      "args": ["-y", "fastrmemory@0.7.2", "mcp", "--project", "/absolute/path/to/repo"]
+      "args": ["-y", "fastrmemory@0.8.0", "mcp", "--project", "/absolute/path/to/repo"]
     }
   }
 }
@@ -47,13 +47,13 @@
   "mcpServers": {
     "fastrmemory": {
       "command": "npx",
-      "args": ["-y", "fastrmemory@0.7.2", "mcp"]
+      "args": ["-y", "fastrmemory@0.8.0", "mcp"]
     }
   }
 }
 ```
 
-> Version note: `fastrmemory@0.7.2` is published and `latest`; pin it for registry installs. `0.5.0`, `0.4.0`, and `0.3.1` remain published historical. The default core profile exposes 12 tools (8,715-byte `tools/list`); pass `--profile full` for all 43. On native Windows, use `cmd /c npx ...` if the client cannot launch `npx` directly.
+> Version note: `fastrmemory@0.8.0` is published and `latest`; pin it for registry installs. `0.5.0`, `0.4.0`, and `0.3.1` remain published historical. The default core profile exposes 12 tools (8,715-byte `tools/list`); pass `--profile full` for all 43. On native Windows, use `cmd /c npx ...` if the client cannot launch `npx` directly.
 
 ### Pre-submission validation
 
@@ -75,10 +75,10 @@ Every one of those checks runs offline in `check:ci`, so a manifest that cannot 
 The official path is `.github/workflows/publish-mcp.yml`, which authenticates with GitHub OIDC, so no long-lived registry token exists:
 
 1. Release to npm first. The registry refuses a `server.json` whose version does not resolve to a published package, so the workflow waits up to ten minutes for `npm view fastrmemory@<version>` to return the version.
-2. Run **Actions → Publish to MCP Registry → Run workflow** with the release tag (for example `v0.7.2`) and the ref that holds `server.json` (default `main`).
+2. Run **Actions → Publish to MCP Registry → Run workflow** with the release tag (for example `v0.8.0`) and the ref that holds `server.json` (default `main`).
 3. The job checks out that ref, runs `scripts/check-release-version.mjs` so the tag, `package.json`, `server.json`, and `plugin.json` all agree, downloads `mcp-publisher` `v1.8.4`, verifies its Sigstore bundle with `cosign` and its SHA-256, runs `mcp-publisher login github-oidc`, publishes, then polls the registry API until the exact name and version appear.
 
-`server.json` is read from `ref`, not from the tag, because a release tag is immutable and registry metadata is not part of the package's behaviour. The version check still forces `ref` to describe the same release, so this can fix a manifest without a retag, and it cannot publish the wrong version. The first `v0.7.2` attempt failed exactly this way: the tag still carried the 108-character description, the registry returned `422 expected length <= 100`, and nothing was published.
+`server.json` is read from `ref`, not from the tag, because a release tag is immutable and registry metadata is not part of the package's behaviour. The version check still forces `ref` to describe the same release, so this can fix a manifest without a retag, and it cannot publish the wrong version. The first `v0.8.0` attempt failed exactly this way: the tag still carried the 108-character description, the registry returned `422 expected length <= 100`, and nothing was published.
 
 The registry is in preview and may reset its data, which is why publishing is a separate workflow from `release.yml`: it can be re-run without touching npm, and an npm version is immutable once published.
 
@@ -96,4 +96,4 @@ mcp-publisher login github
 mcp-publisher publish
 ```
 
-Either path publishes `io.github.atifjubaer/fastrmemory@0.7.2`. Re-running after a version bump publishes the new version under the same name; it does not create a duplicate.
+Either path publishes `io.github.atifjubaer/fastrmemory@0.8.0`. Re-running after a version bump publishes the new version under the same name; it does not create a duplicate.
