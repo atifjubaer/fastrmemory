@@ -87,6 +87,23 @@ Fuses FTS5 BM25 + optional local embeddings + file-graph links. Error traps rece
 </tr>
 </table>
 
+### ⚔️ Architectural & Performance Comparison
+
+| Capability | Hippo Memory (`hippo-memory`) | Memoria (`matrixorigin/Memoria`) | AgentMemory (`@agentmemory/mcp`) | **FastrMemory (0.8.1+)** |
+| :--- | :--- | :--- | :--- | :--- |
+| **Runtime Architecture** | SQLite store | MatrixOne relational/vector DB container | Dual-layer engine + Redis/Docker | **Zero-Daemon • Native `node:sqlite` in WAL mode** |
+| **Ingestion Speed** | 88.9 ms/doc | Container roundtrip | 1.74 ms/doc | **1.09 ms/doc (80x faster than Hippo)** |
+| **Recall Latency (p50)** | 12.8 ms (spikes to 386 ms p95) | 50–100 ms | 1.52 ms | **0.95 ms p50 / 1.60 ms p95** |
+| **AST Symbol Anchoring** | ❌ None (file path only) | ❌ None | ❌ None | **✅ `declaration_id` (AST hash survives renames & file moves)** |
+| **Self-Verifying Traps** | ❌ None | ❌ None | ❌ None | **✅ Machine assertions (`text_present`, etc.) auto-retire fixed bugs** |
+| **Context Token Overhead** | ⚠️ High (dumps entire rule sets) | ⚠️ High (dumps knowledge graphs) | ⚠️ High (dumps session contexts) | **⚡ Ultra-low (≤150 tokens targeted per-turn injection)** |
+| **Passive Learning** | ❌ Manual commands only | ❌ Manual commands only | ❌ Manual commands only | **✅ Auto-distills traps from test failures & subsequent edits** |
+| **Cross-Machine Team Sync**| Manual markdown git commits | Cloud database cluster | Custom daemon | **✅ Bidirectional `fastr sync` on Git pull** |
+| **Editor Integration** | Basic CLI instructions | None | Basic plugin | **✅ Native VS Code & Cursor extension with Problems tab diagnostics** |
+| **MCP Protocol Support** | stdio | REST / MCP adapter | stdio | **Official MCP v2 (12-tool core & 44-tool full profiles)** |
+
+*Verified benchmark evidence from [`bench/results/vs-engines.json`](bench/results/vs-engines.json) and [`docs/PUBLIC_BENCHMARKS.md`](docs/PUBLIC_BENCHMARKS.md).*
+
 ---
 
 ## 🧭 Design Principles

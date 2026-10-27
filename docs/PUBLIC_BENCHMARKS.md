@@ -318,6 +318,22 @@ npm run bench:vs        # full run, ~4 minutes
 npx tsx scripts/bench-vs.ts --quick   # 180 documents, 90 queries, smoke only
 ```
 
+### Four-Way Architecture Breakdown
+
+Beyond benchmark retrieval numbers, the four leading AI agent memory architectures represent fundamentally different trade-offs:
+
+| Architectural Dimension | FastrMemory | Hippo (`hippo-memory`) | Memoria (`matrixorigin/Memoria`) | AgentMemory (`@agentmemory/mcp`) |
+|---|---|---|---|---|
+| **Underlying Storage** | Native `node:sqlite` in WAL mode | SQLite file | MatrixOne container (Docker) | JSON store + Redis/Docker |
+| **Operational Footprint** | **Zero daemons, zero open ports** | Zero daemons | Heavy multi-container database | Daemon process required |
+| **Ingestion Cost** | **1.09 ms/doc (flat, 1.08x)** | 88.9 ms/doc (degrades 9.6x) | Network container round-trip | 1.74 ms/doc (degrades 5.5x) |
+| **Recall Latency (p50)** | **0.95 ms p50 / 1.60 ms p95** | 12.8 ms p50 (spikes to 386 ms p95) | 50–100 ms | 1.52 ms p50 / 6.75 ms p95 |
+| **AST Symbol Anchoring** | **Yes (`declaration_id` AST hash)** | No (file-path only) | No | No |
+| **Self-Verifying Traps** | **Yes (`text_present`, etc. assertions)** | No | No | No |
+| **Context Overhead** | **Targeted (≤150 tokens per prompt)** | High (dumps full memory blocks) | High (dumps entity subgraphs) | High (dumps full sessions) |
+| **Team Synchronization** | **Git-backed (`fastr sync` on pull)** | Manual git commit of markdown | Cloud database cluster | Custom daemon |
+| **IDE Integration** | **Native VS Code/Cursor extension** | Basic CLI instructions | None | Basic plugin |
+
 ## Static semantic tier (P1 gate)
 
 The optional semantic tier is a pure-TypeScript model2vec lookup table: `minishlab/potion-base-8M`
