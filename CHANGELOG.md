@@ -4,6 +4,18 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-10-28
+
+Web dashboard refinement release. Renders the official Neural Synapse Core logo mark in the dashboard shell and favicon, surfaces live machine-checkable assertion verdicts (`holds`, `fails`, `unknown`) and code declaration anchors in the memory detail sheet and traps views, and adds one-click "Sync team" and "Distill traps" actions directly to the dashboard. Test suite is 461 tests across 69 files.
+
+### Added
+
+- Official logo mark rendered in the dashboard sidebar header and browser favicon.
+- Assertion inspection with live evaluation verdict badges in `MemoryDetailSheet` and `TrapsPage`.
+- Anchored code declarations (`symbol_id` / `declaration_id`) surfaced in `MemoryDetailSheet`.
+- One-click "Sync team" action button on `HealthPage` and "Distill traps" on `TrapsPage`.
+- Rebuilt production UI bundle in `dist-ui/` with verified build manifest.
+
 ## [0.8.0] - 2026-10-28
 
 Four architectural upgrades:
