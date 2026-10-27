@@ -1,9 +1,9 @@
 # Migration Guide
 
-**Current release:** `0.6.0` (published 2026-10-26; unscoped npm package and `latest`; `0.5.0`, `0.4.0`, and `0.3.1` remain published historical)
-**Previous release:** `0.5.0` (published 2026-10-23 15:20 UTC; remains published historical)
+**Current release:** `0.7.2` (published 2026-10-28; unscoped npm package and `latest`; `0.7.1`, `0.7.0`, `0.6.0`, `0.5.0`, `0.4.0`, and `0.3.1` remain published historical)
+**Previous releases:** `0.7.1`, `0.7.0`, `0.6.0`, `0.5.0` (remains published historical)
 **Historical release:** `0.3.1` and `0.2.1` (published historical; the `0.2.1` npm entry was removed 2026-10-23, but its GitHub Release remains)
-**Applies to:** `0.1.x` → `0.2.x` → `0.3.1` → `0.4.0` → `0.5.0` → `0.6.0` (the `0.3.0` migration steps apply unchanged; `0.3.1` is a patch; `0.4.0` adds CLI/config and line-ending changes only; `0.5.0` adds local-source MCP configs only; `0.6.0` changes write and retrieval defaults and adds three queue tables)
+**Applies to:** `0.1.x` → `0.2.x` → `0.3.1` → `0.4.0` → `0.5.0` → `0.6.0` → `0.7.x` (schema changes are additive only; no table rewrites)
 
 FastrMemory stores memory in a local SQLite database. Schema setup is additive: new tables are created with `CREATE TABLE IF NOT EXISTS`, and the `provenance_hash` column is added when missing. There is no destructive schema rewrite. That does not replace a backup. Stop every agent, hook, daemon, and dashboard before upgrading or rolling back.
 
@@ -93,6 +93,19 @@ What changes:
 - The MCP resource surface grows to 5 with `fastr://memory/{id}/envelope`.
 
 Schema additions are automatic. No manual SQL is required. Branch pointers and merge logs are additive; merging is one-way into the current active set.
+
+### 0.7.x (published 2026-10-27 / 2026-10-28)
+
+`0.7.0` through `0.7.2` add five core agent features and concurrency hardening. Schema setup remains 100% additive:
+
+- **Code Symbol Index & Declaration Anchoring:** Adds the `symbols` table and `declaration_id`/`symbol_id` to `file_links`. Memories can anchor to function, class, and interface declarations, surviving renames and file moves.
+- **Per-Turn Memory Injection:** Adds the bounded `file_edits` table (capped at 20 rows per project) for injecting relevant error traps into `UserPromptSubmit` hooks.
+- **Read-Only Recall:** Retrieval counters are queued to `.fastr/spool/retrievals.jsonl` rather than taking SQLite's write lock, allowing concurrent recall while writers operate.
+- **Self-Verifying Memories:** Adds `assertion` column to `memories`. Traps automatically stop surfacing when their target defect is fixed, and `fastr doctor --heal` / `fastr trap verify --apply` retires them to `dormant`.
+- **64-bit ID Entropy (0.7.1):** Memory and feedback IDs expanded to 64 bits to eliminate collisions at large corpus scales (~78k+ memories).
+- **Official Brand Kit & Logo (0.7.2):** Integrates the official Neural Synapse Core logo mark into the README for GitHub and npm.
+
+Upgrading from `0.6.0` or `0.5.0` requires no manual migration: opening the database with any `0.7.x` command applies all column and table additions automatically without data loss.
 
 ### 0.6.0 (published 2026-10-26)
 

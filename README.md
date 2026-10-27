@@ -114,17 +114,17 @@ Clients commonly used with FastrMemory include Codex CLI, Gemini CLI, OpenCode, 
 
 ### ⚡ Run Without a Global Install
 
-The canonical package target is unscoped `fastrmemory@0.5.0`. `0.4.0` and `0.3.1` remain published historical. The old scoped npm entries were removed on 2026-10-23.
+The canonical package target is unscoped `fastrmemory@0.7.2`. `0.7.1`, `0.7.0`, `0.6.0`, `0.5.0`, `0.4.0`, and `0.3.1` remain published historical. The old scoped npm entries were removed on 2026-10-23.
 
 ```bash
 # Canonical one-shot (pins the exact release):
-npx -y fastrmemory@0.5.0 setup
+npx -y fastrmemory@0.7.2 setup
 
 # Or launch the local Web UI:
-npx -y fastrmemory@0.5.0 ui
+npx -y fastrmemory@0.7.2 ui
 ```
 
-The GitHub source path remains available for development only: `npx github:atifjubaer/fastrmemory setup`. For a reproducible source install, pin the tag: `npx github:atifjubaer/fastrmemory#v0.5.0 setup`. Do not use either GitHub form in generated MCP or hook configs; those must use the npm package. The default `latest` channel tracks new releases, and `--channel pinned` records the exact version for reproducibility.
+The GitHub source path remains available for development only: `npx github:atifjubaer/fastrmemory setup`. For a reproducible source install, pin the tag: `npx github:atifjubaer/fastrmemory#v0.7.2 setup`. Do not use either GitHub form in generated MCP or hook configs; those must use the npm package. The default `latest` channel tracks new releases, and `--channel pinned` records the exact version for reproducibility.
 
 ---
 
@@ -171,7 +171,7 @@ fastr status
 fastr hygiene
 ```
 
-`0.5.0` has no schema migration. If you use `--channel pinned`, rerun `fastr mcp init` after each update; with the default `latest` channel, restart the client to pick up the new release. If you use `--source local`, the config points at the installed CLI, so updating the global package updates the server without rewriting the config. `fastr setup` refreshes copied skills, overwrites same-named skill files, removes retired skills, and leaves user-owned directories. `fastr hook install` does not copy skills. See [MIGRATION.md](MIGRATION.md) for rollback.
+`0.7.2` has additive-only schema migrations (`symbols`, `file_edits`, `memories.assertion`, and queues). If you use `--channel pinned`, rerun `fastr mcp init` after each update; with the default `latest` channel, restart the client to pick up the new release. If you use `--source local`, the config points at the installed CLI, so updating the global package updates the server without rewriting the config. `fastr setup` refreshes copied skills, overwrites same-named skill files, removes retired skills, and leaves user-owned directories. `fastr hook install` does not copy skills. See [MIGRATION.md](MIGRATION.md) for rollback.
 
 ### One-Command MCP Setup
 
@@ -205,7 +205,7 @@ yarn dlx fastrmemory@latest mcp init --client claude
 bunx fastrmemory@latest mcp init --client claude
 ```
 
-The default `--channel latest` writes `fastrmemory@latest`, so a client restart picks up the newest npm release. Use `--channel pinned` for a reproducible config containing the exact version that ran the command; on current `main` that writes `fastrmemory@0.5.0`. `--runner pnpm|yarn|bunx` changes the generated runner, `--profile full` selects the 43-tool surface (the default is the 12-tool core profile), `--dry-run` prints targets without writing, and `--scope user` writes user-level configs with an explicit `--project /absolute/path` so the server always opens the intended database. Codex prints a `[mcp_servers.fastrmemory]` TOML block for `~/.codex/config.toml` instead of rewriting a user-owned TOML file.
+The default `--channel latest` writes `fastrmemory@latest`, so a client restart picks up the newest npm release. Use `--channel pinned` for a reproducible config containing the exact version that ran the command; on current `main` that writes `fastrmemory@0.7.2`. `--runner pnpm|yarn|bunx` changes the generated runner, `--profile full` selects the 43-tool surface (the default is the 12-tool core profile), `--dry-run` prints targets without writing, and `--scope user` writes user-level configs with an explicit `--project /absolute/path` so the server always opens the intended database. Codex prints a `[mcp_servers.fastrmemory]` TOML block for `~/.codex/config.toml` instead of rewriting a user-owned TOML file.
 
 For a globally installed CLI, use `--source local` to write the active CLI path instead of an npx command. It always appends an absolute `--project`, so the config is machine-specific but starts without an npx cold start:
 
@@ -215,31 +215,31 @@ fastr mcp init --client all --scope user --source local --profile core
 
 Updating the global package updates the server; rerun the command only if the CLI path changes. Use the default `--source registry` for portable project configs that are committed and shared across machines.
 
-> `--source local` ships in published `0.5.0`; `0.4.0` remains published historical. On `0.4.0`, use `fastr setup` for an installed-CLI config.
+> `--source local` ships in published `0.5.0` and later; on older releases, use `fastr setup` for an installed-CLI config.
 
-> `mcp init` ships in `0.4.0` and later; `npx fastrmemory@latest mcp init ...` now resolves to published `0.5.0`. If you need the previous release, use `fastr setup` or pin `fastrmemory@0.3.1`.
+> `mcp init` ships in `0.4.0` and later; `npx fastrmemory@latest mcp init ...` now resolves to published `0.7.2`. If you need an earlier release, use `fastr setup` or pin the exact version.
 
 ### Install from GitHub
 
 For a one-shot source run, pin the release tag:
 
 ```bash
-npx --yes github:atifjubaer/fastrmemory#v0.5.0 --version
-npx --yes github:atifjubaer/fastrmemory#v0.5.0 setup
+npx --yes github:atifjubaer/fastrmemory#v0.7.2 --version
+npx --yes github:atifjubaer/fastrmemory#v0.7.2 setup
 ```
 
 For a global CLI without npm's Git resolver, download the release tarball:
 
 ```bash
-curl -L -o fastrmemory-0.5.0.tgz \
-  https://github.com/atifjubaer/fastrmemory/releases/download/v0.5.0/fastrmemory-0.5.0.tgz
-npm install -g ./fastrmemory-0.5.0.tgz
+curl -L -o fastrmemory-0.7.2.tgz \
+  https://github.com/atifjubaer/fastrmemory/releases/download/v0.7.2/fastrmemory-0.7.2.tgz
+npm install -g ./fastrmemory-0.7.2.tgz
 fastr --version
 ```
 
-On Windows, download the same URL with `Invoke-WebRequest` or a browser, then run `npm install -g .\fastrmemory-0.5.0.tgz`. For a local project install, use `npm install --no-save ./fastrmemory-0.5.0.tgz` instead of the global flag.
+On Windows, download the same URL with `Invoke-WebRequest` or a browser, then run `npm install -g .\fastrmemory-0.7.2.tgz`. For a local project install, use `npm install --no-save ./fastrmemory-0.7.2.tgz` instead of the global flag.
 
-> Git installs build from source and are slower than the npm tarball; for a global CLI, prefer the npm package or the release tarball above. `npm install -g git+https://...` is not recommended with npm 11 because the `prepare` build does not receive dev dependencies. Both `fastrmemory` and `fastr` (short alias) are executable after installation. The canonical package is unscoped `fastrmemory@0.5.0`; the old scoped npm entries are gone. Use npm for generated MCP and hook configs so installs stay reproducible.
+> Git installs build from source and are slower than the npm tarball; for a global CLI, prefer the npm package or the release tarball above. `npm install -g git+https://...` is not recommended with npm 11 because the `prepare` build does not receive dev dependencies. Both `fastrmemory` and `fastr` (short alias) are executable after installation. The canonical package is unscoped `fastrmemory@0.7.2`; the old scoped npm entries are gone. Use npm for generated MCP and hook configs so installs stay reproducible.
 
 ### 2. Verify Database Health
 
@@ -423,7 +423,7 @@ Example POSIX project config generated by `fastr mcp init --client cursor` (Wind
 
 VS Code uses `servers` instead of `mcpServers`; OpenCode uses `mcp.servers` with a command array and `"type": "local"`. Existing `opencode.json(c)` settings are preserved, but a JSONC config is reported for manual wiring rather than rewritten. Codex is always printed as a `[mcp_servers.fastrmemory]` TOML block because rewriting a user-owned TOML file safely requires a dedicated parser.
 
-For user-scoped clients, the generated entry includes `--project /absolute/path/to/repo`; this prevents the client's launch directory from selecting the wrong database. `fastr setup` also writes the absolute `node` path and is the recommended path when the client cannot launch package-runner shims. `--source local` is the `mcp init` equivalent for an installed CLI: it writes the active CLI path and an absolute `--project`; use `--source registry` (the default) when the config will be committed or shared. `--source local` ships in published `0.5.0`; on `0.4.0`, use `fastr setup` for an installed-CLI config. On native Windows, `fastr mcp init` automatically emits `"command": "cmd"` with `"/c"` and the runner, so manual `npx.cmd` fixes are not needed.
+For user-scoped clients, the generated entry includes `--project /absolute/path/to/repo`; this prevents the client's launch directory from selecting the wrong database. `fastr setup` also writes the absolute `node` path and is the recommended path when the client cannot launch package-runner shims. `--source local` is the `mcp init` equivalent for an installed CLI: it writes the active CLI path and an absolute `--project`; use `--source registry` (the default) when the config will be committed or shared. `--source local` ships in published `0.5.0` and later; on older builds, use `fastr setup` for an installed-CLI config. On native Windows, `fastr mcp init` automatically emits `"command": "cmd"` with `"/c"` and the runner, so manual `npx.cmd` fixes are not needed.
 
 `--client all --scope project` covers the six project-scoped clients in the table. `--client all --scope user` covers the eight user-scoped clients; OpenCode and Copilot CLI are project-only, while Codex prints a TOML block for manual insertion. User-scoped entries pin one `--project` database, so use project scope when each developer may open a different checkout.
 
@@ -431,7 +431,7 @@ For user-scoped clients, the generated entry includes `--project /absolute/path/
 
 ## 🛠️ MCP Server: Tools & Resources
 
-Built using the official **v2 `@modelcontextprotocol/server`** SDK. The tool list below describes **0.5.0** (tool surface unchanged from 0.4.0); the v0.2.1 release has 4 resources.
+Built using the official **v2 `@modelcontextprotocol/server`** SDK. The tool list below describes **0.7.2**; 44 tools across the 12-tool core and full profiles.
 
 ### 44 MCP Tools
 
