@@ -331,6 +331,11 @@ export function MemoriesPage() {
                     <KindBadge kind={m.kind} className="shrink-0" />
                     {m.pinned ? <Pin className="size-3.5 shrink-0 text-pinned" aria-label="Pinned" /> : null}
                     <span className="truncate font-medium hover:underline">{m.title}</span>
+                    {m.assertion && (
+                      <span className="hidden sm:inline-flex rounded px-1.5 py-0.5 font-mono text-[9px] uppercase border font-semibold border-trap/30 text-trap bg-trap/10 shrink-0">
+                        asserted
+                      </span>
+                    )}
                   </button>
                   <span className="hidden truncate font-mono text-xs text-muted-foreground md:block">{m.module}</span>
                   <span className="hidden md:block"><StatusBadge status={m.status} /></span>

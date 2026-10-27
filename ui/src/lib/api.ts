@@ -28,6 +28,9 @@ export interface Memory {
   last_recalled_at: string | null;
   provenance_hash: string | null;
   linked_files: string[];
+  linked_symbols?: string[];
+  assertion: string | null;
+  assertion_verdict?: 'holds' | 'fails' | 'unknown' | null;
 }
 
 export interface SearchHit extends Memory {
@@ -104,6 +107,7 @@ export interface Provenance {
 
 export interface MemoryDetail extends Memory {
   provenance: Provenance;
+  assertion_result?: { verdict: 'holds' | 'fails' | 'unknown'; reason: string } | null;
 }
 
 export interface MemoryHistory {
@@ -396,7 +400,11 @@ export const api = {
   version: (signal?: AbortSignal) => request<VersionResponse>('/api/version', { signal }),
 
   heal: (dryRun: boolean) => post<HealResult>('/api/health/heal', { dryRun }),
-  createMemory: (body: { title: string; content: string; module: string; kind: MemoryKind; files: string[] }) =>
+  syncTeam: () => post<{ ok: boolean; result: { pagesRead: number; newMemoriesIngested: number; supersededUpdated: number; pagesWritten: number; ingestedIds: string[] } }>('/api/sync', {}),
+  distill: (sessionId?: string) => post<{ ok: boolean; result: { inspectedErrors: number; distilledCount: number; traps: Array<{ id: string; title: string; module: string; files: string[] }> } }>('/api/distill', { sessionId }),
+  updateAssertion: (memoryId: string, assertion: string | null) =>
+    post<{ success: boolean; memoryId: string; assertion: string | null }>('/api/memories/assertion', { memoryId, assertion }),
+  createMemory: (body: { title: string; content: string; module: string; kind: MemoryKind; files: string[]; assertion?: string }) =>
     post<Memory>('/api/memories', body),
   pin: (memoryId: string, pinned: boolean, keepalive = false) =>
     post<{ success: boolean; pinned: boolean }>('/api/memories/pin', { memoryId, pinned }, keepalive),

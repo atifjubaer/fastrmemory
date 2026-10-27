@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Command as CommandIcon, Menu, Monitor, Moon, Plus, RefreshCw, Sun, Zap } from 'lucide-react';
+import { Command as CommandIcon, Menu, Monitor, Moon, Plus, RefreshCw, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -78,9 +78,11 @@ function Brand() {
   const { data: status } = useStatus();
   return (
     <a href={buildHash('home')} className="flex min-w-0 items-center gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand text-white">
-        <Zap className="size-4" aria-hidden />
-      </span>
+      <img
+        src="/fastrmemory-mark.png"
+        alt="FastrMemory Logo"
+        className="size-8 shrink-0 rounded-lg shadow-sm"
+      />
       <span className="min-w-0">
         <span className="block text-sm leading-tight font-semibold">FastrMemory</span>
         <span className="block truncate font-mono text-[11px] leading-tight text-muted-foreground">
