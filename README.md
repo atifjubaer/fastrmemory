@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="https://raw.githubusercontent.com/atifjubaer/fastrmemory/main/assets/fastrmemory-mark.png" width="128" height="128" alt="FastrMemory Logo">
+
 # ⚡ FastrMemory
 
 ### High-Performance Cognitive Agent Memory Engine
