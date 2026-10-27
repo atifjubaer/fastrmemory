@@ -55,6 +55,7 @@
     "smoke:hooks": "npm run build:core && node scripts/smoke-hooks.mjs",
     "smoke:npx": "node scripts/smoke-npx.mjs",
     "test:crash": "node scripts/crash-test.mjs",
+    "soak": "tsx scripts/soak.ts",
     "check:skills": "node scripts/check-skills.mjs",
     "check:dist-ui": "node scripts/check-dist-ui.mjs",
     "check:package": "node scripts/check-package.mjs",

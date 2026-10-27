@@ -179,4 +179,23 @@ describe('FastrRepository & SpoolManager', () => {
     expect(latest?.task_title).toBe('Auth Refactor');
     expect(latest?.next_step).toBe('Add refresh token rotation endpoint');
   });
+
+  it('generates 64-bit memory ids', () => {
+    // Four bytes of entropy made a collision a coin flip at ~78k memories (birthday
+    // bound), which the concurrent soak surfaced as a UNIQUE constraint failure.
+    const ids = new Set<string>();
+    for (let i = 0; i < 200; i++) {
+      const memory = repo.insertMemory({
+        projectId: 'proj_ids',
+        module: 'db',
+        kind: 'rule',
+        title: `Id entropy ${i}`,
+        content: 'A memory row must be addressable for the life of the project.',
+        verified: true
+      });
+      expect(memory.id).toMatch(/^mem_[0-9a-f]{16}$/);
+      ids.add(memory.id);
+    }
+    expect(ids.size).toBe(200);
+  });
 });

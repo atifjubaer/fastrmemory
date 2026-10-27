@@ -215,7 +215,9 @@ export class FastrRepository {
   // --- MEMORIES ---
 
   insertMemory(params: CreateMemoryParams): Memory {
-    const id = `mem_${crypto.randomBytes(4).toString('hex')}`;
+    // 64 bits of entropy. Four bytes was enough for a demo and not for a corpus: at
+    // ~78k memories the birthday bound makes a collision a coin flip (51%).
+    const id = `mem_${crypto.randomBytes(8).toString('hex')}`;
     const module = params.module?.trim().toLowerCase() || 'general';
     const kind = params.kind || 'rule';
     const status = params.verified ? 'verified' : 'staging';
@@ -631,7 +633,7 @@ export class FastrRepository {
     reason: string,
     files?: string[]
   ): { oldMemory: Memory; newMemory: Memory } {
-    const newId = `mem_${crypto.randomBytes(4).toString('hex')}`;
+    const newId = `mem_${crypto.randomBytes(8).toString('hex')}`;
     const nowIso = new Date().toISOString();
 
     // IMMEDIATE takes the write lock up front so the read below cannot go stale.
@@ -776,7 +778,7 @@ export class FastrRepository {
           status_before, status_after, confidence_tier, bad_streak, created_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
-        `fb_${crypto.randomBytes(4).toString('hex')}`,
+        `fb_${crypto.randomBytes(8).toString('hex')}`,
         mem.project_id,
         memoryId,
         outcome,
