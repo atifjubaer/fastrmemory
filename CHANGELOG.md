@@ -4,6 +4,18 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ## [Unreleased]
 
+### Added
+
+- `npm run soak` runs three writer processes and one reader against one project database: 10,000 seeded memories, the real `insertMemory()` path, read-only recall, then an exact lost-write check (`seed + acknowledged == committed`), `PRAGMA integrity_check`, and the FTS queue depth. It also reports recall p50/p95/p99 under sustained write load.
+
+### Fixed
+
+- Memory ids were `mem_` plus four random bytes. The birthday bound makes a collision a coin flip at about 78,000 memories, and the concurrent soak hit `UNIQUE constraint failed: memories.id` once across 68,367 writes from three agents. Memory and feedback ids now carry 64 bits.
+
+### Changed
+
+- Recall cost is linear in corpus size, not constant: an in-memory benchmark with hash embeddings measured 11 ms p50 at 10k memories, 53 ms at 40k, and 108 ms at 80k, plus roughly 1 ms per 1,000 memories linked to the queried file. The 10k gate (p95 < 50 ms) still passes at 18.5 ms; the 80k point is documented in `docs/ARCHITECTURE.md` as a scaling limit.
+
 ## [0.7.0] - 2026-10-27
 
 Five capabilities land together. A code symbol index and declaration anchoring let a memory follow a function through a rename or a file move. A `UserPromptSubmit` hook injects a ≤150-token memory block on every prompt, so memory survives compaction and does not depend on the model choosing to call recall. Recall itself no longer writes, so two agents can share one database without a lock fight. And a memory may now carry an assertion, so a trap whose bug was fixed retires itself instead of keeping its 2.0x boost forever. Schema changes are additive only (`symbols`, `file_edits`, `memories.assertion`, `file_links.symbol_id` / `declaration_id`); no memory row is rewritten. Test suite is 455 tests across 67 files.

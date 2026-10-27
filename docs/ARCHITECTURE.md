@@ -102,6 +102,7 @@ Known retrieval gaps (tracked in `ROADMAP.md`):
 - Temporal filtering is structurally inert on LongMemEval-s: every haystack spans about ten days, so every relative window covers the whole corpus. It is unit-tested and opt-in, not a measured accuracy gain.
 - The graph stream is not exercised beyond cases that are already rank 1 on this corpus.
 - A reranker for title-concept collisions is not implemented.
+- Recall cost is linear in corpus size, not constant. An in-memory benchmark with hash embeddings (no stored vectors) measured p50 `11 ms` at 10k memories, `53 ms` at 40k, and `108 ms` at 80k, plus roughly `1 ms` per 1,000 memories linked to the queried file. The 10k latency gate (`p95 < 50 ms`) passes at `18.5 ms`; a project that grows past ~50k memories will feel recall in the tens of milliseconds. `npm run soak` measures concurrent-write behaviour; it does not fix this.
 
 ## 4b. Self-verifying memories
 
