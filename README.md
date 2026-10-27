@@ -2,7 +2,7 @@
 
 <img src="https://raw.githubusercontent.com/atifjubaer/fastrmemory/main/assets/fastrmemory-mark.png" width="128" height="128" alt="FastrMemory Logo">
 
-# ⚡ FastrMemory
+# FastrMemory
 
 ### High-Performance Cognitive Agent Memory Engine
 **Zero Daemon • Native Node 22+ `node:sqlite` • Bi-Temporal Git Sync • Triple-Stream RRF • Official MCP v2**
