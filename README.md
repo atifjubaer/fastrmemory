@@ -68,7 +68,7 @@ AI coding agents (Claude Code, Cursor, Windsurf, Codex, Antigravity) degrade on 
 <tr>
 <td width="33%" align="center">
 
-### ⚡ Zero Daemon Overhead
+### Zero Daemon Overhead
 Pure Node 22+ built-in `node:sqlite` in WAL mode. On the 240-case suite, engine-level recall is **0.95 ms p50 / 1.60 ms p95** with hash embeddings and **3.30 ms p50 / 5.11 ms p95** with MiniLM on the train split (CLI startup measured separately). The default CLI/MCP path has no background daemon and no open port; `daemon start` is optional. Native on Windows, macOS, and Linux (the current CI matrix uses Intel macOS; Apple Silicon is not covered); CI matrix status is reported in [Actions](https://github.com/atifjubaer/fastrmemory/actions).
 
 </td>
@@ -112,38 +112,36 @@ Clients commonly used with FastrMemory include Codex CLI, Gemini CLI, OpenCode, 
 
 ## 🚀 Quick Start
 
-### ⚡ Run Without a Global Install
+### Run Without a Global Install
 
-The canonical package target is unscoped `fastrmemory@0.7.2`. `0.7.1`, `0.7.0`, `0.6.0`, `0.5.0`, `0.4.0`, and `0.3.1` remain published historical. The old scoped npm entries were removed on 2026-10-23.
+The canonical package target is unscoped `fastrmemory`. The old scoped npm entries were removed on 2026-10-23.
 
 ```bash
-# Canonical one-shot (pins the exact release):
-npx -y fastrmemory@0.7.2 setup
+# Canonical one-shot (always uses the latest release):
+npx -y fastrmemory setup
 
 # Or launch the local Web UI:
-npx -y fastrmemory@0.7.2 ui
+npx -y fastrmemory ui
 ```
 
-The GitHub source path remains available for development only: `npx github:atifjubaer/fastrmemory setup`. For a reproducible source install, pin the tag: `npx github:atifjubaer/fastrmemory#v0.7.2 setup`. Do not use either GitHub form in generated MCP or hook configs; those must use the npm package. The default `latest` channel tracks new releases, and `--channel pinned` records the exact version for reproducibility.
+For a reproducible install pinned to a specific release: `npx -y fastrmemory@0.7.2 setup`. The default `latest` channel automatically tracks new releases, while `--channel pinned` records the exact version.
+
+The GitHub source path remains available for development only: `npx github:atifjubaer/fastrmemory setup`. For a reproducible source install, pin the tag: `npx github:atifjubaer/fastrmemory#v0.7.2 setup`. Do not use either GitHub form in generated MCP or hook configs; those must use the npm package.
 
 ---
 
 ### Install from npm
 
 ```bash
-# Canonical install (latest is 0.7.2):
+# Canonical install (always latest):
 npm install -g fastrmemory
 fastr --version
 
-# Exact release:
-npm install -g fastrmemory@0.7.2
+# Or run one-shot:
+npx -y fastrmemory --version
 ```
 
-For a one-shot run without a global install:
-
-```bash
-npx -y fastrmemory@0.7.2 --version
-```
+To pin an exact release instead: `npm install -g fastrmemory@0.7.2`.
 
 The official MCP registry lists the server as `io.github.atifjubaer/fastrmemory` (`0.7.2`, status `active`), so registry-aware clients can find it by name; the entry carries the same `npx -y fastrmemory@0.7.2 mcp` package and stdio transport. `0.7.2` is built from tag `v0.7.2` by `.github/workflows/release.yml`, which runs the full gate, publishes with npm provenance, and attaches the same tarball to the GitHub Release. Verify the registry result with `npm view fastrmemory@0.7.2 version` and `npm view fastrmemory dist-tags --json`; a first E404 for a few minutes is registry propagation, not a failed publish. The old scoped npm entries remain removed. Do not republish `0.3.0`. `0.5.0`, `0.4.0`, and `0.3.1` remain published historical.
 
@@ -688,7 +686,7 @@ npx @vscode/vsce package --no-dependencies
 cursor --install-extension fastrmemory-vscode-0.1.0.vsix
 ```
 
-- **⚡ Status Bar Pill**: Displays active trap count in the status bar (`⚡ 3 Traps Active` or `⚡ 1 Trap on File`). Clicking opens an interactive QuickPick listing all active traps.
+- **Status Bar Pill**: Displays active trap count in the status bar (`3 Traps Active` or `1 Trap on File`). Clicking opens an interactive QuickPick listing all active traps.
 - **Amber Underlines**: Trapped files are underlined in amber with full hover mitigation instructions and conditional 2.0x boost conditions.
 - **Problems Tab Integration**: Active error traps populate the IDE Problems panel as non-blocking warning diagnostics.
 - **Zero Daemons**: Reads directly from `.fastr/fastr.db` via `node:sqlite`.
