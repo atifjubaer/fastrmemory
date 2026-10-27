@@ -1,7 +1,7 @@
 # Migration Guide
 
-**Current release:** `0.7.2` (published 2026-10-28; unscoped npm package and `latest`; `0.7.1`, `0.7.0`, `0.6.0`, `0.5.0`, `0.4.0`, and `0.3.1` remain published historical)
-**Previous releases:** `0.7.1`, `0.7.0`, `0.6.0`, `0.5.0` (remains published historical)
+**Current release:** `0.8.0` (published 2026-10-28; unscoped npm package and `latest`; `0.7.2`, `0.7.1`, `0.7.0`, `0.6.0`, `0.5.0`, `0.4.0`, and `0.3.1` remain published historical)
+**Previous releases:** `0.7.2`, `0.7.1`, `0.7.0`, `0.6.0`, `0.5.0` (remains published historical)
 **Historical release:** `0.3.1` and `0.2.1` (published historical; the `0.2.1` npm entry was removed 2026-10-23, but its GitHub Release remains)
 **Applies to:** `0.1.x` → `0.2.x` → `0.3.1` → `0.4.0` → `0.5.0` → `0.6.0` → `0.7.x` (schema changes are additive only; no table rewrites)
 

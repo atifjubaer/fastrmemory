@@ -84,7 +84,7 @@ jobs:
         run: |
           VERSION="${{ steps.pack.outputs.version }}"
           PUBLISHED=""
-          for attempt in $(seq 1 12); do
+          for attempt in $(seq 1 45); do
             PUBLISHED=$(npm view "fastrmemory@${VERSION}" version 2>/dev/null || true)
             if [ "$PUBLISHED" = "$VERSION" ]; then break; fi
             sleep 10
