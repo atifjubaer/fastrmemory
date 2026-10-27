@@ -4,6 +4,20 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-10-28
+
+Brand and visual presentation release. Adds the official FastrMemory Neural Synapse Core logo mark to the README header with high-contrast dual-theme compatibility across GitHub and npmjs.com, removes the redundant lightning emoji from the title, includes the brand logo kit in `assets/`, and syncs the memory markdown mirrors for release and database error traps. Test suite is 456 tests across 67 files.
+
+### Added
+
+- Official FastrMemory Neural Synapse Core logo mark (`assets/fastrmemory-mark.png`) displayed at the top of the README.
+- Full official branding assets in `assets/` (transparent circular mark, 512x512 hi-res icon, horizontal wordmarks, and 1280x640 GitHub social preview banner).
+- Synced human-readable memory mirrors in `.fastr/pages/db.md` and `.fastr/pages/release.md`.
+
+### Changed
+
+- Removed redundant `⚡` emoji from the `# FastrMemory` title heading.
+
 ## [0.7.1] - 2026-10-27
 
 Patch release for a scaling defect found by the new concurrency soak. Memory ids carried only 32 bits of entropy, so a collision became a coin flip at about 78,000 rows and one landed during a three-writer run; ids now carry 64 bits. The same run measured recall cost as linear in corpus size, which is now documented rather than implied. Test suite is 456 tests across 67 files.
