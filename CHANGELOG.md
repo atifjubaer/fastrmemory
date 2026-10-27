@@ -4,6 +4,10 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-27
+
+Five capabilities land together. A code symbol index and declaration anchoring let a memory follow a function through a rename or a file move. A `UserPromptSubmit` hook injects a ≤150-token memory block on every prompt, so memory survives compaction and does not depend on the model choosing to call recall. Recall itself no longer writes, so two agents can share one database without a lock fight. And a memory may now carry an assertion, so a trap whose bug was fixed retires itself instead of keeping its 2.0x boost forever. Schema changes are additive only (`symbols`, `file_edits`, `memories.assertion`, `file_links.symbol_id` / `declaration_id`); no memory row is rewritten. Test suite is 455 tests across 67 files.
+
 ### Added
 
 - Memories can now verify themselves. A memory may carry an `assertion` — the condition that keeps it relevant — written as `text_present:<path>::<text>`, `symbol_present:<path>::<name>`, or `file_present:<path>`. Recall checks it before returning a row, so a trap whose bug was fixed stops being injected on the next prompt without the read path writing anything; `fastr doctor --heal` and `fastr trap verify --apply` persist the retirement as `status = 'dormant'` with the reason. A check that cannot be made — no checkout, a path outside the project, an unbuilt symbol index, an unreadable file — is `unknown`, never `fails`, so a missing file can never silently retire every trap a project has. `fastr_remember` and `fastr_trap_log` accept `assertion`, and `fastr trap verify` reports every assertion and its verdict.

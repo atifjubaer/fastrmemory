@@ -1,6 +1,6 @@
 {
   "name": "fastrmemory",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "mcpName": "io.github.atifjubaer/fastrmemory",
   "description": "High-Performance Cognitive Agent Memory Engine with Bi-Temporal SQLite and Official MCP v2",
   "type": "module",

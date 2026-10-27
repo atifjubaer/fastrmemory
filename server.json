@@ -3,7 +3,7 @@
   "name": "io.github.atifjubaer/fastrmemory",
   "title": "FastrMemory",
   "description": "Local-first cognitive agent memory with bi-temporal SQLite, replayable history, hybrid retrieval.",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "websiteUrl": "https://github.com/atifjubaer/fastrmemory",
   "repository": {
     "url": "https://github.com/atifjubaer/fastrmemory",
@@ -14,7 +14,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "fastrmemory",
-      "version": "0.6.0",
+      "version": "0.7.0",
       "transport": {
         "type": "stdio"
       },
