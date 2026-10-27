@@ -4,6 +4,7 @@ import * as crypto from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { RawEvent, Memory, FileLink, Handoff, Entity, GraphEdge, MemoryConflict, Prediction, Action, ActionEdge, MemorySlot, applySchema, configurePragmas } from './schema.js';
 import { SpoolManager } from './spool.js';
+import { RetrievalQueue } from './retrieval-queue.js';
 import { extractEntities } from '../learn/ner.js';
 import { detectConflict } from '../learn/conflicts.js';
 import { calculateBaserate, PredictionBaserate } from '../learn/planning-fallacy.js';
@@ -51,11 +52,14 @@ export interface RepositoryOptions {
   nerMode?: NerMode;
   /** Overrides write.ftsMode. 'sync' restores inline FTS indexing inside insertMemory(). */
   ftsMode?: FtsMode;
+  /** Where recall counters are queued. Without one, counters are applied inline. */
+  retrievalQueue?: RetrievalQueue;
 }
 
 export class FastrRepository {
   private db: DatabaseSync;
   private spool?: SpoolManager;
+  private retrievalQueue?: RetrievalQueue;
   private conflictMode: ConflictMode;
   private nerMode: NerMode;
   private ftsMode: FtsMode;
@@ -63,6 +67,7 @@ export class FastrRepository {
   constructor(db: DatabaseSync, spool?: SpoolManager, options: RepositoryOptions = {}) {
     this.db = db;
     this.spool = spool;
+    this.retrievalQueue = options.retrievalQueue;
     this.conflictMode = options.conflictMode ?? resolveConflictMode();
     this.nerMode = options.nerMode ?? resolveNerMode();
     this.ftsMode = options.ftsMode ?? resolveFtsMode();
@@ -271,6 +276,16 @@ export class FastrRepository {
       }
     }
 
+    // Apply the retrieval counters readers queued. This write already holds the lock, so
+    // draining here costs nothing extra and keeps the counters from piling up.
+    if (this.retrievalQueue) {
+      try {
+        this.retrievalQueue.drain(this.db);
+      } catch {
+        // The counters stay queued for the next writer.
+      }
+    }
+
     // Explicit file links
     if (params.files && params.files.length > 0) {
       this.linkFiles(
@@ -462,6 +477,9 @@ export class FastrRepository {
     const conflicts = this.drainConflicts(batchSize);
     const entities = this.drainNer(batchSize);
     const fts = this.drainFts(Math.max(batchSize, 500));
+    // Retrieval counters are queued by readers, so they are applied here, by a writer that
+    // already holds the lock. Without this the counters would never land.
+    this.drainRetrievalCounters();
     return {
       conflictsDrained: conflicts.drained,
       conflictsCreated: conflicts.created,
@@ -796,16 +814,47 @@ export class FastrRepository {
     return Number(res.changes);
   }
 
+  /**
+   * Records that these memories were recalled.
+   *
+   * This used to be an `UPDATE` on the read path, which made every recall a writer and
+   * put two agents on one database into a lock fight. The counters are now queued to a
+   * file and applied later by a writer, so a recall never waits on the write lock.
+   */
   incrementRetrieval(memoryIds: string[]): void {
     if (memoryIds.length === 0) return;
-    const nowIso = new Date().toISOString();
+    if (this.retrievalQueue) {
+      this.retrievalQueue.record(memoryIds);
+      return;
+    }
+    // Without a queue (a bare repository in a test or a script) the update still happens,
+    // but it must never take the caller down with it.
+    try {
+      this.applyRetrievalCounters(memoryIds, new Date().toISOString());
+    } catch {
+      // A missing counter is a lost hygiene signal, not a failed recall.
+    }
+  }
+
+  /** Applies queued retrieval counters to the database. Called by a writer, not by a reader. */
+  drainRetrievalCounters(): number {
+    if (!this.retrievalQueue) return 0;
+    return this.retrievalQueue.drain(this.db);
+  }
+
+  /** Number of queued retrieval counters waiting to be applied. */
+  pendingRetrievalCount(): number {
+    return this.retrievalQueue ? this.retrievalQueue.pendingCount() : 0;
+  }
+
+  private applyRetrievalCounters(memoryIds: string[], at: string): void {
     const placeholders = memoryIds.map(() => '?').join(',');
     this.db.prepare(`
       UPDATE memories
       SET retrieval_count = retrieval_count + 1,
           last_recalled_at = ?
       WHERE id IN (${placeholders})
-    `).run(nowIso, ...memoryIds);
+    `).run(at, ...memoryIds);
   }
 
   updateEmbedding(memoryId: string, embedding: Float32Array): void {

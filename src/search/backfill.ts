@@ -46,10 +46,28 @@ export async function backfillEmbeddings(
       ? `${row.title}\n${row.content}`
       : `${row.title}. module: ${row.module}`;
     const vec = await provider.embed(text);
-    repo.updateEmbedding(row.id, encodeTaggedEmbedding(vec, provider.modelId));
-    count++;
+    // The embedding write takes SQLite's single write lock. If another agent holds it,
+    // skip this row rather than stalling the recall that scheduled the backfill; the
+    // memory is picked up on a later pass.
+    try {
+      repo.updateEmbedding(row.id, encodeTaggedEmbedding(vec, provider.modelId));
+      count++;
+    } catch (err) {
+      if (isBusyError(err)) break;
+      throw err;
+    }
   }
   return count;
+}
+
+/** True when the error is SQLite's lock contention rather than a real failure. */
+function isBusyError(err: any): boolean {
+  const code = typeof err?.errcode === 'number' ? err.errcode & 0xff : -1;
+  if (code === 5 || code === 6) return true;
+  const message = String(err?.message ?? '');
+  return message.includes('SQLITE_BUSY')
+    || message.includes('database is locked')
+    || message.includes('database table is locked');
 }
 
 const inFlight = new WeakMap<DatabaseSync, boolean>();

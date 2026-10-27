@@ -4,12 +4,13 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { exec } from 'node:child_process';
-import { FastrConfig } from '../config.js';
+import { FastrConfig, resolveRetrievalQueuePath } from '../config.js';
 import { PACKAGE_VERSION } from '../version.js';
 import { classifyMcpCommand, resolveMcpCommand, withProjectRoot } from '../installer/mcp-command.js';
 import { initDatabase } from '../db/schema.js';
 import { FastrRepository } from '../db/repository.js';
 import { SpoolManager } from '../db/spool.js';
+import { RetrievalQueue } from '../db/retrieval-queue.js';
 import { searchMemories } from '../search/hybrid-rrf.js';
 import { diagnoseDatabase, healDatabase } from '../db/doctor.js';
 import type { Memory } from '../db/schema.js';
@@ -199,7 +200,8 @@ export function startUiServer(config: FastrConfig, options: UiServerOptions = {}
 
   const db = initDatabase(config.dbPath);
   const spool = new SpoolManager(config.spoolPath);
-  const repo = new FastrRepository(db, spool);
+  const retrievalQueue = new RetrievalQueue(resolveRetrievalQueuePath(config));
+  const repo = new FastrRepository(db, spool, { retrievalQueue });
 
   /** Strips the binary embedding (huge as JSON) and attaches linked files with batched queries. */
   const serializeMemories = (rows: Memory[]): Array<Omit<Memory, 'embedding'> & { linked_files: string[] }> => {

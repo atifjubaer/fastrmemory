@@ -12,7 +12,7 @@ import {
   type VectorMode
 } from './embeddings.js';
 import { scheduleBackfill } from './backfill.js';
-import { drainFtsQueue } from '../db/fts-queue.js';
+import { drainFtsQueue, pendingFtsCount } from '../db/fts-queue.js';
 import { packMemoriesIntoBudget, ScoredMemory, TOKEN_LEVELS } from './budget.js';
 import { extractEntities } from '../learn/ner.js';
 import { detectTemporalWindow, parseQuestionDate, withinWindow, type TemporalWindow } from './temporal.js';
@@ -168,6 +168,10 @@ export interface SearchParams {
   /** Opportunistically embed a small batch of un-embedded memories after recall.
    * Defaults to true only when the local embedding model is explicitly enabled. */
   backfill?: boolean;
+  /** Whether to drain the deferred full-text index before running BM25. This is a write,
+   * so a caller that must not block on SQLite's write lock can turn it off and read a
+   * slightly stale index instead. Defaults to true. */
+  drainFts?: boolean;
   /** Optional retrieval configuration for ablations and offline benchmarks. */
   retrieval?: RetrievalConfig;
 }
@@ -192,6 +196,61 @@ export function hasGlobalDb(db: DatabaseSync): boolean {
     return list.some((d) => d.name === 'global_db');
   } catch {
     return false;
+  }
+}
+
+/**
+ * Adds memories that are queued for full-text indexing but not yet in the FTS table.
+ *
+ * The FTS drain is a write, so it can be skipped when another agent holds SQLite's write
+ * lock. That must not make a just-inserted memory invisible: the queue row names the
+ * memory, so a read-only scan of the queue finds it and the row is added to the BM25
+ * results behind the ones already indexed.
+ *
+ * The match is a plain substring test over the same terms the FTS query uses. It is
+ * deliberately simple: it only has to catch the rows the index would have caught, and it
+ * ranks behind the real BM25 results.
+ */
+function mergePendingMatches(
+  db: DatabaseSync,
+  projectId: string,
+  existing: Array<Memory & { rank: number }>,
+  ftsExpression: string
+): Array<Memory & { rank: number }> {
+  if (!ftsExpression) return existing;
+  const terms = ftsExpression
+    .split(' OR ')
+    .map((term) => term.replace(/^"|"$/g, ''))
+    .filter((term) => term.length > 0);
+  if (terms.length === 0) return existing;
+
+  try {
+    const rows = db.prepare(`
+      SELECT m.* FROM memories m
+      JOIN memory_fts_queue q ON q.memory_id = m.id
+      WHERE (m.project_id = ? OR m.project_id = 'global')
+        AND m.valid_to IS NULL
+        AND m.status != 'superseded'
+        AND m.status != 'dormant'
+      LIMIT 500
+    `).all(projectId) as unknown as Memory[];
+
+    const alreadyFound = new Set(existing.map((row) => row.id));
+    // Pending rows rank after every indexed row: BM25 order is by rank ascending, and the
+    // existing rows all have a real score.
+    let worstRank = existing.reduce((max, row) => Math.max(max, row.rank), 0);
+    const additions: Array<Memory & { rank: number }> = [];
+
+    for (const row of rows) {
+      if (alreadyFound.has(row.id)) continue;
+      const haystack = `${row.title}\n${row.content}`.toLowerCase();
+      if (!terms.some((term) => haystack.includes(term.toLowerCase()))) continue;
+      additions.push({ ...row, rank: ++worstRank });
+    }
+
+    return additions.length > 0 ? [...existing, ...additions] : existing;
+  } catch {
+    return existing;
   }
 }
 
@@ -240,7 +299,8 @@ export async function searchMemories(
     budgetTokens = TOKEN_LEVELS.L2_TASK_RECALL,
     maxPerSession = 3,
     limit,
-    backfill
+    backfill,
+    drainFts = true
   } = params;
 
   const retrieval = params.retrieval ?? {};
@@ -318,10 +378,17 @@ export async function searchMemories(
   // --- STREAM A: BM25 FTS5 Keyword Search ---
   // Read-your-writes: index anything the writer deferred before running BM25. This is a
   // bounded, idempotent batch and a no-op once the queue is empty.
-  if (enableBm25) {
+  //
+  // The drain is best-effort on purpose. It is a write, and a write takes SQLite's single
+  // write lock: two agents on one `.fastr/fastr.db` — one recalling while the other writes —
+  // would otherwise stall the recall for the full `busy_timeout` or fail with SQLITE_BUSY.
+  // A stale index is a worse answer, not a broken one, so the drain is skipped whenever the
+  // lock is not free.
+  if (enableBm25 && drainFts) {
     try {
-      drainFtsQueue(db, { limit: 500, schema: 'main' });
-      if (hasGlobalDb(db)) drainFtsQueue(db, { limit: 500, schema: 'global_db' });
+      // busyTimeoutMs: 0 — never wait for the write lock on the read path.
+      drainFtsQueue(db, { limit: 500, schema: 'main', busyTimeoutMs: 0 });
+      if (hasGlobalDb(db)) drainFtsQueue(db, { limit: 500, schema: 'global_db', busyTimeoutMs: 0 });
     } catch {
       // A stale index must never fail a search.
     }
@@ -378,8 +445,20 @@ export async function searchMemories(
   const aggregateFtsQuery = enableBm25 && lexicalQuery !== query ? sanitizeFtsQuery(lexicalQuery) : '';
   if (ftsQuery || aggregateFtsQuery) {
     try {
-      const primary = runBm25(ftsQuery);
-      const secondary = aggregateFtsQuery ? runBm25(aggregateFtsQuery) : [];
+      let primary = runBm25(ftsQuery);
+      let secondary = aggregateFtsQuery ? runBm25(aggregateFtsQuery) : [];
+
+      // Read-your-writes: a memory inserted a moment ago is queued for indexing, not yet in
+      // the FTS table. When the drain above could not take the write lock, the queue still
+      // holds those rows, so scan it read-only and add anything it matches. This keeps the
+      // "searchable as soon as insertMemory() returns" guarantee without ever waiting for
+      // the write lock.
+      if (pendingFtsCount(db, 'main') > 0) {
+        primary = mergePendingMatches(db, projectId, primary, ftsQuery);
+        if (aggregateFtsQuery) {
+          secondary = mergePendingMatches(db, projectId, secondary, aggregateFtsQuery);
+        }
+      }
 
       /**
        * When an aggregate question runs two lexical queries, a document found by both
