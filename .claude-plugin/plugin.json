@@ -1,6 +1,6 @@
 {
   "name": "fastrmemory",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "description": "Local-first agent memory for Claude Code: MCP server plus Agent Skills for pre-edit trap checks, recall, trap logging, curation, and session handoffs.",
   "author": {
     "name": "Fastrsoft"
@@ -20,7 +20,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "fastrmemory@0.7.2",
+        "fastrmemory@0.8.0",
         "mcp"
       ]
     }
