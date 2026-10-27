@@ -5,6 +5,7 @@ import { SpoolManager } from '../db/spool.js';
 import { syncAllModulePages } from '../mirror/markdown-pages.js';
 import { FastrConfig } from '../config.js';
 import { buildPerTurnContext } from './per-turn.js';
+import { distillSessionTraps } from '../learn/passive-distillation.js';
 
 export interface HookContext {
   db: DatabaseSync;
@@ -252,17 +253,18 @@ export function runLifecycleHook(
       const toolName = payload.tool || payload.tool_name || 'unknown_tool';
       const errorMsg = payload.error || payload.message || 'Execution error';
       const file = extractTargetFiles(payload, ctx.config.projectRoot)[0] ?? null;
+      const sessionId = String(payload.session_id ?? payload.sessionId ?? 'hook-session');
 
       // Fast async spool entry (<1ms)
       ctx.spool.append({
         project_id: ctx.config.projectId,
-        session_id: 'hook-session',
+        session_id: sessionId,
         agent_id: payload.agentId || 'default',
         event_type: 'tool_error',
         tool_name: toolName,
         file_path: file,
         raw_payload: JSON.stringify({ error: errorMsg, context: payload.context || {} }),
-        content_hash: Buffer.from(`${toolName}:${errorMsg}:${Date.now()}`).toString('hex').slice(0, 32),
+        content_hash: Buffer.from(`${toolName}:${errorMsg}`).toString('hex').slice(0, 32),
       });
 
       return {
@@ -290,10 +292,12 @@ export function runLifecycleHook(
           ctx.spool.drain(ctx.db);
         } catch {}
       }
+      const sessionId = payload.session_id ? String(payload.session_id) : undefined;
+      distillSessionTraps(ctx.db, ctx.config.projectId, sessionId);
       syncAllModulePages(ctx.db, ctx.config.projectRoot, ctx.config.projectId);
       return {
         handled: true,
-        message: 'Flushed spool and mirrored Markdown pages on session end.',
+        message: 'Flushed spool, passively distilled error traps, and mirrored Markdown pages on session end.',
       };
     }
 

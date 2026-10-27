@@ -5,6 +5,7 @@ import { runStdioServer } from '../src/mcp/stdio.js';
 import { createFastrServerContext } from '../src/mcp/server.js';
 import { searchMemories } from '../src/search/hybrid-rrf.js';
 import { syncAllModulePages } from '../src/mirror/markdown-pages.js';
+import { syncTeamMemory } from '../src/mirror/team-sync.js';
 import { scrubSecrets } from '../src/privacy/scrubber.js';
 import { runInteractiveSetup } from '../src/installer/setup.js';
 import { formatBenchmarkMarkdown } from '../src/bench/benchmark.js';
@@ -26,6 +27,7 @@ import {
   parseMcpSource,
 } from '../src/installer/mcp-init.js';
 import { learnFromGitHistory } from '../src/learn/git-learner.js';
+import { distillSessionTraps } from '../src/learn/passive-distillation.js';
 import { exportToObsidianVault } from '../src/export/obsidian.js';
 import { runLifecycleHook, toClaudeHookStdout, toGeminiHookStdout, toCopilotHookStdout } from '../src/hooks/runner.js';
 import * as fs from 'node:fs';
@@ -175,12 +177,23 @@ Examples:
 program
   .command('init')
   .description('Initialize FastrMemory in current directory')
-  .action(() => {
+  .option('--with-model', 'Download and verify the static semantic model immediately', false)
+  .action(async (opts: { withModel?: boolean }) => {
     const ctx = createFastrServerContext();
     console.log(`FastrMemory initialized successfully.`);
     console.log(`Project ID: ${ctx.config.projectId}`);
     console.log(`Database:   ${ctx.config.dbPath}`);
     console.log(`Pages dir:  ${ctx.config.pagesDir}`);
+
+    if (opts.withModel) {
+      console.log('\nInstalling static semantic model (potion-base-8M)...');
+      try {
+        const res = await installStaticModel({ onProgress: (m: string) => console.log(`  ${m}`) });
+        console.log(`Model ready in ${res.dir}`);
+      } catch (err: any) {
+        console.error(`Warning: model install failed (${err.message}). Defaulting to lexical search.`);
+      }
+    }
   });
 
 // 3. Status command
@@ -461,14 +474,27 @@ conflictCmd
     }
   });
 
-// 7. Sync command
+// 7. Sync command (bidirectional team memory sync)
 program
   .command('sync')
-  .description('Re-render all Two-Zone Markdown pages in .fastr/pages/')
-  .action(() => {
+  .description('Synchronize team memory: ingest pulled Markdown pages into SQLite and re-render .fastr/pages/')
+  .option('--export-only', 'Only re-render SQLite memories to Markdown pages without ingesting', false)
+  .action((opts) => {
     const ctx = createFastrServerContext();
-    const files = syncAllModulePages(ctx.db, ctx.config.projectRoot, ctx.config.projectId);
-    console.log(`Synced ${files.length} module markdown pages in .fastr/pages/`);
+    if (opts.exportOnly) {
+      const files = syncAllModulePages(ctx.db, ctx.config.projectRoot, ctx.config.projectId);
+      console.log(`Exported ${files.length} module markdown pages in .fastr/pages/`);
+      return;
+    }
+    const res = syncTeamMemory(ctx.db, ctx.config.projectRoot, ctx.config.projectId);
+    console.log(`Team Memory Sync complete:`);
+    console.log(`- Scanned Pages:       ${res.pagesRead}`);
+    console.log(`- Ingested Memories:   ${res.newMemoriesIngested}`);
+    console.log(`- Updated Superseded:  ${res.supersededUpdated}`);
+    console.log(`- Mirrored Pages:      ${res.pagesWritten}`);
+    if (res.ingestedIds.length > 0) {
+      console.log(`New memories: ${res.ingestedIds.join(', ')}`);
+    }
   });
 
 // 7a. Code symbol index (derived; rebuilt from source at any time)
@@ -1010,6 +1036,22 @@ program
     console.log(`Inspected ${res.commitsInspected} commits. Extracted ${res.trapsExtracted} error traps into staging quarantine.`);
     for (const l of res.lessons) {
       console.log(`- [${l.commitHash}] (${l.module}): ${l.title}`);
+    }
+  });
+
+program
+  .command('distill')
+  .description('Passively distill draft error traps from recent tool failures and file edits')
+  .option('--session <id>', 'Specific session ID to distill from')
+  .action((opts) => {
+    const ctx = createFastrServerContext();
+    if (ctx.spool.hasPending()) {
+      try { ctx.spool.drain(ctx.db); } catch {}
+    }
+    const res = distillSessionTraps(ctx.db, ctx.config.projectId, opts.session);
+    console.log(`Inspected ${res.inspectedErrors} tool failure events. Distilled ${res.distilledCount} new draft error traps into staging.`);
+    for (const t of res.traps) {
+      console.log(`- [${t.id}] (${t.module}): ${t.title} [${t.files.join(', ')}]`);
     }
   });
 

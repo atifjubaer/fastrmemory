@@ -2,8 +2,9 @@
   "name": "fastrmemory-vscode",
   "displayName": "FastrMemory Guardian (VS Code & Cursor)",
   "description": "Native status bar pill & active error trap underlines for VS Code and Cursor",
-  "version": "0.1.0",
+  "version": "0.7.2",
   "publisher": "atifjubaer",
+  "icon": "icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/atifjubaer/fastrmemory"

@@ -44,6 +44,7 @@
     "build:core": "tsc",
     "build:ui": "npm --prefix ui run build && node scripts/build-dist-ui-manifest.mjs",
     "build:extension": "tsc -p extensions/vscode",
+    "package:extension": "cd extensions/vscode && npx --yes @vscode/vsce package --no-dependencies",
     "build": "npm run build:core && npm run build:ui",
     "build:all": "npm run build && npm run build:extension",
     "watch": "tsc --watch",

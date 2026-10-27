@@ -24,7 +24,7 @@ import {
   __resetStaticModelForTests,
   type EmbeddingProvider
 } from '../src/search/embeddings.js';
-import { staticModelStatus, removeStaticModel } from '../src/search/static-model-install.js';
+import { staticModelStatus, removeStaticModel, prefetchStaticModelInBackground } from '../src/search/static-model-install.js';
 import { DatabaseSync } from 'node:sqlite';
 import { applySchema } from '../src/db/schema.js';
 import { FastrRepository } from '../src/db/repository.js';
@@ -331,5 +331,10 @@ describe('static model installer', () => {
     expect(removeStaticModel(home)).toBe(true);
     expect(removeStaticModel(home)).toBe(false);
     expect(fs.existsSync(dir)).toBe(false);
+  });
+
+  it('prefetchStaticModelInBackground is a no-op under test environment', async () => {
+    const res = await prefetchStaticModelInBackground({ homeDir: home });
+    expect(res).toBeNull();
   });
 });

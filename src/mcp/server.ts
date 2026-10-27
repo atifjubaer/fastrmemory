@@ -8,6 +8,7 @@ import { RetrievalQueue } from '../db/retrieval-queue.js';
 import { initDatabase } from '../db/schema.js';
 import { searchMemories } from '../search/hybrid-rrf.js';
 import { ensureInstalledStaticModel } from '../search/embeddings.js';
+import { prefetchStaticModelInBackground } from '../search/static-model-install.js';
 import { scrubSecrets } from '../privacy/scrubber.js';
 import { syncModulePage, syncAllModulePages } from '../mirror/markdown-pages.js';
 import { FastrConfig, loadConfig, resolveRetrievalQueuePath } from '../config.js';
@@ -111,6 +112,12 @@ export function createFastrServerContext(customRoot?: string, homeDir?: string):
   // Load the optional static semantic model once when it is installed. It never
   // downloads and adds ~65 ms of startup cost only when the asset is present.
   ensureInstalledStaticModel(homeDir);
+
+  // If enabled via environment or config, non-blocking background prefetch
+  // downloads the static model in the background without blocking boot.
+  if (process.env.FASTR_AUTO_PREFETCH === '1') {
+    prefetchStaticModelInBackground({ homeDir });
+  }
 
   // Auto-drain any pending spool events on startup
   if (spool.hasPending()) {
