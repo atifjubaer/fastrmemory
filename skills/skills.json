@@ -1,7 +1,7 @@
 {
   "$schema": "https://skills.sh/schema/v1.json",
   "name": "fastrmemory-skills",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Agent Skills that teach coding agents when to recall, log traps, curate, and commit FastrMemory.",
   "author": "Fastrsoft",
   "license": "Apache-2.0",
