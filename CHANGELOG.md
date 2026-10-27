@@ -4,6 +4,10 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-10-27
+
+Patch release for a scaling defect found by the new concurrency soak. Memory ids carried only 32 bits of entropy, so a collision became a coin flip at about 78,000 rows and one landed during a three-writer run; ids now carry 64 bits. The same run measured recall cost as linear in corpus size, which is now documented rather than implied. Test suite is 456 tests across 67 files.
+
 ### Added
 
 - `npm run soak` runs three writer processes and one reader against one project database: 10,000 seeded memories, the real `insertMemory()` path, read-only recall, then an exact lost-write check (`seed + acknowledged == committed`), `PRAGMA integrity_check`, and the FTS queue depth. It also reports recall p50/p95/p99 under sustained write load.
