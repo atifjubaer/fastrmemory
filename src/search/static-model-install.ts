@@ -144,6 +144,35 @@ export async function installStaticModel(options: InstallStaticModelOptions = {}
   return { dir, downloaded, alreadyPresent: downloaded.length === 0 };
 }
 
+let activePrefetch: Promise<InstallStaticModelResult | null> | null = null;
+
+/**
+ * Triggers non-blocking background prefetch/download of the static semantic model if not already present.
+ * Safe to fire from `fastr init --with-model` or during server start when `FASTR_AUTO_PREFETCH=1`
+ * or `project.json` `model.autoInstall: true`.
+ * Does nothing under test runners (`NODE_ENV=test`) or when `FASTR_DISABLE_STATIC_MODEL=1`.
+ * Never throws — failures log to progress/debug without interrupting the caller.
+ */
+export function prefetchStaticModelInBackground(options: InstallStaticModelOptions = {}): Promise<InstallStaticModelResult | null> {
+  if (activePrefetch) return activePrefetch;
+  if (process.env.NODE_ENV === 'test' || process.env.FASTR_DISABLE_STATIC_MODEL === '1') {
+    return Promise.resolve(null);
+  }
+
+  const status = staticModelStatus(options.homeDir);
+  if (status.installed) {
+    return Promise.resolve({ dir: status.dir, downloaded: [], alreadyPresent: true });
+  }
+
+  activePrefetch = installStaticModel(options)
+    .catch(() => {
+      activePrefetch = null;
+      return null;
+    });
+
+  return activePrefetch;
+}
+
 /** Removes the installed model. Returns true when something was deleted. */
 export function removeStaticModel(homeDir: string = resolveFastrHome()): boolean {
   const dir = staticModelDir(homeDir);
