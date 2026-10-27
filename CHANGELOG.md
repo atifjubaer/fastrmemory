@@ -4,6 +4,22 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-28
+
+Four architectural upgrades:
+- **P0 Semantic Model Pre-Fetch**: Background non-blocking prefetch of the 30 MB static semantic model (`minishlab/potion-base-8M`), plus `fastr init --with-model` so new projects get semantic search without manual setup.
+- **P1 Extension Packaging & Marketplace**: VS Code / Cursor extension updated with official brand icon, `.vscodeignore`, and `.github/workflows/extension-release.yml` for publishing to VS Code Marketplace and Open VSX.
+- **P2 Passive Cognitive Distillation**: Automatically synthesizes staging error traps from session tool failures and correlated file edits on session end, plus manual `fastr distill`.
+- **P3 Team Memory Sync**: Bidirectional `fastr sync` ingests newly pulled `.fastr/pages/*.md` memory cards into local SQLite and updates superseded records before re-rendering clean truth.
+- Test suite is 461 tests across 69 files.
+
+### Added
+
+- `prefetchStaticModelInBackground()` and `fastr init --with-model`.
+- `distillSessionTraps()` and `fastr distill`.
+- `syncTeamMemory()` and bidirectional `fastr sync`.
+- Automated VS Code / Cursor extension release workflow (`.github/workflows/extension-release.yml`).
+
 ## [0.7.2] - 2026-10-28
 
 Brand and visual presentation release. Adds the official FastrMemory Neural Synapse Core logo mark to the README header with high-contrast dual-theme compatibility across GitHub and npmjs.com, removes the redundant lightning emoji from the title, includes the brand logo kit in `assets/`, and syncs the memory markdown mirrors for release and database error traps. Test suite is 456 tests across 67 files.
