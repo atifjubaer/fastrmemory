@@ -174,6 +174,17 @@ function bumpManifests(next) {
     }
   }
 
+  // `.cursor/skills/` must mirror `skills/` byte for byte (check-skills enforces it), so
+  // the manifest copy has to carry the bump too or the gate fails after the bump.
+  const cursorSkills = path.join(ROOT, '.cursor', 'skills', 'skills.json');
+  if (fs.existsSync(skillsPath) && fs.existsSync(cursorSkills)) {
+    const source = fs.readFileSync(skillsPath);
+    if (!source.equals(fs.readFileSync(cursorSkills))) {
+      fs.writeFileSync(cursorSkills, source);
+      changed.push('.cursor/skills/skills.json');
+    }
+  }
+
   return changed;
 }
 
