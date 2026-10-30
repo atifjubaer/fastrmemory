@@ -12,6 +12,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.16.0-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Protocol](https://img.shields.io/badge/Protocol-MCP%20v2-7C3AED?style=flat-square)](https://modelcontextprotocol.io)
+[![MCP Directory](https://mcprush.com/badge/fastrmemory-mcp/compact.svg)](https://mcprush.com/to/fastrmemory-mcp?ref=badge)
 [![Tests](https://img.shields.io/badge/Tests-461%20Passed-brightgreen?style=flat-square)](tests/)
 [![MCP Setup](https://img.shields.io/badge/MCP%20Setup-fastr%20mcp%20init-7C3AED?style=flat-square)](#-one-click-agent-mcp-configuration)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-architecture)
@@ -124,6 +125,12 @@ Fuses FTS5 BM25 + optional local embeddings + file-graph links. Error traps rece
 FastrMemory exposes one stdio MCP server and optional local HTTP services (dashboard and daemon). **Native installers wire Claude Code (MCP config plus lifecycle hooks), Cursor (MCP config plus skills), and, since 0.3.0, Gemini CLI, GitHub Copilot CLI, and OpenCode V2** (`fastrmemory hook install`); `fastrmemory setup` also writes MCP configs for Antigravity, Claude Desktop, and Windsurf. Every other client connects through its own MCP configuration or the REST API. Integration depth varies by client - only the native installers are covered by tests in this repository.
 
 Clients commonly used with FastrMemory include Codex CLI, Gemini CLI, OpenCode, GitHub Copilot CLI, Antigravity, Claude Desktop, Cline, Continue, Roo Code, Goose, Zed, Warp, and Aider. Listing a client does **not** imply a tested native integration.
+
+<p align="center">
+  <a href="https://mcprush.com/to/fastrmemory-mcp?ref=badge">
+    <img src="https://mcprush.com/badge/fastrmemory-mcp/card.svg" alt="FastrMemory MCP server" width="380" height="200" />
+  </a>
+</p>
 
 ---
 
