@@ -21,12 +21,13 @@ export interface SetupOptions {
 
 export const AGENTS_DISCIPLINE_BLOCK = `
 <!-- fastrmemory:start -->
-## ⚡ FastrMemory Autonomous Agent Discipline
+## FastrMemory Autonomous Agent Discipline
 
-Every AI coding agent operating in this repository MUST follow these 3 cognitive rules:
-1. **Pre-Edit Error Check**: Before editing or creating files, call \`fastr_trap_recall\` with your target file paths to check for active \`[TRAP]\` warnings.
-2. **Immediate Trap Logging**: The moment you diagnose a test failure, syntax bug, or library incompatibility, call \`fastr_trap_log\` to save the lesson with a 2.0x recall boost.
-3. **Session Verification**: When milestones are completed, call \`fastr_handoff\` with \`verifyStaging: true\` to graduate staging memories into verified rules.
+Every AI coding agent operating in this repository MUST follow these cognitive rules:
+1. **Pre-Edit Error Check & Trap Recall**: Before editing or creating files, call \`fastr_trap_recall\` with your target file paths (set \`includeNeighbors: true\`) to check for active \`[TRAP]\` warnings and 1-hop call-graph dependencies.
+2. **Cognitive Recall**: At the start of ANY task, call \`fastr_recall\` with your query or objective to load relevant architectural decisions, active rules, and past lessons.
+3. **Immediate Trap Logging**: The moment you diagnose a test failure, syntax bug, or library incompatibility, immediately call \`fastr_trap_log\` to save the lesson with a 2.0x recall boost.
+4. **Session Verification**: When milestones are completed, call \`fastr_handoff\` with \`verifyStaging: true\` to graduate staging memories into verified rules.
 <!-- fastrmemory:end -->
 `;
 
@@ -77,34 +78,222 @@ export function ensureAgentsDiscipline(projectRoot: string): 'added' | 'present'
 }
 
 /**
+ * Ensures FastrMemory's autonomous cognitive rules are wired into every major AI assistant
+ * environment in the project:
+ * - Claude Code: .claude/rules/fastrmemory.md
+ * - Cursor: .cursor/rules/fastrmemory.mdc (alwaysApply: true)
+ * - Copilot: .github/copilot-instructions.md
+ * - Windsurf: .windsurf/rules/fastrmemory.md
+ * - Gemini CLI: GEMINI.md
+ * - AGENTS.md (for Codex, OpenCode, Devin, Aider)
+ */
+export function ensureAgentRulesAcrossClients(projectRoot: string): {
+  agentsMd: 'added' | 'present';
+  claudeRule: 'added' | 'present';
+  cursorRule: 'added' | 'present';
+  copilotRule: 'added' | 'present';
+  windsurfRule: 'added' | 'present';
+  geminiRule: 'added' | 'present';
+} {
+  const result = {
+    agentsMd: ensureAgentsDiscipline(projectRoot),
+    claudeRule: 'present' as 'added' | 'present',
+    cursorRule: 'present' as 'added' | 'present',
+    copilotRule: 'present' as 'added' | 'present',
+    windsurfRule: 'present' as 'added' | 'present',
+    geminiRule: 'present' as 'added' | 'present',
+  };
+
+  // 1. Claude Code (.claude/rules/fastrmemory.md)
+  const claudeRulePath = path.join(projectRoot, '.claude', 'rules', 'fastrmemory.md');
+  if (!fs.existsSync(claudeRulePath)) {
+    try {
+      fs.mkdirSync(path.dirname(claudeRulePath), { recursive: true });
+      fs.writeFileSync(claudeRulePath, AGENTS_DISCIPLINE_BLOCK.trim() + '\n', 'utf-8');
+      result.claudeRule = 'added';
+    } catch {}
+  }
+
+  // 2. Cursor (.cursor/rules/fastrmemory.mdc) with alwaysApply: true
+  const cursorRulePath = path.join(projectRoot, '.cursor', 'rules', 'fastrmemory.mdc');
+  if (!fs.existsSync(cursorRulePath)) {
+    try {
+      fs.mkdirSync(path.dirname(cursorRulePath), { recursive: true });
+      const cursorRule = [
+        '---',
+        'description: FastrMemory autonomous cognitive protocol for active error trap recall and memory search',
+        'globs: *',
+        'alwaysApply: true',
+        '---',
+        '',
+        AGENTS_DISCIPLINE_BLOCK.trim(),
+        ''
+      ].join('\n');
+      fs.writeFileSync(cursorRulePath, cursorRule, 'utf-8');
+      result.cursorRule = 'added';
+    } catch {}
+  }
+
+  // 3. GitHub Copilot (.github/copilot-instructions.md)
+  const copilotPath = path.join(projectRoot, '.github', 'copilot-instructions.md');
+  const existingCopilot = fs.existsSync(copilotPath) ? fs.readFileSync(copilotPath, 'utf-8') : '';
+  if (!existingCopilot.includes('<!-- fastrmemory:start -->')) {
+    try {
+      fs.mkdirSync(path.dirname(copilotPath), { recursive: true });
+      fs.writeFileSync(copilotPath, (existingCopilot ? existingCopilot.trimEnd() + '\n' : '') + AGENTS_DISCIPLINE_BLOCK, 'utf-8');
+      result.copilotRule = 'added';
+    } catch {}
+  }
+
+  // 4. Windsurf (.windsurf/rules/fastrmemory.md)
+  const windsurfPath = path.join(projectRoot, '.windsurf', 'rules', 'fastrmemory.md');
+  if (!fs.existsSync(windsurfPath)) {
+    try {
+      fs.mkdirSync(path.dirname(windsurfPath), { recursive: true });
+      fs.writeFileSync(windsurfPath, AGENTS_DISCIPLINE_BLOCK.trim() + '\n', 'utf-8');
+      result.windsurfRule = 'added';
+    } catch {}
+  }
+
+  // 5. Gemini CLI (GEMINI.md)
+  const geminiPath = path.join(projectRoot, 'GEMINI.md');
+  const existingGemini = fs.existsSync(geminiPath) ? fs.readFileSync(geminiPath, 'utf-8') : '';
+  if (!existingGemini.includes('<!-- fastrmemory:start -->')) {
+    try {
+      fs.writeFileSync(geminiPath, (existingGemini ? existingGemini.trimEnd() + '\n' : '') + AGENTS_DISCIPLINE_BLOCK, 'utf-8');
+      result.geminiRule = 'added';
+    } catch {}
+  }
+
+  return result;
+}
+
+function pruneEmptyDir(dir: string): void {
+  try {
+    if (fs.existsSync(dir) && fs.readdirSync(dir).length === 0) {
+      fs.rmdirSync(dir);
+    }
+  } catch {}
+}
+
+/**
  * Removes the discipline block this installer appended, leaving every other line of AGENTS.md
- * exactly as the user wrote it. Deletes the file when the block was its only content.
+ * exactly as the user wrote it. Also removes any client-specific rule files created by
+ * ensureAgentRulesAcrossClients (.claude/rules/fastrmemory.md, .cursor/rules/fastrmemory.mdc, etc.)
  *
- * Returns true when a block was found and removed.
+ * Returns true when a block or rule file was found and removed.
  */
 export function removeAgentsDiscipline(projectRoot: string): boolean {
+  let changed = false;
+
+  // 1. Clean AGENTS.md
   const agentsPath = path.join(projectRoot, 'AGENTS.md');
-  if (!fs.existsSync(agentsPath)) return false;
-  const current = fs.readFileSync(agentsPath, 'utf-8');
-  const startMarker = '<!-- fastrmemory:start -->';
-  const endMarker = '<!-- fastrmemory:end -->';
-  const start = current.indexOf(startMarker);
-  if (start < 0) return false;
-  const end = current.indexOf(endMarker, start);
-  if (end < 0) return false;
-
-  let before = current.slice(0, start);
-  const after = current.slice(end + endMarker.length);
-  // install() writes `content.trimEnd() + '\n'` before a block that starts with '\n'.
-  if (before.endsWith('\n\n')) before = before.slice(0, -1);
-  const remainder = (before + after.replace(/^\r?\n/, '')).replace(/\s+$/, '');
-
-  if (!remainder) {
-    fs.unlinkSync(agentsPath);
-    return true;
+  if (fs.existsSync(agentsPath)) {
+    const current = fs.readFileSync(agentsPath, 'utf-8');
+    const startMarker = '<!-- fastrmemory:start -->';
+    const endMarker = '<!-- fastrmemory:end -->';
+    const start = current.indexOf(startMarker);
+    if (start >= 0) {
+      const end = current.indexOf(endMarker, start);
+      if (end >= 0) {
+        let before = current.slice(0, start);
+        const after = current.slice(end + endMarker.length);
+        if (before.endsWith('\n\n')) before = before.slice(0, -1);
+        const remainder = (before + after.replace(/^\r?\n/, '')).replace(/\s+$/, '');
+        if (!remainder) {
+          fs.unlinkSync(agentsPath);
+        } else {
+          fs.writeFileSync(agentsPath, `${remainder}\n`, 'utf-8');
+        }
+        changed = true;
+      }
+    }
   }
-  fs.writeFileSync(agentsPath, `${remainder}\n`, 'utf-8');
-  return true;
+
+  // 2. Clean Claude Code rule (.claude/rules/fastrmemory.md)
+  const claudeRule = path.join(projectRoot, '.claude', 'rules', 'fastrmemory.md');
+  if (fs.existsSync(claudeRule)) {
+    try {
+      fs.unlinkSync(claudeRule);
+      pruneEmptyDir(path.join(projectRoot, '.claude', 'rules'));
+      pruneEmptyDir(path.join(projectRoot, '.claude'));
+      changed = true;
+    } catch {}
+  }
+
+  // 3. Clean Cursor rule (.cursor/rules/fastrmemory.mdc)
+  const cursorRule = path.join(projectRoot, '.cursor', 'rules', 'fastrmemory.mdc');
+  if (fs.existsSync(cursorRule)) {
+    try {
+      fs.unlinkSync(cursorRule);
+      pruneEmptyDir(path.join(projectRoot, '.cursor', 'rules'));
+      pruneEmptyDir(path.join(projectRoot, '.cursor'));
+      changed = true;
+    } catch {}
+  }
+
+  // 4. Clean Copilot instructions (.github/copilot-instructions.md)
+  const copilot = path.join(projectRoot, '.github', 'copilot-instructions.md');
+  if (fs.existsSync(copilot)) {
+    try {
+      const current = fs.readFileSync(copilot, 'utf-8');
+      const startMarker = '<!-- fastrmemory:start -->';
+      const endMarker = '<!-- fastrmemory:end -->';
+      const start = current.indexOf(startMarker);
+      if (start >= 0) {
+        const end = current.indexOf(endMarker, start);
+        if (end >= 0) {
+          let before = current.slice(0, start);
+          const after = current.slice(end + endMarker.length);
+          if (before.endsWith('\n\n')) before = before.slice(0, -1);
+          const remainder = (before + after.replace(/^\r?\n/, '')).replace(/\s+$/, '');
+          if (!remainder) {
+            fs.unlinkSync(copilot);
+            pruneEmptyDir(path.join(projectRoot, '.github'));
+          } else {
+            fs.writeFileSync(copilot, `${remainder}\n`, 'utf-8');
+          }
+          changed = true;
+        }
+      }
+    } catch {}
+  }
+
+  // 5. Clean Windsurf rule (.windsurf/rules/fastrmemory.md)
+  const windsurf = path.join(projectRoot, '.windsurf', 'rules', 'fastrmemory.md');
+  if (fs.existsSync(windsurf)) {
+    try {
+      fs.unlinkSync(windsurf);
+      pruneEmptyDir(path.join(projectRoot, '.windsurf', 'rules'));
+      pruneEmptyDir(path.join(projectRoot, '.windsurf'));
+      changed = true;
+    } catch {}
+  }
+
+  // 6. Clean Gemini instructions (GEMINI.md)
+  const gemini = path.join(projectRoot, 'GEMINI.md');
+  if (fs.existsSync(gemini)) {
+    try {
+      const current = fs.readFileSync(gemini, 'utf-8');
+      const startMarker = '<!-- fastrmemory:start -->';
+      const endMarker = '<!-- fastrmemory:end -->';
+      const start = current.indexOf(startMarker);
+      if (start >= 0) {
+        const end = current.indexOf(endMarker, start);
+        if (end >= 0) {
+          let before = current.slice(0, start);
+          const after = current.slice(end + endMarker.length);
+          if (before.endsWith('\n\n')) before = before.slice(0, -1);
+          const remainder = (before + after.replace(/^\r?\n/, '')).replace(/\s+$/, '');
+          if (!remainder) fs.unlinkSync(gemini);
+          else fs.writeFileSync(gemini, `${remainder}\n`, 'utf-8');
+          changed = true;
+        }
+      }
+    } catch {}
+  }
+
+  return changed;
 }
 
 export function runInteractiveSetup(options: SetupOptions = {}): void {
@@ -146,12 +335,11 @@ export function runInteractiveSetup(options: SetupOptions = {}): void {
     console.log(`${prefix} ${wireMcpClient(target, entry)}`);
   }
 
-  // 7. Wire Autonomous Agent Discipline in AGENTS.md
+  // 7. Wire Autonomous Agent Discipline across all AI assistants (Claude Code, Cursor, Copilot, Windsurf, Gemini, AGENTS.md)
   let agentStatus: string;
   try {
-    agentStatus = ensureAgentsDiscipline(projectRoot) === 'added'
-      ? 'Injected rules into AGENTS.md'
-      : 'Discipline rules already present in AGENTS.md';
+    ensureAgentRulesAcrossClients(projectRoot);
+    agentStatus = 'Wired rules into Claude Code, Cursor, Copilot, Windsurf, Gemini, and AGENTS.md';
   } catch (err: any) {
     agentStatus = `Notice: ${err.message}`;
   }
