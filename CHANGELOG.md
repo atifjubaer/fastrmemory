@@ -4,6 +4,21 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-11-01
+
+Multi-IDE mandatory agent rules release. Wires autonomous cognitive discipline rules directly into every AI assistant environment when `fastr setup` or `fastr hook install` runs:
+- **Claude Code**: `.claude/rules/fastrmemory.md` (auto-loaded into every single prompt turn).
+- **Cursor**: `.cursor/rules/fastrmemory.mdc` (configured with `alwaysApply: true` so Cursor agents execute it on every prompt).
+- **GitHub Copilot**: `.github/copilot-instructions.md`.
+- **Windsurf**: `.windsurf/rules/fastrmemory.md`.
+- **Gemini CLI**: `GEMINI.md`.
+- **Codex / OpenCode / Devin / Aider**: `AGENTS.md`.
+- Test suite is 476 tests across 74 files.
+
+### Added
+
+- `ensureAgentRulesAcrossClients()` in `src/installer/setup.ts` to automatically wire mandatory cognitive rules across all supported AI assistants.
+
 ## [0.9.0] - 2026-11-01
 
 Graph-Grounded Cognitive Agent Memory Engine release. Synthesizes knowledge graph intelligence with episodic memory:
