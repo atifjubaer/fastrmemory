@@ -1,19 +1,19 @@
 # FastrMemory NPM Publishing & Architecture Guide
 
-> **Status (2026-11-01): 0.9.1 published.** The canonical unscoped package is **`fastrmemory@0.9.1`**, published **2026-11-01** from tag `v0.9.1` (`5da9b2e`) by GitHub Actions OIDC trusted publishing. `npm view fastrmemory version` returns `0.9.1`; `npm view fastrmemory dist-tags --json` returns `{"latest":"0.9.1"}`. The release workflow passed the full gate, clean tarball install, provenance publish, registry verification, and GitHub Release upload. The npm tarball and GitHub Release asset both have SHA-256 `9c394ce3d4ef78044bafde6807324b616a0b4b76eff961aea963004fb1fad774`; `npm audit signatures` reports 5 verified registry signatures and 4 verified attestations. `0.9.0`, `0.8.2`, `0.8.1`, `0.8.0`, `0.7.2`, `0.7.1`, `0.7.0`, `0.6.0`, `0.5.0`, `0.4.0`, `0.3.1`, and `0.3.0` remain published historical versions. Do not republish `0.3.0` or either removed scoped entry; `NPM_TOKEN` is not used and the repository secret was removed after OIDC validation.
+> **Status (2026-11-01): 0.9.2 published.** The canonical unscoped package is **`fastrmemory@0.9.2`**, published **2026-11-01** from tag `v0.9.2` (`b2c6502`) by GitHub Actions OIDC trusted publishing. `npm view fastrmemory version` returns `0.9.2`; `npm view fastrmemory dist-tags --json` returns `{"latest":"0.9.2"}`. The release workflow passed the full gate, clean tarball install, provenance publish, registry verification, and GitHub Release upload. The npm tarball and GitHub Release asset both have SHA-256 `2a24f2aa99ce647390b021cb1be7d62fac50edacb2e826c13deba6dcdbe16732`; `npm audit signatures` reports 5 verified registry signatures and 4 verified attestations. `0.9.1`, `0.9.0`, `0.8.2`, `0.8.1`, `0.8.0`, `0.7.2`, `0.7.1`, `0.7.0`, `0.6.0`, `0.5.0`, `0.4.0`, `0.3.1`, and `0.3.0` remain published historical versions. Do not republish `0.3.0` or either removed scoped entry; `NPM_TOKEN` is not used and the repository secret was removed after OIDC validation.
 
 > **0.3.0 history:** `fastrmemory@0.3.0` was published on **2026-10-22 18:32 UTC** from tag `v0.3.0` (`50a7d8f`). Its npm README still points at the removed `@atifjubaer/fastrmemory@0.2.1`, which is why `0.3.1` exists.
 
 > **0.2.1 history:** `@atifjubaer/fastrmemory@0.2.1` was published on **2026-10-22 16:51 UTC** from frozen tag `3fa2bf9` and removed from npm on **2026-10-23**. The earlier E401/E404 block is preserved below as history. The first `npm view` after publish returned E404 for about two minutes during registry propagation; it was not a failed publish. Do not republish `0.2.1`; npm rejects duplicates with E409.
 
-This document explains why npm matters for FastrMemory, how the package is verified, and the publish protocol used for 0.2.1, 0.3.0, 0.3.1, 0.4.0, and the automated `0.5.0`, `0.6.0`, `0.7.0`, `0.7.1`, `0.7.2`, `0.8.0`, `0.8.1`, `0.8.2`, `0.9.0`, and `0.9.1` releases. The `0.9.1` publication evidence is documented below. The historical block section is retained for audit.
+This document explains why npm matters for FastrMemory, how the package is verified, and the publish protocol used for 0.2.1, 0.3.0, 0.3.1, 0.4.0, and the automated `0.5.0`, `0.6.0`, `0.7.0`, `0.7.1`, `0.7.2`, `0.8.0`, `0.8.1`, `0.8.2`, `0.9.0`, `0.9.1`, and `0.9.2` releases. The `0.9.2` publication evidence is documented below. The historical block section is retained for audit.
 
 ---
 
 ## What npm provides
 
 1. **Registry distribution**
-   - `npx -y fastrmemory@0.9.1 ui` is the canonical published command. `0.9.0`, `0.8.2`, `0.8.1`, `0.8.0`, `0.7.2`, `0.7.1`, `0.7.0`, `0.6.0`, `0.5.0`, `0.4.0`, and `0.3.1` remain available as historical releases.
+   - `npx -y fastrmemory@0.9.2 ui` is the canonical published command. `0.9.1`, `0.9.0`, `0.8.2`, `0.8.1`, `0.8.0`, `0.7.2`, `0.7.1`, `0.7.0`, `0.6.0`, `0.5.0`, `0.4.0`, and `0.3.1` remain available as historical releases.
    - Historical: `npx --yes --package @atifjubaer/fastrmemory@0.2.1 fastr ui` worked until the scoped npm entry was removed on 2026-10-23.
    - The registry hosts the compressed tarball containing the compiled backend (`dist/`) and React dashboard (`dist-ui/`).
 
@@ -40,6 +40,20 @@ This document explains why npm matters for FastrMemory, how the package is verif
    - `npm run check:ci` runs tests, isolation, skills, UI freshness, package-surface, docs, and benchmark checks.
 
 ---
+
+## Release 0.9.2 (published 2026-11-01)
+
+`fastrmemory@0.9.2` was published on **2026-11-01** from tag `v0.9.2` (`b2c6502`) by `.github/workflows/release.yml` using GitHub Actions OIDC trusted publishing. The workflow passed the full gate, clean tarball install, provenance publish, registry verification, and GitHub Release upload.
+
+- `npm view fastrmemory version` -> `0.9.2`
+- `npm view fastrmemory dist-tags --json` -> `{"latest":"0.9.2"}`
+- `npm view fastrmemory@0.9.2 dist --json` -> 358 files, 3,273,691 bytes unpacked, shasum `7841b6ba47be545167bbd728aaccda2812d230ef`, provenance attestation present
+- GitHub Release asset `fastrmemory-0.9.2.tgz` -> 814,420 bytes, SHA-256 `2a24f2aa99ce647390b021cb1be7d62fac50edacb2e826c13deba6dcdbe16732`
+- Clean registry install reports `0.9.2`; `npm audit signatures` reports 5 verified registry signatures and 4 verified attestations
+
+The release manifests agree at `0.9.2`: `package.json`, `package-lock.json`, `server.json`, `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `skills/skills.json`, and `.cursor/skills/skills.json`. The plugin MCP args pin `fastrmemory@0.9.2`.
+
+This is a documentation-only patch: the memory landscape, per-client integration matrix, and 0.9.1 upgrade path. The runtime and schema are unchanged; `0.9.1` and older remain published historical. The registry listing was refreshed with **Actions -> Publish to MCP Registry** for `v0.9.2`; the workflow reported `server.json 0.9.2 matches v0.9.2; description 97/100 characters` and `Successfully published`.
 
 ## Release 0.9.1 (published 2026-11-01)
 
