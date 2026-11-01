@@ -48,7 +48,7 @@ import { importMarkdownFile } from '../src/import/local.js';
 import type { LocalImportKind } from '../src/import/local.js';
 import { consolidateMemories } from '../src/db/consolidate.js';
 import { runMemoryCi } from '../src/ci/memory-ci.js';
-import { countSymbols, indexProjectSymbols, countCodeEdges } from '../src/code/indexer.js';
+import { countSymbols, indexProjectSymbols, countCodeEdges, isIndexableProjectRoot } from '../src/code/indexer.js';
 import { evaluateMemoryAssertion } from '../src/db/assertions.js';
 import { installUniversalFastrSkill, uninstallUniversalFastrSkill } from '../src/installer/skills.js';
 
@@ -955,17 +955,47 @@ hookCmd
   .option('--client <clients>', 'Comma-separated client ids, or all', 'all')
   .option('--project <path>', 'Project root (defaults to the current directory)')
   .option('--no-agents-md', 'Do not touch AGENTS.md')
+  .option('--no-index', 'Skip the initial code-graph index')
   .option('--json', 'Print a machine-readable result', false)
   .action((opts) => {
     const projectRoot = path.resolve(opts.project ?? process.cwd());
     const clients = parseHookClients(opts.client);
     const res = installHookClients(projectRoot, clients, { agentsMd: opts.agentsMd });
+
+    // Index the project once, here, so call-graph trap warnings work without a manual
+    // `fastr index`. Home directories and folders without a project marker are skipped;
+    // SessionStart repairs an empty index later if this step is skipped.
+    let indexSummary: { symbols: number; callEdges: number; importEdges: number } | null = null;
+    let indexNote = '';
+    if (opts.index !== false && process.env.FASTR_AUTO_INDEX !== '0') {
+      if (isIndexableProjectRoot(projectRoot)) {
+        try {
+          const ctx = createFastrServerContext(projectRoot);
+          const result = indexProjectSymbols(ctx.db, ctx.config.projectId, ctx.config.projectRoot);
+          indexSummary = {
+            symbols: result.symbols,
+            callEdges: result.callEdges ?? 0,
+            importEdges: result.importEdges ?? 0
+          };
+        } catch (err: any) {
+          indexNote = `Code graph: skipped (${err.message})`;
+        }
+      } else {
+        indexNote = 'Code graph: skipped (not a project root)';
+      }
+    }
+
     if (opts.json) {
-      console.log(JSON.stringify({ projectRoot, clients: res.clients, agentsMdUpdated: res.agentsMdUpdated }, null, 2));
+      console.log(JSON.stringify({ projectRoot, clients: res.clients, agentsMdUpdated: res.agentsMdUpdated, index: indexSummary, indexNote }, null, 2));
     } else {
       console.log(`\n=== FastrMemory Autonomous Hook Installation ===`);
       console.log(`Project: ${projectRoot}`);
       for (const d of res.details) console.log(`- ${d}`);
+      if (indexSummary) {
+        console.log(`- Code graph: ${indexSummary.symbols} symbols, ${indexSummary.callEdges} call edges, ${indexSummary.importEdges} import edges`);
+      } else if (indexNote) {
+        console.log(`- ${indexNote}`);
+      }
       console.log(`\nAgent autonomous discipline active.\n`);
     }
     if (res.clients.some((client) => client.status === 'error')) process.exitCode = 1;

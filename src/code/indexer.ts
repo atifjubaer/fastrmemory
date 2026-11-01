@@ -1,5 +1,6 @@
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { DatabaseSync } from 'node:sqlite';
@@ -219,6 +220,37 @@ export function listIndexableFiles(projectRoot: string): string[] {
   });
 }
 
+/** Files that mark a directory as a code project worth indexing automatically. */
+const PROJECT_MARKERS = [
+  '.git',
+  'package.json',
+  'pyproject.toml',
+  'requirements.txt',
+  'go.mod',
+  'Cargo.toml',
+  'pom.xml',
+  'build.gradle',
+  'build.gradle.kts',
+  'Gemfile',
+  'composer.json',
+  'mix.exs',
+  'pubspec.yaml'
+];
+
+/**
+ * Auto-indexing must never walk a home directory or an arbitrary folder that happens to
+ * be the current working directory. The home directory is always rejected, and the
+ * remaining candidates need at least one project marker.
+ */
+export function isIndexableProjectRoot(projectRoot: string): boolean {
+  try {
+    if (samePath(projectRoot, os.homedir())) return false;
+    return PROJECT_MARKERS.some((marker) => fs.existsSync(path.join(projectRoot, marker)));
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Removes symbol rows for files that no longer exist on disk.
  *
@@ -355,7 +387,23 @@ export function indexProjectCalls(
       importsByFile.set(row.source_id, set);
     }
 
-    db.prepare("DELETE FROM code_edges WHERE project_id = ? AND edge_type = 'calls'").run(projectId);
+    // Incremental callers pass only the files they touched. Delete those files' outgoing
+    // call edges, then drop edges whose source or target symbol no longer exists. A full
+    // index passes every file, which stays equivalent to the previous project-wide delete.
+    const deleteFileCalls = db.prepare(`
+      DELETE FROM code_edges
+      WHERE project_id = ? AND edge_type = 'calls'
+        AND source_id IN (SELECT id FROM symbols WHERE project_id = ? AND file_path = ?)
+    `);
+    for (const rel of files) deleteFileCalls.run(projectId, projectId, rel);
+    db.prepare(`
+      DELETE FROM code_edges
+      WHERE project_id = ? AND edge_type = 'calls'
+        AND (
+          source_id NOT IN (SELECT id FROM symbols WHERE project_id = ?)
+          OR target_id NOT IN (SELECT id FROM symbols WHERE project_id = ?)
+        )
+    `).run(projectId, projectId, projectId);
 
     const insertCall = db.prepare(`
       INSERT OR IGNORE INTO code_edges (id, project_id, source_id, target_id, edge_type, weight, created_at)
@@ -412,6 +460,101 @@ export function indexProjectCalls(
     return createdCount;
   } catch {
     return 0;
+  }
+}
+
+export interface IndexFileResult {
+  indexed: boolean;
+  symbols: number;
+  removed: number;
+  callEdges: number;
+}
+
+/**
+ * Re-indexes one file in place. Session hooks use this so the call graph follows edits
+ * without rescanning the project. Import edges are refreshed by `indexFileSymbols`; call
+ * edges are rebuilt only for this file.
+ */
+export function indexFile(
+  db: DatabaseSync,
+  projectId: string,
+  projectRoot: string,
+  filePath: string
+): IndexFileResult {
+  const empty: IndexFileResult = { indexed: false, symbols: 0, removed: 0, callEdges: 0 };
+  try {
+    const rel = toRepoPath(
+      path.isAbsolute(filePath) ? path.relative(projectRoot, filePath) : filePath
+    );
+    if (!rel || !detectLanguage(rel)) return empty;
+
+    const absolute = path.join(projectRoot, rel);
+    let stat: fs.Stats;
+    try {
+      stat = fs.statSync(absolute);
+    } catch {
+      return empty;
+    }
+    if (!stat.isFile() || stat.size > MAX_FILE_BYTES) return empty;
+
+    let content: string;
+    try {
+      content = fs.readFileSync(absolute, 'utf8');
+    } catch {
+      return empty;
+    }
+    if (content.includes('\0')) return empty;
+
+    const indexed = indexFileSymbols(db, projectId, rel, content);
+    if (indexed.removed > 0) {
+      try {
+        reconcileSymbolLinks(db, projectId);
+      } catch {}
+    }
+    const callEdges = indexProjectCalls(db, projectId, projectRoot, [rel]);
+    return { indexed: true, symbols: indexed.symbols, removed: indexed.removed, callEdges };
+  } catch {
+    return empty;
+  }
+}
+
+export interface EnsureIndexResult {
+  indexed: boolean;
+  symbols: number;
+  callEdges: number;
+  importEdges: number;
+}
+
+/**
+ * First-run index for a project. It runs only when the project has no symbols, or when
+ * symbols exist but the call graph was never built (a database from before 0.9.0). Set
+ * `FASTR_AUTO_INDEX=0` to disable it.
+ */
+export function ensureProjectIndexed(
+  db: DatabaseSync,
+  projectId: string,
+  projectRoot: string
+): EnsureIndexResult {
+  const empty: EnsureIndexResult = { indexed: false, symbols: 0, callEdges: 0, importEdges: 0 };
+  if (process.env.FASTR_AUTO_INDEX === '0') return empty;
+  if (!isIndexableProjectRoot(projectRoot)) return empty;
+
+  try {
+    const symbols = countSymbols(db, projectId);
+    if (symbols === 0) {
+      const result = indexProjectSymbols(db, projectId, projectRoot);
+      return {
+        indexed: true,
+        symbols: result.symbols,
+        callEdges: result.callEdges ?? 0,
+        importEdges: result.importEdges ?? 0
+      };
+    }
+
+    const edges = countCodeEdges(db, projectId);
+    return { ...empty, callEdges: edges.calls, importEdges: edges.imports };
+  } catch {
+    return empty;
   }
 }
 
