@@ -10,7 +10,7 @@ import {
   updateJsonConfig,
   upsertMcpServer
 } from './json-config.js';
-import { ensureAgentsDiscipline, removeAgentsDiscipline, resolveMcpCommand } from './setup.js';
+import { ensureAgentsDiscipline, ensureAgentRulesAcrossClients, removeAgentsDiscipline, resolveMcpCommand } from './setup.js';
 import { installOpenCode, uninstallOpenCode } from './opencode.js';
 import { installGemini, uninstallGemini } from './gemini.js';
 import { installCopilot, uninstallCopilot } from './copilot.js';
@@ -310,12 +310,11 @@ export function installHookClients(
   let agentsMdUpdated = false;
   if (options.agentsMd !== false) {
     try {
-      agentsMdUpdated = ensureAgentsDiscipline(projectRoot) === 'added';
-      details.push(agentsMdUpdated
-        ? 'Appended Autonomous Memory Discipline block to AGENTS.md'
-        : 'AGENTS.md already contains FastrMemory autonomous discipline block');
+      const res = ensureAgentRulesAcrossClients(projectRoot);
+      agentsMdUpdated = res.agentsMd === 'added';
+      details.push('Configured FastrMemory autonomous discipline across AI clients (Claude Code, Cursor, Copilot, Windsurf, Gemini, AGENTS.md)');
     } catch (err: any) {
-      details.push(`Failed to update AGENTS.md: ${err.message}`);
+      details.push(`Failed to update agent rules: ${err.message}`);
     }
   }
 
