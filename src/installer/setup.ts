@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createFastrServerContext } from '../mcp/server.js';
+import { indexProjectSymbols, isIndexableProjectRoot } from '../code/indexer.js';
 import { McpServerEntry, updateJsonConfig, upsertMcpServer } from './json-config.js';
 import { resolveMcpCommand, withProjectRoot } from './mcp-command.js';
 
@@ -306,8 +307,10 @@ export function runInteractiveSetup(options: SetupOptions = {}): void {
   console.log('=================================================\n');
 
   // 1. Initialize local project database
+  let setupContext: ReturnType<typeof createFastrServerContext> | null = null;
   try {
     const ctx = createFastrServerContext(projectRoot);
+    setupContext = ctx;
     console.log(`[1/8] Local project initialized:`);
     console.log(`      - Project ID: ${ctx.config.projectId}`);
     console.log(`      - Database:   ${ctx.config.dbPath}`);
@@ -344,6 +347,25 @@ export function runInteractiveSetup(options: SetupOptions = {}): void {
     agentStatus = `Notice: ${err.message}`;
   }
   console.log(`[7/8] Agent Rules:     ${agentStatus}`);
+
+  // Index once at setup time when this is a real project, so the call graph is never
+  // silently empty. The home directory and folders without a project marker are skipped.
+  if (setupContext && process.env.FASTR_AUTO_INDEX !== '0') {
+    if (isIndexableProjectRoot(projectRoot)) {
+      try {
+        const index = indexProjectSymbols(
+          setupContext.db,
+          setupContext.config.projectId,
+          setupContext.config.projectRoot
+        );
+        console.log(`      Code graph:      ${index.symbols} symbols, ${index.callEdges ?? 0} call edges, ${index.importEdges ?? 0} import edges`);
+      } catch (err: any) {
+        console.log(`      Code graph:      skipped (${err.message})`);
+      }
+    } else {
+      console.log('      Code graph:      skipped (not a project root)');
+    }
+  }
 
   // 8. Auto-Install Planetary Skills Suite into IDEs & Global Agent Environments
   let skillsStatus: string;

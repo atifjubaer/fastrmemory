@@ -4,6 +4,11 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ## [Unreleased]
 
+### Added
+
+- **Automatic code-graph indexing.** `fastr setup` and `fastr hook install` index the project once, SessionStart repairs an empty index, and the UserPromptSubmit and SessionEnd hooks re-index the two most recent edits. This keeps 1-hop call-graph trap warnings and `fastr_god_nodes` populated without a manual step.
+- `fastr hook install --no-index` skips the initial index. `FASTR_AUTO_INDEX=0` disables all automatic indexing. Home directories and folders without a project marker are never auto-indexed.
+
 ## [0.9.2] - 2026-11-01
 
 Documentation release. No runtime or schema changes.

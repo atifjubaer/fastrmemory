@@ -4,8 +4,9 @@ import { FastrRepository } from '../db/repository.js';
 import { SpoolManager } from '../db/spool.js';
 import { syncAllModulePages } from '../mirror/markdown-pages.js';
 import { FastrConfig } from '../config.js';
-import { buildPerTurnContext } from './per-turn.js';
+import { buildPerTurnContext, getRecentEditedFiles } from './per-turn.js';
 import { distillSessionTraps } from '../learn/passive-distillation.js';
+import { ensureProjectIndexed, indexFile } from '../code/indexer.js';
 
 export interface HookContext {
   db: DatabaseSync;
@@ -149,6 +150,20 @@ export function toCopilotHookStdout(
   }
 }
 
+/**
+ * Keeps the call graph current without rescanning the project. PreToolUse records every
+ * edit target in the spool; this re-indexes the two most recent files after they hit disk
+ * (on prompt submit and session end). Indexing must never fail a hook.
+ */
+function autoIndexRecentEdits(ctx: HookContext): void {
+  if (process.env.FASTR_AUTO_INDEX === '0') return;
+  try {
+    for (const file of getRecentEditedFiles(ctx.db, ctx.config.projectId, 2)) {
+      indexFile(ctx.db, ctx.config.projectId, ctx.config.projectRoot, file);
+    }
+  } catch {}
+}
+
 export function runLifecycleHook(
   ctx: HookContext,
   event: string,
@@ -168,6 +183,14 @@ export function runLifecycleHook(
       }
       if (frontier.length > 0) {
         text += `- **Unblocked DAG Tasks (${frontier.length})**: Next is [${frontier[0].id}] "${frontier[0].title}"\n`;
+      }
+
+      // A fresh clone or a database from before 0.9.0 has no code graph. Build it once at
+      // session start so call-graph trap warnings and god nodes work without a manual
+      // `fastr index`. Incremental edits are handled by the prompt and session-end hooks.
+      const index = ensureProjectIndexed(ctx.db, ctx.config.projectId, ctx.config.projectRoot);
+      if (index.indexed) {
+        text += `- **Code graph**: ${index.symbols} symbols, ${index.callEdges} call edges, ${index.importEdges} import edges indexed.\n`;
       }
 
       return {
@@ -249,6 +272,8 @@ export function runLifecycleHook(
         } catch {}
       }
 
+      autoIndexRecentEdits(ctx);
+
       const block = buildPerTurnContext(ctx.db, ctx.repo, ctx.config.projectId, { prompt });
       if (!block.text) {
         return { handled: true, message: 'No per-turn context to inject.' };
@@ -305,6 +330,7 @@ export function runLifecycleHook(
         } catch {}
       }
       const sessionId = payload.session_id ? String(payload.session_id) : undefined;
+      autoIndexRecentEdits(ctx);
       distillSessionTraps(ctx.db, ctx.config.projectId, sessionId);
       syncAllModulePages(ctx.db, ctx.config.projectRoot, ctx.config.projectId);
       return {

@@ -6,6 +6,7 @@ import { FastrRepository } from '../src/db/repository.js';
 import { SpoolManager } from '../src/db/spool.js';
 import { initDatabase } from '../src/db/schema.js';
 import { runLifecycleHook, HookContext } from '../src/hooks/runner.js';
+import { countCodeEdges } from '../src/code/indexer.js';
 
 describe('Lifecycle Hooks Runner (sub-3ms WAL)', () => {
   let ctx: HookContext;
@@ -51,6 +52,39 @@ describe('Lifecycle Hooks Runner (sub-3ms WAL)', () => {
       if (ctx && ctx.db) ctx.db.close();
       fs.rmSync(tempDir, { recursive: true, force: true });
     } catch {}
+  });
+
+  it('indexes the code graph once on SessionStart', () => {
+    fs.writeFileSync(path.join(tempDir, 'package.json'), '{"name":"fixture"}', 'utf8');
+    fs.mkdirSync(path.join(tempDir, 'src'), { recursive: true });
+    fs.writeFileSync(path.join(tempDir, 'src', 'app.ts'), 'export function boot(): number { return 1; }\n', 'utf8');
+
+    const first = runLifecycleHook(ctx, 'SessionStart');
+    expect(first.output).toContain('Code graph');
+
+    const second = runLifecycleHook(ctx, 'SessionStart');
+    expect(second.output).not.toContain('Code graph');
+  });
+
+  it('re-indexes recent edits on UserPromptSubmit', () => {
+    fs.writeFileSync(path.join(tempDir, 'package.json'), '{"name":"fixture"}', 'utf8');
+    fs.mkdirSync(path.join(tempDir, 'src'), { recursive: true });
+    fs.writeFileSync(path.join(tempDir, 'src', 'b.ts'), 'export function beta(): number { return 1; }\n', 'utf8');
+    fs.writeFileSync(
+      path.join(tempDir, 'src', 'a.ts'),
+      "import { beta } from './b.ts';\nexport function alpha(): number { return beta(); }\n",
+      'utf8'
+    );
+
+    runLifecycleHook(ctx, 'SessionStart');
+    expect(countCodeEdges(ctx.db, projectId).calls).toBeGreaterThanOrEqual(1);
+
+    // The next version of a.ts no longer calls beta.
+    fs.writeFileSync(path.join(tempDir, 'src', 'a.ts'), 'export function alpha(): number { return 1; }\n', 'utf8');
+    runLifecycleHook(ctx, 'PreToolUse', { tool_input: { file_path: path.join(tempDir, 'src', 'a.ts') } });
+    runLifecycleHook(ctx, 'UserPromptSubmit', { prompt: 'continue' });
+
+    expect(countCodeEdges(ctx.db, projectId).calls).toBe(0);
   });
 
   it('handles SessionStart and outputs latest handoff and DAG frontier', () => {
