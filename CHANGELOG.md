@@ -4,6 +4,14 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-11-01
+
+Documentation release. No runtime or schema changes.
+
+- **README**: added the seven-project memory landscape (AgentMemory, Mem0, Supermemory, Zep/Graphiti, Letta, Cognee, claude-mem) and the per-client integration matrix for MCP, mandatory rules, lifecycle hooks, the `/fastr` command, and the VS Code extension.
+- **README and MIGRATION**: documented the `0.9.1` upgrade path. `fastr setup` and `fastr hook install` write the rule files; updating the CLI or MCP entry alone does not.
+- **README and MIGRATION**: fixed stale `0.7.2` / `0.8.1` references and corrected the tool counts to 45 across the 12-tool core and full profiles.
+
 ## [0.9.1] - 2026-11-01
 
 Multi-IDE mandatory agent rules release. Wires autonomous cognitive discipline rules directly into every AI assistant environment when `fastr setup` or `fastr hook install` runs:
