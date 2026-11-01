@@ -1,10 +1,9 @@
 {
   "mcpServers": {
     "fastrmemory": {
-      "command": "npx",
+      "command": "node",
       "args": [
-        "-y",
-        "fastrmemory@0.5.0",
+        "C:\\Users\\ATIF\\AppData\\Roaming\\npm\\node_modules\\fastrmemory\\dist\\bin\\fastr.js",
         "mcp"
       ]
     }
