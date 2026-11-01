@@ -13,11 +13,11 @@
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.16.0-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Protocol](https://img.shields.io/badge/Protocol-MCP%20v2-7C3AED?style=flat-square)](https://modelcontextprotocol.io)
 [![MCP Directory](https://mcprush.com/badge/fastrmemory-mcp/compact.svg)](https://mcprush.com/to/fastrmemory-mcp?ref=badge)
-[![Tests](https://img.shields.io/badge/Tests-461%20Passed-brightgreen?style=flat-square)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-476%20Passed-brightgreen?style=flat-square)](tests/)
 [![MCP Setup](https://img.shields.io/badge/MCP%20Setup-fastr%20mcp%20init-7C3AED?style=flat-square)](#-one-click-agent-mcp-configuration)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-architecture)
 
-> **Status (2026-10-28):** **`fastrmemory@0.8.2` is published and is `latest`.** Evidence: `npm view fastrmemory version` -> `0.8.2`; `npm view fastrmemory dist-tags --json` -> `{"latest":"0.8.2"}`; tag `v0.8.2` (`8cc925b`); published 2026-10-28 via GitHub Actions OIDC with npm provenance; the release workflow passed the full gate, clean tarball install, registry verification, and GitHub Release upload; the npm tarball is 353 files, 796,902 bytes packed, 3,173,456 bytes unpacked; GitHub Release asset SHA-256 `6ef3f84bf39c7ae23ba3f5c8ec2334a27890cd45a9bff5ef1422d97b628a092f`; a clean `npm install fastrmemory@0.8.2` + `fastr --version` -> `0.8.2`; `npm audit signatures` reports 5 verified registry signatures and 4 verified attestations. The official MCP registry lists `io.github.atifjubaer/fastrmemory@0.8.2` as `active` and `isLatest`. Caveat: Node.js >=22.16.0; `0.8.1`, `0.8.0`, `0.7.2`, `0.7.1`, `0.7.0`, `0.6.0`, `0.5.0`, `0.4.0`, `0.3.1`, and `0.3.0` remain published historical. This release publishes the 4-way head-to-head Architectural & Performance Comparison table and automated extension packaging script; the schema is unchanged. The old scoped npm entries (`@atifjubaer/fastrmemory` and `fastrmemory@0.0.0-stage`) were removed on 2026-10-23; the GitHub `v0.2.1` tag and release remain as history. This README tracks current `main`. Current `main` is **`0.8.2`** and has **461 tests / 69 files**. Use the exact `0.8.2` version for reproducibility. PR #39 at `8cc925b` passed all required checks (six matrix jobs plus Replayable Memory Diff and Pre-Merge Trap Guardian); the historical `0.8.1` release commit `4e7d9ac`, `0.8.0` release commit `44b2d9a`, `0.7.2` release commit `583223f`, `0.7.1` release commit `31d8e12`, `0.7.0` release commit `5512557`, `0.6.0` release commit `a57a656`, `0.5.0` release commit `54a79ab`, and `0.4.0` release commit `bb365c2` remain published historical. The exact release surface is in [CHANGELOG.md](CHANGELOG.md). The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval. Public LongMemEval, LoCoMo, and self-repository retrieval-only results plus pinned external baselines are in [BENCHMARKS.md](BENCHMARKS.md); no QA-leaderboard parity is claimed. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); every README section is mapped to claim IDs in the README claim trace at the end of that ledger. Methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md).
+> **Status (2026-10-28):** **`fastrmemory@0.8.2` is published and is `latest`.** Evidence: `npm view fastrmemory version` -> `0.8.2`; `npm view fastrmemory dist-tags --json` -> `{"latest":"0.8.2"}`; tag `v0.8.2` (`8cc925b`); published 2026-10-28 via GitHub Actions OIDC with npm provenance; the release workflow passed the full gate, clean tarball install, registry verification, and GitHub Release upload; the npm tarball is 353 files, 796,902 bytes packed, 3,173,456 bytes unpacked; GitHub Release asset SHA-256 `6ef3f84bf39c7ae23ba3f5c8ec2334a27890cd45a9bff5ef1422d97b628a092f`; a clean `npm install fastrmemory@0.8.2` + `fastr --version` -> `0.8.2`; `npm audit signatures` reports 5 verified registry signatures and 4 verified attestations. The official MCP registry lists `io.github.atifjubaer/fastrmemory@0.8.2` as `active` and `isLatest`. Caveat: Node.js >=22.16.0; `0.8.1`, `0.8.0`, `0.7.2`, `0.7.1`, `0.7.0`, `0.6.0`, `0.5.0`, `0.4.0`, `0.3.1`, and `0.3.0` remain published historical. This release publishes the 4-way head-to-head Architectural & Performance Comparison table and automated extension packaging script; the schema is unchanged. The old scoped npm entries (`@atifjubaer/fastrmemory` and `fastrmemory@0.0.0-stage`) were removed on 2026-10-23; the GitHub `v0.2.1` tag and release remain as history. This README tracks current `main`. Current `main` is **`0.8.2`** and has **476 tests / 74 files**. Use the exact `0.8.2` version for reproducibility. PR #39 at `8cc925b` passed all required checks (six matrix jobs plus Replayable Memory Diff and Pre-Merge Trap Guardian); the historical `0.8.1` release commit `4e7d9ac`, `0.8.0` release commit `44b2d9a`, `0.7.2` release commit `583223f`, `0.7.1` release commit `31d8e12`, `0.7.0` release commit `5512557`, `0.6.0` release commit `a57a656`, `0.5.0` release commit `54a79ab`, and `0.4.0` release commit `bb365c2` remain published historical. The exact release surface is in [CHANGELOG.md](CHANGELOG.md). The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval. Public LongMemEval, LoCoMo, and self-repository retrieval-only results plus pinned external baselines are in [BENCHMARKS.md](BENCHMARKS.md); no QA-leaderboard parity is claimed. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); every README section is mapped to claim IDs in the README claim trace at the end of that ledger. Methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md).
 
 <p align="center">
   <a href="#-overview">Overview</a> &bull;
@@ -45,7 +45,7 @@
 | Install path | Published `fastrmemory@0.8.2` | `npm view fastrmemory version` -> `0.8.2`; `npm view fastrmemory dist-tags --json` -> `{"latest":"0.8.2"}`; `npm install fastrmemory@0.8.2`; `fastr --version` -> `0.8.2`; GitHub Release tarball SHA-256 `6ef3f84b...`; old scoped npm entries removed |
 | MCP registry | `io.github.atifjubaer/fastrmemory@0.8.2`, status `active`, `isLatest` | `curl --get --data-urlencode "search=io.github.atifjubaer/fastrmemory" https://registry.modelcontextprotocol.io/v0.1/servers`; `gh run view 40262643667` |
 | Synthetic retrieval (optional MiniLM) | Holdout `95.8%` Hit@1, `100%` Hit@5, MRR `0.969` | `npx tsx scripts/eval-bench.ts --split all --embeddings minilm --out bench/results/minilm.json` |
-| Test suite | `461` tests across `69` files on current `main`; published `0.8.2` is `461` / `69`; published `0.8.1` is `461` / `69`; published `0.8.0` is `461` / `69`; published `0.7.2` is `456` / `67`; published `0.7.1` is `456` / `67`; published `0.7.0` is `455` / `67`; published `0.6.0` is `388` / `61`; `0.5.0` is `297` / `53`; historical `0.4.0` is `293` / `53`; `0.3.1` is `282` / `52`; v0.2.1 is `235` / `43` | `npm test`; `npm run check:ci` |
+| Test suite | `476` tests across `74` files on current `main`; published `0.8.2` is `461` / `69`; published `0.8.1` is `461` / `69`; published `0.8.0` is `461` / `69`; published `0.7.2` is `456` / `67`; published `0.7.1` is `456` / `67`; published `0.7.0` is `455` / `67`; published `0.6.0` is `388` / `61`; `0.5.0` is `297` / `53`; historical `0.4.0` is `293` / `53`; `0.3.1` is `282` / `52`; v0.2.1 is `235` / `43` | `npm test`; `npm run check:ci` |
 | MCP setup | `fastr mcp init` merges portable registry configs or active-CLI local configs for 9 JSON clients and prints a Codex TOML snippet; `--source local` ships in published `0.8.2`, `0.8.1`, `0.8.0`, `0.7.2`, `0.7.1`, `0.7.0`, `0.6.0`, and `0.5.0` | `npm test -- tests/mcp-init.test.ts` -> `15 passed`; `fastr mcp init --client claude --source local --dry-run --json` -> `node .../dist/bin/fastr.js mcp --project ...` |
 | Cross-engine (MCP stdio) | `80/120` overall Hit@1 (`66.7%`, 95% CI `57.8`-`74.5`): exact `40/40`, multi `40/40`, paraphrase `0/40`; `1.094` ms/doc ingest, `1.86` ms recall p50 | `npm run bench:vs`; `bench/results/vs-engines.json` |
 | Crash safety | 10/10 runs, 0 lost, 0 duplicate ids/titles | `npm run test:crash`; `bench/results/crash-test.json` |
@@ -464,11 +464,11 @@ For user-scoped clients, the generated entry includes `--project /absolute/path/
 
 ## 🛠️ MCP Server: Tools & Resources
 
-Built using the official **v2 `@modelcontextprotocol/server`** SDK. The tool list below describes **0.7.2**; 44 tools across the 12-tool core and full profiles.
+Built using the official **v2 `@modelcontextprotocol/server`** SDK. The tool list below describes **0.8.2**; 45 tools across the 12-tool core and full profiles.
 
-### 44 MCP Tools
+### 45 MCP Tools
 
-The default **core profile** exposes 12 tools: the daily loop (`fastr_recall`, `fastr_remember`, `fastr_handoff`, `fastr_trap_recall`, `fastr_trap_log`, `fastr_status`, `fastr_get`, `fastr_replay`, `fastr_compress`, `fastr_diagnose`) plus `fastr_tools` for discovery and `fastr_call` for dispatch. Its `tools/list` payload is 8,715 bytes (~2,179 tokens). The **full profile** exposes all 44 tools; start it with `fastrmemory mcp --profile full` or `FASTR_MCP_PROFILE=full`. Every full-profile tool stays reachable from the core profile through `fastr_call`. Resources and prompts are the same in both profiles. Pass `--project /absolute/path/to/repo` when the host starts the server outside the repository, so memory is written to the intended `.fastr/fastr.db`.
+The default **core profile** exposes 12 tools: the daily loop (`fastr_recall`, `fastr_remember`, `fastr_handoff`, `fastr_trap_recall`, `fastr_trap_log`, `fastr_status`, `fastr_get`, `fastr_replay`, `fastr_compress`, `fastr_diagnose`) plus `fastr_tools` for discovery and `fastr_call` for dispatch. Its `tools/list` payload is 8,715 bytes (~2,179 tokens). The **full profile** exposes all 45 tools; start it with `fastrmemory mcp --profile full` or `FASTR_MCP_PROFILE=full`. Every full-profile tool stays reachable from the core profile through `fastr_call`. Resources and prompts are the same in both profiles. Pass `--project /absolute/path/to/repo` when the host starts the server outside the repository, so memory is written to the intended `.fastr/fastr.db`.
 
 #### Cognitive Retrieval & Memory Core
 1. `fastr_recall`: Triple-stream hybrid search (BM25 + Vector + Spreading Activation Graph) with progressive L0–L3 token budgeting and air-gapped offline vector fallback.
@@ -477,64 +477,65 @@ The default **core profile** exposes 12 tools: the daily loop (`fastr_recall`, `
 4. `fastr_drill`: Resolves `source_event_ids` to retrieve untruncated verbatim stack traces, diffs, and tool outputs from `raw_events`.
 5. `fastr_file_history`: Returns active rules, `[TRAP]` warnings, and past supersessions for a specific file path.
 6. `fastr_symbol_history`: Returns active rules, [TRAP] warnings, and past supersessions anchored to a named function, class, or type. The anchor follows the declaration through a rename or a file move, so a trap written against `signToken` is still found after it becomes `signJwt`.
-7. `fastr_remember`: Records new rules, decisions, or traps. Automatically extracts NER entities, scrubs secrets, and re-renders Markdown mirrors. Supports `scope: 'project' | 'global'`.
-8. `fastr_pin`: Pins critical rules so they are permanently preserved and prioritized in L0 assembly without time decay.
-9. `fastr_forget`: Tombstones and deactivates an outdated memory cleanly with audit logging.
-10. `fastr_supersede`: Retires an outdated rule (`valid_to = now`), records the rationale, and inserts a replacement verified rule.
-11. `fastr_feedback`: Updates `reward_score` and the confidence tier on one memory ID (+0.2 good, -0.5 bad). Three consecutive bad outcomes make it dormant; never penalizes innocent memories.
-12. `fastr_handoff`: Saves or retrieves cross-agent session milestones and promotes staging memories to verified.
-13. `fastr_status`: Returns active/staging counts, spool health, and embedding coverage %.
-14. `fastr_graph_query`: Explores 1-hop and 2-hop structural file-link dependencies, entity links, and connected error traps.
-15. `fastr_timeline`: Chronological audit trail of memory events, newly verified rules, error traps, and historical supersessions.
+7. `fastr_god_nodes`: Returns the top architectural hub symbols (functions and classes with highest caller in-degree), identifying core abstractions with the highest blast radius.
+8. `fastr_remember`: Records new rules, decisions, or traps. Automatically extracts NER entities, scrubs secrets, and re-renders Markdown mirrors. Supports `scope: 'project' | 'global'`.
+9. `fastr_pin`: Pins critical rules so they are permanently preserved and prioritized in L0 assembly without time decay.
+10. `fastr_forget`: Tombstones and deactivates an outdated memory cleanly with audit logging.
+11. `fastr_supersede`: Retires an outdated rule (`valid_to = now`), records the rationale, and inserts a replacement verified rule.
+12. `fastr_feedback`: Updates `reward_score` and the confidence tier on one memory ID (+0.2 good, -0.5 bad). Three consecutive bad outcomes make it dormant; never penalizes innocent memories.
+13. `fastr_handoff`: Saves or retrieves cross-agent session milestones and promotes staging memories to verified.
+14. `fastr_status`: Returns active/staging counts, spool health, and embedding coverage %.
+15. `fastr_graph_query`: Explores 1-hop and 2-hop structural file-link dependencies, entity links, and connected error traps.
+16. `fastr_timeline`: Chronological audit trail of memory events, newly verified rules, error traps, and historical supersessions.
 
 #### Versioning & Error Traps
-16. `fastr_snapshot`: Creates named point-in-time memory snapshots for branch tracking and experiment safety.
-17. `fastr_rollback`: Instant Git-like rollback to any previous memory snapshot.
-18. `fastr_trap_log`: One-line rapid logging of error traps and bug solutions with a conditional 2.0x recall boost.
-19. `fastr_trap_recall`: Targeted lookup of high-priority error traps protecting specific target files before editing.
+17. `fastr_snapshot`: Creates named point-in-time memory snapshots for branch tracking and experiment safety.
+18. `fastr_rollback`: Instant Git-like rollback to any previous memory snapshot.
+19. `fastr_trap_log`: One-line rapid logging of error traps and bug solutions with a conditional 2.0x recall boost.
+20. `fastr_trap_recall`: Targeted lookup of high-priority error traps protecting specific target files before editing.
 
 #### Proactive Contradiction Detection & Resolution
-20. `fastr_conflicts`: Proactive contradiction detection using Jaccard token overlap (minimum 0.35) and 50-word opposing-polarity analysis.
-21. `fastr_resolve`: Resolves contradictions by keeping preferred rule and superseding or weakening the loser.
+21. `fastr_conflicts`: Proactive contradiction detection using Jaccard token overlap (minimum 0.35) and 50-word opposing-polarity analysis.
+22. `fastr_resolve`: Resolves contradictions by keeping preferred rule and superseding or weakening the loser.
 
 #### Kahneman Planning Fallacy & Base-Rate Calibrator
-22. `fastr_predict`: Records effort/time/risk predictions and closes predictions with actual empirical outcomes.
-23. `fastr_predict_baserate`: Computes historical reference-class statistics (Mean, Median p50 ratio, MAE) to debias agent estimates.
+23. `fastr_predict`: Records effort/time/risk predictions and closes predictions with actual empirical outcomes.
+24. `fastr_predict_baserate`: Computes historical reference-class statistics (Mean, Median p50 ratio, MAE) to debias agent estimates.
 
 #### Multi-Agent Action DAG & Frontier
-24. `fastr_action_create`: Creates structured work item actions with prerequisite (`requires`) and conflict (`conflicts_with`) constraints.
-25. `fastr_action_update`: Updates task lifecycle (`pending`, `active`, `done`, `blocked`), assignments, and memory crystallization.
-26. `fastr_frontier`: Computes unblocked, ready-to-execute frontier actions with satisfied dependencies.
-27. `fastr_next`: Atomically claims and returns the highest-priority frontier action for autonomous worker agents.
+25. `fastr_action_create`: Creates structured work item actions with prerequisite (`requires`) and conflict (`conflicts_with`) constraints.
+26. `fastr_action_update`: Updates task lifecycle (`pending`, `active`, `done`, `blocked`), assignments, and memory crystallization.
+27. `fastr_frontier`: Computes unblocked, ready-to-execute frontier actions with satisfied dependencies.
+28. `fastr_next`: Atomically claims and returns the highest-priority frontier action for autonomous worker agents.
 
 #### Bounded Working Memory & Obsidian Vault Export
-28. `fastr_slot_get`: Retrieves bounded working memory slot (e.g. `current_goal`, `user_preferences`, `active_hypothesis`).
-29. `fastr_slot_set`: Updates working memory slot with hard character ceiling enforcement to prevent context bloat.
-30. `fastr_slot_list`: Lists all working memory slots and active character usage.
-31. `fastr_obsidian_export`: Exports all memories, entities, and relationships into an Obsidian-compatible markdown vault with YAML frontmatter, `[[wikilinks]]`, and `MOC.md`.
+29. `fastr_slot_get`: Retrieves bounded working memory slot (e.g. `current_goal`, `user_preferences`, `active_hypothesis`).
+30. `fastr_slot_set`: Updates working memory slot with hard character ceiling enforcement to prevent context bloat.
+31. `fastr_slot_list`: Lists all working memory slots and active character usage.
+32. `fastr_obsidian_export`: Exports all memories, entities, and relationships into an Obsidian-compatible markdown vault with YAML frontmatter, `[[wikilinks]]`, and `MOC.md`.
 
 #### Multi-Repository Federation & Context Assembly
-32. `fastr_federate`: Manages cross-repository organization-wide shared rules and error traps via SQLite native `ATTACH DATABASE` (`~/.fastr/global.db`).
-33. `fastr_assemble`: Dynamically formats and packs high-density structured prompt context (`<fastr_context>`) with token budgeting.
-34. `fastr_risk_predict`: Computes historical failure probability and active trap hazard score for target codebase files.
-35. `fastr_verify_provenance`: Cryptographically verifies SHA-256 provenance hashes for recorded agent attribution.
+33. `fastr_federate`: Manages cross-repository organization-wide shared rules and error traps via SQLite native `ATTACH DATABASE` (`~/.fastr/global.db`).
+34. `fastr_assemble`: Dynamically formats and packs high-density structured prompt context (`<fastr_context>`) with token budgeting.
+35. `fastr_risk_predict`: Computes historical failure probability and active trap hazard score for target codebase files.
+36. `fastr_verify_provenance`: Cryptographically verifies SHA-256 provenance hashes for recorded agent attribution.
 
 #### Token Compression & Autonomous Doctor
-36. `fastr_compress`: Compresses markdown files or prompt context while strictly preserving headings, URLs, and code blocks with `.original.md` backup.
-37. `fastr_diagnose`: Deep health audit of SQLite B-Tree integrity, FTS5 BM25 search indices, orphaned file links, and task DAGs.
-38. `fastr_heal`: Automatic repair of database indices, dangling edges, and WAL page reclamation.
+37. `fastr_compress`: Compresses markdown files or prompt context while strictly preserving headings, URLs, and code blocks with `.original.md` backup.
+38. `fastr_diagnose`: Deep health audit of SQLite B-Tree integrity, FTS5 BM25 search indices, orphaned file links, and task DAGs.
+39. `fastr_heal`: Automatic repair of database indices, dangling edges, and WAL page reclamation.
 
 #### Memory Replay & Diff
-39. `fastr_replay`: Reconstructs memory state at a timestamp and returns the active snapshot for audit or recovery.
-40. `fastr_diff`: Compares two snapshots and reports added, superseded, and removed memories.
+40. `fastr_replay`: Reconstructs memory state at a timestamp and returns the active snapshot for audit or recovery.
+41. `fastr_diff`: Compares two snapshots and reports added, superseded, and removed memories.
 
 #### Multimodal Visual Memory
-41. `fastr_vision_tag`: Tags screenshots, UI diagrams, and wireframes with OCR and semantic descriptions with 384-dim embeddings.
-42. `fastr_vision_search`: Hybrid vector and keyword search across stored visual assets for multimodal coding agents.
+42. `fastr_vision_tag`: Tags screenshots, UI diagrams, and wireframes with OCR and semantic descriptions with 384-dim embeddings.
+43. `fastr_vision_search`: Hybrid vector and keyword search across stored visual assets for multimodal coding agents.
 
 #### Tool Discovery & Dispatch
-43. `fastr_tools`: Lists every tool the server can run, with its JSON input schema, filtered by name or description. Part of the core profile.
-44. `fastr_call`: Runs any tool from `fastr_tools` by name after validating arguments against that tool's schema. Part of the core profile.
+44. `fastr_tools`: Lists every tool the server can run, with its JSON input schema, filtered by name or description. Part of the core profile.
+45. `fastr_call`: Runs any tool from `fastr_tools` by name after validating arguments against that tool's schema. Part of the core profile.
 
 ### 2 MCP Prompt Templates
 
@@ -649,7 +650,7 @@ Run the comprehensive unit test suite:
 npm test
 ```
 
-All **461 tests pass** across **69 test files** on current `main`; published `0.8.2` carries the same **461 / 69**, `0.8.1` has **461 / 69**, `0.8.0` has **461 / 69**, `0.7.2` has **456 / 67**, `0.7.1` has **456 / 67**, `0.7.0` has **455 / 67**, and `0.6.0` has **388 / 61**, `0.5.0` has **297 tests / 53 files**, historical `0.4.0` has **293 tests / 53 files**, `0.3.1` has **282 / 52**, and v0.2.1 has **235 / 43**. Coverage includes database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, branch merge conflict reports, replay/diff, memory envelopes, confidence tiers and 3-bad dormancy, memory hygiene checks, Memory CI, conflict-aware recall, portable backup manifests and verified restore, local rule import, OpenCode V2, Gemini CLI, and Copilot CLI wiring, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, symbol indexing and declaration anchoring, per-turn injection, read-only recall, self-verifying memories, UI loopback security boundaries, atomic installer configuration safety, and shadcn-style `mcp init` client config merges, including local-source entries.
+All **476 tests pass** across **74 test files** on current `main`; published `0.8.2` carries the same **461 / 69**, `0.8.1` has **461 / 69**, `0.8.0` has **461 / 69**, `0.7.2` has **456 / 67**, `0.7.1` has **456 / 67**, `0.7.0` has **455 / 67**, and `0.6.0` has **388 / 61**, `0.5.0` has **297 tests / 53 files**, historical `0.4.0` has **293 tests / 53 files**, `0.3.1` has **282 / 52**, and v0.2.1 has **235 / 43**. Coverage includes database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, branch merge conflict reports, replay/diff, memory envelopes, confidence tiers and 3-bad dormancy, memory hygiene checks, Memory CI, conflict-aware recall, portable backup manifests and verified restore, local rule import, OpenCode V2, Gemini CLI, and Copilot CLI wiring, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, symbol indexing and declaration anchoring, per-turn injection, read-only recall, self-verifying memories, UI loopback security boundaries, atomic installer configuration safety, and shadcn-style `mcp init` client config merges, including local-source entries.
 
 **CI performance gates:** `check:query-plans`, `check:recall-latency`, and `check:install-size` run inside `check:ci`. CI executes them on the canonical Ubuntu/Node 24 job; other matrix jobs set `FASTR_PERF_GATE=0` because timing is runner-sensitive, while functional tests still run on every matrix entry.
 

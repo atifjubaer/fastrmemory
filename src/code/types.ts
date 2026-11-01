@@ -26,6 +26,10 @@ export interface ExtractedSymbol {
    * regardless of what they are called or which file they live in.
    */
   normalizedBody: string;
+  /** Unmasked raw source slice of the symbol's body, used for caller/callee reference extraction. */
+  rawBody?: string;
+  /** Direct names of functions or symbols invoked within this declaration. */
+  calls?: string[];
 }
 
 /** A row from the `symbols` table. */

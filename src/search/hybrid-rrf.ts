@@ -770,6 +770,48 @@ export async function searchMemories(
   // --- RRF FUSION & MULTIPLIERS ---
   const effectiveVectorWeight = retrieval.streamWeights?.vector ?? (semanticVectorSeen ? 3 : 1);
   const staticBlendWeight = retrieval.staticBlendWeight ?? 0.15;
+
+  // Compute God-Node in-degrees for candidate memories linked to architectural hubs
+  const candidateIds = Array.from(candidatesMap.keys());
+  const memoryInDegree = new Map<string, number>();
+  if (candidateIds.length > 0) {
+    try {
+      const placeholders = candidateIds.map(() => '?').join(',');
+      const linkRows = db.prepare(`
+        SELECT fl.memory_id, fl.symbol_id, fl.file_path
+        FROM file_links fl
+        WHERE fl.memory_id IN (${placeholders})
+      `).all(...candidateIds) as Array<{ memory_id: string; symbol_id: string | null; file_path: string }>;
+
+      const targetIds = new Set<string>();
+      for (const r of linkRows) {
+        if (r.symbol_id) targetIds.add(r.symbol_id);
+      }
+
+      if (targetIds.size > 0) {
+        const targetPlaceholders = Array.from(targetIds).map(() => '?').join(',');
+        const edgeRows = db.prepare(`
+          SELECT target_id, COUNT(*) AS in_degree
+          FROM code_edges
+          WHERE project_id = ? AND edge_type = 'calls' AND target_id IN (${targetPlaceholders})
+          GROUP BY target_id
+        `).all(projectId, ...Array.from(targetIds)) as Array<{ target_id: string; in_degree: number }>;
+
+        const inDegreeByTarget = new Map<string, number>(edgeRows.map((e) => [e.target_id, Number(e.in_degree)]));
+
+        for (const r of linkRows) {
+          if (r.symbol_id && inDegreeByTarget.has(r.symbol_id)) {
+            const current = memoryInDegree.get(r.memory_id) || 0;
+            const deg = inDegreeByTarget.get(r.symbol_id) || 0;
+            if (deg > current) memoryInDegree.set(r.memory_id, deg);
+          }
+        }
+      }
+    } catch {
+      // code_edges table might not exist in old mocks
+    }
+  }
+
   let allScored: ScoredMemory[] = [];
   for (const [, item] of candidatesMap) {
     const { memory, rankA, rankB, rankC, staticSim } = item;
@@ -786,14 +828,22 @@ export async function searchMemories(
     }
     if (rrf === 0) continue;
 
-    // Multipliers (both are configurable so ablations can disable them cleanly).
+    // Multipliers (configurable so ablations can disable them cleanly).
     // A trap is boosted only when the query asks for a trap/guard, or when the
     // caller supplied a file and this trap is linked to that exact file.
     const trapBoostApplies = trapBoostMode === 'always'
       || (trapBoostMode === 'conditional' && (queryHasTrapIntent || fileLinkedMemoryIds.has(memory.id)));
     const trapMultiplier = memory.kind === 'error_trap' && trapBoostApplies ? trapBoost : 1.0;
     const verifiedMultiplier = memory.status === 'verified' ? verifiedBoost : 1.0;
-    const finalScore = rrf * memory.reward_score * trapMultiplier * verifiedMultiplier;
+
+    // God-Node fragility multiplier: memories attached to heavily called architectural symbols
+    // receive up to a 1.5x boost so agents exercise extra care around fragile hubs.
+    const inDegree = memoryInDegree.get(memory.id) || 0;
+    const godNodeMultiplier = inDegree >= 2
+      ? 1.0 + Math.min(0.5, Math.log10(inDegree + 1) * 0.25)
+      : 1.0;
+
+    const finalScore = rrf * memory.reward_score * trapMultiplier * verifiedMultiplier * godNodeMultiplier;
 
     allScored.push({
       memory,

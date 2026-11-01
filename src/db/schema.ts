@@ -79,6 +79,18 @@ export interface GraphEdge {
   created_at?: string;
 }
 
+export type CodeEdgeType = 'calls' | 'imports' | 'defines' | 'depends_on' | 'extends' | 'implements';
+
+export interface CodeEdge {
+  id: string;
+  project_id: string;
+  source_id: string;
+  target_id: string;
+  edge_type: CodeEdgeType;
+  weight: number;
+  created_at?: string;
+}
+
 export interface MemoryConflict {
   id?: number;
   project_id: string;
@@ -356,6 +368,19 @@ CREATE TABLE IF NOT EXISTS graph_edges (
 CREATE INDEX IF NOT EXISTS idx_graph_edges_source ON graph_edges(project_id, source_id);
 CREATE INDEX IF NOT EXISTS idx_graph_edges_target ON graph_edges(project_id, target_id);
 
+-- 8b. AST Code Relationship Edges (Calls, Imports, Extends)
+CREATE TABLE IF NOT EXISTS code_edges (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  source_id TEXT NOT NULL,
+  target_id TEXT NOT NULL,
+  edge_type TEXT NOT NULL CHECK (edge_type IN ('calls', 'imports', 'defines', 'depends_on', 'extends', 'implements')),
+  weight REAL NOT NULL DEFAULT 1.0,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_code_edges_source ON code_edges(project_id, source_id, edge_type);
+CREATE INDEX IF NOT EXISTS idx_code_edges_target ON code_edges(project_id, target_id, edge_type);
+
 -- 9. Proactive Contradiction Conflicts
 CREATE TABLE IF NOT EXISTS memory_conflicts (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -523,6 +548,23 @@ export function applySchema(db: DatabaseSync): void {
   } catch {}
   try {
     db.exec('CREATE INDEX IF NOT EXISTS idx_symbols_decl ON symbols(project_id, declaration_id);');
+  } catch {}
+
+  // Auto-migrate: code_edges table for call-graph & import relationships
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS code_edges (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        source_id TEXT NOT NULL,
+        target_id TEXT NOT NULL,
+        edge_type TEXT NOT NULL CHECK (edge_type IN ('calls', 'imports', 'defines', 'depends_on', 'extends', 'implements')),
+        weight REAL NOT NULL DEFAULT 1.0,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_code_edges_source ON code_edges(project_id, source_id, edge_type);
+      CREATE INDEX IF NOT EXISTS idx_code_edges_target ON code_edges(project_id, target_id, edge_type);
+    `);
   } catch {}
 
   migrateMemoriesUpdateTrigger(db);

@@ -18,6 +18,7 @@ import { predictFileBaseRate } from './predict.js';
 import { compressFile, compressContent } from '../compress/markdown.js';
 import { diagnoseDatabase, healDatabase } from '../db/doctor.js';
 import { parseAssertion } from '../db/assertions.js';
+import { getGodNodes } from '../code/indexer.js';
 import { tagVisionAsset, searchVisionAssets } from '../vision/assets.js';
 import { diffSnapshots, formatDiffMarkdown, replayAt } from '../replay/snapshot.js';
 import {
@@ -315,6 +316,35 @@ export function createFastrMcpServer(
 
       return {
         content: [{ type: 'text', text: formatted }]
+      };
+    }
+  );
+
+  // ==========================================
+  // TOOL 3c: fastr_god_nodes
+  // ==========================================
+  registerTool(
+    'fastr_god_nodes',
+    {
+      description:
+        'Returns the top architectural hub symbols (functions and classes with highest caller in-degree). Modifying these components has the highest blast radius in the project.',
+      inputSchema: z.object({
+        limit: z.number().int().min(1).max(50).default(10).describe('Maximum number of architectural hubs to return')
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false }
+    },
+    async ({ limit }) => {
+      const nodes = getGodNodes(db, config.projectId, limit);
+      if (nodes.length === 0) {
+        return {
+          content: [{ type: 'text', text: '_No code call edges indexed yet. Run `fastr index` to map caller-callee relationships._' }]
+        };
+      }
+      const formatted = nodes.map((n, i) =>
+        `${i + 1}. **${n.name}** (\`${n.kind}\` in \`${n.filePath}\`) - **${n.inDegree} caller(s)**`
+      ).join('\n');
+      return {
+        content: [{ type: 'text', text: `### Core Architectural Hubs (God Nodes)\n\n${formatted}` }]
       };
     }
   );
@@ -765,11 +795,12 @@ export function createFastrMcpServer(
     {
       description: 'Fetch all active [TRAP] warnings protecting specific files before beginning an edit.',
       inputSchema: z.object({
-        files: PATHS.describe('Target files about to be edited or inspected')
+        files: PATHS.describe('Target files about to be edited or inspected'),
+        includeNeighbors: z.boolean().default(true).describe('Include 1-hop downstream call-graph and import traps')
       }),
       annotations: { readOnlyHint: true, openWorldHint: false }
     },
-    async ({ files }) => {
+    async ({ files, includeNeighbors }) => {
       const traps: any[] = [];
       for (const f of files) {
         const mems = repo.getMemoriesForFile(config.projectId, f);
@@ -780,20 +811,35 @@ export function createFastrMcpServer(
         }
       }
 
-      if (traps.length === 0) {
+      const callGraphTraps = includeNeighbors !== false
+        ? repo.getCallGraphTrapsForFiles(config.projectId, files)
+        : [];
+
+      if (traps.length === 0 && callGraphTraps.length === 0) {
         return {
           content: [{ type: 'text', text: `_No active error traps protecting specified file(s). Safe to proceed._` }]
         };
       }
 
-      let text = `### ⚠️ Active Error Traps for Specified Files (${traps.length} found):\n\n`;
-      for (const t of traps) {
-        text += `#### [${t.id}] ${t.title} (${t.module})\n`;
-        text += `${t.content}\n\n---\n\n`;
+      let text = '';
+      if (traps.length > 0) {
+        text += `### ⚠️ Active Error Traps for Specified Files (${traps.length} found):\n\n`;
+        for (const t of traps) {
+          text += `#### [${t.id}] ${t.title} (${t.module})\n`;
+          text += `${t.content}\n\n---\n\n`;
+        }
+      }
+      if (callGraphTraps.length > 0) {
+        text += `### 🌐 Downstream Call-Graph Traps (${callGraphTraps.length} found):\n\n`;
+        for (const item of callGraphTraps) {
+          text += `#### [${item.trap.id}] ${item.trap.title} (${item.trap.module})\n`;
+          text += `- **Path**: \`${item.callerFile}\` calls \`${item.calledSymbol}()\` in \`${item.calleeFile}\`\n`;
+          text += `${item.trap.content}\n\n---\n\n`;
+        }
       }
 
       return {
-        content: [{ type: 'text', text }]
+        content: [{ type: 'text', text: text.trim() }]
       };
     }
   );
