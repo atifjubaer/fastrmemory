@@ -111,7 +111,7 @@ The memory category is not one product. Each project below is the best starting 
 
 | Project | Best starting point for | How it runs | FastrMemory difference |
 | :--- | :--- | :--- | :--- |
-| [AgentMemory](https://github.com/rohitg00/agentmemory) | Shared local memory for existing coding agents, automatic capture, scoped recall, and a live viewer | Local Node/iii server on four ports, native plugins, 54 MCP tools, 12 hooks | **Zero daemon and zero ports**: one SQLite file, 45 MCP tools, AST-anchored traps, and a code call graph |
+| [AgentMemory](https://github.com/rohitg00/agentmemory) | Shared local memory for existing coding agents, automatic capture, scoped recall, and a live viewer | Local Node/iii server on four ports, native plugins, 54 MCP tools, 12 hooks | **Zero daemon and zero ports by default**: one SQLite file, 45 MCP tools, AST-anchored traps, and a code call graph |
 | [Mem0](https://github.com/mem0ai/mem0) | Memory APIs, hosted or self-hosted, with SDKs and agent plugins | Hosted API or self-hosted service with an external vector store | **No account, API key, or vector database**: local-first, Git-diffable, MCP-native |
 | [Supermemory](https://github.com/supermemoryai/supermemory) | Memory and document context through a hosted API or local server | Hosted API or local server | **Single-file database**; no server process to operate |
 | [Zep / Graphiti](https://github.com/getzep/graphiti) | Enterprise context and temporal knowledge graphs | Service plus a graph database | **Bi-temporal SQLite plus a Git Markdown mirror**; no graph database service |
