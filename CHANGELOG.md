@@ -4,6 +4,25 @@ All notable changes to FastrMemory are recorded here. Versions follow semantic v
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-01
+
+Graph-Grounded Cognitive Agent Memory Engine release. Synthesizes knowledge graph intelligence with episodic memory:
+- **AST Code Call Graph**: In-process extraction of `calls` and `imports` edges into `code_edges` across TypeScript, JavaScript, Python, Go, and Rust with zero Python/tree-sitter dependencies.
+- **Predictive 1-Hop Call-Graph Trap Propagation**: `PreToolUse` and `fastr_trap_recall` trace 1-hop downstream calls to warn agents before cross-module regressions occur.
+- **PR Blast Radius & Knowledge Guardian**: `fastr guard` computes downstream callers, affected error traps, and overall risk scores (`low`, `medium`, `high`, `critical`).
+- **God-Node Fragility Weighting in RRF**: Computes in-degree centrality of architectural hubs and prioritizes core abstractions in search, exposing `fastr_god_nodes` (45 MCP tools).
+- **Universal Multi-Client `/fastr` Skill Generator**: Generates native slash command skills across Claude Code, Cursor, Codex, OpenCode, Gemini, Copilot, and Windsurf via `fastr skill install`.
+- Test suite is 476 tests across 74 files.
+
+### Added
+
+- `extractImports()` and `extractCallReferences()` in `src/code/symbol-extractor.ts`.
+- `code_edges` table with composite indexes on `(project_id, source_id, edge_type)` and `(project_id, target_id, edge_type)`.
+- `getCallGraphTrapsForFiles()` in `src/db/repository.ts`.
+- `computePrBlastRadius()` in `src/ci/guardian.ts`.
+- `fastr_god_nodes` MCP tool and God-Node fragility boost in `src/search/hybrid-rrf.ts`.
+- Universal `/fastr` skill generator in `src/installer/skills.ts` and CLI `fastr skill install/uninstall`.
+
 ## [0.8.2] - 2026-10-28
 
 Documentation and comparison release. Adds the comprehensive 4-way Architectural & Performance Comparison table to the README and benchmark documentation (comparing FastrMemory against Hippo, Memoria, and AgentMemory across runtime footprint, ingest speed, recall latency, AST symbol anchoring, self-verifying assertions, token overhead, passive learning, and team sync), documents the backup restore and disaster recovery workflow, and adds the automated VS Code / Cursor extension packaging script (`scripts/package-extension.mjs`). Test suite is 461 tests across 69 files.
