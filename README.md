@@ -17,7 +17,7 @@
 [![MCP Setup](https://img.shields.io/badge/MCP%20Setup-fastr%20mcp%20init-7C3AED?style=flat-square)](#-one-click-agent-mcp-configuration)
 [![Architecture](https://img.shields.io/badge/Architecture-Zero--Daemon%20WAL-orange?style=flat-square)](#-architecture)
 
-> **Status (2026-11-01):** **`fastrmemory@0.9.1` is published and is `latest`.** Evidence: `npm view fastrmemory version` -> `0.9.1`; `npm view fastrmemory dist-tags --json` -> `{"latest":"0.9.1"}`; tag `v0.9.1` (`5da9b2e`); published 2026-11-01 via GitHub Actions OIDC with npm provenance; the release workflow passed the full gate, clean tarball install, registry verification, and GitHub Release upload; the npm tarball is 357 files, 812,413 bytes packed, 3,267,816 bytes unpacked; GitHub Release asset SHA-256 `9c394ce3d4ef78044bafde6807324b616a0b4b76eff961aea963004fb1fad774`; a clean `npm install fastrmemory@0.9.1` + `fastr --version` -> `0.9.1`; `npm audit signatures` reports 5 verified registry signatures and 4 verified attestations. The official MCP registry lists `io.github.atifjubaer/fastrmemory@0.9.1` as `active` and `isLatest`. Caveat: Node.js >=22.16.0; `0.9.0`, `0.8.2`, `0.8.1`, `0.8.0`, `0.7.2`, `0.7.1`, `0.7.0`, `0.6.0`, `0.5.0`, `0.4.0`, `0.3.1`, and `0.3.0` remain published historical. This patch ensures FastrMemory autonomous cognitive rules are automatically wired across all major AI assistant environments (Claude Code, Cursor, GitHub Copilot, Windsurf, Gemini, and AGENTS.md); the schema is unchanged. The old scoped npm entries (`@atifjubaer/fastrmemory` and `fastrmemory@0.0.0-stage`) were removed on 2026-10-23; the GitHub `v0.2.1` tag and release remain as history. This README tracks current `main`. Current `main` is **`0.9.1`** and has **476 tests / 74 files**. Use the exact `0.9.1` version for reproducibility. PR #46 at `5da9b2e` passed all required checks (six matrix jobs plus Replayable Memory Diff and Pre-Merge Trap Guardian); the historical `0.9.0` release commit `c204f50`, `0.8.2` release commit `8cc925b`, `0.8.1` release commit `4e7d9ac`, `0.8.0` release commit `44b2d9a`, `0.7.2` release commit `583223f`, `0.7.1` release commit `31d8e12`, `0.7.0` release commit `5512557`, `0.6.0` release commit `a57a656`, `0.5.0` release commit `54a79ab`, and `0.4.0` release commit `bb365c2` remain published historical. The exact release surface is in [CHANGELOG.md](CHANGELOG.md). The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval. Public LongMemEval, LoCoMo, and self-repository retrieval-only results plus pinned external baselines are in [BENCHMARKS.md](BENCHMARKS.md); no QA-leaderboard parity is claimed. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); every README section is mapped to claim IDs in the README claim trace at the end of that ledger. Methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md).
+> **Status (2026-11-01):** **`fastrmemory@0.9.2` is published and is `latest`.** Evidence: `npm view fastrmemory version` -> `0.9.2`; `npm view fastrmemory dist-tags --json` -> `{"latest":"0.9.2"}`; tag `v0.9.2` (`b2c6502`); published 2026-11-01 via GitHub Actions OIDC with npm provenance; the release workflow passed the full gate, clean tarball install, registry verification, and GitHub Release upload; the npm tarball is 358 files, 814,420 bytes packed, 3,273,691 bytes unpacked; GitHub Release asset SHA-256 `2a24f2aa99ce647390b021cb1be7d62fac50edacb2e826c13deba6dcdbe16732`; a clean `npm install fastrmemory@0.9.2` + `fastr --version` -> `0.9.2`; `npm audit signatures` reports 5 verified registry signatures and 4 verified attestations. The official MCP registry lists `io.github.atifjubaer/fastrmemory@0.9.2` as `active` and `isLatest`. Caveat: Node.js >=22.16.0; `0.9.1`, `0.9.0`, `0.8.2`, `0.8.1`, `0.8.0`, `0.7.2`, `0.7.1`, `0.7.0`, `0.6.0`, `0.5.0`, `0.4.0`, `0.3.1`, and `0.3.0` remain published historical. This documentation patch adds the memory landscape, per-client integration matrix, and 0.9.1 upgrade path; the runtime and schema are unchanged. The old scoped npm entries (`@atifjubaer/fastrmemory` and `fastrmemory@0.0.0-stage`) were removed on 2026-10-23; the GitHub `v0.2.1` tag and release remain as history. This README tracks current `main`. Current `main` is **`0.9.2`** and has **476 tests / 74 files**. Use the exact `0.9.2` version for reproducibility. PR #46 at `5da9b2e` passed all required checks (six matrix jobs plus Replayable Memory Diff and Pre-Merge Trap Guardian); the historical `0.9.1` release commit `5da9b2e`, `0.9.0` release commit `c204f50`, `0.8.2` release commit `8cc925b`, `0.8.1` release commit `4e7d9ac`, `0.8.0` release commit `44b2d9a`, `0.7.2` release commit `583223f`, `0.7.1` release commit `31d8e12`, `0.7.0` release commit `5512557`, `0.6.0` release commit `a57a656`, `0.5.0` release commit `54a79ab`, and `0.4.0` release commit `bb365c2` remain published historical. The exact release surface is in [CHANGELOG.md](CHANGELOG.md). The headline benchmark uses **240 deterministic synthetic cases with a 20% holdout**, not SWE-bench or LongMemEval. Public LongMemEval, LoCoMo, and self-repository retrieval-only results plus pinned external baselines are in [BENCHMARKS.md](BENCHMARKS.md); no QA-leaderboard parity is claimed. Performance, packaging, and retrieval claims are tracked in [CLAIMS.md](CLAIMS.md); every README section is mapped to claim IDs in the README claim trace at the end of that ledger. Methodology, caveats, and raw JSON are in [BENCHMARKS.md](BENCHMARKS.md).
 
 <p align="center">
   <a href="#-overview">Overview</a> &bull;
@@ -42,11 +42,11 @@
 
 | Claim | Current result | Evidence |
 |---|---|---|
-| Install path | Published `fastrmemory@0.9.1` | `npm view fastrmemory version` -> `0.9.1`; `npm view fastrmemory dist-tags --json` -> `{"latest":"0.9.1"}`; `npm install fastrmemory@0.9.1`; `fastr --version` -> `0.9.1`; GitHub Release tarball SHA-256 `9c394ce3...`; old scoped npm entries removed |
-| MCP registry | `io.github.atifjubaer/fastrmemory@0.9.1`, status `active`, `isLatest` | `curl --get --data-urlencode "search=io.github.atifjubaer/fastrmemory" https://registry.modelcontextprotocol.io/v0.1/servers`; `gh run view 40262643667` |
+| Install path | Published `fastrmemory@0.9.2` | `npm view fastrmemory version` -> `0.9.2`; `npm view fastrmemory dist-tags --json` -> `{"latest":"0.9.2"}`; `npm install fastrmemory@0.9.2`; `fastr --version` -> `0.9.2`; GitHub Release tarball SHA-256 `2a24f2aa...`; old scoped npm entries removed |
+| MCP registry | `io.github.atifjubaer/fastrmemory@0.9.2`, status `active`, `isLatest` | `curl --get --data-urlencode "search=io.github.atifjubaer/fastrmemory" https://registry.modelcontextprotocol.io/v0.1/servers`; `gh run view 40262643667` |
 | Synthetic retrieval (optional MiniLM) | Holdout `95.8%` Hit@1, `100%` Hit@5, MRR `0.969` | `npx tsx scripts/eval-bench.ts --split all --embeddings minilm --out bench/results/minilm.json` |
-| Test suite | `476` tests across `74` files on current `main`; published `0.9.1` is `476` / `74`; published `0.9.0` is `476` / `74`; published `0.8.2` is `461` / `69`; published `0.8.1` is `461` / `69`; published `0.8.0` is `461` / `69`; published `0.7.2` is `456` / `67`; published `0.7.1` is `456` / `67`; published `0.7.0` is `455` / `67`; published `0.6.0` is `388` / `61`; `0.5.0` is `297` / `53`; historical `0.4.0` is `293` / `53`; `0.3.1` is `282` / `52`; v0.2.1 is `235` / `43` | `npm test`; `npm run check:ci` |
-| MCP setup | `fastr mcp init` merges portable registry configs or active-CLI local configs for 9 JSON clients and prints a Codex TOML snippet; `--source local` ships in published `0.9.1`, `0.9.0`, `0.8.2`, `0.8.1`, `0.8.0`, `0.7.2`, `0.7.1`, `0.7.0`, `0.6.0`, and `0.5.0` | `npm test -- tests/mcp-init.test.ts` -> `15 passed`; `fastr mcp init --client claude --source local --dry-run --json` -> `node .../dist/bin/fastr.js mcp --project ...` |
+| Test suite | `476` tests across `74` files on current `main`; published `0.9.2` is `476` / `74`; published `0.9.1` is `476` / `74`; published `0.9.0` is `476` / `74`; published `0.8.2` is `461` / `69`; published `0.8.1` is `461` / `69`; published `0.8.0` is `461` / `69`; published `0.7.2` is `456` / `67`; published `0.7.1` is `456` / `67`; published `0.7.0` is `455` / `67`; published `0.6.0` is `388` / `61`; `0.5.0` is `297` / `53`; historical `0.4.0` is `293` / `53`; `0.3.1` is `282` / `52`; v0.2.1 is `235` / `43` | `npm test`; `npm run check:ci` |
+| MCP setup | `fastr mcp init` merges portable registry configs or active-CLI local configs for 9 JSON clients and prints a Codex TOML snippet; `--source local` ships in published `0.9.2`, `0.9.1`, `0.9.0`, `0.8.2`, `0.8.1`, `0.8.0`, `0.7.2`, `0.7.1`, `0.7.0`, `0.6.0`, and `0.5.0` | `npm test -- tests/mcp-init.test.ts` -> `15 passed`; `fastr mcp init --client claude --source local --dry-run --json` -> `node .../dist/bin/fastr.js mcp --project ...` |
 | Cross-engine (MCP stdio) | `80/120` overall Hit@1 (`66.7%`, 95% CI `57.8`-`74.5`): exact `40/40`, multi `40/40`, paraphrase `0/40`; `1.094` ms/doc ingest, `1.86` ms recall p50 | `npm run bench:vs`; `bench/results/vs-engines.json` |
 | Crash safety | 10/10 runs, 0 lost, 0 duplicate ids/titles | `npm run test:crash`; `bench/results/crash-test.json` |
 | Public retrieval (0.3.0) | LongMemEval `+10.4pp` / `+11.0pp` Hit@5; LoCoMo `+4.4pp` / `+2.3pp` (target missed) | [docs/EXTERNAL_BASELINE.md](docs/EXTERNAL_BASELINE.md) |
@@ -90,7 +90,7 @@ Fuses FTS5 BM25 + optional local embeddings + file-graph links. Error traps rece
 
 ### ⚔️ Architectural & Performance Comparison
 
-| Capability | Hippo Memory (`hippo-memory`) | Memoria (`matrixorigin/Memoria`) | AgentMemory (`@agentmemory/mcp`) | **FastrMemory (0.9.1+)** |
+| Capability | Hippo Memory (`hippo-memory`) | Memoria (`matrixorigin/Memoria`) | AgentMemory (`@agentmemory/mcp`) | **FastrMemory (0.9.2+)** |
 | :--- | :--- | :--- | :--- | :--- |
 | **Runtime Architecture** | SQLite store | MatrixOne relational/vector DB container | Dual-layer engine + Redis/Docker | **Zero-Daemon • Native `node:sqlite` in WAL mode** |
 | **Ingestion Speed** | 88.9 ms/doc | Container roundtrip | 1.74 ms/doc | **1.09 ms/doc (80x faster than Hippo)** |
@@ -175,9 +175,9 @@ npx -y fastrmemory setup
 npx -y fastrmemory ui
 ```
 
-For a reproducible install pinned to a specific release: `npx -y fastrmemory@0.9.1 setup`. The default `latest` channel automatically tracks new releases, while `--channel pinned` records the exact version.
+For a reproducible install pinned to a specific release: `npx -y fastrmemory@0.9.2 setup`. The default `latest` channel automatically tracks new releases, while `--channel pinned` records the exact version.
 
-The GitHub source path remains available for development only: `npx github:atifjubaer/fastrmemory setup`. For a reproducible source install, pin the tag: `npx github:atifjubaer/fastrmemory#v0.9.1 setup`. Do not use either GitHub form in generated MCP or hook configs; those must use the npm package.
+The GitHub source path remains available for development only: `npx github:atifjubaer/fastrmemory setup`. For a reproducible source install, pin the tag: `npx github:atifjubaer/fastrmemory#v0.9.2 setup`. Do not use either GitHub form in generated MCP or hook configs; those must use the npm package.
 
 ---
 
@@ -192,9 +192,9 @@ fastr --version
 npx -y fastrmemory --version
 ```
 
-To pin an exact release instead: `npm install -g fastrmemory@0.9.1`.
+To pin an exact release instead: `npm install -g fastrmemory@0.9.2`.
 
-The official MCP registry lists the server as `io.github.atifjubaer/fastrmemory` (`0.9.1`, status `active`), so registry-aware clients can find it by name; the entry carries the same `npx -y fastrmemory@0.9.1 mcp` package and stdio transport. `0.9.1` is built from tag `v0.9.1` by `.github/workflows/release.yml`, which runs the full gate, publishes with npm provenance, and attaches the same tarball to the GitHub Release. Verify the registry result with `npm view fastrmemory@0.9.1 version` and `npm view fastrmemory dist-tags --json`; a first E404 for a few minutes is registry propagation, not a failed publish. The old scoped npm entries remain removed. Do not republish `0.3.0`. `0.5.0`, `0.4.0`, and `0.3.1` remain published historical.
+The official MCP registry lists the server as `io.github.atifjubaer/fastrmemory` (`0.9.2`, status `active`), so registry-aware clients can find it by name; the entry carries the same `npx -y fastrmemory@0.9.2 mcp` package and stdio transport. `0.9.2` is built from tag `v0.9.2` by `.github/workflows/release.yml`, which runs the full gate, publishes with npm provenance, and attaches the same tarball to the GitHub Release. Verify the registry result with `npm view fastrmemory@0.9.2 version` and `npm view fastrmemory dist-tags --json`; a first E404 for a few minutes is registry propagation, not a failed publish. The old scoped npm entries remain removed. Do not republish `0.3.0`. `0.5.0`, `0.4.0`, and `0.3.1` remain published historical.
 
 ### Update an Existing Install
 
@@ -255,7 +255,7 @@ yarn dlx fastrmemory@latest mcp init --client claude
 bunx fastrmemory@latest mcp init --client claude
 ```
 
-The default `--channel latest` writes `fastrmemory@latest`, so a client restart picks up the newest npm release. Use `--channel pinned` for a reproducible config containing the exact version that ran the command; on current `main` that writes `fastrmemory@0.9.1`. `--runner pnpm|yarn|bunx` changes the generated runner, `--profile full` selects the 45-tool surface (the default is the 12-tool core profile), `--dry-run` prints targets without writing, and `--scope user` writes user-level configs with an explicit `--project /absolute/path` so the server always opens the intended database. Codex prints a `[mcp_servers.fastrmemory]` TOML block for `~/.codex/config.toml` instead of rewriting a user-owned TOML file.
+The default `--channel latest` writes `fastrmemory@latest`, so a client restart picks up the newest npm release. Use `--channel pinned` for a reproducible config containing the exact version that ran the command; on current `main` that writes `fastrmemory@0.9.2`. `--runner pnpm|yarn|bunx` changes the generated runner, `--profile full` selects the 45-tool surface (the default is the 12-tool core profile), `--dry-run` prints targets without writing, and `--scope user` writes user-level configs with an explicit `--project /absolute/path` so the server always opens the intended database. Codex prints a `[mcp_servers.fastrmemory]` TOML block for `~/.codex/config.toml` instead of rewriting a user-owned TOML file.
 
 For a globally installed CLI, use `--source local` to write the active CLI path instead of an npx command. It always appends an absolute `--project`, so the config is machine-specific but starts without an npx cold start:
 
@@ -267,29 +267,29 @@ Updating the global package updates the server; rerun the command only if the CL
 
 > `--source local` ships in published `0.5.0` and later; on older releases, use `fastr setup` for an installed-CLI config.
 
-> `mcp init` ships in `0.4.0` and later; `npx fastrmemory@latest mcp init ...` now resolves to published `0.9.1`. If you need an earlier release, use `fastr setup` or pin the exact version.
+> `mcp init` ships in `0.4.0` and later; `npx fastrmemory@latest mcp init ...` now resolves to published `0.9.2`. If you need an earlier release, use `fastr setup` or pin the exact version.
 
 ### Install from GitHub
 
 For a one-shot source run, pin the release tag:
 
 ```bash
-npx --yes github:atifjubaer/fastrmemory#v0.9.1 --version
-npx --yes github:atifjubaer/fastrmemory#v0.9.1 setup
+npx --yes github:atifjubaer/fastrmemory#v0.9.2 --version
+npx --yes github:atifjubaer/fastrmemory#v0.9.2 setup
 ```
 
 For a global CLI without npm's Git resolver, download the release tarball:
 
 ```bash
-curl -L -o fastrmemory-0.9.1.tgz \
-  https://github.com/atifjubaer/fastrmemory/releases/download/v0.9.1/fastrmemory-0.9.1.tgz
-npm install -g ./fastrmemory-0.9.1.tgz
+curl -L -o fastrmemory-0.9.2.tgz \
+  https://github.com/atifjubaer/fastrmemory/releases/download/v0.9.2/fastrmemory-0.9.2.tgz
+npm install -g ./fastrmemory-0.9.2.tgz
 fastr --version
 ```
 
-On Windows, download the same URL with `Invoke-WebRequest` or a browser, then run `npm install -g .\fastrmemory-0.9.1.tgz`. For a local project install, use `npm install --no-save ./fastrmemory-0.9.1.tgz` instead of the global flag.
+On Windows, download the same URL with `Invoke-WebRequest` or a browser, then run `npm install -g .\fastrmemory-0.9.2.tgz`. For a local project install, use `npm install --no-save ./fastrmemory-0.9.2.tgz` instead of the global flag.
 
-> Git installs build from source and are slower than the npm tarball; for a global CLI, prefer the npm package or the release tarball above. `npm install -g git+https://...` is not recommended with npm 11 because the `prepare` build does not receive dev dependencies. Both `fastrmemory` and `fastr` (short alias) are executable after installation. The canonical package is unscoped `fastrmemory@0.9.1`; the old scoped npm entries are gone. Use npm for generated MCP and hook configs so installs stay reproducible.
+> Git installs build from source and are slower than the npm tarball; for a global CLI, prefer the npm package or the release tarball above. `npm install -g git+https://...` is not recommended with npm 11 because the `prepare` build does not receive dev dependencies. Both `fastrmemory` and `fastr` (short alias) are executable after installation. The canonical package is unscoped `fastrmemory@0.9.2`; the old scoped npm entries are gone. Use npm for generated MCP and hook configs so installs stay reproducible.
 
 ### 2. Verify Database Health
 
@@ -492,7 +492,7 @@ For user-scoped clients, the generated entry includes `--project /absolute/path/
 
 ## 🛠️ MCP Server: Tools & Resources
 
-Built using the official **v2 `@modelcontextprotocol/server`** SDK. The tool list below describes **0.9.1**; 45 tools across the 12-tool core and full profiles.
+Built using the official **v2 `@modelcontextprotocol/server`** SDK. The tool list below describes **0.9.2**; 45 tools across the 12-tool core and full profiles.
 
 ### 45 MCP Tools
 
@@ -678,7 +678,7 @@ Run the comprehensive unit test suite:
 npm test
 ```
 
-All **476 tests pass** across **74 test files** on current `main`; published `0.9.1` carries the same **476 / 74**, `0.9.0` has **476 / 74**, `0.8.2` has **461 / 69**, `0.8.1` has **461 / 69**, `0.8.0` has **461 / 69**, `0.7.2` has **456 / 67**, `0.7.1` has **456 / 67**, `0.7.0` has **455 / 67**, and `0.6.0` has **388 / 61**, `0.5.0` has **297 tests / 53 files**, historical `0.4.0` has **293 tests / 53 files**, `0.3.1` has **282 / 52**, and v0.2.1 has **235 / 43**. Coverage includes database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, branch merge conflict reports, replay/diff, memory envelopes, confidence tiers and 3-bad dormancy, memory hygiene checks, Memory CI, conflict-aware recall, portable backup manifests and verified restore, local rule import, OpenCode V2, Gemini CLI, and Copilot CLI wiring, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, symbol indexing and declaration anchoring, per-turn injection, read-only recall, self-verifying memories, UI loopback security boundaries, atomic installer configuration safety, and shadcn-style `mcp init` client config merges, including local-source entries.
+All **476 tests pass** across **74 test files** on current `main`; published `0.9.2` carries the same **476 / 74**, `0.9.1` has **476 / 74**, `0.9.0` has **476 / 74**, `0.8.2` has **461 / 69**, `0.8.1` has **461 / 69**, `0.8.0` has **461 / 69**, `0.7.2` has **456 / 67**, `0.7.1` has **456 / 67**, `0.7.0` has **455 / 67**, and `0.6.0` has **388 / 61**, `0.5.0` has **297 tests / 53 files**, historical `0.4.0` has **293 tests / 53 files**, `0.3.1` has **282 / 52**, and v0.2.1 has **235 / 43**. Coverage includes database schema, WAL locking, offline spooling, bi-temporal supersession, secret scrubbing, two-zone rendering, automated benchmarks, snapshots/rollback, branch merge conflict reports, replay/diff, memory envelopes, confidence tiers and 3-bad dormancy, memory hygiene checks, Memory CI, conflict-aware recall, portable backup manifests and verified restore, local rule import, OpenCode V2, Gemini CLI, and Copilot CLI wiring, git-learner, cognitive blame, commit synthesis, hybrid background daemon, token compression, self-healing doctor, multimodal vision, web dashboard server, pre-merge trap guardian, symbol indexing and declaration anchoring, per-turn injection, read-only recall, self-verifying memories, UI loopback security boundaries, atomic installer configuration safety, and shadcn-style `mcp init` client config merges, including local-source entries.
 
 **CI performance gates:** `check:query-plans`, `check:recall-latency`, and `check:install-size` run inside `check:ci`. CI executes them on the canonical Ubuntu/Node 24 job; other matrix jobs set `FASTR_PERF_GATE=0` because timing is runner-sensitive, while functional tests still run on every matrix entry.
 
