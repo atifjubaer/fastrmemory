@@ -3,7 +3,7 @@
 **Current release:** `0.9.1` (published 2026-11-01; unscoped npm package and `latest`; `0.9.0`, `0.8.2`, `0.8.1`, `0.8.0`, `0.7.2`, `0.7.1`, `0.7.0`, `0.6.0`, `0.5.0`, `0.4.0`, and `0.3.1` remain published historical)
 **Previous releases:** `0.9.0`, `0.8.2`, `0.8.1`, `0.8.0`, `0.7.2`, `0.7.1`, `0.7.0`, `0.6.0`, `0.5.0` (remains published historical)
 **Historical release:** `0.3.1` and `0.2.1` (published historical; the `0.2.1` npm entry was removed 2026-10-23, but its GitHub Release remains)
-**Applies to:** `0.1.x` → `0.2.x` → `0.3.1` → `0.4.0` → `0.5.0` → `0.6.0` → `0.7.x` (schema changes are additive only; no table rewrites)
+**Applies to:** `0.1.x` → `0.2.x` → `0.3.1` → `0.4.0` → `0.5.0` → `0.6.0` → `0.7.x` → `0.8.x` → `0.9.x` (schema changes are additive only; no table rewrites)
 
 FastrMemory stores memory in a local SQLite database. Schema setup is additive: new tables are created with `CREATE TABLE IF NOT EXISTS`, and the `provenance_hash` column is added when missing. There is no destructive schema rewrite. That does not replace a backup. Stop every agent, hook, daemon, and dashboard before upgrading or rolling back.
 
@@ -186,17 +186,31 @@ Do not assume that an older binary can read a database written by a newer binary
 
 ## 6. Agent configuration changes
 
-`fastrmemory hook install` and `fastr setup` can modify agent configuration files, including `opencode.json`, `.gemini/settings.json`, `.github/mcp.json`, `.github/hooks/fastrmemory.json`, `.claude.json`, `.cursor/mcp.json`, and `AGENTS.md`.
+`fastrmemory hook install` and `fastr setup` can modify agent configuration files, including `opencode.json`, `.gemini/settings.json`, `.github/mcp.json`, `.github/hooks/fastrmemory.json`, `.claude.json`, `.cursor/mcp.json`, `.claude/rules/fastrmemory.md`, `.cursor/rules/fastrmemory.mdc`, `.github/copilot-instructions.md`, `.windsurf/rules/fastrmemory.md`, `GEMINI.md`, and `AGENTS.md`.
 
 - JSON config installers write a one-time `<file>.fastr.bak` before their first change; `AGENTS.md` is appended only when the FastrMemory marker is absent.
 - JSON merges are atomic and preserve unrelated keys.
+- Rule files are created only when missing; an existing rule file is never overwritten.
 - Review the changed files before committing them.
 - Re-run the installer after upgrading if the MCP command or hook format changed.
+
+### Upgrading to 0.9.1 (mandatory agent rules)
+
+`0.9.1` adds the rule files that make an agent call FastrMemory without being asked. Upgrading the package or the MCP entry alone does not create them. Run:
+
+```bash
+npm install -g fastrmemory@latest
+fastr --version                    # 0.9.1
+fastr setup                        # global MCP configs, rule files, and skills
+fastr hook install --client all    # project MCP, hooks, and rule files
+```
+
+Restart the client afterwards so it reloads `.claude/rules/fastrmemory.md`, `.cursor/rules/fastrmemory.mdc`, `.github/copilot-instructions.md`, `.windsurf/rules/fastrmemory.md`, `GEMINI.md`, and `AGENTS.md`. No schema migration is required between `0.8.x` and `0.9.1`; `code_edges` is created additively on first open. npx-generated MCP configs pin the version that created them, so regenerate them with `npx -y fastrmemory@latest setup`.
 
 ## 7. Known limits
 
 - There is no automatic database downgrade command.
 - `fastr backup` and `fastr snapshot export` are logical and do not include the SQLite WAL file. The backup scope is memories, raw events, file links, and conflicts; it does not include feedback history, snapshots, branches, action DAG rows, or vision assets. Use the physical `.fastr/fastr.db*` copy for a complete database backup.
 - `fastr backup --restore` verifies the sidecar manifest and file hash before writing; the import runs in one SQLite transaction, but stop other writers first.
-- npm `0.6.0` is `latest`; `0.5.0`, `0.4.0`, `0.3.1`, and `0.3.0` remain published historical versions. The `0.2.1` npm entry was removed, but its GitHub Release tarball remains for rollback.
-- Pin the exact published version for reproducible installs: `0.6.0`.
+- npm `0.9.1` is `latest`; `0.9.0`, `0.8.2`, `0.8.1`, `0.8.0`, `0.7.2`, `0.7.1`, `0.7.0`, `0.6.0`, `0.5.0`, `0.4.0`, `0.3.1`, and `0.3.0` remain published historical versions. The `0.2.1` npm entry was removed, but its GitHub Release tarball remains for rollback.
+- Pin the exact published version for reproducible installs: `0.9.1`.

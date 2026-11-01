@@ -90,20 +90,35 @@ Fuses FTS5 BM25 + optional local embeddings + file-graph links. Error traps rece
 
 ### ⚔️ Architectural & Performance Comparison
 
-| Capability | Hippo Memory (`hippo-memory`) | Memoria (`matrixorigin/Memoria`) | AgentMemory (`@agentmemory/mcp`) | **FastrMemory (0.8.1+)** |
+| Capability | Hippo Memory (`hippo-memory`) | Memoria (`matrixorigin/Memoria`) | AgentMemory (`@agentmemory/mcp`) | **FastrMemory (0.9.1+)** |
 | :--- | :--- | :--- | :--- | :--- |
 | **Runtime Architecture** | SQLite store | MatrixOne relational/vector DB container | Dual-layer engine + Redis/Docker | **Zero-Daemon • Native `node:sqlite` in WAL mode** |
 | **Ingestion Speed** | 88.9 ms/doc | Container roundtrip | 1.74 ms/doc | **1.09 ms/doc (80x faster than Hippo)** |
 | **Recall Latency (p50)** | 12.8 ms (spikes to 386 ms p95) | 50–100 ms | 1.52 ms | **0.95 ms p50 / 1.60 ms p95** |
 | **AST Symbol Anchoring** | ❌ None (file path only) | ❌ None | ❌ None | **✅ `declaration_id` (AST hash survives renames & file moves)** |
 | **Self-Verifying Traps** | ❌ None | ❌ None | ❌ None | **✅ Machine assertions (`text_present`, etc.) auto-retire fixed bugs** |
-| **Context Token Overhead** | ⚠️ High (dumps entire rule sets) | ⚠️ High (dumps knowledge graphs) | ⚠️ High (dumps session contexts) | **⚡ Ultra-low (≤150 tokens targeted per-turn injection)** |
+| **Context Token Overhead** | ⚠️ High (dumps entire rule sets) | ⚠️ High (dumps knowledge graphs) | ⚠️ High (dumps session contexts) | **Ultra-low (≤150 tokens targeted per-turn injection)** |
 | **Passive Learning** | ❌ Manual commands only | ❌ Manual commands only | ❌ Manual commands only | **✅ Auto-distills traps from test failures & subsequent edits** |
 | **Cross-Machine Team Sync**| Manual markdown git commits | Cloud database cluster | Custom daemon | **✅ Bidirectional `fastr sync` on Git pull** |
 | **Editor Integration** | Basic CLI instructions | None | Basic plugin | **✅ Native VS Code & Cursor extension with Problems tab diagnostics** |
-| **MCP Protocol Support** | stdio | REST / MCP adapter | stdio | **Official MCP v2 (12-tool core & 44-tool full profiles)** |
+| **MCP Protocol Support** | stdio | REST / MCP adapter | stdio | **Official MCP v2 (12-tool core & 45-tool full profiles)** |
 
 *Verified benchmark evidence from [`bench/results/vs-engines.json`](bench/results/vs-engines.json) and [`docs/PUBLIC_BENCHMARKS.md`](docs/PUBLIC_BENCHMARKS.md).*
+
+### 🧭 Memory Landscape: Where Each Project Starts
+
+The memory category is not one product. Each project below is the best starting point for a different job; FastrMemory's difference is listed against that job, not as a universal benchmark. Positioning is paraphrased from each project's public documentation (checked 2026-11-01). For engines measured head-to-head, see the evidence table above.
+
+| Project | Best starting point for | How it runs | FastrMemory difference |
+| :--- | :--- | :--- | :--- |
+| [AgentMemory](https://github.com/rohitg00/agentmemory) | Shared local memory for existing coding agents, automatic capture, scoped recall, and a live viewer | Local Node/iii server on four ports, native plugins, 54 MCP tools, 12 hooks | **Zero daemon and zero ports**: one SQLite file, 45 MCP tools, AST-anchored traps, and a code call graph |
+| [Mem0](https://github.com/mem0ai/mem0) | Memory APIs, hosted or self-hosted, with SDKs and agent plugins | Hosted API or self-hosted service with an external vector store | **No account, API key, or vector database**: local-first, Git-diffable, MCP-native |
+| [Supermemory](https://github.com/supermemoryai/supermemory) | Memory and document context through a hosted API or local server | Hosted API or local server | **Single-file database**; no server process to operate |
+| [Zep / Graphiti](https://github.com/getzep/graphiti) | Enterprise context and temporal knowledge graphs | Service plus a graph database | **Bi-temporal SQLite plus a Git Markdown mirror**; no graph database service |
+| [Letta](https://github.com/letta-ai/letta) | Building stateful agents with their own managed memory | Agent server/runtime with managed memory | **A memory layer for any agent**, not a new agent runtime |
+| [Cognee](https://github.com/topoteretes/cognee) | Turning documents, code, and conversations into searchable knowledge | Python pipelines with graph and vector stores | **Zero Python**: in-process TypeScript with declaration-anchored code memory |
+| [claude-mem](https://github.com/thedotmack/claude-mem) | Capturing and summarizing coding sessions across supported agents | Hook-based session capture and summaries | **Typed error traps with assertions and a code graph** on top of session capture |
+| **FastrMemory** | **Local-first cognitive memory for coding agents: zero-daemon MCP, self-verifying traps, graph-grounded recall, and Git-diffable bi-temporal rules** | **Node 22.16+, built-in `node:sqlite` in WAL mode, 3 runtime dependencies** | — |
 
 ---
 
@@ -122,9 +137,21 @@ Fuses FTS5 BM25 + optional local embeddings + file-graph links. Error traps rece
 
 ## 🤖 Works With MCP- and HTTP-Compatible Agents
 
-FastrMemory exposes one stdio MCP server and optional local HTTP services (dashboard and daemon). **Native installers wire Claude Code (MCP config plus lifecycle hooks), Cursor (MCP config plus skills), and, since 0.3.0, Gemini CLI, GitHub Copilot CLI, and OpenCode V2** (`fastrmemory hook install`); `fastrmemory setup` also writes MCP configs for Antigravity, Claude Desktop, and Windsurf. Every other client connects through its own MCP configuration or the REST API. Integration depth varies by client - only the native installers are covered by tests in this repository.
+FastrMemory exposes one stdio MCP server and optional local HTTP services (dashboard and daemon). **Native installers wire Claude Code (MCP config plus lifecycle hooks), Cursor (MCP config plus rules), and, since 0.3.0, Gemini CLI, GitHub Copilot CLI, and OpenCode V2** (`fastrmemory hook install`); `fastrmemory setup` also writes MCP configs for Antigravity, Claude Desktop, and Windsurf. Since `0.9.1`, both commands also write the mandatory rule file each client reads, so the agent calls the memory tools without being asked. Every other client connects through its own MCP configuration or the REST API. Integration depth varies by client - only the native installers are covered by tests in this repository.
 
 Clients commonly used with FastrMemory include Codex CLI, Gemini CLI, OpenCode, GitHub Copilot CLI, Antigravity, Claude Desktop, Cline, Continue, Roo Code, Goose, Zed, Warp, and Aider. Listing a client does **not** imply a tested native integration.
+
+### 🧩 Integration Depth by Client
+
+One MCP server reaches every MCP client. The layers above MCP depend on what the client exposes:
+
+| Layer | What the agent gets | Wired automatically | Other clients |
+| :--- | :--- | :--- | :--- |
+| **MCP tools** (12-tool core / 45-tool full) | Recall, trap recall and logging, handoff, graph queries, status | Antigravity, Claude Desktop, Claude Code, Cursor, and Windsurf via `fastr setup`; Claude Code, Cursor, OpenCode, Gemini CLI, and Copilot CLI via `fastr hook install` | Any MCP client via `fastr mcp init --client <id>` or a manual stdio entry |
+| **Mandatory rules** | The instruction that makes the agent recall before editing and log a trap after a failure | Claude Code (`.claude/rules/fastrmemory.md`), Cursor (`.cursor/rules/fastrmemory.mdc`, `alwaysApply: true`), GitHub Copilot, Windsurf, Gemini CLI, and `AGENTS.md` for Codex, OpenCode, Devin, and Aider | Agents that read `AGENTS.md` |
+| **Lifecycle hooks** | SessionStart context, the per-prompt next step (Claude Code), PreToolUse trap warnings, pre-compaction snapshots, SessionEnd distillation | Claude Code, OpenCode, Gemini CLI, and Copilot CLI (`fastr hook install`) | Clients without a hook API rely on MCP plus rules |
+| **`/fastr` command** | One slash command for recall, trap logging, and handoff | Claude Code, Cursor, Codex, OpenCode, Gemini CLI, Copilot, and Windsurf (`fastr skill install`) | — |
+| **VS Code extension** | Sidebar, commands, and Problems-tab diagnostics | VS Code and Cursor (`npm run package:extension`) | Marketplace / Open VSX workflow |
 
 <p align="center">
   <a href="https://mcprush.com/to/fastrmemory-mcp?ref=badge">
@@ -148,9 +175,9 @@ npx -y fastrmemory setup
 npx -y fastrmemory ui
 ```
 
-For a reproducible install pinned to a specific release: `npx -y fastrmemory@0.7.2 setup`. The default `latest` channel automatically tracks new releases, while `--channel pinned` records the exact version.
+For a reproducible install pinned to a specific release: `npx -y fastrmemory@0.9.1 setup`. The default `latest` channel automatically tracks new releases, while `--channel pinned` records the exact version.
 
-The GitHub source path remains available for development only: `npx github:atifjubaer/fastrmemory setup`. For a reproducible source install, pin the tag: `npx github:atifjubaer/fastrmemory#v0.7.2 setup`. Do not use either GitHub form in generated MCP or hook configs; those must use the npm package.
+The GitHub source path remains available for development only: `npx github:atifjubaer/fastrmemory setup`. For a reproducible source install, pin the tag: `npx github:atifjubaer/fastrmemory#v0.9.1 setup`. Do not use either GitHub form in generated MCP or hook configs; those must use the npm package.
 
 ---
 
@@ -165,9 +192,9 @@ fastr --version
 npx -y fastrmemory --version
 ```
 
-To pin an exact release instead: `npm install -g fastrmemory@0.7.2`.
+To pin an exact release instead: `npm install -g fastrmemory@0.9.1`.
 
-The official MCP registry lists the server as `io.github.atifjubaer/fastrmemory` (`0.9.1`, status `active`), so registry-aware clients can find it by name; the entry carries the same `npx -y fastrmemory@0.7.2 mcp` package and stdio transport. `0.9.1` is built from tag `v0.9.1` by `.github/workflows/release.yml`, which runs the full gate, publishes with npm provenance, and attaches the same tarball to the GitHub Release. Verify the registry result with `npm view fastrmemory@0.9.1 version` and `npm view fastrmemory dist-tags --json`; a first E404 for a few minutes is registry propagation, not a failed publish. The old scoped npm entries remain removed. Do not republish `0.3.0`. `0.5.0`, `0.4.0`, and `0.3.1` remain published historical.
+The official MCP registry lists the server as `io.github.atifjubaer/fastrmemory` (`0.9.1`, status `active`), so registry-aware clients can find it by name; the entry carries the same `npx -y fastrmemory@0.9.1 mcp` package and stdio transport. `0.9.1` is built from tag `v0.9.1` by `.github/workflows/release.yml`, which runs the full gate, publishes with npm provenance, and attaches the same tarball to the GitHub Release. Verify the registry result with `npm view fastrmemory@0.9.1 version` and `npm view fastrmemory dist-tags --json`; a first E404 for a few minutes is registry propagation, not a failed publish. The old scoped npm entries remain removed. Do not republish `0.3.0`. `0.5.0`, `0.4.0`, and `0.3.1` remain published historical.
 
 ### Update an Existing Install
 
@@ -182,18 +209,19 @@ fastr backup --verify fastr-backup.jsonl
 npm install -g fastrmemory@latest
 fastr --version
 
-# 3. Refresh project integration (choose what you use)
-fastr mcp init --client all --scope project   # portable npx configs only
-fastr mcp init --client all --scope user --source local --profile core  # installed CLI
-fastr setup                                   # MCP configs, AGENTS.md, and skills
-fastr hook install                            # lifecycle hooks plus MCP for hook clients
+# 3. Refresh project integration
+fastr setup                                   # MCP configs, mandatory rules, and skills
+fastr hook install --client all               # lifecycle hooks plus MCP for hook clients
+fastr skill install --client all              # optional /fastr command for 7 clients
 
 # 4. Verify
 fastr status
 fastr hygiene
 ```
 
-`0.7.2` has additive-only schema migrations (`symbols`, `file_edits`, `memories.assertion`, and queues). If you use `--channel pinned`, rerun `fastr mcp init` after each update; with the default `latest` channel, restart the client to pick up the new release. If you use `--source local`, the config points at the installed CLI, so updating the global package updates the server without rewriting the config. `fastr setup` refreshes copied skills, overwrites same-named skill files, removes retired skills, and leaves user-owned directories. `fastr hook install` does not copy skills. See [MIGRATION.md](MIGRATION.md) for rollback.
+**Upgrading from `0.8.x` or `0.9.0` requires step 3.** The mandatory rule files added in `0.9.1` are written by `fastr setup` and `fastr hook install`; upgrading the CLI or the MCP entry alone does not create them. After step 3, restart the client so it reloads `.claude/rules/fastrmemory.md`, `.cursor/rules/fastrmemory.mdc`, `.github/copilot-instructions.md`, `.windsurf/rules/fastrmemory.md`, `GEMINI.md`, and `AGENTS.md`.
+
+`0.9.x` has additive-only schema migrations (`symbols`, `code_edges`, `file_edits`, `memories.assertion`, and queues). If you use `--channel pinned`, rerun `fastr mcp init` after each update; with the default `latest` channel, restart the client to pick up the new release. If you use `--source local` (or ran `fastr setup` from a global install), the config points at the installed CLI, so updating the global package updates the server without rewriting the config. npx-generated configs pin the version that created them, so re-run `npx -y fastrmemory@latest setup` to move them forward. `fastr setup` refreshes copied skills, overwrites same-named skill files, removes retired skills, and leaves user-owned directories. `fastr hook install` does not copy skills. See [MIGRATION.md](MIGRATION.md) for rollback.
 
 ### One-Command MCP Setup
 
@@ -227,7 +255,7 @@ yarn dlx fastrmemory@latest mcp init --client claude
 bunx fastrmemory@latest mcp init --client claude
 ```
 
-The default `--channel latest` writes `fastrmemory@latest`, so a client restart picks up the newest npm release. Use `--channel pinned` for a reproducible config containing the exact version that ran the command; on current `main` that writes `fastrmemory@0.7.2`. `--runner pnpm|yarn|bunx` changes the generated runner, `--profile full` selects the 43-tool surface (the default is the 12-tool core profile), `--dry-run` prints targets without writing, and `--scope user` writes user-level configs with an explicit `--project /absolute/path` so the server always opens the intended database. Codex prints a `[mcp_servers.fastrmemory]` TOML block for `~/.codex/config.toml` instead of rewriting a user-owned TOML file.
+The default `--channel latest` writes `fastrmemory@latest`, so a client restart picks up the newest npm release. Use `--channel pinned` for a reproducible config containing the exact version that ran the command; on current `main` that writes `fastrmemory@0.9.1`. `--runner pnpm|yarn|bunx` changes the generated runner, `--profile full` selects the 45-tool surface (the default is the 12-tool core profile), `--dry-run` prints targets without writing, and `--scope user` writes user-level configs with an explicit `--project /absolute/path` so the server always opens the intended database. Codex prints a `[mcp_servers.fastrmemory]` TOML block for `~/.codex/config.toml` instead of rewriting a user-owned TOML file.
 
 For a globally installed CLI, use `--source local` to write the active CLI path instead of an npx command. It always appends an absolute `--project`, so the config is machine-specific but starts without an npx cold start:
 
@@ -239,29 +267,29 @@ Updating the global package updates the server; rerun the command only if the CL
 
 > `--source local` ships in published `0.5.0` and later; on older releases, use `fastr setup` for an installed-CLI config.
 
-> `mcp init` ships in `0.4.0` and later; `npx fastrmemory@latest mcp init ...` now resolves to published `0.7.2`. If you need an earlier release, use `fastr setup` or pin the exact version.
+> `mcp init` ships in `0.4.0` and later; `npx fastrmemory@latest mcp init ...` now resolves to published `0.9.1`. If you need an earlier release, use `fastr setup` or pin the exact version.
 
 ### Install from GitHub
 
 For a one-shot source run, pin the release tag:
 
 ```bash
-npx --yes github:atifjubaer/fastrmemory#v0.7.2 --version
-npx --yes github:atifjubaer/fastrmemory#v0.7.2 setup
+npx --yes github:atifjubaer/fastrmemory#v0.9.1 --version
+npx --yes github:atifjubaer/fastrmemory#v0.9.1 setup
 ```
 
 For a global CLI without npm's Git resolver, download the release tarball:
 
 ```bash
-curl -L -o fastrmemory-0.7.2.tgz \
-  https://github.com/atifjubaer/fastrmemory/releases/download/v0.7.2/fastrmemory-0.7.2.tgz
-npm install -g ./fastrmemory-0.7.2.tgz
+curl -L -o fastrmemory-0.9.1.tgz \
+  https://github.com/atifjubaer/fastrmemory/releases/download/v0.9.1/fastrmemory-0.9.1.tgz
+npm install -g ./fastrmemory-0.9.1.tgz
 fastr --version
 ```
 
-On Windows, download the same URL with `Invoke-WebRequest` or a browser, then run `npm install -g .\fastrmemory-0.7.2.tgz`. For a local project install, use `npm install --no-save ./fastrmemory-0.7.2.tgz` instead of the global flag.
+On Windows, download the same URL with `Invoke-WebRequest` or a browser, then run `npm install -g .\fastrmemory-0.9.1.tgz`. For a local project install, use `npm install --no-save ./fastrmemory-0.9.1.tgz` instead of the global flag.
 
-> Git installs build from source and are slower than the npm tarball; for a global CLI, prefer the npm package or the release tarball above. `npm install -g git+https://...` is not recommended with npm 11 because the `prepare` build does not receive dev dependencies. Both `fastrmemory` and `fastr` (short alias) are executable after installation. The canonical package is unscoped `fastrmemory@0.7.2`; the old scoped npm entries are gone. Use npm for generated MCP and hook configs so installs stay reproducible.
+> Git installs build from source and are slower than the npm tarball; for a global CLI, prefer the npm package or the release tarball above. `npm install -g git+https://...` is not recommended with npm 11 because the `prepare` build does not receive dev dependencies. Both `fastrmemory` and `fastr` (short alias) are executable after installation. The canonical package is unscoped `fastrmemory@0.9.1`; the old scoped npm entries are gone. Use npm for generated MCP and hook configs so installs stay reproducible.
 
 ### 2. Verify Database Health
 
