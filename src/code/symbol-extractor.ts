@@ -287,8 +287,98 @@ export function extractSymbols(content: string, filePath: string): ExtractedSymb
     const endIndex = findBodyEnd(lines, startIndex, language);
     symbol.lineEnd = Math.max(symbol.lineStart, endIndex);
     const body = lines.slice(startIndex, endIndex).join('\n');
+    symbol.rawBody = body;
     symbol.normalizedBody = normalizeBody(body, symbol.name);
   }
 
   return found;
+}
+
+/**
+ * Normalizes a file path to POSIX forward slashes without leading ./
+ */
+function toPosixPath(filePath: string): string {
+  return filePath.replace(/\\/g, '/').replace(/^\.\//, '');
+}
+
+/**
+ * Extracts import/require module specifications from source code.
+ * Supports TS/JS (import/require/export from), Python (import/from), Go (import), and Rust (use/mod).
+ * Relative paths are resolved against the source file's directory.
+ */
+export function extractImports(content: string, filePath: string): string[] {
+  const language = detectLanguage(filePath);
+  if (!language || !content) return [];
+  const relDir = path.posix.dirname(toPosixPath(filePath));
+  const imports = new Set<string>();
+
+  if (language === 'ts') {
+    const importRegex = /(?:import|export)\s+(?:[\w*\s{},]*from\s+)?['"]([^'"]+)['"]|require\s*\(\s*['"]([^'"]+)['"]\)/g;
+    let match: RegExpExecArray | null;
+    while ((match = importRegex.exec(content)) !== null) {
+      const spec = match[1] || match[2];
+      if (!spec) continue;
+      if (spec.startsWith('.')) {
+        const resolved = path.posix.normalize(path.posix.join(relDir, spec));
+        imports.add(resolved);
+      } else {
+        imports.add(spec);
+      }
+    }
+  } else if (language === 'python') {
+    const pyRegex = /^\s*(?:from\s+([.\w]+)\s+import|import\s+([\w, ]+))/gm;
+    let match: RegExpExecArray | null;
+    while ((match = pyRegex.exec(content)) !== null) {
+      const spec = (match[1] || match[2] || '').trim();
+      for (const part of spec.split(',')) {
+        const clean = part.trim().split(/\s+/)[0];
+        if (clean) imports.add(clean);
+      }
+    }
+  } else if (language === 'go') {
+    const single = /import\s+"([^"]+)"/g;
+    let match: RegExpExecArray | null;
+    while ((match = single.exec(content)) !== null) {
+      if (match[1]) imports.add(match[1]);
+    }
+    const block = /import\s*\(\s*([^)]+)\s*\)/g;
+    while ((match = block.exec(content)) !== null) {
+      const lines = match[1].split(/\r?\n/);
+      for (const line of lines) {
+        const sub = /"([^"]+)"/.exec(line);
+        if (sub && sub[1]) imports.add(sub[1]);
+      }
+    }
+  } else if (language === 'rust') {
+    const useRegex = /^\s*(?:pub\s+)?use\s+([^;]+);/gm;
+    let match: RegExpExecArray | null;
+    while ((match = useRegex.exec(content)) !== null) {
+      const spec = match[1].trim();
+      if (spec) imports.add(spec);
+    }
+  }
+
+  return Array.from(imports);
+}
+
+/**
+ * Scans a function or declaration body for calls to known symbols in the project.
+ * Ignores self-recursive calls and keywords.
+ */
+export function extractCallReferences(
+  bodyText: string,
+  knownSymbols: Set<string>,
+  selfName?: string
+): string[] {
+  if (!bodyText || knownSymbols.size === 0) return [];
+  const calls = new Set<string>();
+  const callRegex = /\b([A-Za-z_$][\w$]*)\s*\(/g;
+  let match: RegExpExecArray | null;
+  while ((match = callRegex.exec(bodyText)) !== null) {
+    const callee = match[1];
+    if (callee !== selfName && knownSymbols.has(callee)) {
+      calls.add(callee);
+    }
+  }
+  return Array.from(calls);
 }

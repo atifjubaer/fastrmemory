@@ -1092,6 +1092,120 @@ export class FastrRepository {
     return this.db.prepare(query).all(...params) as unknown as Memory[];
   }
 
+  /**
+   * Discovers active error traps on 1-hop downstream code dependencies:
+   * functions called by or files imported by the target files being edited.
+   * Shields agents from regressions across module boundaries.
+   */
+  getCallGraphTrapsForFiles(
+    projectId: string,
+    files: string[]
+  ): Array<{
+    trap: Memory;
+    callerFile: string;
+    calledSymbol: string;
+    calleeFile: string;
+  }> {
+    if (files.length === 0) return [];
+    const directFiles = new Set(files.map((f) => f.replace(/\\/g, '/').replace(/^\.\//, '').trim()));
+    const results: Array<{
+      trap: Memory;
+      callerFile: string;
+      calledSymbol: string;
+      calleeFile: string;
+    }> = [];
+    const seenTrapIds = new Set<string>();
+
+    try {
+      const filePlaceholders = Array.from(directFiles).map(() => '?').join(',');
+
+      // 1. Find symbols declared in the files being edited
+      const localSymbols = this.db.prepare(`
+        SELECT id, file_path, name FROM symbols
+        WHERE project_id = ? AND file_path IN (${filePlaceholders})
+      `).all(projectId, ...Array.from(directFiles)) as Array<{ id: string; file_path: string; name: string }>;
+
+      // 2. If symbols exist, find downstream called functions in code_edges
+      if (localSymbols.length > 0) {
+        const symPlaceholders = localSymbols.map(() => '?').join(',');
+        const symById = new Map(localSymbols.map((s) => [s.id, s]));
+
+        const callEdges = this.db.prepare(`
+          SELECT ce.source_id, ce.target_id, s.name AS callee_name, s.file_path AS callee_file
+          FROM code_edges ce
+          JOIN symbols s ON s.id = ce.target_id
+          WHERE ce.project_id = ? AND ce.edge_type = 'calls' AND ce.source_id IN (${symPlaceholders})
+        `).all(projectId, ...localSymbols.map((s) => s.id)) as Array<{
+          source_id: string;
+          target_id: string;
+          callee_name: string;
+          callee_file: string;
+        }>;
+
+        for (const edge of callEdges) {
+          if (directFiles.has(edge.callee_file)) continue; // Direct file traps already handled
+
+          const caller = symById.get(edge.source_id);
+          const callerFile = caller ? caller.file_path : 'unknown';
+
+          // Look up active traps for the callee symbol or callee file
+          const symbolTraps = this.getMemoriesForSymbol(projectId, edge.callee_name)
+            .filter((m) => m.kind === 'error_trap');
+          const fileTraps = this.getMemoriesForFile(projectId, edge.callee_file)
+            .filter((m) => m.kind === 'error_trap');
+
+          const candidateTraps = [...symbolTraps, ...fileTraps];
+          const live = this.projectRoot
+            ? filterByAssertion(this.db, candidateTraps, this.projectRoot)
+            : candidateTraps;
+
+          for (const trap of live) {
+            if (!seenTrapIds.has(trap.id)) {
+              seenTrapIds.add(trap.id);
+              results.push({
+                trap,
+                callerFile,
+                calledSymbol: edge.callee_name,
+                calleeFile: edge.callee_file
+              });
+            }
+          }
+        }
+      }
+
+      // 3. Check directly imported files in code_edges
+      const importEdges = this.db.prepare(`
+        SELECT source_id, target_id FROM code_edges
+        WHERE project_id = ? AND edge_type = 'imports' AND source_id IN (${filePlaceholders})
+      `).all(projectId, ...Array.from(directFiles)) as Array<{ source_id: string; target_id: string }>;
+
+      for (const edge of importEdges) {
+        if (directFiles.has(edge.target_id)) continue;
+        const importedTraps = this.getMemoriesForFile(projectId, edge.target_id)
+          .filter((m) => m.kind === 'error_trap');
+        const live = this.projectRoot
+          ? filterByAssertion(this.db, importedTraps, this.projectRoot)
+          : importedTraps;
+
+        for (const trap of live) {
+          if (!seenTrapIds.has(trap.id)) {
+            seenTrapIds.add(trap.id);
+            results.push({
+              trap,
+              callerFile: edge.source_id,
+              calledSymbol: path.basename(edge.target_id),
+              calleeFile: edge.target_id
+            });
+          }
+        }
+      }
+    } catch {
+      // Degrade gracefully if table doesn't exist
+    }
+
+    return results;
+  }
+
   listGlobalMemories(): Memory[] {
     if (this.hasGlobalDb()) {
       return this.db.prepare(`

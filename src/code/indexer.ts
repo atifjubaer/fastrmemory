@@ -3,8 +3,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { DatabaseSync } from 'node:sqlite';
-import { extractSymbols, detectLanguage } from './symbol-extractor.js';
+import { extractSymbols, detectLanguage, extractImports, extractCallReferences } from './symbol-extractor.js';
 import type { CodeSymbol, SymbolKind } from './types.js';
+import type { CodeEdgeType } from '../db/schema.js';
 
 /** Extensions worth indexing. Anything else is skipped without reading the file. */
 const INDEXED_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.mts', '.cts', '.py', '.go', '.rs']);
@@ -26,6 +27,8 @@ export interface IndexResult {
   followed: number;
   /** Links dropped because the symbol they named no longer exists. */
   unlinked: number;
+  callEdges?: number;
+  importEdges?: number;
 }
 
 /** Stable ids make re-indexing idempotent: the same declaration always maps to one row. */
@@ -42,6 +45,20 @@ export function symbolId(projectId: string, filePath: string, name: string, kind
  */
 export function declarationId(kind: string, normalizedBody: string): string {
   return `decl_${crypto.createHash('sha256').update(`${kind}:${normalizedBody}`).digest('hex').slice(0, 16)}`;
+}
+
+/** Deterministic ID for code relationship edges (calls, imports). */
+export function codeEdgeId(
+  projectId: string,
+  edgeType: CodeEdgeType,
+  sourceId: string,
+  targetId: string
+): string {
+  return `edge_${edgeType.slice(0, 4)}_${crypto
+    .createHash('sha256')
+    .update(`${projectId}:${edgeType}:${sourceId}:${targetId}`)
+    .digest('hex')
+    .slice(0, 16)}`;
 }
 
 /** file_links and symbols both store repo-relative POSIX paths. */
@@ -107,6 +124,21 @@ export function indexFileSymbols(
         declarationId(symbol.kind, symbol.normalizedBody),
         now
       );
+    }
+
+    // Extract & record import edges for this file
+    const imports = extractImports(content, rel);
+    try {
+      db.prepare("DELETE FROM code_edges WHERE project_id = ? AND source_id = ? AND edge_type = 'imports'").run(projectId, rel);
+      const insertImport = db.prepare(`
+        INSERT OR IGNORE INTO code_edges (id, project_id, source_id, target_id, edge_type, weight, created_at)
+        VALUES (?, ?, ?, ?, 'imports', 1.0, ?)
+      `);
+      for (const imp of imports) {
+        insertImport.run(codeEdgeId(projectId, 'imports', rel, imp), projectId, rel, imp, now);
+      }
+    } catch {
+      // Table may not exist yet in legacy mock tests; ignore gracefully
     }
 
     db.exec('RELEASE fastr_index_file');
@@ -278,7 +310,192 @@ export function indexProjectSymbols(
   result.followed = reconciled.followed;
   result.unlinked = reconciled.unlinked;
 
+  // Build cross-symbol call graph
+  const validFiles = files.filter((f) => fs.existsSync(path.join(projectRoot, f)));
+  result.callEdges = indexProjectCalls(db, projectId, projectRoot, validFiles);
+  result.importEdges = countCodeEdges(db, projectId).imports;
+
   return result;
+}
+
+/**
+ * Scans function/method bodies of all indexed symbols in the project to extract
+ * call relationships ('calls' edges) in code_edges.
+ */
+export function indexProjectCalls(
+  db: DatabaseSync,
+  projectId: string,
+  projectRoot: string,
+  files: string[]
+): number {
+  try {
+    const allSymbols = db.prepare(`
+      SELECT id, file_path, name, kind, line_start, line_end FROM symbols WHERE project_id = ?
+    `).all(projectId) as Array<{ id: string; file_path: string; name: string; kind: string; line_start: number; line_end: number }>;
+
+    if (allSymbols.length === 0) return 0;
+
+    const byName = new Map<string, Array<{ id: string; file_path: string; kind: string }>>();
+    const knownNames = new Set<string>();
+    for (const s of allSymbols) {
+      knownNames.add(s.name);
+      const list = byName.get(s.name) ?? [];
+      list.push({ id: s.id, file_path: s.file_path, kind: s.kind });
+      byName.set(s.name, list);
+    }
+
+    const importRows = db.prepare(`
+      SELECT source_id, target_id FROM code_edges WHERE project_id = ? AND edge_type = 'imports'
+    `).all(projectId) as Array<{ source_id: string; target_id: string }>;
+
+    const importsByFile = new Map<string, Set<string>>();
+    for (const row of importRows) {
+      const set = importsByFile.get(row.source_id) ?? new Set<string>();
+      set.add(row.target_id);
+      importsByFile.set(row.source_id, set);
+    }
+
+    db.prepare("DELETE FROM code_edges WHERE project_id = ? AND edge_type = 'calls'").run(projectId);
+
+    const insertCall = db.prepare(`
+      INSERT OR IGNORE INTO code_edges (id, project_id, source_id, target_id, edge_type, weight, created_at)
+      VALUES (?, ?, ?, ?, 'calls', 1.0, ?)
+    `);
+
+    const now = new Date().toISOString();
+    let createdCount = 0;
+
+    for (const rel of files) {
+      const fileSymbols = allSymbols.filter(
+        (s) => s.file_path === rel && (s.kind === 'function' || s.kind === 'method')
+      );
+      if (fileSymbols.length === 0) continue;
+
+      const absPath = path.join(projectRoot, rel);
+      let content = '';
+      try {
+        content = fs.readFileSync(absPath, 'utf8');
+      } catch {
+        continue;
+      }
+      const lines = content.split(/\r?\n/);
+      const fileImports = importsByFile.get(rel);
+
+      for (const sym of fileSymbols) {
+        const bodyLines = lines.slice(sym.line_start - 1, sym.line_end);
+        const bodyText = bodyLines.join('\n');
+        const calledNames = extractCallReferences(bodyText, knownNames, sym.name);
+
+        for (const calleeName of calledNames) {
+          const candidates = byName.get(calleeName);
+          if (!candidates || candidates.length === 0) continue;
+
+          let target = candidates.find((c) => c.file_path === rel);
+          if (!target && fileImports) {
+            target = candidates.find(
+              (c) => fileImports.has(c.file_path) || Array.from(fileImports).some((imp) => c.file_path.startsWith(imp))
+            );
+          }
+          if (!target && candidates.length === 1) {
+            target = candidates[0];
+          }
+
+          if (target && target.id !== sym.id) {
+            const edgeId = codeEdgeId(projectId, 'calls', sym.id, target.id);
+            insertCall.run(edgeId, projectId, sym.id, target.id, now);
+            createdCount++;
+          }
+        }
+      }
+    }
+
+    return createdCount;
+  } catch {
+    return 0;
+  }
+}
+
+/** Counts code relationship edges by type. */
+export function countCodeEdges(
+  db: DatabaseSync,
+  projectId: string
+): { calls: number; imports: number; total: number } {
+  try {
+    const rows = db.prepare(`
+      SELECT edge_type, COUNT(*) AS c FROM code_edges WHERE project_id = ? GROUP BY edge_type
+    `).all(projectId) as Array<{ edge_type: string; c: number }>;
+
+    let calls = 0;
+    let imports = 0;
+    for (const r of rows) {
+      if (r.edge_type === 'calls') calls = Number(r.c);
+      else if (r.edge_type === 'imports') imports = Number(r.c);
+    }
+    return { calls, imports, total: calls + imports };
+  } catch {
+    return { calls: 0, imports: 0, total: 0 };
+  }
+}
+
+/** Finds callers of the given symbol IDs. */
+export function getCallersForSymbols(
+  db: DatabaseSync,
+  projectId: string,
+  symbolIds: string[]
+): Array<{ callerSymbolId: string; callerFilePath: string; callerName: string; calleeSymbolId: string }> {
+  if (symbolIds.length === 0) return [];
+  try {
+    const placeholders = symbolIds.map(() => '?').join(',');
+    return db.prepare(`
+      SELECT ce.source_id AS callerSymbolId, s.file_path AS callerFilePath, s.name AS callerName, ce.target_id AS calleeSymbolId
+      FROM code_edges ce
+      JOIN symbols s ON s.id = ce.source_id
+      WHERE ce.project_id = ? AND ce.edge_type = 'calls' AND ce.target_id IN (${placeholders})
+    `).all(projectId, ...symbolIds) as any[];
+  } catch {
+    return [];
+  }
+}
+
+/** Finds callees of the given symbol IDs. */
+export function getCalleesForSymbols(
+  db: DatabaseSync,
+  projectId: string,
+  symbolIds: string[]
+): Array<{ calleeSymbolId: string; calleeFilePath: string; calleeName: string; callerSymbolId: string }> {
+  if (symbolIds.length === 0) return [];
+  try {
+    const placeholders = symbolIds.map(() => '?').join(',');
+    return db.prepare(`
+      SELECT ce.target_id AS calleeSymbolId, s.file_path AS calleeFilePath, s.name AS calleeName, ce.source_id AS callerSymbolId
+      FROM code_edges ce
+      JOIN symbols s ON s.id = ce.target_id
+      WHERE ce.project_id = ? AND ce.edge_type = 'calls' AND ce.source_id IN (${placeholders})
+    `).all(projectId, ...symbolIds) as any[];
+  } catch {
+    return [];
+  }
+}
+
+/** Returns the top architectural hub nodes ('God Nodes' with highest in-degree / caller count). */
+export function getGodNodes(
+  db: DatabaseSync,
+  projectId: string,
+  limit: number = 10
+): Array<{ symbolId: string; name: string; filePath: string; kind: string; inDegree: number }> {
+  try {
+    return db.prepare(`
+      SELECT ce.target_id AS symbolId, s.name, s.file_path AS filePath, s.kind, COUNT(*) AS inDegree
+      FROM code_edges ce
+      JOIN symbols s ON s.id = ce.target_id
+      WHERE ce.project_id = ? AND ce.edge_type = 'calls'
+      GROUP BY ce.target_id
+      ORDER BY inDegree DESC, s.name ASC
+      LIMIT ?
+    `).all(projectId, limit) as any[];
+  } catch {
+    return [];
+  }
 }
 
 /** Symbols declared in one file, in source order. */

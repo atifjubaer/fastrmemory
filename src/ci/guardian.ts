@@ -24,11 +24,23 @@ export interface TrapMatch {
   provenanceHash?: string | null;
 }
 
+export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
+
+export interface BlastRadiusImpact {
+  directFiles: string[];
+  impactedFiles: string[];
+  impactedCallersCount: number;
+  impactedCallers: Array<{ callerFile: string; callerName: string; calledSymbol: string; calleeFile: string }>;
+  riskLevel: RiskLevel;
+  riskScore: number;
+}
+
 export interface GuardianResult {
   success: boolean;
   hasViolations: boolean;
   scannedFiles: string[];
   matches: TrapMatch[];
+  blastRadius?: BlastRadiusImpact;
   markdownReport: string;
 }
 
@@ -70,6 +82,105 @@ export function getChangedFilesFromGit(baseBranch: string = 'origin/main', proje
   } catch {
     return [];
   }
+}
+
+/**
+ * Computes the downstream blast radius and risk rating of modified files across
+ * the codebase call graph.
+ */
+export function computePrBlastRadius(
+  db: DatabaseSync,
+  projectId: string,
+  changedFiles: string[]
+): BlastRadiusImpact {
+  const directFiles = Array.from(new Set(changedFiles.map((f) => f.replace(/\\/g, '/').replace(/^\.\//, '').trim())));
+  if (directFiles.length === 0) {
+    return {
+      directFiles: [],
+      impactedFiles: [],
+      impactedCallersCount: 0,
+      impactedCallers: [],
+      riskLevel: 'low',
+      riskScore: 0
+    };
+  }
+
+  const impactedFilesSet = new Set<string>();
+  const impactedCallers: Array<{ callerFile: string; callerName: string; calledSymbol: string; calleeFile: string }> = [];
+
+  try {
+    const filePlaceholders = directFiles.map(() => '?').join(',');
+
+    // 1. Find symbols declared in changed files
+    const localSymbols = db.prepare(`
+      SELECT id, file_path, name FROM symbols
+      WHERE project_id = ? AND file_path IN (${filePlaceholders})
+    `).all(projectId, ...directFiles) as Array<{ id: string; file_path: string; name: string }>;
+
+    if (localSymbols.length > 0) {
+      const symPlaceholders = localSymbols.map(() => '?').join(',');
+      const symById = new Map(localSymbols.map((s) => [s.id, s]));
+
+      // Reverse lookup: find functions in other files that call symbols in changed files
+      const reverseCalls = db.prepare(`
+        SELECT ce.source_id, ce.target_id, s.name AS caller_name, s.file_path AS caller_file
+        FROM code_edges ce
+        JOIN symbols s ON s.id = ce.source_id
+        WHERE ce.project_id = ? AND ce.edge_type = 'calls' AND ce.target_id IN (${symPlaceholders})
+      `).all(projectId, ...localSymbols.map((s) => s.id)) as Array<{
+        source_id: string;
+        target_id: string;
+        caller_name: string;
+        caller_file: string;
+      }>;
+
+      for (const edge of reverseCalls) {
+        if (!directFiles.includes(edge.caller_file)) {
+          impactedFilesSet.add(edge.caller_file);
+          const callee = symById.get(edge.target_id);
+          impactedCallers.push({
+            callerFile: edge.caller_file,
+            callerName: edge.caller_name,
+            calledSymbol: callee ? callee.name : 'symbol',
+            calleeFile: callee ? callee.file_path : 'unknown'
+          });
+        }
+      }
+    }
+
+    // 2. Also check files that import changed files
+    const reverseImports = db.prepare(`
+      SELECT ce.source_id AS importer_file
+      FROM code_edges ce
+      WHERE ce.project_id = ? AND ce.edge_type = 'imports' AND ce.target_id IN (${filePlaceholders})
+    `).all(projectId, ...directFiles) as Array<{ importer_file: string }>;
+
+    for (const imp of reverseImports) {
+      if (!directFiles.includes(imp.importer_file)) {
+        impactedFilesSet.add(imp.importer_file);
+      }
+    }
+  } catch {
+    // code_edges might not exist in old mocks
+  }
+
+  const callerCount = impactedCallers.length;
+  const impactedFileCount = impactedFilesSet.size;
+  const score = directFiles.length * 1 + callerCount * 2 + impactedFileCount * 1.5;
+
+  let riskLevel: RiskLevel = 'low';
+  if (score >= 25 || callerCount >= 10) riskLevel = 'critical';
+  else if (score >= 12 || callerCount >= 4) riskLevel = 'high';
+  else if (score >= 4 || callerCount >= 1) riskLevel = 'medium';
+
+  return {
+    directFiles,
+    impactedFiles: Array.from(impactedFilesSet),
+    impactedCallersCount: callerCount,
+    impactedCallers: impactedCallers.slice(0, 20),
+    riskLevel,
+    riskScore: Math.round(score * 10) / 10
+  };
 }
 
 export function runTrapGuardian(options: GuardianOptions = {}): GuardianResult {
@@ -184,11 +295,25 @@ export function runTrapGuardian(options: GuardianOptions = {}): GuardianResult {
     }
   }
 
+  const blastRadius = computePrBlastRadius(db, projectId, scannedFiles);
+  md += `\n### 🌐 Knowledge Graph Blast Radius & Impact\n`;
+  md += `- **Risk Level**: \`${blastRadius.riskLevel.toUpperCase()}\` (Score: ${blastRadius.riskScore})\n`;
+  md += `- **Direct Files**: ${blastRadius.directFiles.length}\n`;
+  md += `- **Downstream Callers Impacted**: ${blastRadius.impactedCallersCount} function(s) across ${blastRadius.impactedFiles.length} file(s)\n`;
+  if (blastRadius.impactedCallers.length > 0) {
+    md += `\n<details><summary>Impacted Downstream Callers (Top ${blastRadius.impactedCallers.length})</summary>\n\n`;
+    for (const caller of blastRadius.impactedCallers) {
+      md += `- \`${caller.callerFile}\` :: \`${caller.callerName}()\` calls \`${caller.calledSymbol}()\` in \`${caller.calleeFile}\`\n`;
+    }
+    md += `\n</details>\n`;
+  }
+
   return {
     success,
     hasViolations,
     scannedFiles,
     matches,
+    blastRadius,
     markdownReport: md
   };
 }

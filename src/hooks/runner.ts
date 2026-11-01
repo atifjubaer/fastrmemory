@@ -208,10 +208,22 @@ export function runLifecycleHook(
         content_hash: files.join('|'),
       });
 
-      if (traps.length > 0) {
-        let text = `⚠️ FASTRMEMORY TRAP WARNING: ${traps.length} active error traps for target files:\n`;
-        for (const t of traps) {
-          text += `- [${t.id}] ${t.title}: ${t.content}\n`;
+      const callGraphTraps = ctx.repo.getCallGraphTrapsForFiles(ctx.config.projectId, files);
+
+      if (traps.length > 0 || callGraphTraps.length > 0) {
+        let text = '';
+        if (traps.length > 0) {
+          text += `⚠️ FASTRMEMORY TRAP WARNING: ${traps.length} active error trap(s) for target files:\n`;
+          for (const t of traps) {
+            text += `- [${t.id}] ${t.title}: ${t.content}\n`;
+          }
+        }
+        if (callGraphTraps.length > 0) {
+          if (text) text += '\n';
+          text += `⚠️ FASTRMEMORY CALL-GRAPH TRAP WARNING (${callGraphTraps.length} downstream risk):\n`;
+          for (const item of callGraphTraps.slice(0, 3)) {
+            text += `- ${item.callerFile} calls ${item.calledSymbol}() in ${item.calleeFile}, governed by [${item.trap.id}] "${item.trap.title}": ${item.trap.content}\n`;
+          }
         }
         return { handled: true, message: 'Active error traps detected', output: text };
       }

@@ -48,8 +48,9 @@ import { importMarkdownFile } from '../src/import/local.js';
 import type { LocalImportKind } from '../src/import/local.js';
 import { consolidateMemories } from '../src/db/consolidate.js';
 import { runMemoryCi } from '../src/ci/memory-ci.js';
-import { countSymbols, indexProjectSymbols } from '../src/code/indexer.js';
+import { countSymbols, indexProjectSymbols, countCodeEdges } from '../src/code/indexer.js';
 import { evaluateMemoryAssertion } from '../src/db/assertions.js';
+import { installUniversalFastrSkill, uninstallUniversalFastrSkill } from '../src/installer/skills.js';
 
 const BANNER = `
 \x1b[38;2;56;189;248m   ______           __        __  ___                                \x1b[0m
@@ -516,6 +517,9 @@ program
     console.log(`Stale removed:   ${result.removed}`);
     console.log(`Links followed:  ${result.followed}`);
     console.log(`Links dropped:   ${result.unlinked}`);
+    const edges = countCodeEdges(ctx.db, ctx.config.projectId);
+    console.log(`Call edges:      ${edges.calls}`);
+    console.log(`Import edges:    ${edges.imports}`);
     console.log(`Total symbols:   ${total}\n`);
   });
 
@@ -1562,6 +1566,58 @@ modelCmd
   .description('Delete the installed static semantic model')
   .action(() => {
     console.log(removeStaticModel() ? 'Static model removed.' : 'Static model is not installed.');
+  });
+
+// 23. Universal multi-client /fastr slash command skills
+const skillCmd = program
+  .command('skill')
+  .description('Manage universal /fastr slash command skills across AI assistants');
+
+skillCmd
+  .command('install')
+  .description('Install native /fastr slash command into Claude Code, Cursor, Codex, OpenCode, Gemini, Copilot, or Windsurf')
+  .option('-c, --client <clients>', 'Comma-separated clients or "all"', 'all')
+  .option('-s, --scope <scope>', 'project or user', 'project')
+  .option('-f, --force', 'Overwrite existing unmanaged files', false)
+  .option('--dry-run', 'Simulate installation without writing to disk', false)
+  .action((opts: any) => {
+    const ctx = createFastrServerContext();
+    const clients = opts.client === 'all'
+      ? undefined
+      : opts.client.split(',').map((c: string) => c.trim()).filter(Boolean);
+    const results = installUniversalFastrSkill({
+      projectRoot: ctx.config.projectRoot,
+      clients: clients as any,
+      scope: opts.scope,
+      force: opts.force,
+      dryRun: opts.dryRun
+    });
+    console.log(`\n=== FastrMemory Universal Slash Command (/fastr) ===`);
+    for (const r of results) {
+      const statusIcon = r.action === 'created' || r.action === 'updated' ? '✅' : r.action === 'unchanged' ? 'ℹ️' : '⚠️';
+      console.log(`${statusIcon} [${r.client.toUpperCase()}]: ${r.action.toUpperCase()} -> ${r.targetPath}` + (r.reason ? ` (${r.reason})` : ''));
+    }
+  });
+
+skillCmd
+  .command('uninstall')
+  .description('Remove FastrMemory managed /fastr slash command from AI assistants')
+  .option('-c, --client <clients>', 'Comma-separated clients or "all"', 'all')
+  .option('-s, --scope <scope>', 'project or user', 'project')
+  .action((opts: any) => {
+    const ctx = createFastrServerContext();
+    const clients = opts.client === 'all'
+      ? undefined
+      : opts.client.split(',').map((c: string) => c.trim()).filter(Boolean);
+    const results = uninstallUniversalFastrSkill({
+      projectRoot: ctx.config.projectRoot,
+      clients: clients as any,
+      scope: opts.scope
+    });
+    console.log(`\n=== FastrMemory Slash Command Uninstall ===`);
+    for (const r of results) {
+      console.log(`- [${r.client.toUpperCase()}]: ${r.targetPath}` + (r.reason ? ` (${r.reason})` : ''));
+    }
   });
 
 program.parse(process.argv);
